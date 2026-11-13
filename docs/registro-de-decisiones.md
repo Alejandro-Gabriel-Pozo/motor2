@@ -69,3 +69,30 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 - **Costo de revertir:** bajo: mapear ese código a `PRODUCTO_SIN_RECETA` en el armado de los platos de sección y ajustar su prueba.
 - **Dónde:** `src/core/pos/plato-de-seccion.ts`, `src/server/actions/pos/casos-de-uso/promo-seccion-con-opciones.ts`
 - **Estado:** PENDIENTE_DE_OK
+
+### DEC-0007
+- **Fecha:** 2026-11-12
+- **Quién:** la sesión Sonnet que armó la etapa E4 «Duplicar producto» (PR #257).
+- **Qué decidió:** el producto duplicado nace disponible en todas las sucursales de la empresa si quien duplica tiene `producto_campos_sensibles` (o si es materia prima) y APAGADO en todas si no la tiene; el diálogo no ofrece el tilde de disponibilidad del alta.
+- **Por qué:** sigue la regla M.2-A4 del alta (DEC-0001) con el tilde por defecto, y evita sumar una opción que el dueño no pidió; sin la clave el producto nacería a $0 y a la venta.
+- **Costo de revertir:** bajo: agregar al diálogo el tilde del alta y pasarlo al caso de uso, con su prueba; no hay migración ni datos que corregir.
+- **Dónde:** `src/server/actions/catalogo/casos-de-uso/duplicar-producto.ts:208`
+- **Estado:** PENDIENTE_DE_OK
+
+### DEC-0008
+- **Fecha:** 2026-11-12
+- **Quién:** la sesión Sonnet que armó la etapa E4 «Duplicar producto» (PR #257).
+- **Qué decidió:** un original que se vende por opción se duplica con precio guardado en $0 (el modo «por opción» se aplica al final, ya validadas las opciones) y exige `producto_campos_sensibles` y copiar sus opciones.
+- **Por qué:** en un producto por opción el precio guardado no se cobra (rige el de cada opción), y el control del precio de lista de cada grupo se hace contra ese precio guardado: copiarlo juzgaría las opciones contra un número que nunca se cobra.
+- **Costo de revertir:** bajo: copiar el precio guardado del original y ajustar su prueba; no hay migración.
+- **Dónde:** `src/server/actions/catalogo/casos-de-uso/duplicar-producto.ts:178`
+- **Estado:** PENDIENTE_DE_OK
+
+### DEC-0009
+- **Fecha:** 2026-11-12
+- **Quién:** la sesión Sonnet que armó la etapa E4 «Duplicar producto» (PR #257).
+- **Qué decidió:** el selector «Sacar la receta de» arranca en «Central» y no en la sucursal activa.
+- **Por qué:** el dueño dijo que la central funciona como una sucursal más y que se elige de cuál copiar; no dijo cuál va por defecto, y elegir una sucursal pide además el permiso `receta_sucursal_copiar` allí (S-07), que no todos tienen.
+- **Costo de revertir:** muy bajo: cambiar el valor por defecto del selector y su prueba e2e.
+- **Dónde:** `src/components/catalogo/duplicar-producto.tsx:43`
+- **Estado:** PENDIENTE_DE_OK

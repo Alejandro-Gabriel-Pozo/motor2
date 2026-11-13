@@ -14,15 +14,12 @@
  * Valida que un string sea un color CSS seguro antes de inyectarlo en un <style>.
  * Acepta: hex (#rgb, #rrggbb, #rrggbbaa), rgb(), rgba(), hsl(), hsla(),
  *         oklch(), oklab(), nombres CSS (solo letras), y los alias 'claro'/'oscuro'.
- * Rechaza cualquier valor con ; { } < > comillas u otros caracteres peligrosos.
+ * Rechaza todo lo que no tenga exactamente una de esas formas (la lista de lo permitido es la única puerta).
  * Devuelve el valor limpio o null si no es válido.
  */
 export function sanitizeCssColor(value: string): string | null {
   if (!value) return null
   const v = value.trim()
-
-  // Bloquear caracteres peligrosos para CSS injection
-  if (/[;{}"'<>\\]/.test(v)) return null
 
   // Alias locales
   const lower = v.toLowerCase()

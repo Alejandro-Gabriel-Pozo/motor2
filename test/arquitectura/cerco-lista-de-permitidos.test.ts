@@ -8,7 +8,7 @@ import { contarProhibidosEnCodigo } from "./cerco-lista-de-permitidos-apoyo";
  * Lo que nadie pensó en prohibir pasa (caso real de Pedernal: `/\p{Cc}/u` solo rechazaba controles y dejaba pasar invisibles y `<>`). Cuenta, por archivo, las validaciones por lista de prohibidos
  * (detector y sus límites, en `cerco-lista-de-permitidos-apoyo.ts`; cada forma con su violación inyectada, en `cerco-lista-de-permitidos-evasiones.test.ts`) en `src/`, `plataforma/src/` y `scripts/`, sin
  * archivos de prueba. Lo que ya existe es deuda con vencimiento (`cercos/vencimientos.ts`, máximo 60 días); una nueva no entra.
- * Meta: 0 (cada una pasa a declarar lo permitido: se corrige en un trabajo aparte, no en el PR que instala el guardián).
+ * Meta: 0, alcanzada en el PR 3 (2026-11-12): las 21 validaciones heredadas pasaron a declarar lo permitido, salvo UNA excepción declarada con motivo (un sanitizador que quita caracteres, no valida).
  *
  * Mecanismo, regeneración (`BAJAR_CERCOS=1`) y excepciones: `test/arquitectura/cercos/trinquete.ts`.
  */
@@ -21,8 +21,15 @@ function contar(fuente: string, ruta: string): Record<string, number> {
 
 const CERCO_LISTA_DE_PERMITIDOS: Cerco = {
   regla: "lista-de-prohibidos",
-  meta: "0 (la validación declara lo permitido: conjunto, largo, forma; trabajo aparte del PR que instala el guardián)",
+  meta: "0 (la validación declara lo permitido: conjunto, largo, forma). Alcanzada en el PR 3; ninguna entrada nueva",
   medir: medirPorArchivo({ raices: ["src", "plataforma/src", "scripts"], extensiones: EXTENSIONES, incluir: (ruta) => !ES_DE_PRUEBA.test(ruta), contar }),
+  excepciones: [
+    {
+      ruta: "src/core/texto.ts",
+      motivo:
+        "`quitarCaracteresInadmisibles` no VALIDA: es un sanitizador que SACA el NUL y los sustitutos UTF-16 sueltos (lo único que Postgres/Prisma no pueden recibir) y deja pasar el resto del texto. Listar lo que se quita es su razón de ser; no hay lista de permitidos que lo reemplace sin cambiar qué texto se guarda.",
+    },
+  ],
 };
 
 describe("cerco «lista de prohibidos»: el detector mira código real", () => {

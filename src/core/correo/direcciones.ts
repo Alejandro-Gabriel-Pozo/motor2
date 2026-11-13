@@ -1,6 +1,7 @@
 import { esEmailValido } from "@/core/datos/email";
 
-const REMITENTE_CON_NOMBRE = /^([^<>@\r\n"]+)<(\S+)>$/;
+/** «Nombre <dirección>»: el nombre admite letras, marcas, números, espacio y `. , & ' ( ) _ -`; lo de entre `<>` solo caracteres de una dirección (la forma exacta la decide `esEmailValido`). */
+const REMITENTE_CON_NOMBRE = /^([\p{L}\p{M}\p{N} .,&'()_-]+)<([A-Za-z0-9!#$%&'*+/=?^_`{|}~.@-]+)>$/u;
 
 /** Una dirección sola (`ana@ejemplo.com`): sin nombre, sin saltos de línea ni separadores. */
 export function esDireccionValida(texto: string): boolean {
