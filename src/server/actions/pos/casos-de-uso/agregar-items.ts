@@ -12,7 +12,8 @@ import { validarCantidadPedido } from "@/core/pos/cantidad-pedido";
 import { componentesDeEleccion, prorratearPrecioPromo, validarYAplanarEleccionPromo, type ComponentePromoElegido, type FilaPromoProrrateada } from "@/core/pos/promo-combo";
 import { MAXIMO_ITEMS_POR_AGREGADO } from "@/core/pos/cantidad-pedido";
 import { armarLineaConfigurada, type LineaConfigurada } from "@/core/pos/linea-configurada";
-import { armarConfiguracionDeEntradaAElegir } from "@/core/pos/public-servidor";
+import { armarConfiguracionDeEntradaAElegir, conOpcionesDeLasSecciones } from "@/core/pos/public-servidor";
+import { armarPlatosDeSeccionConOpciones, opcionesDeLasFilasDeSeccion } from "./promo-seccion-con-opciones";
 import { validarOpcionesElegidas } from "@/core/opciones/public";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
@@ -62,7 +63,7 @@ import { frasesDePuesto } from "@/core/pos/puesto";
  *  - En cada ítem, los chequeos de producto de siempre van PRIMERO (existe, PV, disponible, cantidad, precio y descuento) y los de opciones DESPUÉS: un producto ancla
  *    pedido suelto es `PRODUCTO_INVALIDO` («se vende solo como adicional»); lo elegido pasa por `armarLineaConfigurada` (`OPCION_CAMBIO` si cambió la versión que vio
  *    el mozo; `OPCIONES_INVALIDAS` cualquier otro problema). El precio nunca viene del cliente.
- *  - En las promos (v1), un componente cuyo producto tiene un grupo obligatorio es `PROMO_CON_OPCIONES`; con grupos opcionales entra sin opciones.
+ *  - En las promos, un componente de una parte de SECCIÓN con grupos de opciones lleva las opciones que el mozo eligió en su fila (diseño 2026-11-11, E1b: se arman dentro de la transacción con `armarComponenteDeSeccion`, nunca un adicional, y pesan en el reparto con la lista de la configuración elegida; el precio de la promo no cambia). `PROMO_CON_OPCIONES` queda solo para lo que no se puede armar (un adicional obligatorio o un grupo obligatorio sin opciones activas); un plato sin nada que elegir entra sin opciones.
  *  - El tope de líneas (`MAXIMO_ITEMS_POR_AGREGADO`) cuenta también los adicionales (`OPCIONES_INVALIDAS`): recién acá se sabe cuáles son.
  *  - Escrituras, todas al final y en este orden: las `PromoCuenta`, el `createMany` de las líneas sin opciones (si hay alguna, o si no hay configuradas: la forma de
  *    siempre), cada línea configurada (`escribirLineaConfigurada`: la línea, sus adicionales y las fotos) y el comprobante. El mensaje cuenta los ítems pedidos, sin los adicionales.
@@ -115,7 +116,11 @@ export async function agregarItemsCasoDeUso(
       tx,
       actor.sucursalId,
       await cargarOpcionesParaVender(tx, { sucursalId: actor.sucursalId, productoIds: productoIdsDelPedido }),
-      items_.flatMap((i) => (typeof i?.productoId === "string" && Array.isArray(i.opciones) ? [{ productoId: i.productoId, opcionIds: i.opciones.map((o) => o.opcionId) }] : []))
+      [
+        ...items_.flatMap((i) => (typeof i?.productoId === "string" && Array.isArray(i.opciones) ? [{ productoId: i.productoId, opcionIds: i.opciones.map((o) => o.opcionId) }] : [])),
+        // Diseño 2026-11-11 (E1b): también las opciones que el mozo elige en las filas de las partes de SECCIÓN de las promos.
+        ...opcionesDeLasFilasDeSeccion(promos_),
+      ]
     );
 
     // El «Nombre en la carta» de los productos del pedido (UNA lectura): se congela en la línea para el ticket del cliente (`CuentaItem.nombreEnTicket`).
@@ -213,7 +218,10 @@ export async function agregarItemsCasoDeUso(
       const elecciones = Array.isArray(p.elecciones) ? p.elecciones : [];
       // S-01 (O.50): los componentes salen de la elección YA VALIDADA (cupos, elegibles, sin repetidos), nunca de aplanar lo que mandó el cliente. GO-3b: un componente fijo lo completa el
       // servidor; una entrada que ya no se puede elegir hoy o un lugar del día sin plato tienen su propio código (la pantalla marca el lugar).
-      const validacion = validarYAplanarEleccionPromo(def.cupos, elecciones);
+      // Diseño 2026-11-11 (E1b): en cada parte de SECCIÓN, los platos con opciones que el mozo elige (los mismos que ofrecerá el selector: `clasificarPlatoDeSeccion`, con lo que ya se leyó de la sucursal). Un plato que
+      // el pedido no trae no importa: la validación solo mira lo elegido.
+      const cuposDeLaPromo = conOpcionesDeLasSecciones(def.cupos, new Map([...opcionesLeidas].map(([productoId, admite]) => [productoId, admite.grupos])));
+      const validacion = validarYAplanarEleccionPromo(cuposDeLaPromo, elecciones);
       if (!validacion.ok) {
         const codigo = validacion.codigo === "ENTRADA_NO_DISPONIBLE" || validacion.codigo === "MENU_DEL_DIA_SIN_CARGAR" ? validacion.codigo : "PROMO_INVALIDA";
         return fracaso(codigo, `«${def.titulo}»: ${validacion.mensaje}`);
@@ -233,11 +241,14 @@ export async function agregarItemsCasoDeUso(
         precioCartaPorClave.set(c.claveComponente, armada.precioDeLista);
         if (armada.linea) lineaPorClave.set(c.claveComponente, armada.linea);
       }
+      // Diseño 2026-11-11 (E1b): lo que el mozo eligió en un plato con opciones de una parte de SECCIÓN se arma igual, dentro de la transacción (`promo-seccion-con-opciones.ts`): pesa con la lista de ESA configuración.
+      const deSeccion = await armarPlatosDeSeccionConOpciones(tx, { sucursalId: actor.sucursalId, titulo: def.titulo, componentes: validacion.componentes, opcionesLeidas, origenDeStock, precioCartaPorProducto: def.precioCartaPorProducto, precioCartaPorClave, lineaPorClave });
+      if (!deSeccion.ok) return fracaso(deSeccion.codigo, deSeccion.mensaje);
       // Un componente de un cupo de entradas pesa con el precio de lista de SU entrada (por `claveComponente`: con su configuración); uno de sección, con el de siempre.
       // Si la clave de un componente de entradas no está en el mapa de precios, el plato pesaría $0 en el reparto: se rechaza sin escribir nada (nunca un cero silencioso).
       const componentes: ((typeof validacion.componentes)[number] & { precioCarta: number })[] = [];
       for (const c of validacion.componentes) {
-        if (c.entradaId !== undefined && c.claveComponente !== undefined) {
+        if (c.claveComponente !== undefined) {
           const precioDeLista = precioCartaPorClave.get(c.claveComponente);
           if (precioDeLista === undefined) return fracaso("PROMO_INVALIDA", `«${def.titulo}»: no se encontró el precio de lista de uno de los platos elegidos; actualizá la carta y volvé a armar la promo.`);
           componentes.push({ ...c, precioCarta: precioDeLista });
@@ -250,7 +261,8 @@ export async function agregarItemsCasoDeUso(
       // GO-2b (v1): un componente DE SECCIÓN no lleva opciones. Si su producto tiene un grupo obligatorio, no se puede armar en la promo; con grupos opcionales entra sin opciones. GO-3b: un
       // componente de un cupo de ENTRADAS ya se validó al leerlo (su configuración armada hoy, receta y disponibilidad: `cargarEntradasDePromoParaVender`).
       for (const c of componentes) {
-        if (c.entradaId !== undefined) continue;
+        // Un componente de ENTRADAS ya se validó al leerlo; uno de sección CON opciones, recién arriba (`armarComponenteDeSeccion`: mínimos del grupo, origen de stock de lo elegido).
+        if (c.entradaId !== undefined || c.opciones !== undefined) continue;
         const sinOpciones = validarOpcionesElegidas(opcionesLeidas.get(c.productoId)?.grupos ?? [], []);
         if (!sinOpciones.ok) return fracaso("PROMO_CON_OPCIONES", `«${def.titulo}»: uno de sus productos necesita que elijas opciones (${sinOpciones.mensaje}) y en una promo todavía no se puede: pedilo suelto.`);
         const rechazoReceta = sinReceta(c.productoId, "Un producto de la promo");
