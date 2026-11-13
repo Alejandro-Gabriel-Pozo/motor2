@@ -3,6 +3,7 @@ import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { cambioDeCliente } from "@/core/features/clientes/auditoria-de-cliente";
 import type { ComandoAltaCliente, ResultadoAltaCliente } from "@/core/features/clientes/clientes.schema";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
+import { esChoqueDeIndiceUnico } from "@/core/movimientos/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { crearClienteNuevo } from "@/server/persistencia/clientes/clientes";
 
@@ -30,11 +31,18 @@ export async function altaClienteCasoDeUso(
   const existente = await actor.db.cliente.findFirst({ where: { nombre: { equals: n, mode: "insensitive" } } });
   if (existente) return fracaso("NOMBRE_REPETIDO", `Ya existe un cliente llamado "${existente.nombre}".`);
 
-  const creado = await actor.transaccion(async (tx) => {
-    const c = await crearClienteNuevo(tx, { nombre: n, descuentoPorcentaje: pct! });
-    await registrarCambioAuditado(tx, cambioDeCliente(actor.usuarioId, c.id, c.nombre, "nombre", null, c.nombre));
-    await registrarCambioAuditado(tx, cambioDeCliente(actor.usuarioId, c.id, c.nombre, "descuentoPorcentaje", null, pct));
-    return c;
-  });
+  // Carrera: dos altas del mismo nombre a la vez pasan la lectura de arriba; el índice único sobre lower(nombre) deja una sola y la otra se rechaza acá (la transacción se deshace entera, con su auditoría).
+  let creado: Awaited<ReturnType<typeof crearClienteNuevo>>;
+  try {
+    creado = await actor.transaccion(async (tx) => {
+      const c = await crearClienteNuevo(tx, { nombre: n, descuentoPorcentaje: pct! });
+      await registrarCambioAuditado(tx, cambioDeCliente(actor.usuarioId, c.id, c.nombre, "nombre", null, c.nombre));
+      await registrarCambioAuditado(tx, cambioDeCliente(actor.usuarioId, c.id, c.nombre, "descuentoPorcentaje", null, pct));
+      return c;
+    });
+  } catch (e) {
+    if (esChoqueDeIndiceUnico(e)) return fracaso("NOMBRE_REPETIDO", `Ya existe un cliente llamado "${n}".`);
+    throw e;
+  }
   return exito(`Cliente "${creado.nombre}" creado, con ${pct}% de descuento.`, { id: creado.id, nombre: creado.nombre });
 }
