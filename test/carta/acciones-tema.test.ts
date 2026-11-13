@@ -139,4 +139,94 @@ describe("Server Actions del tema de la carta", () => {
     expect(r.mensaje).toMatch(/No tenés permiso/);
     expect(await prisma.temaCartaSucursal.findMany()).toEqual([antes]);
   });
+
+  describe("modo marca: `marca_derivada = «si»` exige una marca que se lea (M1, M2 y M3) o se rechaza sin escribir", () => {
+    const COLORES_SUELTOS = { color_fondo_dia: "#181818", color_item_nombre: "#ffffff", hero_ink: "#ffffff" };
+
+    it("una marca válida se guarda con el marcador, junto a los colores sueltos (que no se pierden)", async () => {
+      const r = await guardarTemaCarta(centralId, { ...COLORES_SUELTOS, color_marca: "#5c57a2", marca_derivada: "si" });
+      expect(r.ok).toBe(true);
+      expect(await guardado()).toEqual({ ...COLORES_SUELTOS, color_marca: "#5c57a2", marca_derivada: "si" });
+    });
+
+    it.each([
+      ["#ffcb69", "casi no se distingue del fondo"],
+      ["#96bbbb", "casi no se distingue del fondo"],
+      ["#797d62", "no se lee bien"],
+      ["#d32f2f", "no se lee bien"],
+    ])("la marca %s se rechaza con un mensaje que dice qué hacer, sin escribir nada", async (marca, motivo) => {
+      await guardarTemaCarta(centralId, { color_marca: "#8b4513" });
+      const r = await guardarTemaCarta(centralId, { ...COLORES_SUELTOS, color_marca: marca, marca_derivada: "si" });
+      expect(r.ok).toBe(false);
+      expect(r.mensaje).toContain("Color de marca: ");
+      expect(r.mensaje).toContain(motivo);
+      expect(r.mensaje).toMatch(/Elegí uno más/);
+      expect(await guardado()).toEqual({ color_marca: "#8b4513" });
+    });
+
+    it.each(["", "#5C57A2", "#fff", "red", "rgb(92, 87, 162)", "oklch(0.5 0.1 30)"])("con el marcador, una marca %j (no #rrggbb en minúsculas) se rechaza sin escribir", async (marca) => {
+      const r = await guardarTemaCarta(centralId, { color_marca: marca, marca_derivada: "si" });
+      expect(r.ok).toBe(false);
+      expect(r.mensaje).toContain("Color de marca: ");
+      expect(await prisma.temaCartaSucursal.count()).toBe(0);
+    });
+
+    it("sin el marcador, el guardado de siempre no cambia: una marca de bajo contraste o en cualquier formato se acepta", async () => {
+      expect((await guardarTemaCarta(centralId, { color_marca: "#ffcb69" })).ok).toBe(true);
+      expect((await guardarTemaCarta(centralId, { color_marca: "rgb(255, 203, 105)" })).ok).toBe(true);
+      expect((await guardarTemaCarta(centralId, { color_marca: "red", marca_derivada: "" })).ok).toBe(true);
+    });
+
+    it("volver a mis colores anteriores: guardar sin el marcador deja los colores sueltos tal cual", async () => {
+      await guardarTemaCarta(centralId, { ...COLORES_SUELTOS, color_marca: "#5c57a2", marca_derivada: "si" });
+      const r = await guardarTemaCarta(centralId, { ...COLORES_SUELTOS, color_marca: "#5c57a2", marca_derivada: "" });
+      expect(r.ok).toBe(true);
+      expect(await guardado()).toEqual({ ...COLORES_SUELTOS, color_marca: "#5c57a2" });
+    });
+
+    it("idempotente: pasar dos veces a la misma marca deja una fila con los mismos valores; a la vez (carrera) también", async () => {
+      const valores = { ...COLORES_SUELTOS, color_marca: "#5c57a2", marca_derivada: "si" };
+      expect((await guardarTemaCarta(centralId, valores)).ok).toBe(true);
+      expect((await guardarTemaCarta(centralId, valores)).ok).toBe(true);
+      const dos = await Promise.all([guardarTemaCarta(centralId, valores), guardarTemaCarta(centralId, valores)]);
+      expect(dos.map((r) => r.ok)).toEqual([true, true]);
+      expect(await prisma.temaCartaSucursal.count()).toBe(1);
+      expect(await guardado()).toEqual(valores);
+    });
+
+    it("ida y vuelta: pasar a la marca y volver deja `valores` igual que antes (salvo el marcador, que se va), con las claves viejas intactas", async () => {
+      const antes = { ...COLORES_SUELTOS, color_marca: "#5c57a2" };
+      await guardarTemaCarta(centralId, antes);
+      const valoresAntes = JSON.stringify(await guardado());
+      await guardarTemaCarta(centralId, { ...antes, marca_derivada: "si" });
+      expect(await guardado()).toEqual({ ...antes, marca_derivada: "si" });
+      await guardarTemaCarta(centralId, { ...antes, marca_derivada: "" });
+      expect(JSON.stringify(await guardado())).toBe(valoresAntes);
+    });
+
+    it("carrera con valores distintos (pasar y volver a la vez): gana uno de los dos, nunca un estado inválido ni una fila de más", async () => {
+      const marcada = { ...COLORES_SUELTOS, color_marca: "#5c57a2", marca_derivada: "si" };
+      const clasica = { ...COLORES_SUELTOS, color_marca: "#5c57a2", marca_derivada: "" };
+      await Promise.all([guardarTemaCarta(centralId, marcada), guardarTemaCarta(centralId, clasica)]);
+      expect(await prisma.temaCartaSucursal.count()).toBe(1);
+      const valores = (await guardado()) as Record<string, string>;
+      expect([JSON.stringify(marcada), JSON.stringify(clasica)].map((j) => JSON.parse(j)).some((c) => JSON.stringify(Object.entries(c).filter(([, v]) => v !== "").sort()) === JSON.stringify(Object.entries(valores).sort()))).toBe(true);
+    });
+
+    it("aislamiento: con permiso en Central no se puede pasar a marca la carta de una sucursal en la que no se tiene membresía", async () => {
+      const otra = await prisma.sucursal.create({ data: { nombre: "Otra" } });
+      const r = await guardarTemaCarta(otra.id, { color_marca: "#5c57a2", marca_derivada: "si" });
+      expect(r.ok).toBe(false);
+      expect(await prisma.temaCartaSucursal.count({ where: { sucursalId: otra.id } })).toBe(0);
+    });
+
+    it("sin el permiso `carta_tema` no se puede pasar a marca (el operador arranca sin él)", async () => {
+      const operador = await crearUsuarioConMembresia({ email: "operador2@test.com", sucursalId: centralId, rolId: operadorRolId });
+      await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
+      const r = await guardarTemaCarta(centralId, { color_marca: "#5c57a2", marca_derivada: "si" });
+      expect(r.ok).toBe(false);
+      expect(r.mensaje).toMatch(/No tenés permiso/);
+      expect(await prisma.temaCartaSucursal.count()).toBe(0);
+    });
+  });
 });
