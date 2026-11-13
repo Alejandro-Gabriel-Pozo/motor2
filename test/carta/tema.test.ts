@@ -9,7 +9,7 @@ import {
 } from "../../src/core/carta/tema";
 
 /**
- * Catálogo del tema de la carta (docs/plan-tema-carta-2026-09-24.md, M3, D3): las 64 claves por tenant, los defaults de la carta, un validador por tipo
+ * Catálogo del tema de la carta (docs/plan-tema-carta-2026-09-24.md, M3, D3): las 65 claves por tenant, los defaults de la carta, un validador por tipo
  * y el saneamiento de la salida del endpoint.
  */
 
@@ -56,9 +56,9 @@ const claves = CLAVES_TEMA_V1.map((d) => d.clave as string);
 const ordenar = (xs: readonly string[]) => [...xs].sort();
 
 describe("catálogo CLAVES_TEMA_V1", () => {
-  it("son 64 claves y todas distintas, sin intersección con las fijas del sistema", () => {
+  it("son 65 claves y todas distintas, sin intersección con las fijas del sistema", () => {
     const fijas = Object.keys(CLAVES_FIJAS_DEL_SISTEMA);
-    expect(claves).toHaveLength(64);
+    expect(claves).toHaveLength(65);
     expect(new Set(claves).size).toBe(claves.length);
     expect(claves.filter((c) => fijas.includes(c))).toEqual([]);
     expect(claves).not.toContain("carta_fuente_indice_categoria");
@@ -175,7 +175,7 @@ describe("armarTemaCarta: saneamiento de la salida", () => {
   const ahora = new Date("2026-09-24T12:00:00.000Z");
   const actualizadoEn = new Date("2026-09-24T11:00:00.000Z");
 
-  it("con un Json cargado a mano: lo inválido sale null, lo ajeno no sale, y siempre salen exactamente las 64 claves", () => {
+  it("con un Json cargado a mano: lo inválido sale null, lo ajeno no sale, y siempre salen exactamente las 65 claves", () => {
     const tema = armarTemaCarta(
       {
         sucursalId: "suc-1",
@@ -211,9 +211,9 @@ describe("armarTemaCarta: saneamiento de la salida", () => {
     expect(armarTemaCarta({ sucursalId: "s", actualizadoEn, valores: { carta_banda_alto_desktop: "120" } }, ahora).valores.carta_banda_alto_desktop).toBe("120px");
   });
 
-  it.each([null, [], "texto", 42])("un Json que no es un objeto (%j) → las 64 en null", (valores) => {
+  it.each([null, [], "texto", 42])("un Json que no es un objeto (%j) → las 65 en null", (valores) => {
     const tema = armarTemaCarta({ sucursalId: "s", actualizadoEn, valores }, ahora);
-    expect(Object.keys(tema.valores)).toHaveLength(64);
+    expect(Object.keys(tema.valores)).toHaveLength(65);
     expect(Object.values(tema.valores).every((v) => v === null)).toBe(true);
   });
 });

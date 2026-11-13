@@ -49,7 +49,7 @@ SELECT "empresaId", lower(nombre) AS nombre_sin_mayusculas, count(*) FROM "Secci
 
 ## 2. Antes: las claves de correo (DEC-0011) — sin pegar la clave en ningún chat
 
-La aplicación **no arranca** si `CORREO_AVISOS_RESEND_API_KEY` o `CORREO_OPERATIVO_RESEND_API_KEY` no cumplen `re_` + letras, números o `_` (V: `src/env.ts`, `claveDeResend`; cambió en #249, paso 5; decisión DEC-0011 **a la espera del OK del dueño**). Antes, bastaba con que empezara con `re_` y no tuviera espacios.
+La aplicación **no arranca** si `CORREO_AVISOS_RESEND_API_KEY` o `CORREO_OPERATIVO_RESEND_API_KEY` no cumplen `re_` + letras, números o `_` (V: `src/env.ts`, `claveDeResend`; cambió en #249, paso 5; decisión **DEC-0011 ACEPTADA** por el dueño el 2026-11-13: «Aceptar y verificar la clave antes de desplegar (Recomendada)», chat del dueño con el orquestador; está en `docs/registro-de-decisiones.md`). **Verificar el formato de la clave de Resend ANTES de desplegar es obligatorio**. Antes, bastaba con que empezara con `re_` y no tuviera espacios.
 
 El dueño verifica **sin mostrar el valor**, con la clave cargada en una variable de su terminal:
 
@@ -59,7 +59,7 @@ printf %s "$CORREO_OPERATIVO_RESEND_API_KEY" | grep -Eq '^re_[A-Za-z0-9_]+$' && 
 ```
 
 - Si alguna dice «NO CUMPLE», **no desplegar**: se genera otra clave en Resend (o se decide aflojar la regla; es una línea, DEC-0011). Una variable sensible de Vercel no se puede leer; se compara contra la copia local o la caja de claves del dueño.
-- DEC-0012 (los espacios Unicode raros no entran en el asunto de un correo) **no pide nada antes del deploy**: solo afecta asuntos con esos caracteres, que el código del sistema no arma.
+- DEC-0012 (ACEPTADA el 2026-11-13: «Aceptar (Recomendada)»; los espacios Unicode raros no entran en el asunto de un correo) **no pide nada antes del deploy**: solo afecta asuntos con esos caracteres, que el código del sistema no arma.
 
 ## 3. Ensayo general (rama de Neon, copia de la base)
 
@@ -121,10 +121,10 @@ Sobre el ensayo general y la base de producción (el dueño, 2026-11-12, chat de
 Verificado el 2026-11-13 sobre `main` en `a172974a`: desde #251 **no entró ninguna migración nueva** (`prisma/` sin cambios) y `src/env.ts` solo cambió en #249 (la clave de Resend). Lo que sí viaja:
 
 - **#254 «Todo nace cerrado (PR 3)»**: las 11 validaciones que quedaban por lista de prohibidos pasan a declarar lo permitido. Es código; un dato guardado que ya no cumpla se rechaza **recién al volver a guardarlo**. Qué cambia exactamente: cuerpo del PR #254 (no lo revisé para este documento: NO VERIFICADO).
-- **#257 «Duplicar producto» (E4)**: copiar ficha, receta y opciones a un producto nuevo. Trae tres decisiones **a la espera del OK del dueño** en `docs/registro-de-decisiones.md`: **DEC-0007** (el duplicado nace disponible en todas las sucursales si quien duplica tiene `producto_campos_sensibles`, y apagado en todas si no), **DEC-0008** (un original que se vende por opción se duplica con precio guardado en $0 y exige esa clave) y **DEC-0009** (el selector «Sacar la receta de» arranca en «Central»). Costo de revertir cada una: bajo o muy bajo, sin migración.
+- **#257 «Duplicar producto» (E4)**: copiar ficha, receta y opciones a un producto nuevo. Trae tres decisiones **ACEPTADAS por el dueño el 2026-11-13** (DEC-0007 «Aceptar como está (Recomendada)», DEC-0008 «Aceptar: nace en $0 (Recomendada)», DEC-0009 «Central (Recomendada)»; chat del dueño con el orquestador) en `docs/registro-de-decisiones.md`: **DEC-0007** (el duplicado nace disponible en todas las sucursales si quien duplica tiene `producto_campos_sensibles`, y apagado en todas si no), **DEC-0008** (un original que se vende por opción se duplica con precio guardado en $0 y exige esa clave) y **DEC-0009** (el selector «Sacar la receta de» arranca en «Central»). Costo de revertir cada una: bajo o muy bajo, sin migración.
   - **Prueba del dueño** (con datos reales, a 375 px si se captura): duplicar «Bife a criolla» como «Bife con chimichurri». Resultado esperado: aparece un producto nuevo con la ficha, la receta y las opciones del original, **con la disponibilidad que dice DEC-0007** (disponible en todas las sucursales si el usuario tiene `producto_campos_sensibles`; apagado en todas si no) y sin tocar el original. Duplicar dos veces seguidas con el mismo nombre debe dar «ya existe» y no dos productos.
 
 ## 9. Pendientes que no son de este checklist
 
-- Las decisiones **DEC-0011 y DEC-0012** (cuerpo del PR #249; **no figuran todavía en `docs/registro-de-decisiones.md`**: NO VERIFICADO el motivo) esperan el OK del dueño, igual que DEC-0007, DEC-0008 y DEC-0009.
+- **Ninguna decisión de los agentes queda pendiente de OK en el registro** (todas aceptadas el 2026-11-13, DEC-0001 a DEC-0009, DEC-0011 y DEC-0012; DEC-0010 no existe). Lo único obligatorio del lado del dueño antes de desplegar es la verificación de la clave de Resend (sección 2).
 - #255 (alícuota de IVA, **sin migración**; espera la respuesta del dueño a la pregunta de permisos A/B/C), #252 (ficha de parte, solo diseño, **sin autorización de migrar**; espera su respuesta a «¿un cliente por ficha?» y a las reglas de §6.2) y #256 (menú del día) no entran en este despliegue.

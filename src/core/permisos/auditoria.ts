@@ -92,10 +92,10 @@ export const ENTIDADES_AUDITABLES = [
   "ProductoAdmiteOpcion",
   "PrecioLocalDeOpcion",
   "OpcionApagadaEnSucursal",
-  // GO-3b (ADR-032): los combos y el menú del día. `entidadId`:
+  // GO-3b (ADR-032): los combos y el menú del día (el menú del día se retiró el 2026-11-13: sus filas históricas se conservan y el nombre sigue acá hasta el tiempo 2 de la poda). `entidadId`:
   //  - "EntradaDeCupo": el id de la entrada (una opción de un lugar LISTA: producto y configuración fija), `campo: "activa"` (`valorAnterior: null` en el alta), `sucursalId` null (de la empresa);
   //  - "EntradaDelDiaDeCupo": el id del plato del día (lugar, sucursal, fecha y producto), `campo: "activa"` (`valorAnterior: null` en el alta), con `sucursalId`.
-  // La vigencia de la promo va con "PromoCarta" (`vigenteDesde`, `vigenteHasta`, `diasDeSemana`) y los lugares nuevos con "PromoCartaCupo" (`${promoCartaId}:${cupoId}`).
+  // La vigencia de la promo (retirada el 2026-11-13) dejó filas históricas con "PromoCarta" y `campo` `vigenteDesde`, `vigenteHasta` o `diasDeSemana`: se conservan (la auditoría solo se agrega); los lugares nuevos van con "PromoCartaCupo" (`${promoCartaId}:${cupoId}`).
   "EntradaDeCupo",
   "EntradaDelDiaDeCupo",
   // (GO-3b auditaba también el precio y la receta por combinación —"GrupoDePrecio", "CombinacionDeProducto", "PrecioLocalDeCombinacion" y "RecetaDeCombinacionVersion"—: se retiraron con

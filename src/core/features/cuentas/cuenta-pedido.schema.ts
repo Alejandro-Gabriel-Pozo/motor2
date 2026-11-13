@@ -65,9 +65,9 @@ export interface ComandoAgregarItems {
  *    líneas) y `PROMO_CON_OPCIONES` (un componente de una parte de sección no se puede armar: un adicional obligatorio, o un grupo obligatorio sin opciones activas; los platos con opciones elegibles las llevan en su fila, diseño 2026-11-11).
  *  - RECETA (ADR-033): `PRODUCTO_SIN_RECETA` — un ítem suelto (después de sus chequeos de producto) o un componente de una promo no tiene receta vigente en la sucursal ni stock propio.
  *  - GO-3b (ADR-032): `PRECIO_CAMBIO` (el precio de lista que vio el mozo ya no es el de hoy). (`COMBINACION_NO_DISPONIBLE` se retiró con GO-3a en la Fase 3 de la ola «precio y carta».)
- *  - GO-3b, en cada promo (después de encontrarla): `PROMO_CAMBIO` (su precio de hoy no es el que vio el mozo), `MENU_DEL_DIA_SIN_CARGAR` (un lugar del día sin plato de hoy),
- *    `ENTRADA_NO_DISPONIBLE` (una entrada elegida ya no se puede elegir hoy: se desactivó, se quitó del día o se apagó una opción) y `COMBO_ALICUOTAS_DISTINTAS` (lo elegido en
- *    un combo con cupos de entradas mezcla alícuotas de IVA declaradas distintas, D-2). Una promo fuera de su vigencia es `PROMO_INVALIDA` (no está disponible hoy).
+ *  - GO-3b, en cada promo (después de encontrarla): `PROMO_CAMBIO` (su precio de hoy no es el que vio el mozo),,
+ *    `ENTRADA_NO_DISPONIBLE` (una entrada elegida ya no se puede elegir hoy: se desactivó o se apagó una opción) y `COMBO_ALICUOTAS_DISTINTAS` (lo elegido en
+ *    un combo con cupos de entradas mezcla alícuotas de IVA declaradas distintas, D-2). Una promo con un lugar de un tipo que el POS ya no conoce es `PROMO_INVALIDA` (no está disponible).
  *  - Promo «a elegir» (ADR-032 D-6 enmendada), en una entrada marcada `A_ELEGIR`: `OPCION_NO_PERMITIDA_EN_PROMO` (el mozo mandó una opción que la promo no permite), más `OPCION_CAMBIO` y `OPCIONES_INVALIDAS`
  *    (mínimo o máximo del grupo, cantidades) con las mismas reglas de un ítem suelto; una configuración sin precio de referencia u origen de stock es `ENTRADA_NO_DISPONIBLE`.
  * Todo se valida ANTES de la primera escritura: un rechazo no deja nada escrito.
@@ -85,7 +85,6 @@ export type ResultadoAgregarItems = ResultadoCaso<
   | "PRODUCTO_SIN_RECETA"
   | "PRECIO_CAMBIO"
   | "PROMO_CAMBIO"
-  | "MENU_DEL_DIA_SIN_CARGAR"
   | "ENTRADA_NO_DISPONIBLE"
   | "OPCION_NO_PERMITIDA_EN_PROMO"
   | "COMBO_ALICUOTAS_DISTINTAS"

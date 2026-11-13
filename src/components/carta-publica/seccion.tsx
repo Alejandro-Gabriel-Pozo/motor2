@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import type { AclaracionCartaPublica, BloqueDeOpciones, EstiloCarta, ItemCartaPublico, ParteDeIncluye, PromoCartaPublica, SeccionCartaPublica } from "@/core/carta/public";
 import { cantidadDeLaParte, conectorDeLaParte, detalleDelBloque, formatearPrecioCarta, incluyeDeLaSeccion, partirLaAclaracion, recargoEnPesos, textoDeIncluye, textoDeLaAclaracion, textoDeLasOpciones, nombresDeLosPlatosDelItem, textoDeVaCon, textoDelTitulo, restoDeLaParte, vaConDelBloque } from "@/core/carta/public";
+import { coloresDelItem, MARCA_PARA_TEXTO, type ColoresDelItem } from "./colores-del-item";
 import { TagIcon } from "./iconos";
 import { ListaDeLaSeccion } from "./lista-de-la-seccion";
 
@@ -52,7 +53,7 @@ export function Seccion({
         {seccion.imagenUrl && img.overlay && <div className="absolute inset-0" style={{ background: "linear-gradient(to right, var(--carta-bg), transparent 60%)" }} aria-hidden />}
 
         <div className="absolute inset-0 flex flex-col justify-end gap-0.5 px-6 pb-3 sm:justify-center sm:px-10 sm:pt-12 sm:pb-4">
-          <p className="overflow-hidden text-ellipsis whitespace-nowrap font-light uppercase tracking-[0.4em]" style={{ fontSize: estilo.valores.carta_fuente_banda_etiqueta, color: c.bandaEtiqueta ?? "var(--carta-primary)" }}>
+          <p className="overflow-hidden text-ellipsis whitespace-nowrap font-light uppercase tracking-[0.4em]" style={{ fontSize: estilo.valores.carta_fuente_banda_etiqueta, color: c.bandaEtiqueta ?? MARCA_PARA_TEXTO }}>
             {String(indice + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
           </p>
           <h2
@@ -90,18 +91,6 @@ export function Seccion({
     </div>
   );
 }
-
-/** Los colores del tema para un ítem (los de siempre; el especial, con los suyos). */
-function coloresDelItem(especial: boolean, v: EstiloCarta["valores"]) {
-  return {
-    nombre: especial ? (v.color_especial_item_nombre || "var(--carta-primary)") : v.color_item_nombre || undefined,
-    precio: especial ? (v.color_especial_item_precio || "var(--carta-primary)") : v.color_item_precio || "var(--carta-primary)",
-    descripcion: especial ? v.color_especial_item_descripcion || undefined : v.color_item_descripcion || undefined,
-    tags: especial ? (v.color_especial_item_tags || "var(--carta-primary)") : v.color_item_tags || "var(--carta-primary)",
-    estrella: v.color_especial_item_nombre || "var(--carta-primary)",
-  };
-}
-type ColoresDelItem = ReturnType<typeof coloresDelItem>;
 
 /** La ★ de un plato especial (un glifo: no depende solo del color). */
 function Estrella({ color }: { color: string }) {
@@ -353,7 +342,7 @@ export function ItemFila({ item, estilo, incluye, posicion, sinLineaAbajo = fals
   // Con opciones propias debajo (2026-11-05) la línea divisoria no va entre el plato y SU bloque: se lee como parte del mismo plato.
   // (Con `style` y no con una clase de ancho: el contrato `borde-propio-de-carta` vigila las clases `border-*` con ancho, y esto no dibuja un borde, lo quita.)
   const sinLinea = sinLineaAbajo ? ({ borderBottomWidth: 0 } as const) : undefined;
-  const colores = coloresDelItem(item.especial, estilo.valores);
+  const colores = coloresDelItem(item.especial, estilo);
   const p = item.presentacion;
   if (p?.forma === "simple") {
     return (
@@ -584,7 +573,7 @@ function PromoFila({ promo }: { promo: PromoCartaPublica }) {
         <h3 data-rol="producto" className="carta-rol-producto min-w-0 flex-1 carta-titulo">
           {promo.titulo}
         </h3>
-        <span data-rol="precio" className="carta-rol-precio shrink-0 whitespace-nowrap carta-titulo" style={{ color: "var(--carta-primary)" }}>
+        <span data-rol="precio" className="carta-rol-precio shrink-0 whitespace-nowrap carta-titulo" style={{ color: MARCA_PARA_TEXTO }}>
           {formatearPrecioCarta(promo.precio)}
         </span>
       </div>

@@ -203,8 +203,6 @@ export default async function FichaProductoPage({
         </dl>
       </section>
 
-      )}
-
       {esDeRespaldo && <p className="text-sm text-tinta-suave">Este es el producto interno que respalda el stock de un adicional: lo maneja el sistema y se vende solo como adicional.</p>}
 
       <section>
@@ -317,7 +315,7 @@ export default async function FichaProductoPage({
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <div>
-        <Link href="/catalogo/productos" className="mb-3 inline-block text-sm underline">
+        <Link href="/catalogo/productos" className="mb-3 inline-flex min-h-11 items-center text-sm underline">
           ← Productos
         </Link>
         <div className="flex flex-wrap items-center justify-between gap-3">

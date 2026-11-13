@@ -1,4 +1,3 @@
-import { MENU_DEL_DIA_VISIBLE } from "../../src/core/carta/menu-del-dia";
 
 /**
  * Todas las pantallas de la aplicación que abren SIN parámetros de ruta ni de query obligatorios — lista compartida entre
@@ -39,8 +38,6 @@ export const RUTAS_SIN_PARAMETROS = [
   "/mesas/mostrador",
   "/movimientos",
   "/movimientos/conteo-fisico",
-  // El menú del día solo mientras su interruptor esté encendido (`MENU_DEL_DIA_VISIBLE`, decisión del dueño 2026-10-20): apagado, la pantalla responde «no existe».
-  ...(MENU_DEL_DIA_VISIBLE ? ["/movimientos/menu-del-dia"] : []),
   "/movimientos/opciones-agotadas",
   "/movimientos/precio-local",
   "/movimientos/secciones",

@@ -27,7 +27,6 @@ import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta
 import { cargarOrigenDeStockParaVender } from "@/server/lecturas/movimientos/receta-para-vender";
 import { cargarAlicuotasDeProductos } from "@/server/lecturas/carta/componentes-de-promo";
 import { revisarAlicuotasDeCombo } from "@/core/pos/public";
-import { diaDeCalendario } from "@/core/tiempo/zona-horaria";
 import { frasesDePuesto } from "@/core/pos/puesto";
 
 /**
@@ -80,7 +79,7 @@ import { frasesDePuesto } from "@/core/pos/puesto";
 export async function agregarItemsCasoDeUso(
   // `ahora` (O.22-c): la hora del pedido que fija `conPermiso`; solo llega a la carta del selector que valida cada promo (`generadoEn`, que se descarta).
   // `db` (P3): solo para releer al ganador de una carrera por la misma clave, FUERA de la transacción que chocó.
-  // `empresaZonaHoraria` (GO-3b): el día de calendario de la empresa, para la vigencia de las promos y los platos del día.
+  // `empresaZonaHoraria` (GO-3b) ya no se usa acá (la poda 2026-11-13 sacó la vigencia y el menú del día); se conserva en el tipo para no cambiar quien llama.
   actor: Pick<ContextoDeAccion, "usuarioId" | "empresaId" | "sucursalId" | "sucursalNombre" | "empresaZonaHoraria" | "transaccion" | "ahora" | "db">,
   comando: ComandoAgregarItems,
 ): Promise<ResultadoAgregarItems> {
@@ -206,10 +205,8 @@ export async function agregarItemsCasoDeUso(
       /** GO-3b: la línea configurada de cada `claveComponente` de una entrada que la lleva (se escribe con su huella y sus fotos). */
       lineaPorClave: ReadonlyMap<string, LineaConfigurada>;
     }[] = [];
-    // GO-3b: el día de calendario de la zona de la empresa (la vigencia de cada promo y los platos del día).
-    const dia = diaDeCalendario(actor.ahora, actor.empresaZonaHoraria);
     for (const p of promos_) {
-      const def = typeof p?.promoCartaId === "string" ? await cargarPromoCartaParaAgregar(actor.sucursalId, p.promoCartaId, tx, actor.ahora, modulos, dia) : null;
+      const def = typeof p?.promoCartaId === "string" ? await cargarPromoCartaParaAgregar(actor.sucursalId, p.promoCartaId, tx, actor.ahora, modulos) : null;
       if (!def) return fracaso("PROMO_INVALIDA", "No se encontró esa promo, o ya no está disponible.");
       // GO-3b: el precio que vio el mozo (si lo manda) tiene que ser el de hoy: nunca se cobra otro.
       if (typeof p.precioEsperado === "number" && redondearMoneda(p.precioEsperado) !== redondearMoneda(def.precio)) {
@@ -217,13 +214,13 @@ export async function agregarItemsCasoDeUso(
       }
       const elecciones = Array.isArray(p.elecciones) ? p.elecciones : [];
       // S-01 (O.50): los componentes salen de la elección YA VALIDADA (cupos, elegibles, sin repetidos), nunca de aplanar lo que mandó el cliente. GO-3b: un componente fijo lo completa el
-      // servidor; una entrada que ya no se puede elegir hoy o un lugar del día sin plato tienen su propio código (la pantalla marca el lugar).
+      // servidor; una entrada que ya no se puede elegir hoy tiene su propio código (la pantalla marca el lugar).
       // Diseño 2026-11-11 (E1b): en cada parte de SECCIÓN, los platos con opciones que el mozo elige (los mismos que ofrecerá el selector: `clasificarPlatoDeSeccion`, con lo que ya se leyó de la sucursal). Un plato que
       // el pedido no trae no importa: la validación solo mira lo elegido.
       const cuposDeLaPromo = conOpcionesDeLasSecciones(def.cupos, new Map([...opcionesLeidas].map(([productoId, admite]) => [productoId, admite.grupos])));
       const validacion = validarYAplanarEleccionPromo(cuposDeLaPromo, elecciones);
       if (!validacion.ok) {
-        const codigo = validacion.codigo === "ENTRADA_NO_DISPONIBLE" || validacion.codigo === "MENU_DEL_DIA_SIN_CARGAR" ? validacion.codigo : "PROMO_INVALIDA";
+        const codigo = validacion.codigo === "ENTRADA_NO_DISPONIBLE" ? validacion.codigo : "PROMO_INVALIDA";
         return fracaso(codigo, `«${def.titulo}»: ${validacion.mensaje}`);
       }
       const entradas = def.entradas;

@@ -30,6 +30,9 @@ interface CamposDeProducto {
   proveedorConsignacionId?: string | null;
   precioConsignacion?: number;
   observaciones?: string;
+  /** Paso 13 (alícuota de IVA del producto): una de `ALICUOTAS_IVA` o `null` («sin declarar»; CHECK de la base). La de venta solo en un PV, la de compra solo en una MP (lo decide el caso de uso). Ausente = no se escribe. */
+  alicuotaIvaVenta?: string | null;
+  alicuotaIvaCompra?: string | null;
   /** Fase 4 (ADR-035): «¿Cómo se vende?» (`DIRECTO` / `BASE_CONFIGURABLE`, CHECK de la base). Solo la escribe la edición, con la clave fina; el alta nace DIRECTO (el default). */
   modoDeVenta?: string;
 }

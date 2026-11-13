@@ -3,7 +3,6 @@ import type { Prisma } from "@prisma/client";
 import { ALICUOTAS_IVA, type AlicuotaIva } from "@/core/fiscal/public";
 import type { ComponenteConAlicuota } from "@/core/pos/public";
 import { GENERO_E_ITEM_AGRUPADO_VISIBLE, whereCartaDeSucursal } from "@/core/carta/public";
-import { fechaDeColumnaDate } from "@/core/tiempo/zona-horaria";
 import { cargarOrigenDeStockParaVender } from "@/server/lecturas/movimientos/receta-para-vender";
 import { cargarOpcionesParaVender, type OpcionesDeProducto } from "@/server/lecturas/opciones/opciones-para-vender";
 
@@ -13,8 +12,7 @@ import { cargarOpcionesParaVender, type OpcionesDeProducto } from "@/server/lect
  *  - `cargarProductosComoComponentes`: de cada producto, lo que mira la regla del componente (`rechazoDeComponenteDeCombo`, `core/pos`: tipo, ancla, precio de la empresa, receta vigente en la
  *    sucursal o stock propio), su alícuota de IVA y lo que admite de opciones (para validar una configuración fija). Lecturas agrupadas, no por producto.
  *  - `cargarAlicuotasPosiblesDePromo`: las alícuotas de TODOS los componentes que un combo puede llegar a tener (D-2: no se mezclan alícuotas declaradas distintas): los productos de las secciones de
- *    sus cupos de sección (visibles en la carta de las sucursales pedidas, sueltos u opciones de un ítem agrupado activo), las entradas activas de sus listas y los platos del día
- *    activos de hoy en adelante.
+ *    sus cupos de sección (visibles en la carta de las sucursales pedidas, sueltos u opciones de un ítem agrupado activo), y las entradas activas de sus listas.
  *
  * Un id que no se ve desde esta empresa no aparece (RLS): quien llama lo trata como inexistente.
  */
@@ -81,7 +79,6 @@ export async function cargarAlicuotasDeProductos(tx: Prisma.TransactionClient, p
 export interface LugaresDeCombo {
   seccionCartaIds: readonly string[];
   cupoListaIds: readonly string[];
-  cupoDelDiaIds: readonly string[];
 }
 
 /**
@@ -91,9 +88,8 @@ export interface LugaresDeCombo {
 export async function cargarAlicuotasPosiblesDeLugares(
   tx: Prisma.TransactionClient,
   lugares: LugaresDeCombo,
-  args: { desdeDia: string; sucursalIds: readonly string[] },
+  args: { sucursalIds: readonly string[] },
 ): Promise<ComponenteConAlicuota[]> {
-  const { desdeDia } = args;
   const productoIds = new Set<string>();
   if (lugares.seccionCartaIds.length) {
     const secciones = [...lugares.seccionCartaIds];
@@ -107,12 +103,6 @@ export async function cargarAlicuotasPosiblesDeLugares(
   }
   if (lugares.cupoListaIds.length) {
     for (const e of await tx.entradaDeCupo.findMany({ where: { cupoId: { in: [...lugares.cupoListaIds] }, activa: true }, select: { productoId: true } })) productoIds.add(e.productoId);
-  }
-  if (lugares.cupoDelDiaIds.length) {
-    const desde = fechaDeColumnaDate(desdeDia);
-    for (const e of await tx.entradaDelDiaDeCupo.findMany({ where: { cupoId: { in: [...lugares.cupoDelDiaIds] }, activa: true, fecha: { gte: desde } }, select: { productoId: true } })) {
-      productoIds.add(e.productoId);
-    }
   }
   if (productoIds.size === 0) return [];
   const productos = await tx.producto.findMany({ where: { id: { in: [...productoIds] } }, select: { id: true, nombre: true, alicuotaIvaVenta: true }, orderBy: { id: "asc" } });
@@ -130,6 +120,5 @@ export async function cargarLugaresActivosDePromo(tx: Prisma.TransactionClient, 
   return {
     seccionCartaIds: cupos.flatMap((c) => (c.tipo === "SECCION" && c.seccionCartaId !== null ? [c.seccionCartaId] : [])),
     cupoListaIds: cupos.filter((c) => c.tipo === "LISTA").map((c) => c.id),
-    cupoDelDiaIds: cupos.filter((c) => c.tipo === "DEL_DIA").map((c) => c.id),
   };
 }

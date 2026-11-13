@@ -1,9 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { agregarEntradaDeCupoCasoDeUso } from "../../src/server/actions/carta/casos-de-uso/agregar-entrada-de-cupo";
 import { actualizarActivaEntradaDeCupoCasoDeUso } from "../../src/server/actions/carta/casos-de-uso/actualizar-activa-entrada-de-cupo";
-import { guardarVigenciaPromoCartaCasoDeUso } from "../../src/server/actions/carta/casos-de-uso/guardar-vigencia-promo-carta";
 import { guardarCuposPromoCartaCasoDeUso } from "../../src/server/actions/carta/casos-de-uso/guardar-cupos-promo-carta";
-import { guardComandoAgregarEntradaDeCupo, guardComandoGuardarVigenciaPromoCarta } from "../../src/core/features/carta/combos.guard";
+import { guardComandoAgregarEntradaDeCupo } from "../../src/core/features/carta/combos.guard";
 import { guardComandoGuardarCuposPromoCarta } from "../../src/core/features/carta/promos.guard";
 import { rechazoDeComponenteDeCombo } from "../../src/core/pos/public";
 import { limpiarBaseDeTest, prisma, prismaAdmin, prismaSinEmpresa } from "../setup/test-db";
@@ -183,49 +182,6 @@ describe("las opciones de un lugar LISTA y la vigencia de una promo (GO-3b, D4)"
     const transacciones = intentos.mock.calls.filter(([primero]) => typeof primero === "function").length;
     expect(transacciones, "en ninguna iteración chocaron: el test no ejercitó el único ni el reintento").toBeGreaterThan(2 * ITERACIONES);
     intentos.mockRestore();
-  });
-
-  describe("la vigencia", () => {
-    const vigencia = (versionEsperada: number, extra: Record<string, unknown>) => {
-      const c = guardComandoGuardarVigenciaPromoCarta({ promoCartaId: e.promoId, versionEsperada, ...extra });
-      if (!c.ok) throw new Error(c.mensaje);
-      return guardarVigenciaPromoCartaCasoDeUso(actor(), c.valor);
-    };
-
-    it("guarda fechas y días (lunes a viernes) con la versión vista, sube la versión y audita por columna; los siete días son «todos»", async () => {
-      expect(await vigencia(1, { vigenteDesde: "2026-10-01", vigenteHasta: "2026-10-31", diasDeSemana: [0, 1, 2, 3, 4] })).toMatchObject({ ok: true, datos: { huboCambio: true } });
-      const promo = await prisma.promoCarta.findUniqueOrThrow({ where: { id: e.promoId } });
-      expect([promo.vigenteDesde?.toISOString().slice(0, 10), promo.vigenteHasta?.toISOString().slice(0, 10), promo.diasDeSemana, promo.version]).toEqual(["2026-10-01", "2026-10-31", 31, 2]);
-      const filas = await prismaAdmin.registroAuditoria.findMany({ where: { entidad: "PromoCarta", entidadId: e.promoId }, orderBy: { campo: "asc" } });
-      expect(filas.map((f) => [f.campo, f.valorAnterior, f.valorNuevo])).toEqual([
-        ["diasDeSemana", null, "31"],
-        ["vigenteDesde", null, "2026-10-01"],
-        ["vigenteHasta", null, "2026-10-31"],
-      ]);
-      // La misma vigencia otra vez: sin cambio, sin escribir.
-      expect(await vigencia(2, { vigenteDesde: "2026-10-01", vigenteHasta: "2026-10-31", diasDeSemana: [4, 3, 2, 1, 0] })).toMatchObject({ ok: true, datos: { huboCambio: false } });
-      expect(await vigencia(2, { diasDeSemana: [0, 1, 2, 3, 4, 5, 6] })).toMatchObject({ ok: true, datos: { huboCambio: true } });
-      expect(await prisma.promoCarta.findUniqueOrThrow({ where: { id: e.promoId } })).toMatchObject({ vigenteDesde: null, vigenteHasta: null, diasDeSemana: null, version: 3 });
-    });
-
-    it("con una versión vieja no escribe nada (VERSION_DESACTUALIZADA); el guard rechaza desde > hasta y ningún día", async () => {
-      expect(await vigencia(1, { vigenteDesde: "2026-10-01" })).toMatchObject({ ok: true });
-      expect(await vigencia(1, { vigenteDesde: "2026-11-01" })).toMatchObject({ ok: false, codigo: "VERSION_DESACTUALIZADA" });
-      expect((await prisma.promoCarta.findUniqueOrThrow({ where: { id: e.promoId } })).vigenteDesde?.toISOString().slice(0, 10)).toBe("2026-10-01");
-      expect(guardComandoGuardarVigenciaPromoCarta({ promoCartaId: e.promoId, versionEsperada: 2, vigenteDesde: "2026-10-10", vigenteHasta: "2026-10-01" }).ok).toBe(false);
-      expect(guardComandoGuardarVigenciaPromoCarta({ promoCartaId: e.promoId, versionEsperada: 2, diasDeSemana: [] }).ok).toBe(false);
-      expect(guardComandoGuardarVigenciaPromoCarta({ promoCartaId: e.promoId, versionEsperada: 2, vigenteDesde: "2026-02-30" }).ok).toBe(false);
-    });
-
-    it("concurrencia real: dos editores sobre la misma versión, uno gana y el otro VERSION_DESACTUALIZADA (loop de 10)", async () => {
-      for (let i = 0; i < ITERACIONES; i++) {
-        const version = (await prisma.promoCarta.findUniqueOrThrow({ where: { id: e.promoId } })).version;
-        const [a, b] = await Promise.all([vigencia(version, { vigenteDesde: `2026-10-${String(i + 1).padStart(2, "0")}` }), vigencia(version, { vigenteHasta: `2026-12-${String(i + 1).padStart(2, "0")}` })]);
-        expect([a, b].filter((r) => r.ok), `iteración ${i}: ${a.mensaje} | ${b.mensaje}`).toHaveLength(1);
-        expect([a, b].filter((r) => !r.ok).map((r) => (r.ok ? "" : r.codigo))).toEqual(["VERSION_DESACTUALIZADA"]);
-        expect((await prisma.promoCarta.findUniqueOrThrow({ where: { id: e.promoId } })).version).toBe(version + 1);
-      }
-    });
   });
 });
 

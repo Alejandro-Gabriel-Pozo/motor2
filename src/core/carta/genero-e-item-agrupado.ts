@@ -1,6 +1,6 @@
 /**
  * INTERRUPTOR de «Género de carta» e «Ítem agrupado» (decisión del dueño, 2026-11-06: «ocultá género e ítem agrupado»): hoy NO SE VEN. Una sola constante para los dos
- * (el mismo patrón que `MENU_DEL_DIA_VISIBLE`, `menu-del-dia.ts`, y `DESCUENTO_POR_PRODUCTO_VISIBLE`, `descuento-producto.ts`).
+ * (el mismo patrón que `DESCUENTO_POR_PRODUCTO_VISIBLE`, `descuento-producto.ts`).
  *
  * UNA sola y no una por concepto: comparten flujo. El ítem agrupado hereda el género (`ItemAgrupadoCarta.generoCartaId`, sus opciones «nunca tienen uno propio»), el género
  * existe para ubicar productos sueltos E ítems agrupados en la misma carpeta del POS, y el formulario del producto y la pantalla de agrupados ofrecen el género en el mismo lugar.

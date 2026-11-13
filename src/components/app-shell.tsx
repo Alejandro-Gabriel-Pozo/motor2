@@ -66,33 +66,33 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
           `overflow-x-auto`, ensancha esta columna y con ella la PÁGINA entera (la matriz de permisos con varios roles llegaba a 1700 px). Con min-w-0 la
           columna se queda del ancho que sobra junto al menú y el scroll es el de la tabla. */}
       <div className="flex min-w-0 flex-1 flex-col md:min-h-0">
-        <header className="flex flex-shrink-0 flex-wrap items-center justify-end gap-x-4 gap-y-1 border-b border-borde bg-superficie px-6 py-3 text-sm text-tinta-suave">
+        {/* Celular (defecto 4 del ensayo del 2026-11-13): el menú ☰ y el dólar arriba; quién sos (correo que se achica con «…», sucursal y rol) en su propio renglón y «Salir» al final,
+            sin «·» sueltos: el separador es parte del texto que sigue. Desde `md:` todo en una línea, como siempre. */}
+        <header className="flex flex-shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-borde bg-superficie px-4 py-2 text-sm text-tinta-suave md:justify-end md:px-6 md:py-3">
           <MenuCelular grupos={grupos} hrefsDelMenu={hrefsDelMenu()} rutasDeUnaEntrada={rutasDeUnaEntradaVisibles(puedeVer)} />
           <CotizacionEncabezado cotizacion={cotizacion} />
-          <span className="flex items-center gap-1">
-            {ctx.empresas.length > 1 && (
-              <>
-                <SelectorEmpresa empresas={ctx.empresas} actual={ctx.empresaId} /> ·{" "}
-              </>
-            )}
-            {ctx.email} ·{" "}
-            {ctx.membresias.length > 1 ? (
-              <SelectorSucursal membresias={ctx.membresias} actual={ctx.sucursalId} />
-            ) : (
-              ctx.sucursalNombre
-            )}{" "}
-            · {ctx.rolNombre}
-          </span>
-          <form
-            action={async () => {
-              "use server";
-              await signOut();
-            }}
-          >
-            <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
-              Salir
-            </BotonDeServidor>
-          </form>
+          <div className="flex min-w-0 basis-full items-center justify-between gap-3 md:basis-auto md:justify-end md:gap-4">
+            <div className="flex min-w-0 flex-1 flex-col gap-y-1 md:flex-none md:flex-row md:flex-wrap md:items-center md:gap-x-2">
+              {ctx.empresas.length > 1 && <SelectorEmpresa empresas={ctx.empresas} actual={ctx.empresaId} />}
+              <span className="min-w-0 truncate" title={ctx.email}>
+                {ctx.email}
+              </span>
+              <span className="flex items-center gap-1">
+                {ctx.membresias.length > 1 ? <SelectorSucursal membresias={ctx.membresias} actual={ctx.sucursalId} /> : <span>{ctx.sucursalNombre}</span>}
+                <span>· {ctx.rolNombre}</span>
+              </span>
+            </div>
+            <form
+              action={async () => {
+                "use server";
+                await signOut();
+              }}
+            >
+              <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
+                Salir
+              </BotonDeServidor>
+            </form>
+          </div>
         </header>
         {registro !== "CON_MODULOS" && (
           <div className="flex-shrink-0 px-4 pt-4 md:px-6 md:pt-6">

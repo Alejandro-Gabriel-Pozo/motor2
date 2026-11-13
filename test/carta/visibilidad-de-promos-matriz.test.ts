@@ -7,7 +7,6 @@ import { dbDeEmpresa } from "../../src/server/sesion/base";
 import { resolverCartaPublica } from "../../src/server/lecturas/carta/publica";
 import { cargarSelectorCartaPos } from "../../src/server/lecturas/pos/selector-carta";
 import { cargarPromoCartaParaAgregar } from "../../src/server/lecturas/pos/promo-para-agregar";
-import { diaDeCalendario, ZONA_ARGENTINA } from "../../src/core/tiempo/zona-horaria";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
@@ -68,9 +67,9 @@ const COLUMNAS: Record<"PromoCarta" | "PromoCartaSucursal", Record<string, Decla
     orden: { tipo: "no-afecta", motivo: "orden dentro de la sección" },
     activa: { tipo: "matriz", motivo: "R2" },
     creadoEn: { tipo: "no-afecta", motivo: "registro" },
-    vigenteDesde: { tipo: "retirada", motivo: "vigencia por fechas: retirada por decisión del dueño (2026-10-20: la promo se maneja con activar/desactivar); oculta en la pantalla; ver el hallazgo abajo" },
-    vigenteHasta: { tipo: "retirada", motivo: "vigencia por fechas: retirada por decisión del dueño (2026-10-20); oculta en la pantalla; ver el hallazgo abajo" },
-    diasDeSemana: { tipo: "retirada", motivo: "días de la semana: retirados por decisión del dueño (2026-10-20); ocultos en la pantalla" },
+    vigenteDesde: { tipo: "retirada", motivo: "vigencia por fechas: BORRADA del código el 2026-11-13 (poda de promos, tiempo 1; decisión del dueño: la promo se maneja con activar/desactivar); la columna se borra de la base en el tiempo 2" },
+    vigenteHasta: { tipo: "retirada", motivo: "vigencia por fechas: BORRADA del código el 2026-11-13 (poda de promos, tiempo 1); la columna se borra de la base en el tiempo 2" },
+    diasDeSemana: { tipo: "retirada", motivo: "días de la semana: BORRADOS del código el 2026-11-13 (poda de promos, tiempo 1); la columna se borra de la base en el tiempo 2" },
     version: { tipo: "no-afecta", motivo: "control optimista de la edición" },
     soloSalon: { tipo: "matriz", motivo: "R4" },
     cupos: { tipo: "matriz", motivo: "R5 (con o sin cupo de sección activo)" },
@@ -131,7 +130,6 @@ const tituloDe = (c: Pick<Combinacion, "activa" | "sucursal" | "soloSalon" | "co
 describe("matriz de visibilidad de las promos (contra Postgres real)", () => {
   const empresa = { id: EMPRESA_POR_DEFECTO_ID, slug: "principal", nombre: "Principal" };
   const bases = { deLaEmpresa: dbDeEmpresa(empresa.id), deLaSucursal: (sucursalId: string) => dbDeEmpresa(empresa.id, { lectura: [sucursalId], escritura: [] }) };
-  const dia = diaDeCalendario(AHORA_DE_LA_CORRIDA, ZONA_ARGENTINA);
   let sucursalId: string;
   const idPorTitulo = new Map<string, string>();
 
@@ -162,7 +160,7 @@ describe("matriz de visibilidad de las promos (contra Postgres real)", () => {
       const carta = (await resolverCartaPublica(empresa, "central", bases, AHORA_DE_LA_CORRIDA, modulo))!.carta;
       return new Set(carta.secciones.flatMap((x) => x.promos.map((p) => p.titulo)));
     }
-    const selector = await cargarSelectorCartaPos(sucursalId, prisma, AHORA_DE_LA_CORRIDA, undefined, { carta: true, promociones: modulo }, dia);
+    const selector = await cargarSelectorCartaPos(sucursalId, prisma, AHORA_DE_LA_CORRIDA, undefined, { carta: true, promociones: modulo }, true);
     return new Set(selector.seccionesCarta.flatMap((x) => x.entradas.flatMap((e) => (e.tipo === "promo" ? [e.titulo] : []))));
   }
 
@@ -189,7 +187,7 @@ describe("matriz de visibilidad de las promos (contra Postgres real)", () => {
         for (const sucursal of ["prendida", "apagada", "sin-fila"] as const)
           for (const soloSalon of [true, false]) {
             const c: Combinacion = { audiencia: "salon", modulo, activa, sucursal, soloSalon, conCupo: true };
-            const promo = await cargarPromoCartaParaAgregar(sucursalId, idPorTitulo.get(tituloDe(c))!, prisma, AHORA_DE_LA_CORRIDA, { carta: true, promociones: modulo }, dia);
+            const promo = await cargarPromoCartaParaAgregar(sucursalId, idPorTitulo.get(tituloDe(c))!, prisma, AHORA_DE_LA_CORRIDA, { carta: true, promociones: modulo });
             expect(promo !== null, `agregar · módulo ${modulo ? "sí" : "no"} · ${tituloDe(c)}`).toBe(seOfrece(c));
           }
   });
@@ -199,7 +197,7 @@ describe("HALLAZGO documentado, SIN arreglar (decisión del dueño: la vigencia 
   const empresa = { id: EMPRESA_POR_DEFECTO_ID, slug: "principal", nombre: "Principal" };
   const bases = { deLaEmpresa: dbDeEmpresa(empresa.id), deLaSucursal: (sucursalId: string) => dbDeEmpresa(empresa.id, { lectura: [sucursalId], escritura: [] }) };
 
-  it("una promo cuya vigencia ya terminó (hasta el 2020-01-01) SALE en la carta pública, mientras el POS ya no la ofrece", async () => {
+  it("la vigencia ya no existe: una promo con una vigencia vieja que quedó cargada en la base (hasta el 2020-01-01) se ofrece igual en la carta pública y en el POS (un solo criterio: la promo vale siempre que esté activa)", async () => {
     await limpiarBaseDeTest();
     const s = await sembrarSalon();
     const platos = await prisma.seccionCarta.create({ data: { nombre: "Platos", orden: 1 } });
@@ -210,15 +208,14 @@ describe("HALLAZGO documentado, SIN arreglar (decisión del dueño: la vigencia 
       data: { seccionCartaId: platos.id, titulo: "Promo vencida", precio: 15000, vigenteHasta: new Date("2020-01-01T00:00:00Z"), sucursales: { create: { sucursalId: s.sucursalId } } },
     });
     await prisma.promoCartaCupo.create({ data: { promoCartaId: promo.id, seccionCartaId: platos.id, cantidadMinima: 1, cantidadMaxima: 1 } });
-    const dia = diaDeCalendario(AHORA_DE_LA_CORRIDA, ZONA_ARGENTINA);
-
+  
     const publica = (await resolverCartaPublica(empresa, "central", bases, AHORA_DE_LA_CORRIDA))!.carta;
-    const selector = await cargarSelectorCartaPos(s.sucursalId, prisma, AHORA_DE_LA_CORRIDA, undefined, { carta: true, promociones: true }, dia);
+    const selector = await cargarSelectorCartaPos(s.sucursalId, prisma, AHORA_DE_LA_CORRIDA, undefined, { carta: true, promociones: true }, true);
 
-    // Evidencia: el cliente la ve (HOY, sin arreglo) …
+    // El cliente la ve …
     expect(publica.secciones.flatMap((x) => x.promos.map((p) => p.titulo))).toContain("Promo vencida");
-    // … y el mozo no la puede vender.
-    expect(selector.seccionesCarta.flatMap((x) => x.entradas.flatMap((e) => (e.tipo === "promo" ? [e.titulo] : [])))).not.toContain("Promo vencida");
-    expect(await cargarPromoCartaParaAgregar(s.sucursalId, promo.id, prisma, AHORA_DE_LA_CORRIDA, { carta: true, promociones: true }, dia)).toBeNull();
+    // … y el mozo también la puede vender (antes del 2026-11-13 el POS la filtraba por su vigencia y los dos criterios no coincidían).
+    expect(selector.seccionesCarta.flatMap((x) => x.entradas.flatMap((e) => (e.tipo === "promo" ? [e.titulo] : [])))).toContain("Promo vencida");
+    expect(await cargarPromoCartaParaAgregar(s.sucursalId, promo.id, prisma, AHORA_DE_LA_CORRIDA, { carta: true, promociones: true })).not.toBeNull();
   });
 });

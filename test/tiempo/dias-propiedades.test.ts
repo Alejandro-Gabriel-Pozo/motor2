@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { ZONA_ARGENTINA, diaDeCalendario, diaDeColumnaDate, diaDeLaSemana, esDiaISOReal, fechaDeColumnaDate, finDelDia, inicioDelDia, rangoDeDias, sumarDias } from "../../src/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA, diaDeCalendario, diaDeColumnaDate, esDiaISOReal, fechaDeColumnaDate, finDelDia, inicioDelDia, rangoDeDias, sumarDias } from "../../src/core/tiempo/zona-horaria";
 
 /**
  * Propiedades del día de calendario y de la zona (lote 6.33, «tipos de dato declarados y bloqueantes»): un día que escribe una persona o llega en la URL es un texto «AAAA-MM-DD»; `core/tiempo` es el único que lo lee.
@@ -141,13 +141,11 @@ describe("corte de día en la hora argentina (UTC−3 fijo)", () => {
 });
 
 describe("aritmética de calendario", () => {
-  it("propiedad: sumar n días y restarlos vuelve al mismo día; siete días después es el mismo día de la semana; el día siguiente cambia el día de la semana", () => {
+  it("propiedad: sumar n días y restarlos vuelve al mismo día, y el resultado sigue siendo un día real", () => {
     fc.assert(
       fc.property(diaReal, fc.integer({ min: -3000, max: 3000 }), (d, n) => {
         expect(sumarDias(sumarDias(d, n), -n), `${d} ${n}`).toBe(d);
         expect(esDiaISOReal(sumarDias(d, n)), `${d} ${n}`).toBe(true);
-        expect(diaDeLaSemana(sumarDias(d, 7)), d).toBe(diaDeLaSemana(d));
-        expect(diaDeLaSemana(sumarDias(d, 1)), d).toBe((diaDeLaSemana(d) + 1) % 7);
       }),
       { numRuns: 1000 },
     );
