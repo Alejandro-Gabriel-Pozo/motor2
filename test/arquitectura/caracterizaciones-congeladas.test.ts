@@ -669,7 +669,7 @@ const CONGELADAS: Record<string, Congelada> = {
       },
       {
         blob: "64daff3599dea16145c2c2fa590bd300d0fc8031",
-        commit: "dfa135d1",
+        commit: "489a412a",
         motivo:
           "Marca del portal, PR de lectura (paso 9; decisiones del dueño 2026-11-13: «Queda neutro; la marca solo en bordes y flechas (Recomendada)», «Siguen transparentes (Recomendada)»): el catálogo del portal suma `portal_color_marca` y el marcador `portal_marca_derivada` (nacen vacíos) y la lectura de la carta pública los trae en `valores` del portal. Cambia SOLO eso: dos líneas con `\"\"` en el portal resuelto; ningún conteo de consultas ni ningún otro valor. Sin el marcador el portal se ve exactamente igual (lo prueba test/carta/marca-sin-cambio.test.ts con el portal real).",
       },
