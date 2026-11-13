@@ -11,6 +11,7 @@ import { CampoNumero } from "@/components/campo-numero";
 import { Campo } from "@/ui/primitivas/campo";
 import { Selector } from "@/ui/primitivas/selector";
 import { CampoColor } from "./campo-color";
+import { SeccionMarca } from "./editor-marca";
 import { CARTA_EJEMPLO } from "./carta-ejemplo";
 
 /**
@@ -67,6 +68,7 @@ function CuerpoEditor({ valoresIniciales, soloLectura }: { valoresIniciales: Rea
   return (
     <div onInput={releer} onChange={releer} className="flex flex-col gap-4">
       <input type="hidden" name={CLAVE_DEL_MARCADOR} defaultValue={valoresIniciales[CLAVE_DEL_MARCADOR] ?? ""} />
+      <SeccionMarca modoMarca={valoresIniciales[CLAVE_DEL_MARCADOR] === "si"} marcaInicial={valoresIniciales.color_marca ?? ""} valores={valores} soloLectura={soloLectura} />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         {/* Solo los CAMPOS se deshabilitan (DEC-33): la vista previa queda fuera, para que se siga recorriendo con el teclado. */}
         <fieldset disabled={soloLectura} className="flex min-w-0 flex-col gap-2" data-solo-lectura={soloLectura ? "" : undefined}>
