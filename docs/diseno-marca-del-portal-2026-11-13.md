@@ -1,7 +1,7 @@
-# Marca del portal (por empresa): tabla de derivación — PROPUESTA
+# Marca del portal (por empresa): diseño y tabla de derivación
 
-> **Estado: PROPUESTA, nada construido.** Es un documento para que el dueño elija; ninguna fila es decisión hasta que el dueño la confirme con su cita (I1/I2). Continúa `docs/diseno-marca-por-sucursal-y-empresa-2026-11-12.md` (paso 9: «un color por empresa para el portal, el resto derivado»). La marca de la **sucursal** (carta) ya está construida (PR #264, #269, #270); esto es la de la **empresa** (el portal `/carta-publica/<empresa>`).
-> Etiquetas: **ACTUAL** (verificado en el código o en la base de ensayo, solo lectura) · **PROPUESTA** (mía, a confirmar) · **PREGUNTA** (decide el dueño).
+> **Estado:** P1, P2 y P3 **CONFIRMADAS por el dueño** (2026-11-13, chat del dueño con el orquestador; citas en §5). P4 es un **SUPUESTO declarado del orquestador** (no es una aceptación del dueño, I1): se construye igual que la carta por coherencia y el dueño lo puede corregir. Continúa `docs/diseno-marca-por-sucursal-y-empresa-2026-11-12.md` (paso 9: «un color por empresa para el portal, el resto derivado»). La marca de la **sucursal** (carta) ya está construida (#264, #269, #270); esto es la de la **empresa** (el portal `/carta-publica/<empresa>`). Se construye en dos PR chicos, sin migración: (1) lectura con el marcador `portal_marca_derivada`; (2) guardado y editor.
+> Etiquetas: **ACTUAL** (verificado en el código o en la base de ensayo, solo lectura) · **CONFIRMADA** (dicha por el dueño) · **SUPUESTO** (del orquestador, a corregir por el dueño).
 
 ## 1. Qué hay hoy
 
@@ -16,7 +16,7 @@ Pedernal no tiene portal en v1 (`10-ux-ui/03-experiencia-de-la-carta.md` §13 pu
 ## 3. Mecanismo propuesto (igual al de la carta, para no inventar otro)
 
 - Clave nueva `portal_color_marca` (un color por empresa) y marcador `portal_marca_derivada = "si"`, en el catálogo del portal (las claves del portal pasan de 22 a 24). Sin el marcador el portal se lee **exactamente como hoy** (los colores sueltos nunca se borran: dejan de leerse). Sin migración (el portal es JSON).
-- Activación con un **botón explícito** («Pasar a color de marca» / «Volver a mis colores anteriores») y rechazo al guardar si no cumple M1/M2/M3 (misma decisión del dueño que en la carta; **PREGUNTA 4** confirma que vale también acá).
+- Activación con un **botón explícito** («Pasar a color de marca» / «Volver a mis colores anteriores») y rechazo al guardar si no cumple M1/M2/M3, como en la carta (SUPUESTO del orquestador, P4 de §5).
 
 ## 4. Tabla de derivación (las 12 claves)
 
@@ -24,12 +24,12 @@ Contrastes calculados con WCAG 2.1 sobre blanco (fondo del portal derivado = el 
 
 | # | Clave | Qué pinta | Valor actual en la empresa real | Hoy, sin valor, cae a | En modo marca (PROPUESTA) | Contraste (propuesta) |
 |---|---|---|---|---|---|---|
-| 1 | `portal_header_bg` | Fondo del encabezado | `#e5dfdf` | transparente | **B (recomendada):** neutro del sistema (transparente/blanco), la marca no pinta el encabezado. **A:** la marca | B: tinta 17,21:1 sobre blanco. A: según marca (M2: tinta sobre marca ≥ 4,5:1; #5c57a2 6,29 con tinta clara) |
-| 2 | `portal_header_color` | Texto del encabezado | vacío | hereda | B: tinta del sistema. A: la tinta derivada sobre la marca | B 17,21:1; A ≥ 4,5:1 (M2, si no llega se rechaza al guardar) |
+| 1 | `portal_header_bg` | Fondo del encabezado | `#e5dfdf` | transparente | **CONFIRMADA (P1):** neutro del sistema (transparente/blanco); la marca no pinta el encabezado | tinta 17,21:1 sobre blanco |
+| 2 | `portal_header_color` | Texto del encabezado | vacío | hereda | Tinta del sistema (hereda) | 17,21:1 |
 | 3 | `portal_etiqueta_color` | Etiqueta sobre el título | vacío | tinta suave | Tinta suave del sistema (igual que hoy) | 7,63:1 |
 | 4 | `portal_titulo_color` | Título | vacío | hereda | Tinta del sistema (igual que hoy) | 17,21:1 |
 | 5 | `portal_fondo_color` | Fondo de la página | vacío | transparente | Blanco del sistema (no se pinta con la marca) | — (es el fondo contra el que se mide M3) |
-| 6 | `portal_card_bg` | Fondo de la tarjeta | `transparent` | `#ffffff` | **Mapa:** no se deriva, sigue transparente (PREGUNTA 2). **Grilla:** blanco | — |
+| 6 | `portal_card_bg` | Fondo de la tarjeta | `transparent` | `#ffffff` | **Mapa: sigue transparente (CONFIRMADA, P2).** Grilla: blanco | — |
 | 7 | `portal_card_border` | Borde de la tarjeta | `transparent` | `#e7e5e4` | **Mapa:** transparente. **Grilla:** borde del sistema `#e7e5e4` (decorativo, no necesita 3:1) | — |
 | 8 | `portal_card_border_hover` | Borde al pasar el mouse / foco | `transparent` | borde normal | **Grilla:** la marca (elemento: M3 ≥ 3:1). **Mapa:** transparente | M3: la marca contra blanco; #5c57a2 6,29, #e17360 3,08, #797d62 4,27; #96bbbb 2,07 y #ffcb69 1,50 se rechazan al guardar |
 | 9 | `portal_card_color` | Nombre de la tarjeta | `transparent` | tinta `#1c1b19` | **Mapa:** no se deriva (el nombre viene en la imagen). **Grilla:** tinta del sistema (texto: nunca la marca) | 17,21:1 |
@@ -39,14 +39,14 @@ Contrastes calculados con WCAG 2.1 sobre blanco (fondo del portal derivado = el 
 
 Regla que ordena la tabla: **la marca pinta ELEMENTOS** (borde al pasar el mouse, flecha y, si el dueño elige A, el encabezado); **los textos usan siempre la tinta del sistema** (mismo criterio que la carta: «Marca 3:1 y textos con tinta del sistema»). Los colores de estado nunca toman la marca.
 
-## 5. Preguntas para el dueño (una a una; la recomendada primero)
+## 5. Decisiones del dueño (2026-11-13, chat del dueño con el orquestador)
 
-1. **Encabezado del portal.** Hoy es gris claro `#e5dfdf`. (B, recomendada) El encabezado queda neutro del sistema y la marca solo se ve en bordes y flechas: el portal real casi no cambia de aspecto. (A) El encabezado se pinta con el color de marca (con texto de la tinta que se lea): el portal cambia de aspecto.
-2. **Tarjetas del mapa.** En el portal real las tarjetas son zonas tocables transparentes sobre la imagen del mapa. (Recomendada) En modo marca las tarjetas del mapa **siguen transparentes** (no se tapa la imagen); la marca solo pinta borde y flecha en la grilla. (Alternativa) Pintar también las del mapa: taparía la imagen.
-3. **¿Qué color es «la marca de la empresa»?** Es UN color para todo el portal; las cinco sucursales tienen cada una el suyo (`#5c57a2`, `#797d62`, `#96bbbb`, `#e17360`, `#ffcb69`) y ninguna es «la de la empresa». Hay que elegirlo. Aviso: `#96bbbb` y `#ffcb69` no pasan M3 contra blanco (2,07:1 y 1,50:1) y `#797d62` no pasa M2 con la tinta del sistema (4,42:1): el sistema los rechazaría.
-4. **¿Valen para el portal las mismas reglas que para la carta?** (Recomendada) Sí: botón explícito para activar y para volver, lo ya publicado se conserva hasta que se reedite, y un color que no se lee se rechaza diciendo qué hacer.
+1. **P1 — Encabezado del portal: CONFIRMADA.** «Queda neutro; la marca solo en bordes y flechas (Recomendada)». El encabezado usa el neutro del sistema; la marca pinta el borde de la tarjeta al pasar el mouse y la flecha.
+2. **P2 — Tarjetas del mapa: CONFIRMADA.** «Siguen transparentes (Recomendada)». En modo marca las tarjetas sobre el mapa no se pintan (zonas tocables sobre la imagen); la marca solo pinta borde y flecha de las tarjetas de la grilla.
+3. **P3 — Color de la empresa: CONFIRMADA.** «Lo elige quien administra, al pasar el portal (Recomendada)». No se asume ningún color: el sistema solo lo guarda si se lee (M2 y M3) y, si no, avisa qué hacer. (Ninguna de las cinco marcas de sucursal es «la de la empresa».)
+4. **P4 — Mismas reglas que la carta (botón explícito, conservar hasta reeditar, rechazo con «qué hacer»): SUPUESTO del orquestador**, por coherencia con lo que el dueño ya confirmó para la carta; el dueño lo corrige si no es así. No es una aceptación del dueño (I1).
 
-## 6. Qué entraría si el dueño confirma (para dimensionar; no se construye hasta entonces)
+## 6. Qué entra (dos PR chicos, sin migración)
 
 - Núcleo: `validarMarcaParaGuardar` ya existe y se reutiliza; solo hace falta decidir la tabla de arriba.
 - Lectura: `resolverEstiloPortal` con el modo marca (las 12 variables según la tabla; sin marcador, idéntico a hoy); prueba «sin cambio» con el portal real (ya hay golden del portal real y del portal sin configurar).
