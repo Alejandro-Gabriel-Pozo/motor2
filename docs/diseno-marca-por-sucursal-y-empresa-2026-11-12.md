@@ -95,7 +95,7 @@ Con este diseño, **en una carta que pase a la marca derivada**, dejan de poder 
 ## Preguntas abiertas
 
 - **Fondo claro u oscuro por sucursal: CERRADA, «no se construye ahora»** (el dueño no quiere un dato nuevo de fondo, 2026-11-13, chat del dueño con el orquestador). El **modo oscuro** queda como pregunta abierta, igual que P4 de Pedernal. Contexto: hoy las 5 cartas son oscuras y el sistema nuevo no tiene modo oscuro; una carta que se pase a la marca derivada pasa a clara. Queda como pregunta abierta, igual que P4 de Pedernal. **No hay dato nuevo de fondo claro u oscuro**: sería una sugerencia solo con el «sí» del dueño.
-- **Qué acción exacta es «reeditar»** (PENDIENTE; la plantea el plan de PR): propuesta, un botón explícito «Pasar a color de marca» en el editor, con vista previa a 375 px, y otro «Volver a mis colores anteriores». Ver el plan en el PR de lectura.
+- **Qué acción exacta es «reeditar»: CERRADA.** 2026-11-13, chat del dueño con el orquestador (preguntas con opciones): «Botón explícito (Recomendada)». Un botón «Pasar a color de marca» en el editor, con vista previa a 375 px y el aviso de que una carta oscura se ve clara, y otro «Volver a mis colores anteriores». Mecanismo (PROPUESTA mía, sin migración): una clave nueva del catálogo, `marca_derivada` (tema) y `portal_marca_derivada` (portal), con el único valor «si»; sin ella la carta se lee como siempre; con ella se lee solo desde la marca. «Volver» quita solo esa clave (los colores viejos nunca se borran).
 
 ## Estado de las decisiones
 
@@ -108,6 +108,6 @@ Con este diseño, **en una carta que pase a la marca derivada**, dejan de poder 
 | M1 al guardar (`#rrggbb` estricto), M3, M4, M5 (M5 ya CONFIRMADA), M6 | PROPUESTA (M5 CONFIRMADA: «todo nace cerrado») |
 | Las dos tintas fijas del sistema (no blanco ni negro puros) | PROPUESTA |
 | Fondo claro u oscuro por sucursal | **CERRADA: no se construye ahora** (dueño, 2026-11-13); el modo oscuro queda como pregunta abierta (P4 de Pedernal) |
-| Qué acción exacta es «reeditar» y cómo se vuelve atrás | PROPUESTA (botón explícito y botón de volver; ver el plan) |
+| Qué acción exacta es «reeditar» | **CONFIRMADA: «Botón explícito (Recomendada)»** (dueño, 2026-11-13); el mecanismo (`marca_derivada`) es PROPUESTA |
 | Versión del tema contra ediciones simultáneas | PENDIENTE (necesita migración: autorización expresa) |
 | Datos reales de cuántas cartas usan cada clave | Medido el 2026-11-13 sobre la copia del 12/11 (ver arriba); la rama principal de producción NO se consultó |
