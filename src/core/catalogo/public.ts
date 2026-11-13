@@ -69,12 +69,15 @@ export {
   MODOS_FILTRABLES,
   SIN_FILTROS,
   TIPOS_FILTRABLES,
+  claseDelProducto,
   consultaDeLosFiltros,
   hayFiltrosDeProductos,
   leerFiltrosDeProductos,
   necesitaLaEmpresaEntera,
 } from "./filtros-de-productos";
-export type { EntradaDeFiltrosDeProductos, FaltaFiltrable, FiltrosDeProductos } from "./filtros-de-productos";
+export type { EntradaDeFiltrosDeProductos, FaltaFiltrable, FiltrosDeProductos, TipoFiltrable } from "./filtros-de-productos";
+// La lista de Productos (docs/diseno-productos-igual-a-pedernal-2026-11-13.md, D1): qué dice en el lugar del precio.
+export { textoDelPrecioEnLaLista } from "./precio-en-la-lista";
 // Fase 7 (DEC-13): el grupo Catálogo del menú, sus filas de pestañas y las rutas que cuelgan de cada entrada (puro; lo arma `core/navegacion/estructura.ts` y lo dibuja `FilaDeCatalogo`).
 export { NAV_CATALOGO, PESTANAS_DE_MAESTROS, PESTANAS_DE_PRODUCTOS, RUTAS_DE_LAS_ENTRADAS_DE_CATALOGO } from "./ui-config";
 export type { PantallaDeCatalogo } from "./ui-config";

@@ -47,11 +47,15 @@ export interface FiltrosDeProductos {
 
 export const SIN_FILTROS: FiltrosDeProductos = { q: "", tipo: null, modo: null, disponible: null, falta: null };
 
+/**
+ * El «¿Qué es?» de la lista, con los nombres de la maqueta de Pedernal (docs/diseno-productos-igual-a-pedernal-2026-11-13.md, D1 y D2): «Elaborado» es la materia prima que se produce (supuesto declarado: el dueño lo
+ * corrige). Sumar una clase (decisión 2: las 5 de Pedernal, con migración) es agregar un valor a `TIPOS_FILTRABLES` y su etiqueta acá: el tipo `Record` obliga a ponerla, y la lista dibuja un chip por cada valor.
+ */
 export const ETIQUETA_DEL_TIPO: Record<TipoFiltrable, string> = {
-  venta: "Producto de venta",
+  venta: "Producto vendible",
   "materia-prima": "Materia prima",
-  "se-produce": "Materia prima que se produce",
-  respaldo: "Producto de respaldo de un adicional",
+  "se-produce": "Elaborado",
+  respaldo: "Respaldo de un adicional",
 };
 export const ETIQUETA_DEL_MODO: Record<ModoFiltrable, string> = { directo: "Directo (tiene su precio)", "por-opcion": "Por opción (el precio está en cada opción)" };
 export const ETIQUETA_DE_LA_DISPONIBILIDAD: Record<DisponibilidadFiltrable, string> = {
@@ -65,6 +69,15 @@ export const ETIQUETA_DE_LA_FALTA: Record<FaltaFiltrable, string> = {
   "sin-receta": "Sin receta",
   "fuera-de-la-carta": "Todavía no está en la carta de esta sucursal",
 };
+
+/**
+ * La clase de UN producto, para decirla en su fila de la lista (la misma palabra de los chips). Sale de las mismas condiciones que usa cada filtro (`criteriosDeTabla`): el producto interno de un adicional es «respaldo»,
+ * la materia prima que se produce es «se-produce» (aunque el filtro «Materia prima» también la incluya), la otra materia prima es «materia-prima» y el resto es «venta».
+ */
+export function claseDelProducto(p: { tipo: "MP" | "PV"; seProduce: boolean; respaldaUnaOpcion: boolean }): TipoFiltrable {
+  if (p.tipo === "PV") return p.respaldaUnaOpcion ? "respaldo" : "venta";
+  return p.seProduce ? "se-produce" : "materia-prima";
+}
 
 /** El valor de una lista cerrada, o `null` si no es de la lista (o no es un texto). */
 function deLaLista<T extends string>(lista: readonly T[], valor: unknown): T | null {

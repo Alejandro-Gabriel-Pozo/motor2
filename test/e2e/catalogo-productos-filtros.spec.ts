@@ -45,24 +45,26 @@ for (const { ancho, alto } of [
       const { pizza, sinPrecio, harina, limpiar } = await sembrar(m, sucursalId);
       try {
         await page.goto(`/catalogo/productos?q=${m}`);
-        const filas = page.locator("tbody tr");
+        const filas = page.locator("li[data-producto]");
         await expect(filas).toHaveCount(3);
         const formulario = page.getByRole("search", { name: "Buscar y filtrar" });
         await expect(formulario).toBeVisible();
         await capturar(page, `filtros-de-productos-${ancho}`);
 
-        await formulario.getByLabel("Tipo").selectOption("materia-prima");
-        await formulario.getByRole("button", { name: "Filtrar" }).click();
+        // El «¿Qué es?» son chips (enlaces): conservan la búsqueda y marcan el vigente.
+        const chips = page.getByRole("navigation", { name: "¿Qué es?" });
+        await chips.getByRole("link", { name: "Materia prima", exact: true }).click();
         await expect(page).toHaveURL(/tipo=materia-prima/);
         await expect(filas).toHaveCount(1);
         await expect(filas.first()).toContainText(harina.nombre);
-        // La selección y la búsqueda siguen puestas en los controles después de filtrar.
-        await expect(formulario.getByLabel("Tipo")).toHaveValue("materia-prima");
+        await expect(chips.getByRole("link", { name: "Materia prima", exact: true })).toHaveAttribute("aria-current", "page");
         await expect(formulario.getByLabel(/^Buscar por nombre/)).toHaveValue(m);
 
-        await formulario.getByLabel("Tipo").selectOption("");
+        await chips.getByRole("link", { name: "Todos" }).click();
+        await expect(filas).toHaveCount(3);
+        await formulario.getByText("Más filtros").click();
         await formulario.getByLabel("Le falta algo").selectOption("sin-precio");
-        await formulario.getByRole("button", { name: "Filtrar" }).click();
+        await formulario.getByRole("button", { name: "Buscar" }).click();
         await expect(filas).toHaveCount(1);
         await expect(filas.first()).toContainText(sinPrecio.nombre);
         await expect(page.getByText(pizza.nombre)).toHaveCount(0);
@@ -70,6 +72,7 @@ for (const { ancho, alto } of [
         if (ancho === 375) {
           await expectSinDesborde(page, "lista de Productos filtrada a 375 px");
           await expectObjetivosTactiles(formulario.locator("input, select, button"), "controles de los filtros");
+          await expectObjetivosTactiles(chips.getByRole("link"), "chips del «¿Qué es?»");
         }
 
         await page.getByRole("link", { name: "Limpiar filtros" }).click();
@@ -88,13 +91,14 @@ test("Enter en la búsqueda filtra, y un valor raro en la URL no rompe: la lista
   const { pizza, sinPrecio, harina, limpiar } = await sembrar(m, sucursalId);
   try {
     await page.goto(`/catalogo/productos?q=${m}&tipo=%27%3B+DROP+TABLE&modo=x&disponible=todos&falta=mucho`);
-    await expect(page.locator("tbody tr")).toHaveCount(3);
-    for (const nombre of ["Tipo", "Cómo se vende", "Disponibilidad", "Le falta algo"]) await expect(page.getByLabel(nombre)).toHaveValue("");
+    await expect(page.locator("li[data-producto]")).toHaveCount(3);
+    for (const nombre of ["Cómo se vende", "Disponibilidad", "Le falta algo"]) await expect(page.getByLabel(nombre)).toHaveValue("");
+    await expect(page.getByRole("navigation", { name: "¿Qué es?" }).getByRole("link", { name: "Todos" })).toHaveAttribute("aria-current", "page");
     const busqueda = page.getByLabel(/^Buscar por nombre/);
     await busqueda.fill(`Pizza ${m}`);
     await busqueda.press("Enter");
-    await expect(page.locator("tbody tr")).toHaveCount(1);
-    await expect(page.locator("tbody tr").first()).toContainText(pizza.nombre);
+    await expect(page.locator("li[data-producto]")).toHaveCount(1);
+    await expect(page.locator("li[data-producto]").first()).toContainText(pizza.nombre);
     await expect(page.getByText(sinPrecio.nombre)).toHaveCount(0);
     await expect(page.getByText(harina.nombre)).toHaveCount(0);
   } finally {
@@ -110,12 +114,12 @@ test("la página siguiente conserva los filtros", async ({ paginaAutenticada: pa
     await prisma.producto.createMany({ data: Array.from({ length: 51 }, (_, i) => ({ codigo: `E2E-FI-MP${String(i).padStart(2, "0")}-${m}`, nombre: `E2E Filtros Bulto ${String(i).padStart(2, "0")} ${m}`, tipo: "MP" as const, unidadStockId: unidad.id })) });
     await page.goto(`/catalogo/productos?q=${m}&tipo=materia-prima`);
     // 51 bultos + la harina = 52 materias primas: 50 en la primera página y 2 en la segunda; ningún producto de venta.
-    await expect(page.locator("tbody tr")).toHaveCount(50);
+    await expect(page.locator("li[data-producto]")).toHaveCount(50);
     const siguiente = page.getByRole("link", { name: /Página siguiente/ });
     await expect(siguiente).toHaveAttribute("href", /tipo=materia-prima/);
     await siguiente.click();
     await expect(page).toHaveURL(/tipo=materia-prima/);
-    await expect(page.locator("tbody tr")).toHaveCount(2);
+    await expect(page.locator("li[data-producto]")).toHaveCount(2);
     await expect(page.getByText(/E2E Filtros Pizza/)).toHaveCount(0);
     await expect(page.getByRole("link", { name: /Página siguiente/ })).toHaveCount(0);
   } finally {
@@ -132,10 +136,10 @@ test("PRIVACIDAD: quien no ve recetas ni carta no tiene esos «le falta» y por 
     await paginaDelRol.goto(`/catalogo/productos?q=${consulta}&falta=sin-receta`);
     await expect(paginaDelRol.getByLabel("Le falta algo").locator("option")).toHaveText(["Todos", "Sin precio de venta"]);
     // El filtro por receta no se aplicó (no revela qué productos no tienen receta): están los tres productos, y «Le falta algo» quedó en «Todos».
-    await expect(paginaDelRol.locator("tbody tr")).toHaveCount(3);
+    await expect(paginaDelRol.locator("li[data-producto]")).toHaveCount(3);
     await expect(paginaDelRol.getByLabel("Le falta algo")).toHaveValue("");
     await paginaDelRol.goto(`/catalogo/productos?q=${consulta}&falta=fuera-de-la-carta`);
-    await expect(paginaDelRol.locator("tbody tr")).toHaveCount(3);
+    await expect(paginaDelRol.locator("li[data-producto]")).toHaveCount(3);
 
     // Contraespejo: el administrador sí tiene las tres.
     await page.goto(`/catalogo/productos?q=${consulta}`);
@@ -143,7 +147,7 @@ test("PRIVACIDAD: quien no ve recetas ni carta no tiene esos «le falta» y por 
     await page.goto(`/catalogo/productos?q=${consulta}&falta=sin-receta`);
     await expect(page.getByLabel("Le falta algo")).toHaveValue("sin-receta");
     // Los dos productos de venta no tienen receta; la materia prima común no la necesita.
-    await expect(page.locator("tbody tr")).toHaveCount(2);
+    await expect(page.locator("li[data-producto]")).toHaveCount(2);
   } finally {
     await limpiarRol();
     await limpiar();

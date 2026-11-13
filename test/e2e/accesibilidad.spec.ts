@@ -392,9 +392,9 @@ testAutenticado("catalogo/productos: la lista, con la confirmación de «Desacti
   try {
     await page.goto(`/catalogo/productos?q=${encodeURIComponent(`E2E A11y Lista ${marca}`)}`);
     await conTitulo(page, "Productos");
-    const filaActiva = page.locator("tr", { hasText: activo.nombre });
+    const filaActiva = page.locator("li[data-producto]", { hasText: activo.nombre });
     await expect(filaActiva.getByRole("button", { name: "Desactivar", exact: true })).toBeVisible();
-    await expect(page.locator("tr", { hasText: inactivo.nombre }).getByRole("button", { name: "Activar", exact: true })).toBeVisible();
+    await expect(page.locator("li[data-producto]", { hasText: inactivo.nombre }).getByRole("button", { name: "Activar", exact: true })).toBeVisible();
     expect((await new AxeBuilder({ page }).analyze()).violations, "tabla en reposo").toEqual([]);
 
     // Confirmación abierta: acá viven el role="alert" del aviso, el aria-describedby y los dos botones nuevos.
