@@ -181,6 +181,28 @@ La primera versión de este documento se apoyó en `productos.html`. Se repasó 
 
 Migraciones posibles que se suman a las de §6: **M8** familia; **M9** retirar lo que sobra del modelo de dos ejes y precio por combinación (después de contar lo cargado; **aviso al dueño antes de cualquier borrado**); **M10** columna de las fracciones ofrecidas (2, 4, 8). Todas: **requieren autorización expresa** y niveles 1 a 5 confirmados antes del nivel 6.
 
+### 8.3. Dato de la copia de Neon y conversión del café (solo lectura, 2026-11-13; contado por el orquestador, recontar en producción antes de desplegar)
+
+Fuente: mensaje del orquestador del 2026-11-13, conteo en SOLO LECTURA sobre la copia de Neon `br-plain-king-afb4r4t1` (copia de producción del 12/11). Yo no leí esa base (sin credenciales); los números son del orquestador (V para él, DOC para este documento).
+
+| Qué | Filas en la copia |
+|---|---|
+| `CombinacionDeProducto`, `GrupoDePrecio`, `PrecioLocalDeCombinacion`, `CombinacionEnLinea`, `RecetaDeCombinacionVersion` | **0 en todas**: el modelo de dos ejes y precio por combinación **no tiene ni un dato cargado ni vendido** |
+| Productos / grupos de opciones / vínculos producto-grupo | 75 / 47 / 62 |
+| Grupos por tipo | MEDIDA 29 grupos (72 opciones), INCLUIDA 12 (37), VARIANTE 6 (17) |
+| Productos con exactamente UN grupo MEDIDA | 32 (ninguno tiene dos: ya es «una sola variante») |
+| Productos con MEDIDA + VARIANTE a la vez («dos ejes» de hecho) | **3: Café** (Tamaño Chico/Mediano/Grande × variante solo/cortado/lágrima/con leche), **Brownie** y **Hamburguesa completa** |
+| Productos con VARIANTE sola | Jugo Fresli (sabores), Tostadas, Postre helado |
+
+**Consecuencias para §8 / D10 / M9:** retirar el modelo de dos ejes y de precio por combinación **no borra nada del cliente hoy** (el aviso de «borrado» baja a «sin datos hoy»); igual queda por regla de la casa: migración aditiva y reversible, autorización expresa, y recontar en producción antes de desplegar.
+
+**Dónde guarda motor2 hoy el precio por opción (verificado en `prisma/schema.prisma`, no en la copia):** el precio de lista de una opción **en un producto** está en `ProductoAdmiteOpcion` (`precioAbsoluto`, o una diferencia `diferenciaPrecio`/`porcentaje`); la diferencia que trae la opción misma está en `VersionDeOpcion` (`diferenciaPrecio` o `porcentaje`, más `factorEscala` solo para MEDIDA); y el precio de la opción **por sucursal** está en `PrecioLocalDeOpcion` (que en la copia tiene 0 filas). No hay columna de precio en `OpcionDeGrupo`.
+
+**Conversión propuesta de los 3 casos (PROPUESTA, sin migración de datos; la decide el dueño):**
+1. **Café** → familia de 4 productos «Café solo», «Café cortado», «Café lágrima», «Café con leche»: **«Duplicar producto» (E4, ya construido)** copia ficha, receta y opciones del Café; en cada copia se quita el grupo de la variante y queda solo la medida (Chico/Mediano/Grande) con sus precios. Lo que consumía cada opción de la variante pasa a la receta de su producto (a mano, copia por copia). Mientras no exista la familia (M8), cada uno sale suelto en la carta; una agrupación provisoria podría usar el «ítem agrupado» que motor2 ya tiene (**NO VERIFICADO** que alcance para una tabla tipo × medida: `conceptos/familia.md` dice que no es lo mismo).
+2. **Brownie** y **Hamburguesa completa** (MEDIDA + VARIANTE): mismo camino si el dueño quiere que cada variante sea un producto propio; si la variante es en realidad un grupo con recargo (p. ej. «con helado + $ X»), se reclasifica como grupo incluido/adicional con recargo **sin** crear productos. **Pregunta al dueño, por producto** (no se asume).
+3. **Los 29 grupos MEDIDA** (los que hoy se llaman, por ejemplo, «Preparación X»): **NO VERIFICADO** cuántos son una medida real (chico/grande: cambia cuánto se gasta, por eso `factorEscala`) y cuántos son en realidad una variante con otro precio. En Pedernal una «Preparación» (Simple, A la napolitana + $ 2.000…) es un **grupo con recargo**, no la medida. Hay que listar los 29 con sus opciones (solo lectura, lo puede hacer el orquestador) y que el dueño diga cuáles siguen como la variante «medida» y cuáles pasan a grupo con recargo. Cambiar el tipo de un grupo existente (`GrupoDeOpciones.tipo`) **no se puede hoy desde la pantalla** («el tipo no se puede cambiar») y sería una migración de datos: **requiere autorización expresa**.
+
 Capturas de `familias.html` (21 estados a 375 px, fuera del repositorio): `/tmp/claude-0/-home-user-motor2/c9147c71-5143-55db-a407-d79011f3d678/scratchpad/pedernal-familias/<estado>.png` (`lista`, `cafe-tabla`, `cafe-aplicar`, `cafe-aplicado`, `aplicar-doble`, `aplicar-otra-persona`, `precio-invalido`, `gaseosas-linea`, `gaseosas-distinto`, `milanesas`, `cafe-sueltos`, `cerveza-lista`, `tamanos-faltan`, `miembro-apagado`, `quitar`, `queda-uno`, `agregar-otra-familia`, `orden-alfa`, `orden-mano`, `destacado`, `sin-permiso`) y `textos.json`.
 
 ## 9. Capturas (a 375 px; fuera del repositorio)
