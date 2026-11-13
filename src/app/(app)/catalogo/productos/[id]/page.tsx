@@ -42,7 +42,7 @@ const SinValor = ({ children }: { children: React.ReactNode }) => <span classNam
 
 /**
  * La PORTADA del producto en el espacio del producto (Fase 6, 6.12; DEC-12): el resumen de un producto, de cualquier tipo, dentro del marco con su tira de pasos. Es de solo lectura: reúne sus datos y lleva a
- * los reportes que ya existen; los formularios están en cada paso (Qué se vende o Datos, Opciones y precio, Receta y En la carta), a los que se llega por las pestañas del marco. Al guardar un alta o una
+ * los reportes que ya existen; los formularios están en cada paso (Qué se vende o Datos, Precios, Opciones; Receta y En la carta son enlaces), a los que se llega por las pestañas del marco. Al guardar un alta o una
  * edición se vuelve acá, con el aviso de que se guardó.
  *
  * Los pasos dependen del tipo (`pasosDelEspacio`): un producto de venta tiene los cuatro; una materia prima, Datos y —si se produce— Receta. El producto interno que respalda un adicional NO se maneja con el
@@ -109,13 +109,21 @@ export default async function FichaProductoPage({
   // El marco (los pasos con su enlace y su estado) solo para lo que se maneja con el espacio; el producto de respaldo se muestra como siempre. Las opciones y la disponibilidad ya están leídas: no se vuelven a leer.
   const marco = esDeRespaldo ? null : await cargarMarcoDelEspacio(ctx, productoDelEspacio, { opciones: p.tipo === "PV" ? opcionesDeVenta : undefined, disponibleAca });
   const pendientes = marco?.pasos.filter((paso) => paso.estado.tipo === "pendiente") ?? [];
+  const editarDatos = marco?.pasos.find((paso) => paso.paso === "datos")?.href ?? null;
 
   const cuerpo = (
     <>
       {guardado && <Aviso variante="exito">{guardado === "alta" ? "Producto creado." : "Cambios guardados."}</Aviso>}
 
-      {duplicar && (
-        <div className="flex justify-end">
+      {/* «Editar datos» lleva al formulario de los datos (el paso `datos`): sin `producto_editar` el paso llega sin enlace y no se ofrece. */}
+      {(editarDatos || duplicar) && (
+        <div className="flex flex-wrap justify-end gap-3">
+          {editarDatos && (
+            <Link href={editarDatos} className={claseDeBoton("secundario")}>
+              Editar datos
+            </Link>
+          )}
+          {duplicar && (
           <DuplicarProducto
             origen={{ id: p.id, nombre: p.nombre, esDeVenta: p.tipo === "PV", esBase: esBaseConfigurable(p.modoDeVenta), precioVenta: Number(p.precioVenta) }}
             tieneReceta={duplicar.resumen.tieneReceta}
@@ -126,6 +134,7 @@ export default async function FichaProductoPage({
             sucursalesDeLaReceta={duplicar.sucursalesDeLaReceta}
             accion={duplicarProducto}
           />
+          )}
         </div>
       )}
 

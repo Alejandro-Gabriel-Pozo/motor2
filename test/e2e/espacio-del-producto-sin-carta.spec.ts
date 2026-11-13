@@ -44,7 +44,7 @@ test("con el módulo Carta apagado no hay paso «En la carta»: ni en la tira ni
     await page.goto(`/catalogo/productos/${producto.id}`);
     const pasos = page.getByRole("navigation", { name: "Pasos del producto" });
     await expect(pasos).toBeVisible();
-    await expect(pasos).toContainText("Opciones y precio");
+    await expect(pasos).toContainText("Opciones");
     await expect(pasos, "sin el módulo Carta el paso no aparece").not.toContainText("En la carta");
     expect((await new AxeBuilder({ page }).analyze()).violations, "portada sin el módulo Carta").toEqual([]);
 

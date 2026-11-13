@@ -471,9 +471,9 @@ testAutenticado("catalogo/productos/[id]: la portada del espacio (el marco con s
       await expect(page.getByRole("heading", { name: "Qué falta" })).toBeVisible();
       expect((await new AxeBuilder({ page }).analyze()).violations, `portada de un ${donde}`).toEqual([]);
     }
-    // El paso 1 dentro del marco (la tira con «Qué se vende» como pantalla actual y el formulario debajo).
+    // El paso 1 dentro del marco (la tira con «Datos» como pantalla actual y el formulario debajo).
     await page.goto(`/catalogo/productos/${pv.id}/datos`);
-    await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^Qué se vende/ })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: "Datos" })).toHaveAttribute("aria-current", "page");
     expect((await new AxeBuilder({ page }).analyze()).violations, "paso 1 dentro del marco").toEqual([]);
   } finally {
     await prisma.producto.deleteMany({ where: { id: { in: [pv.id, mp.id] } } });
@@ -526,8 +526,8 @@ testAutenticado(
     await prisma.productoAdmiteGrupo.updateMany({ where: { productoId, grupoId: leche.grupoId }, data: { activo: false } });
 
     await page.goto(`/catalogo/productos/${productoId}/opciones`);
-    await expect(page.getByRole("heading", { level: 2, name: "Opciones y precio" })).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^Opciones y precio/ })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("heading", { level: 2, name: "Opciones" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^Opciones/ })).toHaveAttribute("aria-current", "page");
     await expect(page.locator("[data-grupo-quitado]")).toHaveCount(1);
     expect((await new AxeBuilder({ page }).analyze()).violations, "paso 2 en reposo").toEqual([]);
 
@@ -562,7 +562,7 @@ testAutenticado("catalogo/productos/[id]/datos de un producto que se vende por o
   try {
     // El paso 1 de una base: «Por opción» marcado y el precio guardado bloqueado.
     await page.goto(`/catalogo/productos/${productoId}/datos`);
-    await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^Qué se vende/ })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: "Datos" })).toHaveAttribute("aria-current", "page");
     await expect(page.getByRole("group", { name: "¿Cómo se vende?" }).getByRole("radio", { name: /Por opción/ })).toBeChecked();
     expect((await new AxeBuilder({ page }).analyze()).violations, "paso 1 de una base").toEqual([]);
 

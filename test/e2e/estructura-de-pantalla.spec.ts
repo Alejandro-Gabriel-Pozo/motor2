@@ -32,7 +32,7 @@ for (const f of COMBINACIONES) {
     const { productoId } = await sembrar();
     await page.setViewportSize({ width: f.ancho, height: ALTO });
     await page.goto(`/catalogo/productos/${productoId}/opciones`);
-    await expect(page.getByRole("heading", { level: 2, name: "Opciones y precio" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Opciones" })).toBeVisible();
     if (f.menu === "colapsado") await page.getByRole("button", { name: "Ocultar menú" }).click();
 
     // Regla en el código = tabla del oráculo (las dos fuentes tienen que coincidir antes de mirar el DOM).
@@ -73,7 +73,7 @@ test("al pasar de pestaña el contenido vuelve arriba (el scroll es el del área
   const { productoId } = await sembrar();
   await page.setViewportSize({ width: 1366, height: ALTO });
   await page.goto(`/catalogo/productos/${productoId}/opciones`);
-  await expect(page.getByRole("heading", { level: 2, name: "Opciones y precio" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Opciones" })).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations, "Opciones y precio").toEqual([]);
   await page.evaluate(() => {
     document.querySelector("main")!.scrollTop = 400;
@@ -88,7 +88,7 @@ test("sin lugar para dos columnas (1093 px, 1366 con el zoom al 125 %): una colu
   const { productoId } = await sembrar();
   await page.setViewportSize({ width: 1093, height: 614 });
   await page.goto(`/catalogo/productos/${productoId}/opciones`);
-  await expect(page.getByRole("heading", { level: 2, name: "Opciones y precio" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Opciones" })).toBeVisible();
   const m = await page.evaluate(() => ({ columnas: getComputedStyle(document.querySelector("[data-admision-grupo]")!.parentElement!).gridTemplateColumns.split(" ").length, desborde: document.documentElement.scrollWidth > window.innerWidth + 1 }));
   expect(m).toEqual({ columnas: 1, desborde: false });
 });

@@ -315,8 +315,8 @@ test.describe("medición de las tareas del producto (el espacio) contra el umbra
     await m.ver("se llega a la ficha del producto", () => expect(page).toHaveURL(/\/catalogo\/productos\/[^/?]+\?guardado=alta/));
 
     // 2) Los grupos, desde el paso 2: el de tamaños con el precio final de cada opción, y el de lo incluido.
-    await m.clic(pasos.getByRole("link", { name: /^Opciones y precio/ }), "tocar «Opciones y precio» (el paso 2)");
-    await m.ver("se abre el paso «Opciones y precio»", () => expect(page.getByRole("heading", { level: 2, name: "Opciones y precio" })).toBeVisible());
+    await m.clic(pasos.getByRole("link", { name: /^Opciones/ }), "tocar «Opciones» (el paso 2)");
+    await m.ver("se abre el paso «Opciones»", () => expect(page.getByRole("heading", { level: 2, name: "Opciones" })).toBeVisible());
     const ventanaTamanos = await grupoNuevo(grupoTamano, "Cada opción define el precio final");
     for (const [i, [nombre, precio]] of tamanos.entries()) {
       await m.llenar(ventanaTamanos.getByLabel(`Nombre de la opción ${i + 1}`), nombre, `escribir la opción «${nombre}»`);
@@ -331,7 +331,8 @@ test.describe("medición de las tareas del producto (el espacio) contra el umbra
     await m.ver("el grupo de lo incluido queda en el producto", () => expect(page.locator(`[data-admision-grupo='${grupoIncluida}']`)).toBeVisible());
 
     // 3) Pasarlo a «Por opción»: el paso 1 está en la tira.
-    await m.clic(pasos.getByRole("link", { name: /^Qué se vende/ }), "tocar «Qué se vende» (el paso 1)");
+    await m.clic(pasos.getByRole("link", { name: "Datos" }), "tocar «Datos» (la ficha)");
+    await m.clic(page.getByRole("link", { name: "Editar datos" }), "tocar «Editar datos»");
     await m.ver("se abre la edición", () => expect(page.getByText(`Editar "${producto}"`)).toBeVisible());
     await m.marcar(page.getByRole("group", { name: "¿Cómo se vende?" }).getByRole("radio", { name: /Por opción/ }), "elegir «Por opción»");
     await m.clic(page.getByRole("button", { name: "Guardar cambios" }), "tocar «Guardar cambios»");
@@ -364,7 +365,7 @@ test.describe("medición de las tareas del producto (el espacio) contra el umbra
     await m.ir(`/catalogo/productos/${base.productoId}`, "abrir la ficha del producto");
     await m.ver("la ficha es la del producto", () => expect(page.getByRole("heading", { name: base.nombre, level: 1 })).toBeVisible());
     await m.clic(page.getByRole("link", { name: "Editar opciones" }), "tocar «Editar opciones»");
-    await m.ver("se abren las opciones de venta del producto (el paso «Opciones y precio»)", () => expect(page.getByRole("heading", { level: 2, name: "Opciones y precio" })).toBeVisible());
+    await m.ver("se abren las opciones de venta del producto (el paso «Opciones y precio»)", () => expect(page.getByRole("heading", { level: 2, name: "Opciones" })).toBeVisible());
     const tarjeta = page.locator(`[data-admision-grupo='${base.nombreGrupo}']`);
     await m.llenar(tarjeta.getByLabel("Precio de Napolitana en este producto"), "23500", "escribir el precio nuevo de «Napolitana»");
     await m.clic(tarjeta.getByRole("button", { name: `Guardar «${base.nombreGrupo}»` }), "tocar «Guardar» del grupo");

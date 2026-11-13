@@ -26,7 +26,7 @@ test("asignar un tamaño con precio propio: la vista previa muestra los precios 
   await page.goto(`/catalogo/productos/${producto.id}/opciones`);
   // Fase 6 (6.15b): la pantalla es el paso 2 del espacio del producto: el h1 es el producto (lo pone el marco) y el h2 el paso. «Agregar un grupo existente» abre una ventana con el selector del grupo.
   await expect(page.getByRole("heading", { level: 1 })).toContainText(producto.nombre);
-  await expect(page.getByRole("heading", { level: 2, name: "Opciones y precio" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Opciones" })).toBeVisible();
   await expect(page.getByText("todavía no admite opciones")).toBeVisible();
   await page.getByRole("button", { name: "Agregar un grupo existente", exact: true }).click();
   const ventana = page.getByRole("dialog", { name: "Agregar un grupo existente" });
