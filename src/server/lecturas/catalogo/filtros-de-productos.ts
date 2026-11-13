@@ -46,6 +46,44 @@ export async function puedeBuscarPorReferenciaDelProveedor(ctx: ContextoDeLosFil
   return (await accionesDelMenuQueElUsuarioPuedeVer(ctx.usuarioId, ctx.empresaId, ctx.sucursalId, ["proveedores", "proceso_compra"], ctx.db)).size > 0;
 }
 
+/**
+ * La condición de tabla de un «le falta» (`sin-receta` no es de tabla: se resuelve con ids, `idsSinReceta`). `sin-precio`: un producto de venta directo sin precio. `fuera-de-la-carta`: el estado «fuera» de la carta
+ * (`estadoDelProductoEnLaCarta`): un producto de venta (no el de respaldo) disponible acá, sin contenido de carta y sin grupo en esta sucursal.
+ */
+function condicionDeFalta(ctx: ContextoDeLosFiltros, falta: "sin-precio" | "fuera-de-la-carta"): Prisma.ProductoWhereInput {
+  if (falta === "sin-precio") return { tipo: "PV", opcionQueRespalda: { is: null }, modoDeVenta: MODO_DE_VENTA.DIRECTO, precioVenta: { lte: 0 } };
+  return {
+    AND: [
+      { tipo: "PV", opcionQueRespalda: { is: null }, ...whereDisponibleEn(ctx.sucursalId) },
+      { contenidosCarta: { none: whereCartaDeSucursal(ctx.sucursalId) }, ...(GENERO_E_ITEM_AGRUPADO_VISIBLE ? { opcionesItemAgrupadoCarta: { none: whereCartaDeSucursal(ctx.sucursalId) } } : {}) },
+    ],
+  };
+}
+
+/**
+ * «Le falta algo» en general (el «Falta completar» de la lista): alguna de las faltas que quien mira puede ver. Es `OR` de las condiciones de tabla y, si puede ver recetas, de los ids sin receta entre los que
+ * cumplen `base`. Sin ninguna falta visible, no coincide con nada.
+ */
+async function condicionDeFaltaCompletar(ctx: ContextoDeLosFiltros, db: PrismaClient, permitidas: readonly FaltaFiltrable[], base: Prisma.ProductoWhereInput[]): Promise<Prisma.ProductoWhereInput> {
+  const o: Prisma.ProductoWhereInput[] = [];
+  if (permitidas.includes("sin-precio")) o.push(condicionDeFalta(ctx, "sin-precio"));
+  if (permitidas.includes("fuera-de-la-carta")) o.push(condicionDeFalta(ctx, "fuera-de-la-carta"));
+  if (permitidas.includes("sin-receta")) o.push({ id: { in: await idsSinReceta(db, ctx.sucursalId, base) } });
+  return { OR: o };
+}
+
+/**
+ * De estos ids (los de una página de la lista), los que están en «Falta completar»: disponibles en alguna sucursal y con alguna falta que quien mira puede ver. Con `db` de verificación (la disponibilidad «en alguna»
+ * cruza sucursales). Solo mira los ids dados: nunca devuelve uno que no se le pasó.
+ */
+export async function idsQueFaltaCompletar(ctx: ContextoDeLosFiltros, db: PrismaClient, ids: readonly string[]): Promise<ReadonlySet<string>> {
+  if (ids.length === 0) return new Set();
+  const permitidas = await faltasQueSePuedenFiltrar(ctx);
+  const base: Prisma.ProductoWhereInput[] = [{ id: { in: [...ids] } }];
+  const filas = await db.producto.findMany({ where: { AND: [...base, whereDisponibleEnAlguna(), await condicionDeFaltaCompletar(ctx, db, permitidas, base)] }, select: { id: true } });
+  return new Set(filas.map((f) => f.id));
+}
+
 /** Los criterios que no dependen de la receta: el tipo, el modo, la disponibilidad y los dos «le falta» que son una condición de tabla. */
 function criteriosDeTabla(ctx: ContextoDeLosFiltros, f: FiltrosDeProductos, faltasPermitidas: readonly FaltaFiltrable[]): Prisma.ProductoWhereInput[] {
   const y: Prisma.ProductoWhereInput[] = [];
@@ -83,14 +121,7 @@ function criteriosDeTabla(ctx: ContextoDeLosFiltros, f: FiltrosDeProductos, falt
     case null:
       break;
   }
-  if (f.falta && faltasPermitidas.includes(f.falta)) {
-    if (f.falta === "sin-precio") y.push({ tipo: "PV", opcionQueRespalda: { is: null }, modoDeVenta: MODO_DE_VENTA.DIRECTO, precioVenta: { lte: 0 } });
-    // El estado «fuera» de la carta (`estadoDelProductoEnLaCarta`): un producto de venta (no el de respaldo) disponible acá, sin contenido de carta y sin grupo en esta sucursal.
-    if (f.falta === "fuera-de-la-carta") {
-      y.push({ tipo: "PV", opcionQueRespalda: { is: null }, ...whereDisponibleEn(ctx.sucursalId) });
-      y.push({ contenidosCarta: { none: whereCartaDeSucursal(ctx.sucursalId) }, ...(GENERO_E_ITEM_AGRUPADO_VISIBLE ? { opcionesItemAgrupadoCarta: { none: whereCartaDeSucursal(ctx.sucursalId) } } : {}) });
-    }
-  }
+  if (f.falta && f.falta !== "sin-receta" && faltasPermitidas.includes(f.falta)) y.push(condicionDeFalta(ctx, f.falta));
   return y;
 }
 
@@ -119,5 +150,11 @@ export async function whereDeLosProductos(ctx: ContextoDeLosFiltros, db: PrismaC
   // La búsqueda por texto (palabras, sin tildes) es la misma lectura cruda que usa el buscador de producto: da los ids y acá se filtra por ellos.
   if (f.q !== "") y.push({ id: { in: (await buscarProductosPorPalabras(db, f.q, { porReferencia })).map((e) => e.id) } });
   if (f.falta === "sin-receta" && permitidas.includes("sin-receta")) y.push({ id: { in: await idsSinReceta(db, ctx.sucursalId, y) } });
+  // El «Estado» (Activo / Falta completar / Desactivado): no se pisan. «Activo» = disponible en alguna y sin ninguna falta visible; «Falta completar» = disponible en alguna y con alguna.
+  if (f.estado === "desactivado") y.push({ NOT: whereDisponibleEnAlguna() });
+  if (f.estado === "falta-completar" || f.estado === "activo") {
+    const falta = await condicionDeFaltaCompletar(ctx, db, permitidas, y);
+    y.push(whereDisponibleEnAlguna(), f.estado === "activo" ? { NOT: falta } : falta);
+  }
   return y.length ? { AND: y } : {};
 }

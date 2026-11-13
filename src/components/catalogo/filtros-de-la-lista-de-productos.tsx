@@ -47,7 +47,7 @@ function Opciones({ opciones }: { opciones: readonly OpcionDeFiltro[] }) {
 
 export function FiltrosDeLaListaDeProductos({ accion, filtros, clases, estados, masFiltros, hayFiltros, etiquetaDeLaBusqueda, marcadorDeLaBusqueda }: Props) {
   // Los controles son NO controlados (`defaultValue`): la clave, que cambia con lo vigente, vuelve a armar el formulario con lo que dice la URL (atrás/adelante, «Limpiar»).
-  const clave = JSON.stringify([filtros.q, filtros.tipo, filtros.disponible, ...masFiltros.map((f) => f.valor)]);
+  const clave = JSON.stringify([filtros.q, filtros.tipo, filtros.estado, ...masFiltros.map((f) => f.valor)]);
   const hayMasFiltros = masFiltros.some((f) => f.valor !== "");
   return (
     <form key={clave} method="get" action={accion} role="search" aria-label="Buscar y filtrar" className="flex flex-col gap-3">
@@ -56,7 +56,7 @@ export function FiltrosDeLaListaDeProductos({ accion, filtros, clases, estados, 
         <Selector etiqueta="¿Qué es?" name="tipo" defaultValue={filtros.tipo ?? ""}>
           <Opciones opciones={clases} />
         </Selector>
-        <Selector etiqueta="Estado" name="disponible" defaultValue={filtros.disponible ?? ""}>
+        <Selector etiqueta="Estado" name="estado" defaultValue={filtros.estado ?? ""}>
           <Opciones opciones={estados} />
         </Selector>
       </div>

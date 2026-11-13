@@ -10,6 +10,8 @@ import { listarProductosPagina } from "@/server/actions/catalogo/productos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import {
   DISPONIBILIDADES_FILTRABLES,
+  ESTADOS_FILTRABLES,
+  ETIQUETA_DEL_ESTADO,
   ETIQUETA_DE_LA_DISPONIBILIDAD,
   ETIQUETA_DE_LA_FALTA,
   ETIQUETA_DEL_MODO,
@@ -25,7 +27,7 @@ import { BarraDeFiltros } from "@/ui/componentes/estructura/barra-de-filtros";
 import { FilaDeCatalogo } from "@/components/fila-de-catalogo";
 import { FiltrosDeLaListaDeProductos } from "@/components/catalogo/filtros-de-la-lista-de-productos";
 import { PESTANAS_DE_PRODUCTOS } from "@/core/catalogo/public";
-import { buscaPorReferenciaDelProveedorEnLaLista, faltasQueSePuedenFiltrarEnLaLista } from "@/server/consultas/catalogo/filtros-de-productos";
+import { buscaPorReferenciaDelProveedorEnLaLista, faltasQueSePuedenFiltrarEnLaLista, productosQueFaltaCompletarEnLaPagina } from "@/server/consultas/catalogo/filtros-de-productos";
 import { detalleDeLaLista } from "@/server/consultas/catalogo/detalle-de-la-lista";
 
 /**
@@ -53,7 +55,10 @@ export default async function ProductosPage({
   const filtros = { ...leidos, falta: leidos.falta && faltas.includes(leidos.falta) ? leidos.falta : null };
   const pagina = await listarProductosPagina(cursor, filtros.q, filtros);
   // El precio de la sucursal activa y la clase de cada fila (dos consultas para toda la página).
-  const detalle = await detalleDeLaLista(ctx.db, ctx.sucursalId, pagina.items.map((p) => p.id));
+  const ids = pagina.items.map((p) => p.id);
+  const detalle = await detalleDeLaLista(ctx.db, ctx.sucursalId, ids);
+  // La marca «Falta completar» de cada fila: lo que quien mira puede ver que le falta (el mismo cálculo del filtro «Estado»).
+  const faltaCompletar = await productosQueFaltaCompletarEnLaPagina(ctx, ids);
 
   return (
     <div className="flex flex-col gap-4">
@@ -74,18 +79,19 @@ export default async function ProductosPage({
         accion="/catalogo/productos"
         filtros={filtros}
         clases={TIPOS_FILTRABLES.map((v) => ({ valor: v, etiqueta: ETIQUETA_DEL_TIPO[v] }))}
-        estados={DISPONIBILIDADES_FILTRABLES.map((v) => ({ valor: v, etiqueta: ETIQUETA_DE_LA_DISPONIBILIDAD[v] }))}
+        estados={ESTADOS_FILTRABLES.map((v) => ({ valor: v, etiqueta: ETIQUETA_DEL_ESTADO[v] }))}
         etiquetaDeLaBusqueda={porReferencia ? "Buscar por nombre, código o cómo lo llama el proveedor" : "Buscar por nombre o código"}
         marcadorDeLaBusqueda={porReferencia ? "Nombre, código o lo que dice la factura…" : "Buscar por código o nombre…"}
         hayFiltros={hayFiltrosDeProductos(filtros)}
         masFiltros={[
           { nombre: "modo", etiqueta: "Cómo se vende", valor: filtros.modo ?? "", opciones: MODOS_FILTRABLES.map((v) => ({ valor: v, etiqueta: ETIQUETA_DEL_MODO[v] })) },
+          { nombre: "disponible", etiqueta: "En esta sucursal", valor: filtros.disponible === "aca" || filtros.disponible === "no-aca" ? filtros.disponible : "", opciones: DISPONIBILIDADES_FILTRABLES.filter((v) => v === "aca" || v === "no-aca").map((v) => ({ valor: v, etiqueta: ETIQUETA_DE_LA_DISPONIBILIDAD[v] })) },
           { nombre: "falta", etiqueta: "Le falta algo", valor: filtros.falta ?? "", opciones: faltas.map((v) => ({ valor: v, etiqueta: ETIQUETA_DE_LA_FALTA[v] })) },
         ]}
       />
         </BarraDeFiltros>
       {pagina.items.length === 0 ? (
-        <p className="text-sm text-tinta-suave">{`Sin productos${hayFiltrosDeProductos(filtros) ? " que coincidan con la búsqueda y los filtros" : ""}.`}</p>
+        <p className="text-sm text-tinta-suave">Sin resultados</p>
       ) : (
         <ul aria-label="Productos" className="divide-y divide-borde rounded border border-borde bg-superficie">
           {pagina.items.map((p) => (
@@ -94,7 +100,8 @@ export default async function ProductosPage({
                 <Link href={`/catalogo/productos/${p.id}`} className="inline-flex min-h-11 min-w-0 items-center font-medium underline md:min-h-0">
                   {p.nombre}
                 </Link>
-                {!p.disponibleAca && <Insignia tono="aviso">Desactivado</Insignia>}
+                {p.sucursalesDisponibles === 0 && <Insignia tono="aviso">Desactivado</Insignia>}
+                {p.sucursalesDisponibles > 0 && faltaCompletar.has(p.id) && <Insignia tono="aviso">Falta completar</Insignia>}
               </div>
               <div className="flex items-start justify-between gap-3 text-sm text-tinta-suave">
                 <span>{ETIQUETA_DEL_TIPO[detalle.get(p.id)!.clase]}</span>

@@ -63,6 +63,17 @@ for (const { ancho, alto } of [
         await formulario.getByLabel("¿Qué es?").selectOption("");
         await formulario.getByRole("button", { name: "Aplicar filtros" }).click();
         await expect(filas).toHaveCount(3);
+        // «Estado»: «Falta completar» deja solo lo que le falta algo (acá, la pizza que no está en la carta y el producto sin precio; la materia prima no) y sus filas lo marcan.
+        await formulario.getByLabel("Estado").selectOption("falta-completar");
+        await formulario.getByRole("button", { name: "Aplicar filtros" }).click();
+        await expect(page).toHaveURL(/estado=falta-completar/);
+        await expect(filas).toHaveCount(2);
+        await expect(filas.filter({ hasText: sinPrecio.nombre })).toContainText("Falta completar");
+        await expect(filas.filter({ hasText: pizza.nombre })).toContainText("Falta completar");
+        await expect(page.getByText(harina.nombre)).toHaveCount(0);
+        await formulario.getByLabel("Estado").selectOption("");
+        await formulario.getByRole("button", { name: "Aplicar filtros" }).click();
+        await expect(filas).toHaveCount(3);
         await formulario.getByText("Más filtros").click();
         await formulario.getByLabel("Le falta algo").selectOption("sin-precio");
         await formulario.getByRole("button", { name: "Aplicar filtros" }).click();

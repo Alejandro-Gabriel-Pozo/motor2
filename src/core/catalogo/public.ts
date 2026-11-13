@@ -61,6 +61,9 @@ export type { AccesoAlEspacio, EstadoDelPaso, EstadoEnLaCarta, FormaDelProducto,
 // Fase 6, bloque 3 (3b): los filtros de la lista de Productos (palabras de listas cerradas en la URL, su validación y su re-escritura; puro).
 export {
   DISPONIBILIDADES_FILTRABLES,
+  ESTADOS_FILTRABLES,
+  ETIQUETA_DEL_ESTADO,
+  type EstadoFiltrable,
   ETIQUETA_DE_LA_DISPONIBILIDAD,
   ETIQUETA_DE_LA_FALTA,
   ETIQUETA_DEL_MODO,

@@ -29,9 +29,18 @@ export type DisponibilidadFiltrable = (typeof DISPONIBILIDADES_FILTRABLES)[numbe
 export const FALTAS_FILTRABLES = ["sin-precio", "sin-receta", "fuera-de-la-carta"] as const;
 export type FaltaFiltrable = (typeof FALTAS_FILTRABLES)[number];
 
+/**
+ * El «Estado» de la lista, como el de Pedernal (Activo / Falta completar / Desactivado): tres estados que no se pisan. «Desactivado» es el que no está disponible en ninguna sucursal; los demás están disponibles en alguna y se
+ * reparten entre «Falta completar» (le falta algo de lo que quien mira puede ver: `FALTAS_FILTRABLES`) y «Activo» (no le falta nada).
+ */
+export const ESTADOS_FILTRABLES = ["activo", "falta-completar", "desactivado"] as const;
+export type EstadoFiltrable = (typeof ESTADOS_FILTRABLES)[number];
+export const ETIQUETA_DEL_ESTADO: Record<EstadoFiltrable, string> = { activo: "Activo", "falta-completar": "Falta completar", desactivado: "Desactivado" };
+
 /** Lo que viaja por la URL o por la acción: textos (o nada). Lo que no sea de la lista cerrada se ignora al leerlo. */
 export interface EntradaDeFiltrosDeProductos {
   tipo?: string | null;
+  estado?: string | null;
   modo?: string | null;
   disponible?: string | null;
   falta?: string | null;
@@ -41,12 +50,13 @@ export interface FiltrosDeProductos {
   /** La búsqueda por nombre o código ya limpia (vacía = sin búsqueda). */
   q: string;
   tipo: TipoFiltrable | null;
+  estado: EstadoFiltrable | null;
   modo: ModoFiltrable | null;
   disponible: DisponibilidadFiltrable | null;
   falta: FaltaFiltrable | null;
 }
 
-export const SIN_FILTROS: FiltrosDeProductos = { q: "", tipo: null, modo: null, disponible: null, falta: null };
+export const SIN_FILTROS: FiltrosDeProductos = { q: "", tipo: null, estado: null, modo: null, disponible: null, falta: null };
 
 /**
  * El «¿Qué es?» de la lista, con los nombres de la maqueta de Pedernal (docs/diseno-productos-igual-a-pedernal-2026-11-13.md, D1 y D2): «Elaborado» es la materia prima que se produce (supuesto declarado: el dueño lo
@@ -89,10 +99,11 @@ function deLaLista<T extends string>(lista: readonly T[], valor: unknown): T | n
  * Lee los filtros de lo que llegó (los `searchParams` ya pasados por `unicosDeUrl`, o los argumentos de la acción, que vienen del cliente): cada clave se valida contra su lista cerrada y la búsqueda se
  * limpia (`textoDeBusqueda`: sin NUL, sin espacios de más) y se acota al largo máximo de un nombre de catálogo (un término más largo no puede coincidir con ninguno).
  */
-export function leerFiltrosDeProductos(entrada: Partial<Record<"q" | "tipo" | "modo" | "disponible" | "falta", unknown>>): FiltrosDeProductos {
+export function leerFiltrosDeProductos(entrada: Partial<Record<"q" | "tipo" | "estado" | "modo" | "disponible" | "falta", unknown>>): FiltrosDeProductos {
   return {
     q: typeof entrada.q === "string" ? textoDeBusqueda(entrada.q).slice(0, LARGO_MAXIMO_TEXTO_CATALOGO) : "",
     tipo: deLaLista(TIPOS_FILTRABLES, entrada.tipo),
+    estado: deLaLista(ESTADOS_FILTRABLES, entrada.estado),
     modo: deLaLista(MODOS_FILTRABLES, entrada.modo),
     disponible: deLaLista(DISPONIBILIDADES_FILTRABLES, entrada.disponible),
     falta: deLaLista(FALTAS_FILTRABLES, entrada.falta),
@@ -101,7 +112,7 @@ export function leerFiltrosDeProductos(entrada: Partial<Record<"q" | "tipo" | "m
 
 /** ¿Hay algún filtro puesto? (para mostrar «Limpiar» y decir «que coincidan con los filtros»). */
 export function hayFiltrosDeProductos(f: FiltrosDeProductos): boolean {
-  return f.q !== "" || f.tipo !== null || f.modo !== null || f.disponible !== null || f.falta !== null;
+  return f.q !== "" || f.tipo !== null || f.estado !== null || f.modo !== null || f.disponible !== null || f.falta !== null;
 }
 
 /** Los filtros como consulta de URL (sin el `?`), para los enlaces que los conservan (la página siguiente): solo lo que está puesto, codificado. */
@@ -109,6 +120,7 @@ export function consultaDeLosFiltros(f: FiltrosDeProductos, cursor?: string): st
   const partes: string[] = [];
   if (f.q !== "") partes.push(`q=${encodeURIComponent(f.q)}`);
   if (f.tipo) partes.push(`tipo=${f.tipo}`);
+  if (f.estado) partes.push(`estado=${f.estado}`);
   if (f.modo) partes.push(`modo=${f.modo}`);
   if (f.disponible) partes.push(`disponible=${f.disponible}`);
   if (f.falta) partes.push(`falta=${f.falta}`);
@@ -118,6 +130,6 @@ export function consultaDeLosFiltros(f: FiltrosDeProductos, cursor?: string): st
 
 /** ¿La consulta tiene que correr con la lectura de la EMPRESA entera? Sí cuando pregunta por «alguna/ninguna sucursal»: la RLS por sucursal le escondería las filas de las demás. */
 export function necesitaLaEmpresaEntera(f: FiltrosDeProductos): boolean {
-  return f.disponible === "en-alguna" || f.disponible === "en-ninguna";
+  return f.disponible === "en-alguna" || f.disponible === "en-ninguna" || f.estado !== null;
 }
 
