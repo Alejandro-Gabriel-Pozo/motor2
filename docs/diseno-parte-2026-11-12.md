@@ -1,6 +1,6 @@
 # Diseño: la ficha de parte (una sola ficha para cliente y proveedor) — 2026-11-12
 
-Estado: **diseño en papel. Sin código, sin migraciones, nada en `prisma/`, `src/`, `test/` ni `scripts/`.** El dueño confirmó el 2026-11-13 dónde queda el % de descuento (opción A, D12) y los supuestos S1 a S9 (D13); las etapas P1 a P4 siguen en **PROPUESTA**. **Ninguna migración tiene autorización expresa todavía**: hace falta la del dueño, dicha para esta migración, antes de escribir o aplicar cualquier `migration.sql` (la autorización general de integrar las migraciones de la auditoría, 2026-11-12, es de otras migraciones y no alcanza a ésta).
+Estado: **diseño en papel con TODAS las decisiones de diseño confirmadas por el dueño** (las 5 reglas de §6.2 incluidas: D4, D16 a D19; los mecanismos técnicos marcados PROPUESTA —cómo se implementa cada regla— los resuelve quien construye, sin cambiar lo decidido). Sin código, sin migraciones, nada en `prisma/`, `src/`, `test/` ni `scripts/`. El dueño confirmó el 2026-11-13 dónde queda el % de descuento (opción A, D12) y los supuestos S1 a S9 (D13); las etapas P1 a P4 siguen en **PROPUESTA**. **Ninguna migración tiene autorización expresa todavía**: hace falta la del dueño, dicha para esta migración, antes de escribir o aplicar cualquier `migration.sql` (la autorización general de integrar las migraciones de la auditoría, 2026-11-12, es de otras migraciones y no alcanza a ésta).
 
 Foto de Motor2: `origin/main` en `5ef9b5f5` (verificado con lectura del código de este repositorio). Foto de Pedernal: código en `/home/user/alejandro-gabriel-pozo/zuluhub-erp` (solo lectura; `migraciones/0034_clientes.sql`, `migraciones/reversiones/0034_revertir_clientes.sql`, `src/modulos/clientes/**`, `src/primitivas/contacto/telefono.ts`, `src/capacidades/permisos/empresa.ts`) y documentos en `/home/user/zuluhub-docs/11-especificaciones/clientes-y-proveedores.md`.
 
@@ -20,8 +20,8 @@ Marcas de verdad: **(V)** verificado en el código de hoy (Motor2 o Pedernal, co
 6. **Los clientes de hoy pasan a tener su ficha** (D9, opción B del dueño: «se le cargará la ficha»): hoy son sobre todo perfiles de descuento («Residente 15 %», «Empleado 25 %», ISSN) y hay que cargar la ficha de cada persona o empresa; **el porcentaje queda en la fila Cliente** (D12, opción A). Las preguntas 2 y 3 quedaron resueltas (D10 y D11).
 7. Dos altas del mismo CUIT al mismo tiempo dejan **una sola** ficha; un reintento no duplica.
 8. Cada etapa se puede deshacer (`down.sql`) mientras no haya datos nuevos que se perderían; lo que borre algo se avisa antes, con los datos a la vista.
-9. Hay **5 reglas donde Motor2 daría otro resultado que Pedernal** (§6.2): las marco para que decidas si se igualan.
-10. Preguntas clave: las tres están resueltas (D12 el %, D10 permisos, D11 nombres repetidos); los supuestos S1 a S9 están confirmados (D13). «Un cliente por ficha» quedó confirmado (D14). Quedan **PENDIENTES** las 5 reglas de §6.2 donde Motor2 daría otro resultado que Pedernal: el dueño pidió repasarlas de a una (D15).
+9. Hay **5 reglas donde Motor2 da otro resultado que Pedernal** (§6.2): el dueño las decidió una por una (R-1 a R-4 el 2026-11-13, D16 a D19; R-5 ya estaba decidida, D4).
+10. Preguntas clave: las tres están resueltas (D12 el %, D10 permisos, D11 nombres repetidos); los supuestos S1 a S9 están confirmados (D13). «Un cliente por ficha» quedó confirmado (D14) y las 5 reglas de §6.2 también (D16 a D19; R-5, D4). **No hay decisión de diseño pendiente; sigue sin autorización de migración** (se pide aparte cuando se quiera construir P1).
 
 ---
 
@@ -43,7 +43,11 @@ Marcas de verdad: **(V)** verificado en el código de hoy (Motor2 o Pedernal, co
 | D12 | 2026-11-13 | «Acepto recomendaciones» (a la pregunta clave 1: % de descuento, opción A o B; la recomendada era A) | chat del dueño con el orquestador (relayado a la sesión de la auditoría; el orquestador fijó el alcance de la respuesta) | El % de descuento sigue en la fila `Cliente`, que ahora apunta a su ficha; «Consumidor final» (00, 0 %) sin ficha; sin categorías de descuento | **CONFIRMADA** |
 | D13 | 2026-11-13 | «Acepto recomendaciones» (a los supuestos S1 a S9 del documento, cada uno con su recomendación escrita) | mismo chat | Los supuestos S1 a S9 de §7 quedan tal como el documento los recomienda | **CONFIRMADA** |
 | D14 | 2026-11-13 | «Uno solo por ficha (Recomendada)» (a «¿una misma persona o empresa puede tener más de un cliente?») | chat del dueño con el orquestador (pregunta con opciones; texto literal de la opción que eligió) | Un cliente por ficha: `Cliente.parteId` lleva único `(empresaId, parteId)` (P3). La dirección es del dueño; el mecanismo (índice único parcial) es PROPUESTA | **CONFIRMADA** |
-| D15 | 2026-11-13 | «Repasarlas de a una (Recomendada)» (a cómo decidir las 5 reglas de §6.2 donde Motor2 daría otro resultado que Pedernal) | chat del dueño con el orquestador (pregunta con opciones) | Las reglas de §6.2 se le preguntan **de a una**; **ninguna está decidida todavía** | **CONFIRMADA** como forma de decidir; las 5 reglas siguen **PENDIENTE** |
+| D15 | 2026-11-13 | «Repasarlas de a una (Recomendada)» (a cómo decidir las 5 reglas de §6.2 donde Motor2 daría otro resultado que Pedernal) | chat del dueño con el orquestador (pregunta con opciones) | Las reglas de §6.2 se le preguntan **de a una**; **ninguna está decidida todavía** | **CONFIRMADA** como forma de decidir; las 5 reglas se decidieron después (D16 a D19; R-5, D4) |
+| D16 | 2026-11-13 | «Quedan «pendiente de completar» (Recomendada)» (R-1) | chat del dueño con el orquestador (preguntas con opciones) | Un proveedor de hoy sin CUIT pasa a la Parte con naturaleza vacía, «pendiente de completar»; no se inventa el dato | **CONFIRMADA** |
+| D17 | 2026-11-13 | «Se rechaza al guardar (Recomendada)» (R-2) | chat del dueño con el orquestador (preguntas con opciones) | Una nota con un carácter invisible o con etiquetas se rechaza al guardar (lista de permitidos, «todo nace cerrado») | **CONFIRMADA** |
+| D18 | 2026-11-13 | «Se crea su ficha de proveedor de Motor2 (Recomendada)» (R-3) | chat del dueño con el orquestador (preguntas con opciones) | Marcar a una parte como proveedor crea su ficha de proveedor de Motor2; no hay un rol aparte en la Parte | **CONFIRMADA** |
+| D19 | 2026-11-13 | «Solo «el teléfono cambió», sin el número (Recomendada)» (R-4) | chat del dueño con el orquestador (preguntas con opciones) | La auditoría del cambio de teléfono dice que cambió, sin el valor | **CONFIRMADA** |
 | — | — | Autorización de la migración (P1 a P4) | — | Ninguna tabla se crea sin ella. **No hay autorización expresa para ninguna migración de este diseño**; las etapas P1 a P4 siguen en PROPUESTA | **PENDIENTE** |
 
 ---
@@ -459,7 +463,7 @@ Orden de despliegue (como el precedente `solo_salon`): la migración va **antes*
 | Retiro de columnas viejas | BD destructiva + código | P4 | **Sí** |
 | Claves de permiso nuevas (si la pregunta clave 2 lo pide) | Código (catálogo de acciones) + datos de la matriz | P1 | Posible (semilla de la matriz) |
 
-### 6.2 Reglas que dan resultados distintos entre Motor2 y Pedernal (⚠ para decidir)
+### 6.2 Reglas que dan resultados distintos entre Motor2 y Pedernal (⚠ decididas por el dueño: R-1 D16, R-2 D17, R-3 D18, R-4 D19, R-5 D4)
 | Id | Entrada | Motor2 con este diseño | Pedernal (V) | Por qué |
 |---|---|---|---|---|
 | ⚠ **R-1** | Proveedor de hoy sin CUIT | Parte con naturaleza **vacía**, «pendiente de completar» | Imposible: `naturaleza NOT NULL` | No inventar datos al migrar; Pedernal no migró nada |
@@ -487,7 +491,7 @@ Iguales en ambos (no hay que tocarlas): documento único por empresa incluso ent
 
 **Pregunta «¿un cliente por ficha?» — RESUELTA por D14:** el dueño eligió «Uno solo por ficha (Recomendada)» (2026-11-13, chat del dueño con el orquestador). Una persona o empresa tiene a lo sumo un cliente; si necesitara dos descuentos distintos, se resuelve cambiando el % de ese cliente, no con un segundo cliente.
 
-**Reglas de §6.2 — PENDIENTES, una por una (D15):** el dueño eligió «Repasarlas de a una (Recomendada)» (2026-11-13, chat del dueño con el orquestador). Ninguna se da por decidida hasta que conteste cada una.
+**Reglas de §6.2 — RESUELTAS una por una (D15):** el dueño las repasó de a una el 2026-11-13 (chat del dueño con el orquestador (preguntas con opciones)): R-1 «Quedan «pendiente de completar» (Recomendada)» (D16); R-2 «Se rechaza al guardar (Recomendada)» (D17); R-3 «Se crea su ficha de proveedor de Motor2 (Recomendada)» (D18); R-4 «Solo «el teléfono cambió», sin el número (Recomendada)» (D19); R-5 ya estaba decidida el 2026-11-12 con «4.- que sigan sin entrar» (D4). **La ficha de parte queda con todas las decisiones de diseño confirmadas y SIN autorización de migración:** esa se pide aparte, cuando se quiera construir la etapa P1.
 
 **Requisito, no pregunta:** autorización expresa para migrar P1 (toca `prisma/`): **no existe todavía** para ninguna etapa (P1 a P4 en PROPUESTA). La lectura de producción para §2.4 ya está autorizada («5.-Si»), con la producción congelada: solo copia o lectura específica.
 
