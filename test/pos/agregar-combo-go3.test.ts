@@ -170,16 +170,6 @@ describe("vender un combo con cupos de entradas (GO-3b, I2)", () => {
         /viene fijo en esta promo/,
       ],
       [
-        "fuera de su vigencia (vencida ayer)",
-        async () => {
-          const m = await menuDelDia();
-          await prisma.promoCarta.update({ where: { id: m.promoCartaId }, data: { vigenteHasta: fechaDeColumnaDate(sumarDias(hoy, -1)) } });
-          return [m.pedir()];
-        },
-        "PROMO_INVALIDA",
-        /ya no está disponible/,
-      ],
-      [
         "alícuotas de IVA declaradas distintas entre lo elegido",
         async () => {
           const m = await menuDelDia();
@@ -199,10 +189,9 @@ describe("vender un combo con cupos de entradas (GO-3b, I2)", () => {
       expect(await prisma.promoCuenta.count({ where: { cuentaId } })).toBe(0);
     });
 
-    it("controles: la misma alícuota declarada entra; una vigencia que incluye hoy, también", async () => {
+    it("control: la misma alícuota declarada entra", async () => {
       const m = await menuDelDia();
       for (const id of [s.milanesa.id, s.flan.id, c.cafeId]) await prisma.producto.update({ where: { id }, data: { alicuotaIvaVenta: "IVA_21" } });
-      await prisma.promoCarta.update({ where: { id: m.promoCartaId }, data: { vigenteDesde: fechaDeColumnaDate(hoy), vigenteHasta: fechaDeColumnaDate(hoy) } });
       expect((await agregar([m.pedir()])).ok).toBe(true);
     });
   });

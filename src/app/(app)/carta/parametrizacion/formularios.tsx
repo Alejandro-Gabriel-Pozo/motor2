@@ -1,10 +1,9 @@
-import { MENU_DEL_DIA_VISIBLE, SUMAR_LUGAR_DE_LISTA_VISIBLE, VIGENCIA_DE_PROMO_VISIBLE, type LugarDeCombo, type ProductoParaMantener, type VigenciaDePromoAdmin } from "@/core/carta/public";
+import { MENU_DEL_DIA_VISIBLE, SUMAR_LUGAR_DE_LISTA_VISIBLE, type LugarDeCombo, type ProductoParaMantener } from "@/core/carta/public";
 import { CampoNumero } from "@/components/campo-numero";
 import { AreaDeTexto } from "@/ui/primitivas/area-de-texto";
 import { Campo } from "@/ui/primitivas/campo";
 import { Casilla } from "@/ui/primitivas/casilla";
 import { Selector } from "@/ui/primitivas/selector";
-import { CampoFecha } from "@/ui/componentes/selectores/campo-fecha";
 
 /**
  * CARTA-MANT (prototipo aprobado): los formularios de PARAMETRIZACIÓN de la carta —lo que se cambia pocas veces— que antes iban apilados en `/carta` y ahora viven detrás de cada tarjeta del hub
@@ -151,60 +150,6 @@ export function CamposPromo({
 /** GO-3b: ¿un lugar LISTA viene FIJO? (una sola entrada activa y mínimo = máximo, de 1 o más: lo completa el servidor). Una entrada «el mozo elige» no es fija: el mozo elige entre sus opciones. */
 export function esFijo(l: LugarDeCombo): boolean {
   return l.tipo === "LISTA" && l.entradas.filter((e) => e.activa).length === 1 && l.entradas.every((e) => !e.activa || e.modoDeOpciones === "FIJAS") && l.cantidadMinima >= 1 && l.cantidadMinima === l.cantidadMaxima;
-}
-
-const NOMBRES_DE_DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
-
-/** GO-3b: «Vale siempre», «Del 2026-10-01 al 2026-10-31, lunes a viernes»… */
-export function textoDeVigencia(v: VigenciaDePromoAdmin): string {
-  const partes: string[] = [];
-  if (v.vigenteDesde) partes.push(`desde el ${v.vigenteDesde}`);
-  if (v.vigenteHasta) partes.push(`hasta el ${v.vigenteHasta}`);
-  if (v.diasDeSemana !== null) partes.push(`los ${NOMBRES_DE_DIAS.filter((_d, i) => (v.diasDeSemana! & (1 << i)) !== 0).map((d) => d.toLowerCase()).join(", ")}`);
-  return partes.length ? `Vale ${partes.join(", ")}.` : "Vale siempre.";
-}
-
-/** GO-3b: los campos de la vigencia (las fechas son opcionales; los días, tildados todos = todos los días). */
-export function CamposVigencia({ vigencia }: { vigencia: VigenciaDePromoAdmin }) {
-  return (
-    <div className="flex flex-col gap-2 text-sm">
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-        <CampoFecha etiqueta="Desde (opcional)" name="vigenteDesde" defaultValue={vigencia.vigenteDesde ?? ""} />
-        <CampoFecha etiqueta="Hasta (opcional)" name="vigenteHasta" defaultValue={vigencia.vigenteHasta ?? ""} />
-      </div>
-      <fieldset className="flex flex-wrap gap-3">
-        <legend className="mb-1">Días en que vale</legend>
-        {NOMBRES_DE_DIAS.map((d, i) => (
-          <Casilla key={d} etiqueta={d} name={`dia_${i}`} defaultChecked={vigencia.diasDeSemana === null || (vigencia.diasDeSemana & (1 << i)) !== 0} />
-        ))}
-      </fieldset>
-      <p className="text-xs text-tinta-tenue">{textoDeVigencia(vigencia)} Se mira al agregar la promo a una mesa: lo que ya está en una mesa no cambia.</p>
-    </div>
-  );
-}
-
-const sinVigencia = (v: VigenciaDePromoAdmin) => v.vigenteDesde === null && v.vigenteHasta === null && v.diasDeSemana === null;
-
-/**
- * El bloque «Vigencia» de una promo. Con el interruptor apagado (`VIGENCIA_DE_PROMO_VISIBLE`, decisión del dueño: la promo se maneja con activar/desactivar) no se dibuja; solo si una promo trae una
- * vigencia cargada de ANTES se la nombra, como texto, porque el POS la sigue respetando (no se esconde una regla que todavía decide qué se vende). Con el interruptor prendido: el título y, según el
- * permiso, el formulario (`children`, armado por la página con su acción) o la vigencia como texto.
- */
-export function BloqueDeVigencia({ vigencia, puedeEditar, children }: { vigencia: VigenciaDePromoAdmin; puedeEditar: boolean; children: React.ReactNode }) {
-  if (!VIGENCIA_DE_PROMO_VISIBLE) {
-    if (sinVigencia(vigencia)) return null;
-    return (
-      <p className="mt-3 text-sm text-tinta-tenue" data-vigencia-anterior>
-        Esta promo tiene una vigencia cargada de antes que el salón sigue respetando: {textoDeVigencia(vigencia)} Ya no se edita acá: la promo se maneja con activar y desactivar.
-      </p>
-    );
-  }
-  return (
-    <>
-      <h3 className="mt-3 text-sm font-medium">Vigencia</h3>
-      {puedeEditar ? children : <p className="mt-1 text-sm">{textoDeVigencia(vigencia)}</p>}
-    </>
-  );
 }
 
 /**

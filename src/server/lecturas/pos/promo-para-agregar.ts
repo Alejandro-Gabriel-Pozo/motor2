@@ -1,8 +1,7 @@
 import "server-only";
-import { cuposDeSeccionActivos, precioDePromo, promoVigenteEl, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from "@/core/carta/public";
+import { cuposDeSeccionActivos, precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from "@/core/carta/public";
 import { precioLocalActivoEn } from "@/server/lecturas/catalogo/precio-local";
 import { pediblesDeEntrada, type CupoDePromo, type CupoPromoDefinicion } from "@/core/pos/public";
-import { diaDeColumnaDate } from "@/core/tiempo/zona-horaria";
 import { cargarEntradasDePromoParaVender, type CupoDeEntradasLeido, type EntradasDePromoParaVender } from "@/server/lecturas/pos/entradas-de-promo-para-vender";
 import { modulosDelPosDeSucursal, type ModulosDelPos } from "@/server/lecturas/pos/modulos-del-pos";
 import { cargarSelectorCartaPos } from "@/server/lecturas/pos/selector-carta";
@@ -36,9 +35,8 @@ export interface PromoCartaParaAgregar {
  * del selector, que acá no se usa.
  *
  * GO-3b (ADR-032, F5 paso I2; el SEGUNDO despliegue de «expandir y contraer»): ya no se excluye una promo con cupos LISTA o DEL_DIA activos: sus cupos se arman con sus entradas elegibles HOY
- * (`cargarEntradasDePromoParaVender`). `dia` es el día de calendario de la zona de la empresa (`diaDeCalendario(actor.ahora, empresaZonaHoraria)`) y decide dos cosas: la VIGENCIA de la promo
- * (rango de fechas y días de la semana, `promoVigenteEl`: fuera de ella, `null`) y los platos de un DEL_DIA (solo los de ese día). Sin `dia`, una promo con vigencia o con un cupo DEL_DIA falla
- * cerrado (`null`). Una promo solo con cupos de sección (todo lo de antes) lee y devuelve exactamente lo mismo que antes (sin `entradas`); una solo con cupos de entradas no lee el selector.
+ * (`cargarEntradasDePromoParaVender`). `dia` es el día de calendario de la zona de la empresa (`diaDeCalendario(actor.ahora, empresaZonaHoraria)`) y decide los platos de un DEL_DIA (solo los de ese día). Sin `dia`, una promo con un cupo DEL_DIA falla
+ * cerrado (`null`). Poda 2026-11-13: la promo ya no tiene vigencia (rango de fechas ni días de la semana): vale siempre que esté activa. Una promo solo con cupos de sección (todo lo de antes) lee y devuelve exactamente lo mismo que antes (sin `entradas`); una solo con cupos de entradas no lee el selector.
  */
 export async function cargarPromoCartaParaAgregar(
   sucursalId: string,
@@ -61,11 +59,6 @@ export async function cargarPromoCartaParaAgregar(
         })
       : null;
   if (!promo) return null;
-  // GO-3b: la vigencia (D-7). NULL en las tres columnas = siempre (todo lo de antes, sin mirar el día); con alguna, hace falta el día y la promo tiene que valer ese día.
-  if (promo.vigenteDesde !== null || promo.vigenteHasta !== null || promo.diasDeSemana !== null) {
-    const vigencia = { vigenteDesde: promo.vigenteDesde && diaDeColumnaDate(promo.vigenteDesde), vigenteHasta: promo.vigenteHasta && diaDeColumnaDate(promo.vigenteHasta), diasDeSemana: promo.diasDeSemana };
-    if (dia === undefined || !promoVigenteEl(vigencia, dia)) return null;
-  }
   const cuposDeSeccion = cuposDeSeccionActivos(promo.cupos);
   const cuposDeEntradas: CupoDeEntradasLeido[] = promo.cupos.flatMap((c) =>
     c.activo && (c.tipo === "LISTA" || c.tipo === "DEL_DIA") && c.nombre !== null ? [{ id: c.id, tipo: c.tipo, nombre: c.nombre, cantidadMinima: c.cantidadMinima, cantidadMaxima: c.cantidadMaxima }] : [],

@@ -1,8 +1,7 @@
 import "server-only";
 import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { whereDisponibleEn } from "@/core/catalogo/public";
-import { GENERO_E_ITEM_AGRUPADO_VISIBLE, WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO, WHERE_CUPO_DE_SECCION_ACTIVO, aplicarDescuentoDeProducto, cuposDeSeccionActivos, precioDeCarta, precioDePromo, promoVigenteEl, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, whereCartaDeSucursal, nombreParaMostrar } from "@/core/carta/public";
-import { diaDeColumnaDate } from "@/core/tiempo/zona-horaria";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE, WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO, WHERE_CUPO_DE_SECCION_ACTIVO, aplicarDescuentoDeProducto, cuposDeSeccionActivos, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, whereCartaDeSucursal, nombreParaMostrar } from "@/core/carta/public";
 import { cargarOpcionesParaVender } from "@/server/lecturas/opciones/opciones-para-vender";
 import { cargarEntradasDePromoParaVender, type CupoDeEntradasLeido } from "@/server/lecturas/pos/entradas-de-promo-para-vender";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
@@ -58,7 +57,7 @@ export async function cargarSelectorCartaPos(
   modulosCargados?: ModulosDelPos,
   /**
    * GO-3b (ADR-032): el día de calendario de la zona de la empresa. CON él (la pantalla de la mesa) el selector ofrece también las promos con cupos de entradas (LISTA y DEL_DIA, con las entradas
-   * elegibles HOY: la MISMA lectura que valida la venta) y deja afuera las que no valen ese día (su vigencia). SIN él (la lectura de la promo para agregar, que solo usa las secciones), lo de siempre.
+   * elegibles HOY: la MISMA lectura que valida la venta) SIN él (la lectura de la promo para agregar, que solo usa las secciones), lo de siempre.
    */
   dia?: string
 ): Promise<SelectorCartaPos> {
@@ -102,9 +101,6 @@ export async function cargarSelectorCartaPos(
             titulo: true,
             precio: true,
             sucursales: seleccionDeSucursalDePromo(sucursalId),
-            vigenteDesde: true,
-            vigenteHasta: true,
-            diasDeSemana: true,
             cupos: {
               orderBy: { orden: "asc" },
               where: dia === undefined ? WHERE_CUPO_DE_SECCION_ACTIVO : { activo: true },
@@ -136,18 +132,14 @@ export async function cargarSelectorCartaPos(
     generoPorProducto: new Map(contenidosConGenero.flatMap((c) => (conGeneros && c.generoCartaId !== null ? [[c.productoId, c.generoCartaId] as const] : []))),
     generoPorAgrupado: new Map(agrupadosConGenero.map((a) => [a.id, a.generoCartaId!])),
   };
-  // GO-3b: con el día, solo las promos que valen hoy (su vigencia) y, de las que tienen cupos de entradas, sus entradas elegibles de hoy (la MISMA lectura que valida la venta).
-  const promosDeHoy =
-    dia === undefined
-      ? promosCarta
-      : promosCarta.filter((p) => promoVigenteEl({ vigenteDesde: p.vigenteDesde && diaDeColumnaDate(p.vigenteDesde), vigenteHasta: p.vigenteHasta && diaDeColumnaDate(p.vigenteHasta), diasDeSemana: p.diasDeSemana }, dia));
+  // GO-3b: con el día, de las promos con cupos de entradas, sus entradas elegibles de hoy (la MISMA lectura que valida la venta).
   const cuposDeEntradasDe = (p: (typeof promosCarta)[number]): CupoDeEntradasLeido[] =>
     p.cupos.flatMap((c) => (c.activo && (c.tipo === "LISTA" || c.tipo === "DEL_DIA") && c.nombre !== null ? [{ id: c.id, tipo: c.tipo, nombre: c.nombre, cantidadMinima: c.cantidadMinima, cantidadMaxima: c.cantidadMaxima }] : []));
   const entradasPorPromo = new Map(
     dia === undefined
       ? []
       : await Promise.all(
-          promosDeHoy
+          promosCarta
             .filter((p) => cuposDeEntradasDe(p).length > 0)
             .map(async (p) => [p.id, await cargarEntradasDePromoParaVender(db, { sucursalId, dia, cupos: cuposDeEntradasDe(p), precioLocalActivo: precioLocalActivoLeido })] as const)
         )
@@ -181,7 +173,7 @@ export async function cargarSelectorCartaPos(
       );
     }
   }
-  const promos: PromoSelectorCartaPos[] = promosDeHoy.flatMap((p): PromoSelectorCartaPos[] => {
+  const promos: PromoSelectorCartaPos[] = promosCarta.flatMap((p): PromoSelectorCartaPos[] => {
     const entradas = entradasPorPromo.get(p.id);
     const deSeccion = new Map(cuposDeSeccionActivos(p.cupos).map((c) => [c.id, { seccionCartaId: c.seccionCartaId, nombreSeccion: c.seccionCarta.nombre, cantidadMinima: c.cantidadMinima, cantidadMaximaCupo: c.cantidadMaxima }]));
     const cupos = p.cupos.flatMap((c): PromoSelectorCartaPos["cupos"][number][] => {

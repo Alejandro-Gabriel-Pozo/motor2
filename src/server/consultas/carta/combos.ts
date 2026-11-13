@@ -1,5 +1,4 @@
 import "server-only";
-import { diaDeColumnaDate } from "@/core/tiempo/zona-horaria";
 import { GENERO_E_ITEM_AGRUPADO_VISIBLE, nombreParaMostrar, whereCartaDeSucursal, type CombosDeLaCarta, type LugarDeCombo, type ProductoParaEntrada } from "@/core/carta/public";
 import { cargarOpcionesParaVender } from "@/server/lecturas/opciones/opciones-para-vender";
 import type { Db } from "@/lib/db-tipos";
@@ -18,9 +17,6 @@ export async function cargarCombosDeLaCarta(db: Db, sucursalId: string): Promise
         id: true,
         version: true,
         soloSalon: true,
-        vigenteDesde: true,
-        vigenteHasta: true,
-        diasDeSemana: true,
         cupos: {
           where: { activo: true, tipo: { in: ["LISTA", "DEL_DIA"] } },
           orderBy: [{ orden: "asc" }, { id: "asc" }],
@@ -110,12 +106,7 @@ export async function cargarCombosDeLaCarta(db: Db, sucursalId: string): Promise
     porPromo[pr.id] = {
       soloSalon: pr.soloSalon,
       lugares,
-      vigencia: {
-        version: pr.version,
-        vigenteDesde: pr.vigenteDesde ? diaDeColumnaDate(pr.vigenteDesde) : null,
-        vigenteHasta: pr.vigenteHasta ? diaDeColumnaDate(pr.vigenteHasta) : null,
-        diasDeSemana: pr.diasDeSemana,
-      },
+      version: pr.version,
     };
   }
   return { porPromo, productos };

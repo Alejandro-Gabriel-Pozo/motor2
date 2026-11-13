@@ -5,7 +5,6 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => undefined }) }));
 
-import { BloqueDeVigencia } from "../../src/app/(app)/carta/parametrizacion/formularios";
 import { MantenimientoDeCarta } from "../../src/app/(app)/carta/mantenimiento-de-carta";
 
 /**
@@ -16,24 +15,28 @@ import { MantenimientoDeCarta } from "../../src/app/(app)/carta/mantenimiento-de
  *  1. (YA NO RETIRADO) «Sumar un lugar» en los cupos de una promo: se apagó el 2026-10-28 y el dueño lo VOLVIÓ A PRENDER el 2026-11-11 (pedido del «Menú ejecutivo» con «el mozo elige»); su prueba
  *     ahora es `test/carta/sumar-lugar-interruptor.test.tsx` (los dos estados). La numeración de abajo se conserva.
  *  2. El bloque «Vigencia» de una promo (Desde, Hasta, «Días en que vale») — 2026-10-20 (aplicado el 2026-10-28): «la promoción NO tiene vigencia desde/hasta, ni días: se maneja con ACTIVAR/DESACTIVAR».
- *     Oculto con `VIGENCIA_DE_PROMO_VISIBLE` (reversible; columnas y filtro del POS intactos hasta una migración autorizada).
+ *     BORRADO del código el 2026-11-13 (poda de promos, tiempo 1, `docs/diseno-poda-promos-2026-11-12.md`: «OK, poda antes»): ya no hay pantalla, acción, filtro del POS ni constante. Las columnas de la base se borran
+ *     en el tiempo 2 (migración con aviso expreso del dueño).
  *  3. El ajuste MASIVO de precios de la carta («Precios» de Carta › Hoy: por sección o en toda la empresa) — decidido el 2026-10-20 («borrarlo si no se extrañaba»), BORRADO el 2026-10-28: apagado solo
  *     escondía la pantalla y el servidor seguía aceptando `ajustarPreciosDeLaCarta` y `ajustarPreciosDeLaEmpresa`. Los precios se cambian en Catálogo y en Promociones.
  */
 
-describe("2. El bloque «Vigencia» no aparece en una promo (retirado el 2026-10-20, aplicado el 2026-10-28)", () => {
-  it("una promo sin vigencia no muestra el título, las fechas, los días ni «Guardar vigencia»", () => {
-    const html = renderToStaticMarkup(
-      <BloqueDeVigencia vigencia={{ version: 1, vigenteDesde: null, vigenteHasta: null, diasDeSemana: null }} puedeEditar>
-        <form>
-          <input name="vigenteDesde" />
-          <input name="vigenteHasta" />
-          <fieldset>Días en que vale</fieldset>
-          <button>Guardar vigencia</button>
-        </form>
-      </BloqueDeVigencia>
-    );
-    expect(html).toBe("");
+describe("2. La vigencia de una promo no existe en el código (borrada el 2026-11-13)", () => {
+  const archivosDe = (dir: string): string[] =>
+    readdirSync(dir).flatMap((n) => {
+      const ruta = join(dir, n);
+      return statSync(ruta).isDirectory() ? archivosDe(ruta) : /\.tsx?$/.test(n) ? [ruta] : [];
+    });
+  const RAIZ = join(__dirname, "../../src");
+
+  it("ningún archivo de src/ nombra la vigencia ni sus columnas, salvo el comentario de auditoría (las filas históricas de la auditoría conservan esos nombres de campo)", () => {
+    const permitido = join(RAIZ, "core/permisos/auditoria.ts");
+    const quienes = archivosDe(RAIZ).filter((ruta) => ruta !== permitido && /vigenteDesde|vigenteHasta|diasDeSemana|promoVigenteEl|VIGENCIA_DE_PROMO_VISIBLE|guardarVigenciaPromoCarta|BloqueDeVigencia/.test(readFileSync(ruta, "utf8")));
+    expect(quienes).toEqual([]);
+  });
+
+  it("no existe el archivo de la vigencia ni la acción para guardarla", () => {
+    expect(archivosDe(RAIZ).filter((ruta) => /vigencia-de-promo|guardar-vigencia-promo-carta/.test(ruta))).toEqual([]);
   });
 });
 
