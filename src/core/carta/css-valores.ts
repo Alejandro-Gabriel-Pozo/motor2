@@ -1,3 +1,4 @@
+import { esUrlHttpsPermitida } from "@/core/datos/url";
 import type { Resultado } from "./validaciones";
 
 /**
@@ -161,7 +162,7 @@ const RE_USUARIO_RED: Record<"instagram" | "facebook", RegExp> = {
 
 /** URL `https://` bien formada, sin espacios, comillas ni `<>\``, hasta `maximo` caracteres; devuelve la URL parseada o null. */
 function urlHttpsSegura(v: string, maximo: number): URL | null {
-  if (v.length > maximo || !/^https:\/\/[^\s"'<>`\\]+$/i.test(v)) return null;
+  if (v.length > maximo || !esUrlHttpsPermitida(v)) return null;
   try {
     const u = new URL(v);
     return u.protocol === "https:" && u.hostname ? u : null;
