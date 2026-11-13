@@ -36,7 +36,7 @@ Fuentes: `docs/auditoria-primitivas-pedernal-motor2-2026-11-12.md` (§6.3, anexo
 |---|---|---|
 | M1 | Al GUARDAR, el color de marca es `#rrggbb` en minúsculas (lista de permitidos); no se admiten funciones, nombres CSS ni `#rgb`. Al LEER un valor ya guardado: «Se usa si se puede leer (Recomendada)» (2026-11-13): hex corto, rgb, hsl u oklch se convierten a `#rrggbb`; si no se puede leer (nombre CSS, texto), color del sistema | **CONFIRMADA** la lectura (dueño, 2026-11-13); PROPUESTA el guardado estricto |
 | M2 | El texto derivado sobre la marca tiene contraste ≥ 4,5:1; si ninguno de los dos valores fijos llega, **se rechaza al guardar** con un mensaje que dice qué hacer: «Se rechaza y dice qué hacer (Recomendada)» (2026-11-13). Las dos tintas fijas son las de siempre (`oklch(0.96 0.005 80)` ≈ #f3f1ee y `oklch(0.18 0.02 40)` ≈ #190f0b), **no blanco ni negro puros**: algunos colores que llegarían con blanco puro (por ejemplo #d32f2f: 4,98:1) con la tinta del sistema quedan en 4,42:1 y se rechazan | **CONFIRMADA** (dueño, 2026-11-13); las tintas fijas, PROPUESTA |
-| M3 | La marca contra el fondo de la carta tiene contraste ≥ 3:1 (como color de elemento). Para una marca NUEVA o reeditada el fondo es el **claro del sistema** (`--carta-bg: #ffffff`); las cartas oscuras de hoy no se tocan (se conservan, opción A) | PROPUESTA |
+| M3 | La marca contra el fondo de la carta tiene contraste ≥ 3:1 (la marca es de **elementos**). Para una marca NUEVA o reeditada el fondo es el claro del sistema (`--carta-bg: #ffffff`); las cartas oscuras de hoy no se tocan (opción A). Decisión del dueño, 2026-11-13, chat del dueño con el orquestador (preguntas con opciones): «Marca 3:1 y textos con tinta del sistema (Recomendada)»: **en modo marca, todo TEXTO que sin marcador se pinta con la marca (precios, tags, nombre del ítem especial, etiquetas y números del índice) se escribe con la tinta del sistema** | **CONFIRMADA** (dueño, 2026-11-13) |
 | M4 | Los colores de estado y los de peligro son del sistema, nunca de marca | PROPUESTA (Pedernal lo decide así) |
 | M5 | Sin color de marca guardado, se usa el del sistema; nada «viene tildado» ni preelegido | CONFIRMADA («todo nace cerrado») |
 | M6 | Las claves de color viejas **no se borran** del JSON: dejan de leerse (reversible) | PROPUESTA |
@@ -105,7 +105,8 @@ Con este diseño, **en una carta que pase a la marca derivada**, dejan de poder 
 | Qué hacer con las cartas publicadas | **CONFIRMADA: conservan hasta que se reediten (opción A)** — dueño, 2026-11-12 y de nuevo 2026-11-13 («Conservan hasta que se reediten»); la respuesta de la mañana del 2026-11-13 («Pasar todas de una vez a la marca derivada») quedó **REVOCADA** por esta posterior |
 | Lectura de una marca guardada que no cumple (M1, lectura) | **CONFIRMADA: «Se usa si se puede leer (Recomendada)»** (dueño, 2026-11-13) |
 | Rechazar al guardar un color sin contraste (M2) | **CONFIRMADA: «Se rechaza y dice qué hacer (Recomendada)»** (dueño, 2026-11-13) |
-| M1 al guardar (`#rrggbb` estricto), M3, M4, M5 (M5 ya CONFIRMADA), M6 | PROPUESTA (M5 CONFIRMADA: «todo nace cerrado») |
+| M3 (marca ≥ 3:1 y textos con tinta del sistema) | **CONFIRMADA** (dueño, 2026-11-13: «Marca 3:1 y textos con tinta del sistema (Recomendada)») |
+| M1 al guardar (`#rrggbb` estricto), M4, M6 | PROPUESTA (M5 CONFIRMADA: «todo nace cerrado») |
 | Las dos tintas fijas del sistema (no blanco ni negro puros) | PROPUESTA |
 | Fondo claro u oscuro por sucursal | **CERRADA: no se construye ahora** (dueño, 2026-11-13); el modo oscuro queda como pregunta abierta (P4 de Pedernal) |
 | Qué acción exacta es «reeditar» | **CONFIRMADA: «Botón explícito (Recomendada)»** (dueño, 2026-11-13); el mecanismo (`marca_derivada`) es PROPUESTA |
