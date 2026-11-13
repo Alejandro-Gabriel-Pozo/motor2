@@ -92,7 +92,7 @@ test("Enter en la búsqueda filtra, y un valor raro en la URL no rompe: la lista
   try {
     await page.goto(`/catalogo/productos?q=${m}&tipo=%27%3B+DROP+TABLE&modo=x&disponible=todos&falta=mucho`);
     await expect(page.locator("li[data-producto]")).toHaveCount(3);
-    for (const nombre of ["Cómo se vende", "Disponibilidad", "Le falta algo"]) await expect(page.getByLabel(nombre)).toHaveValue("");
+    for (const nombre of ["Tipo", "Cómo se vende", "Disponibilidad", "Le falta algo"]) await expect(page.getByLabel(nombre)).toHaveValue("");
     await expect(page.getByRole("navigation", { name: "¿Qué es?" }).getByRole("link", { name: "Todos" })).toHaveAttribute("aria-current", "page");
     const busqueda = page.getByLabel(/^Buscar por nombre/);
     await busqueda.fill(`Pizza ${m}`);

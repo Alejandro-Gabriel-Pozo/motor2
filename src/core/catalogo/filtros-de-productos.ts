@@ -1,3 +1,4 @@
+import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
 import { LARGO_MAXIMO_TEXTO_CATALOGO, textoDeBusqueda } from "@/core/texto";
 
 /**
@@ -74,7 +75,7 @@ export const ETIQUETA_DE_LA_FALTA: Record<FaltaFiltrable, string> = {
  * La clase de UN producto, para decirla en su fila de la lista (la misma palabra de los chips). Sale de las mismas condiciones que usa cada filtro (`criteriosDeTabla`): el producto interno de un adicional es «respaldo»,
  * la materia prima que se produce es «se-produce» (aunque el filtro «Materia prima» también la incluya), la otra materia prima es «materia-prima» y el resto es «venta».
  */
-export function claseDelProducto(p: { tipo: "MP" | "PV"; seProduce: boolean; respaldaUnaOpcion: boolean }): TipoFiltrable {
+export function claseDelProducto(p: { tipo: TipoProducto; seProduce: boolean; respaldaUnaOpcion: boolean }): TipoFiltrable {
   if (p.tipo === "PV") return p.respaldaUnaOpcion ? "respaldo" : "venta";
   return p.seProduce ? "se-produce" : "materia-prima";
 }

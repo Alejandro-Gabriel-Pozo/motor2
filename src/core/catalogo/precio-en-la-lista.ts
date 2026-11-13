@@ -1,3 +1,4 @@
+import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
 import { esBaseConfigurable } from "@/core/opciones/public";
 import { formatearMonto } from "@/core/formato-de-numero";
 
@@ -11,7 +12,7 @@ import { formatearMonto } from "@/core/formato-de-numero";
  */
 export type TextoDePrecioDeLaLista = string | null;
 
-export function textoDelPrecioEnLaLista(producto: { tipo: "MP" | "PV"; modoDeVenta: string; precio: number }): TextoDePrecioDeLaLista {
+export function textoDelPrecioEnLaLista(producto: { tipo: TipoProducto; modoDeVenta: string; precio: number }): TextoDePrecioDeLaLista {
   if (producto.tipo !== "PV") return null;
   if (esBaseConfigurable(producto.modoDeVenta)) return "Según medida";
   return producto.precio > 0 ? formatearMonto(producto.precio) : "Sin precio";

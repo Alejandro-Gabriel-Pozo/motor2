@@ -38,11 +38,11 @@ function hrefDelChip(accion: string, filtros: FiltrosDeProductos, tipo: TipoFilt
 export function FiltrosDeLaListaDeProductos({ accion, filtros, clases, masFiltros, hayFiltros, etiquetaDeLaBusqueda, marcadorDeLaBusqueda }: Props) {
   // Los controles son NO controlados (`defaultValue`): la clave, que cambia con lo vigente, vuelve a armar el formulario con lo que dice la URL (atrás/adelante, «Limpiar»).
   const clave = JSON.stringify([filtros.q, filtros.tipo, ...masFiltros.map((f) => f.valor)]);
-  const hayMasFiltros = masFiltros.some((f) => f.valor !== "");
+  // «Tipo» es el mismo valor que marcan los chips (viaja en el formulario para que buscar no lo pierda): no abre «Más filtros» por sí solo.
+  const hayMasFiltros = masFiltros.some((f) => f.nombre !== "tipo" && f.valor !== "");
   return (
     <div className="flex flex-col gap-3">
       <form key={clave} method="get" action={accion} role="search" aria-label="Buscar y filtrar" className="flex flex-col gap-3">
-        {filtros.tipo && <input type="hidden" name="tipo" value={filtros.tipo} />}
         <Campo etiqueta={etiquetaDeLaBusqueda} type="text" name="q" defaultValue={filtros.q} placeholder={marcadorDeLaBusqueda} />
         <details open={hayMasFiltros} className="text-sm">
           <summary className="cursor-pointer text-tinta-suave underline">Más filtros</summary>

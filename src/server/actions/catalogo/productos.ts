@@ -9,8 +9,7 @@ import { escaparComodinesLike, quitarCaracteresInadmisibles, textoDeBusqueda } f
 import { puedeBuscarPorReferenciaDelProveedor, whereDeLosProductos } from "@/server/lecturas/catalogo/filtros-de-productos";
 import { buscarProductosPorPalabras } from "@/server/lecturas/catalogo/busqueda-de-producto";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
-import { preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
-import { claseDelProducto, textoDelPrecioEnLaLista, combinarTramosDeProductos, esCoincidenciaExactaDeCodigo, leerFiltrosDeProductos, necesitaLaEmpresaEntera, MENSAJE_PRESENTACIONES_APAGADAS, PRESENTACIONES_VISIBLES, type EntradaDeFiltrosDeProductos, type TipoFiltrable, whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
+import { combinarTramosDeProductos, esCoincidenciaExactaDeCodigo, leerFiltrosDeProductos, necesitaLaEmpresaEntera, MENSAJE_PRESENTACIONES_APAGADAS, PRESENTACIONES_VISIBLES, type EntradaDeFiltrosDeProductos, whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
 import type { CampoSensibleDelProducto } from "@/core/features/catalogo/productos.schema";
 import type { ModoDeVenta } from "@/core/opciones/public";
 import { guardComandoAgregarPresentacionAlternativa, guardComandoDarDeAltaProductoRapido, guardComandoDatosDeProducto, guardComandoSincronizarPrecioGrupoCarta } from "@/core/features/catalogo/productos.guard";
@@ -234,10 +233,6 @@ export interface PaginaProductos {
     /** Cuántas sucursales (de `totalSucursales`) lo tienen disponible — para la columna "Sucursales" ("2 de 4"). */
     sucursalesDisponibles: number;
     totalSucursales: number;
-    /** Lo que dice la lista en el lugar del precio: el de la sucursal activa («$ 9.500,00»), «Según medida», «Sin precio» o nada (lo que no se vende). */
-    precio: string | null;
-    /** Qué es, en la palabra del chip «¿Qué es?» (`TIPOS_FILTRABLES`). */
-    clase: TipoFiltrable;
   }[];
   nextCursor: string | null;
 }
@@ -261,7 +256,7 @@ export async function listarProductosPagina(cursor?: string, termino?: string, f
   const lista = necesitaLaEmpresaEntera(f) ? await lecturaDeVerificacionEnLaEmpresa(ctx) : ctx;
   const items = await lista.db.producto.findMany({
     where: await whereDeLosProductos(ctx, lista.db, f),
-    select: { id: true, codigo: true, nombre: true, tipo: true, modoDeVenta: true, precioVenta: true, seProduce: true, opcionQueRespalda: { select: { id: true } } },
+    select: { id: true, codigo: true, nombre: true, tipo: true },
     orderBy: [{ nombre: "asc" }, { id: "asc" }],
     take: TAMANO_PAGINA_CATALOGO + 1,
     ...(cursorLimpio ? { cursor: { id: cursorLimpio }, skip: 1 } : {}),
@@ -274,12 +269,10 @@ export async function listarProductosPagina(cursor?: string, termino?: string, f
   // Batch, sin N+1 (una página entera de 50 filas): disponibilidad EN ESTA sucursal + cuántas sucursales en total la
   // tienen, para "Disponible acá" y "Sucursales" (§10/P10, ver disponibilidad-producto-consulta.ts).
   const verificacion = await lecturaDeVerificacionEnLaEmpresa(ctx);
-  // El precio que dice la lista es el de la sucursal activa: el precio propio vigente (capacidad + fila habilitada, el único lugar que lo decide) o, si no hay, el central.
-  const [disponibleAcaPorProducto, conteos, totalSucursales, preciosLocales] = await Promise.all([
+  const [disponibleAcaPorProducto, conteos, totalSucursales] = await Promise.all([
     disponibilidadDeProductos(ctx.sucursalId, ids, ctx.db),
     verificacion.db.disponibilidadProducto.groupBy({ by: ["productoId"], where: { productoId: { in: ids }, disponible: true }, _count: { productoId: true } }),
     ctx.db.sucursal.count({ where: { activo: true } }),
-    preciosLocalesVigentes(ctx.sucursalId, ctx.db, ids),
   ]);
   const sucursalesDisponiblesPorProducto = new Map(conteos.map((c) => [c.productoId, c._count.productoId]));
 
@@ -292,8 +285,6 @@ export async function listarProductosPagina(cursor?: string, termino?: string, f
       disponibleAca: disponibleAcaPorProducto.get(p.id) === true,
       sucursalesDisponibles: sucursalesDisponiblesPorProducto.get(p.id) ?? 0,
       totalSucursales,
-      clase: claseDelProducto({ tipo: p.tipo, seProduce: p.seProduce, respaldaUnaOpcion: p.opcionQueRespalda !== null }),
-      precio: textoDelPrecioEnLaLista({ tipo: p.tipo, modoDeVenta: p.modoDeVenta, precio: preciosLocales.get(p.id)?.precio ?? Number(p.precioVenta) }),
     })),
     nextCursor: hayMas ? pagina[pagina.length - 1].id : null,
   };

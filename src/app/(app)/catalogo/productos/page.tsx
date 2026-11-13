@@ -28,6 +28,7 @@ import { FilaDeCatalogo } from "@/components/fila-de-catalogo";
 import { FiltrosDeLaListaDeProductos } from "@/components/catalogo/filtros-de-la-lista-de-productos";
 import { PESTANAS_DE_PRODUCTOS } from "@/core/catalogo/public";
 import { buscaPorReferenciaDelProveedorEnLaLista, faltasQueSePuedenFiltrarEnLaLista } from "@/server/consultas/catalogo/filtros-de-productos";
+import { detalleDeLaLista } from "@/server/lecturas/catalogo/detalle-de-la-lista";
 import { gruposDeOpcionesPorProducto } from "@/server/consultas/catalogo/opciones-de-venta";
 
 /**
@@ -62,6 +63,8 @@ export default async function ProductosPage({
   const pagina = await listarProductosPagina(cursor, filtros.q, filtros);
   // GO-2d: la etiqueta «Opciones: Tamaño, Leche» de cada producto de la página (una sola lectura).
   const gruposDeOpciones = await gruposDeOpcionesPorProducto(ctx.db, pagina.items.map((p) => p.id));
+  // El precio de la sucursal activa y la clase de cada fila (dos consultas para toda la página).
+  const detalle = await detalleDeLaLista(ctx.db, ctx.sucursalId, pagina.items.map((p) => p.id));
 
   return (
     <div className="flex flex-col gap-4">
@@ -86,6 +89,7 @@ export default async function ProductosPage({
         marcadorDeLaBusqueda={porReferencia ? "Nombre, código o lo que dice la factura…" : "Buscar por código o nombre…"}
         hayFiltros={hayFiltrosDeProductos(filtros)}
         masFiltros={[
+          { nombre: "tipo", etiqueta: "Tipo", valor: filtros.tipo ?? "", opciones: TIPOS_FILTRABLES.map((v) => ({ valor: v, etiqueta: ETIQUETA_DEL_TIPO[v] })) },
           { nombre: "modo", etiqueta: "Cómo se vende", valor: filtros.modo ?? "", opciones: MODOS_FILTRABLES.map((v) => ({ valor: v, etiqueta: ETIQUETA_DEL_MODO[v] })) },
           { nombre: "disponible", etiqueta: "Disponibilidad", valor: filtros.disponible ?? "", opciones: DISPONIBILIDADES_FILTRABLES.map((v) => ({ valor: v, etiqueta: ETIQUETA_DE_LA_DISPONIBILIDAD[v] })) },
           { nombre: "falta", etiqueta: "Le falta algo", valor: filtros.falta ?? "", opciones: faltas.map((v) => ({ valor: v, etiqueta: ETIQUETA_DE_LA_FALTA[v] })) },
@@ -104,12 +108,12 @@ export default async function ProductosPage({
                     {p.nombre}
                   </Link>
                   <p className="flex flex-wrap items-center gap-x-2 text-sm text-tinta-suave">
-                    <span>{ETIQUETA_DEL_TIPO[p.clase]}</span>
+                    <span>{ETIQUETA_DEL_TIPO[detalle.get(p.id)!.clase]}</span>
                     {!p.disponibleAca && <Insignia tono="aviso">Desactivado</Insignia>}
                     {gruposDeOpciones.has(p.id) && <Insignia data-etiqueta-opciones>{`Opciones: ${gruposDeOpciones.get(p.id)!.join(", ")}`}</Insignia>}
                   </p>
                 </div>
-                {p.precio !== null && <span className="shrink-0 text-sm font-medium tabular-nums">{p.precio}</span>}
+                {detalle.get(p.id)!.precio !== null && <span className="shrink-0 text-sm font-medium tabular-nums">{detalle.get(p.id)!.precio}</span>}
               </div>
               {(puedeEditarProducto || puedeCambiarDisponibilidad) && (
                 <div className="flex items-center gap-3">
