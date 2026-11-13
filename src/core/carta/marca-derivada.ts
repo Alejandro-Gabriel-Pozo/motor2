@@ -134,3 +134,19 @@ export function mensajeDeMarca(evaluacion: EvaluacionDeMarca): string {
   }
   return partes.join(" ");
 }
+
+/** El fondo claro del sistema contra el que se mide M3 (`--carta-bg: #ffffff` de `.carta-shell`, `src/app/globals.css`): el modo marca no tiene modo oscuro. */
+const FONDO_CLARO_DEL_SISTEMA: Canales = [255, 255, 255];
+
+export type ResultadoDeMarca = { ok: true; marca: string } | { ok: false; mensaje: string };
+
+/**
+ * M1, M2 y M3 juntas, para GUARDAR una marca: tiene que ser `#rrggbb` en minúsculas, el texto sobre ella llega a 4,5:1 y ella contra el fondo claro del sistema llega a 3:1. Si no, el mensaje dice qué hacer
+ * (decisión del dueño 2026-11-13: «Se rechaza y dice qué hacer (Recomendada)»). Pura: la llaman el guard del servidor y el editor (el aviso en vivo).
+ */
+export function validarMarcaParaGuardar(valor: unknown): ResultadoDeMarca {
+  const canales = typeof valor === "string" ? canalesDeMarcaHex(valor) : null;
+  if (!canales || typeof valor !== "string") return { ok: false, mensaje: "Elegí el color con el selector (formato #rrggbb, en minúsculas)." };
+  const evaluacion = evaluarMarca(canales, FONDO_CLARO_DEL_SISTEMA);
+  return evaluacion.ok ? { ok: true, marca: valor } : { ok: false, mensaje: mensajeDeMarca(evaluacion) };
+}
