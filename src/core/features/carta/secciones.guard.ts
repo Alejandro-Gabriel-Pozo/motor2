@@ -38,7 +38,7 @@ export function guardComandoGuardarSeccionCarta(datos: EntradaSeccionCarta): Res
   if (!nombre.ok) return rechazar("formato", nombre.mensaje);
   const titulo = validarTextoLibreCarta(datos.titulo, "El título", LARGO_MAXIMO_TITULO_CARTA);
   if (!titulo.ok) return rechazar("largo", titulo.mensaje);
-  const descripcion = validarTextoLibreCarta(datos.descripcion, "La descripción", LARGO_MAXIMO_DESCRIPCION_CARTA);
+  const descripcion = validarTextoLibreCarta(datos.descripcion, "La descripción", LARGO_MAXIMO_DESCRIPCION_CARTA, { multilinea: true });
   if (!descripcion.ok) return rechazar("largo", descripcion.mensaje);
   const imagenUrl = validarImagenUrlCarta(datos.imagenUrl);
   if (!imagenUrl.ok) return rechazar("formato", imagenUrl.mensaje);
