@@ -82,7 +82,7 @@ test("«Cancelar solicitud» pide confirmación: el primer clic no toca nada, Es
     const enBase = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: t.traspaso.id } });
     expect(enBase.estado).toBe("CANCELADA");
     expect(enBase.cerradoPorId).toBe(t.admin.id);
-    await expect(page.locator(`tr[data-traspaso="${t.traspaso.id}"]`)).toContainText("Cancelada por quien la pidió");
+    await expect(page.getByRole("row").filter({ hasText: t.producto.nombre })).toContainText("Cancelada por quien la pidió");
   } finally {
     await t.limpiar();
   }

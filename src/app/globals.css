@@ -827,3 +827,19 @@ html:has([data-carta-libro]) body {
     display: table-header-group;
   }
 }
+
+/* Aviso de que hay más para ver (defecto 6 del ensayo del 2026-11-13): una caja que se desplaza de costado (`overflow-x-auto`: las tablas de usuarios, roles, invitaciones, disponibilidad…) muestra una
+   sombra tenue en el borde del lado donde queda contenido oculto, y la sombra desaparece al llegar a ese borde. Es CSS puro (sin JavaScript): dos «tapas» del color de la superficie que se
+   desplazan con el contenido (`background-attachment: local`) tapan las sombras fijas (`scroll`) cuando no hay nada más de ese lado. Solo `background-image` y sus propiedades: no pisa el color de
+   fondo de la caja. No aplica dentro de la carta pública (`.carta-shell` tiene su propio tema). */
+.overflow-x-auto:not(:where(.carta-shell *)) {
+  background-image:
+    linear-gradient(to right, var(--color-superficie), var(--color-superficie)),
+    linear-gradient(to left, var(--color-superficie), var(--color-superficie)),
+    linear-gradient(to right, color-mix(in srgb, var(--color-tinta) 28%, transparent), transparent),
+    linear-gradient(to left, color-mix(in srgb, var(--color-tinta) 28%, transparent), transparent);
+  background-position: left center, right center, left center, right center;
+  background-size: 28px 100%, 28px 100%, 14px 100%, 14px 100%;
+  background-repeat: no-repeat;
+  background-attachment: local, local, scroll, scroll;
+}
