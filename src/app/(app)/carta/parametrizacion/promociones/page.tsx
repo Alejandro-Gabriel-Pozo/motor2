@@ -1,7 +1,6 @@
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
-import { EnlaceInterno } from "@/components/enlace-interno";
 import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/server/acceso/gate";
 import { cargarAdminCarta } from "@/server/consultas/carta/admin";
 import { cargarCombosDeLaCarta } from "@/server/consultas/carta/combos";
@@ -15,7 +14,6 @@ import {
 } from "@/server/actions/carta/promos";
 import { actualizarActivaEntradaDeCupo, agregarEntradaDeCupo } from "@/server/actions/carta/combos";
 import { precioMinimoPromo } from "@/core/pos/public";
-import { MENU_DEL_DIA_VISIBLE } from "@/core/carta/public";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
@@ -230,7 +228,7 @@ export default async function PromocionesDeCartaPage() {
                         </Dato>
                       ))}
                       {lugares.map((l) => (
-                        <Dato key={l.id} etiqueta={`${l.nombre} (${l.tipo === "DEL_DIA" ? "del día" : "lista"})`}>
+                        <Dato key={l.id} etiqueta={`${l.nombre} (lista)`}>
                           {l.cantidadMinima} a {l.cantidadMaxima}
                         </Dato>
                       ))}
@@ -239,27 +237,15 @@ export default async function PromocionesDeCartaPage() {
                     <p className="mt-1 text-sm text-tinta-tenue">Sin cupos: esta promo es solo informativa, el POS la ignora.</p>
                   )}
 
-                  {/* GO-3b (U1): las entradas de cada lugar LISTA (con una sola y mínimo = máximo, viene FIJO). Los platos de un lugar «del día» se cargan en Movimientos → Menú del día. */}
+                  {/* GO-3b (U1): las entradas de cada lugar LISTA (con una sola y mínimo = máximo, viene FIJO). */}
                   {lugares.map((l) => {
                     // Los closures "use server" capturan solo el id del lugar (texto): lo que capturan viaja al cliente.
                     const cupoId = l.id;
                     return (
                     <div key={l.id} className="mt-3 flex flex-col gap-1" data-lugar-de-combo={l.nombre}>
                       <h4 className="text-sm font-medium">
-                        {l.nombre} · {l.tipo === "DEL_DIA" ? "del día" : esFijo(l) ? "viene fijo" : `se elige ${l.cantidadMinima === l.cantidadMaxima ? l.cantidadMaxima : `de ${l.cantidadMinima} a ${l.cantidadMaxima}`}`}
+                        {l.nombre} · {esFijo(l) ? "viene fijo" : `se elige ${l.cantidadMinima === l.cantidadMaxima ? l.cantidadMaxima : `de ${l.cantidadMinima} a ${l.cantidadMaxima}`}`}
                       </h4>
-                      {l.tipo === "DEL_DIA" ? (
-                        // Con el menú del día apagado (`MENU_DEL_DIA_VISIBLE`, decisión del dueño 2026-10-20) no se nombra ni se enlaza su pantalla (no existe).
-                        MENU_DEL_DIA_VISIBLE ? (
-                          <p className="text-sm text-tinta-tenue">
-                            El plato lo carga cada sucursal por día en{" "}
-                            <EnlaceInterno href="/movimientos/menu-del-dia" className="underline">
-                              Menú del día
-                            </EnlaceInterno>
-                            .
-                          </p>
-                        ) : null
-                      ) : (
                         <>
                           {l.entradas.length === 0 ? (
                             <p className="text-sm text-tinta-tenue">Sin entradas todavía: sumá los productos que se pueden elegir acá.</p>
@@ -305,7 +291,6 @@ export default async function PromocionesDeCartaPage() {
                             />
                           )}
                         </>
-                      )}
                     </div>
                     );
                   })}

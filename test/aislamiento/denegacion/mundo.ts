@@ -142,7 +142,7 @@ export interface KitDeSucursal {
 }
 
 /** GO-3b: el día del plato del día que siembra el mundo (mañana en la zona de las empresas del mundo: siempre se puede quitar o copiar). */
-export const DIA_DEL_PLATO_DEL_MUNDO = sumarDias(diaDeCalendario(new Date(), ZONA_ARGENTINA), 1);
+const DIA_DEL_PLATO_DEL_MUNDO = sumarDias(diaDeCalendario(new Date(), ZONA_ARGENTINA), 1);
 
 /** Los campos que son de UNA sucursal (los demás del kit son de la empresa): en el escenario «otra sucursal de la misma empresa» solo estos son ajenos. Exhaustivo por construcción (`Record<keyof KitDeSucursal, true>`). */
 const CAMPOS_DE_SUCURSAL_REGISTRO: Record<keyof KitDeSucursal, true> = {

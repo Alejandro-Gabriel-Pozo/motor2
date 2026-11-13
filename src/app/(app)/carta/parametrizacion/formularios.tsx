@@ -1,4 +1,4 @@
-import { MENU_DEL_DIA_VISIBLE, SUMAR_LUGAR_DE_LISTA_VISIBLE, type LugarDeCombo, type ProductoParaMantener } from "@/core/carta/public";
+import { SUMAR_LUGAR_DE_LISTA_VISIBLE, type LugarDeCombo, type ProductoParaMantener } from "@/core/carta/public";
 import { CampoNumero } from "@/components/campo-numero";
 import { AreaDeTexto } from "@/ui/primitivas/area-de-texto";
 import { Campo } from "@/ui/primitivas/campo";
@@ -154,8 +154,7 @@ export function esFijo(l: LugarDeCombo): boolean {
 
 /**
  * GO-3b (U1): los lugares de ENTRADAS de la promo en el formulario de cupos: cada uno con «incluir» (destildado, se da de baja: sus entradas quedan guardadas por si vuelve) y su mínimo y máximo;
- * el nombre es su identidad (cambiarlo es otro lugar). Abajo, una fila para sumar un lugar nuevo: una LISTA («Bebida») o uno DEL DÍA («Plato del día»). Con el menú del día apagado
- * (`MENU_DEL_DIA_VISIBLE`, decisión del dueño 2026-10-20) no se ofrece el DEL DÍA (el servidor igual lo rechaza); los lugares del día que ya existían se siguen listando.
+ * el nombre es su identidad (cambiarlo es otro lugar). Abajo, una fila para sumar un lugar nuevo: una LISTA («Bebida»).
  */
 export function CamposLugares({ lugares }: { lugares: LugarDeCombo[] }) {
   return (
@@ -166,7 +165,7 @@ export function CamposLugares({ lugares }: { lugares: LugarDeCombo[] }) {
           <input type="hidden" name={`lugar_tipo_${l.id}`} value={l.tipo} />
           <input type="hidden" name={`lugar_nombre_${l.id}`} value={l.nombre} />
           <div className={CLASE_NOMBRE_DE_CUPO}>
-            <Casilla etiqueta={`${l.nombre} (${l.tipo === "DEL_DIA" ? "del día" : "lista"})`} name={`lugar_incluir_${l.id}`} defaultChecked />
+            <Casilla etiqueta={`${l.nombre} (lista)`} name={`lugar_incluir_${l.id}`} defaultChecked />
           </div>
           <label className={CLASE_CANTIDAD_DE_CUPO}>
             mín.
@@ -178,14 +177,13 @@ export function CamposLugares({ lugares }: { lugares: LugarDeCombo[] }) {
           </label>
         </div>
       ))}
-      {/* «Sumar un lugar» (`SUMAR_LUGAR_DE_LISTA_VISIBLE`: apagado el 2026-10-28, vuelto a prender el 2026-11-11 por el pedido del «Menú ejecutivo»); aparece solo si algún interruptor ofrece un tipo de lugar. */}
-      {(SUMAR_LUGAR_DE_LISTA_VISIBLE || MENU_DEL_DIA_VISIBLE) && (
+      {/* «Sumar un lugar» (`SUMAR_LUGAR_DE_LISTA_VISIBLE`: apagado el 2026-10-28, vuelto a prender el 2026-11-11 por el pedido del «Menú ejecutivo»); aparece solo con su interruptor. */}
+      {SUMAR_LUGAR_DE_LISTA_VISIBLE && (
         <fieldset className="mt-1 grid min-w-0 grid-cols-2 gap-2 text-sm sm:flex sm:flex-wrap sm:items-end">
           <legend className="mb-1 text-sm">Sumar un lugar (opcional)</legend>
           <div className="col-span-2">
-            <Selector etiqueta="Tipo" name="nuevo_lugar_tipo" defaultValue={SUMAR_LUGAR_DE_LISTA_VISIBLE ? "LISTA" : "DEL_DIA"}>
-              {SUMAR_LUGAR_DE_LISTA_VISIBLE ? <option value="LISTA">Lista de productos</option> : null}
-              {MENU_DEL_DIA_VISIBLE ? <option value="DEL_DIA">Plato del día</option> : null}
+            <Selector etiqueta="Tipo" name="nuevo_lugar_tipo" defaultValue="LISTA">
+              <option value="LISTA">Lista de productos</option>
             </Selector>
           </div>
           <div className="col-span-2">

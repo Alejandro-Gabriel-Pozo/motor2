@@ -127,10 +127,10 @@ export async function guardarPrecioLocalPromoCarta(promoCartaId: string, precioL
 
 /** Un cupo tal como lo manda el formulario del admin (paso 5, docs/plan-promo-combo-2026-09-26.md). GO-3b (D3): con `tipo` (SECCION por defecto) y, fuera de SECCION, `nombre` en lugar de sección. */
 export interface DatosCupoPromoCarta {
-  tipo?: "SECCION" | "LISTA" | "DEL_DIA";
+  tipo?: "SECCION" | "LISTA";
   /** Solo en un cupo SECCION. */
   seccionCartaId?: string | null;
-  /** Solo en un LISTA o DEL_DIA («Entrada», «Plato del día»). */
+  /** Solo en un LISTA («Entrada»). */
   nombre?: string | null;
   /** Vacío/null → 0 (D1: el mínimo por defecto es 0). */
   cantidadMinima?: number | string | null;
@@ -141,7 +141,7 @@ export interface DatosCupoPromoCarta {
  * Guarda TODOS los cupos de una promo, todo o nada (Task #16, docs/plan-promo-combo-2026-09-26.md, D1): la lista que llega
  * es la lista final — un cupo que no está en `cupos` se da de BAJA (GO-3b, D3: ya no se borra; volver a pedirlo lo reactiva). Una lista VACÍA vuelve la promo a
  * informativa. Gate: `carta_promo_definir` (empresa: los cupos son de la promo, valen para todas las sucursales). Un cupo es de una sección de la carta (SECCION, el de
- * siempre), de una lista propia (LISTA, con sus entradas) o el plato del día (DEL_DIA, que carga cada sucursal por fecha).
+ * siempre) o de una lista propia (LISTA, con sus entradas).
  *
  * Validación:
  * - cada cupo elige una `SeccionCarta` que existe, sin repetir sección entre cupos de la MISMA promo (`@@unique` de

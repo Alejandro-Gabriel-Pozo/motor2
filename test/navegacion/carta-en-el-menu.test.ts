@@ -14,7 +14,6 @@ import {
 import { buscarPantallaEnMenu } from "../../src/core/navegacion/buscar-pantalla";
 import { pantallaTrasCambiarSucursal } from "../../src/core/navegacion/pantalla-tras-cambio";
 import { PESTANAS_DE_APARIENCIA, PESTANAS_DE_CARTA, PESTANAS_DE_PROMOCIONES, armarPestanasDeCarta, primeraPantallaVisible } from "../../src/core/carta/ui-config";
-import { MENU_DEL_DIA_VISIBLE } from "../../src/core/carta/menu-del-dia";
 import type { AccionClave } from "../../src/core/permisos/acciones";
 
 /**
@@ -75,11 +74,9 @@ describe("el grupo Carta del menú real (DEC-24)", () => {
     expect(accionDeRuta("/carta/parametrizacion/promociones")).toBe("carta_ver");
   });
 
-  it("el Menú del día solo cuelga de Promociones con su interruptor prendido (apagado, su página es 404)", () => {
-    const menuDelDia = RUTAS_DE_UNA_ENTRADA.find((r) => r.href === "/movimientos/menu-del-dia");
-    if (MENU_DEL_DIA_VISIBLE) expect(menuDelDia).toMatchObject({ accion: "promo_menu_del_dia", entrada: "/carta/parametrizacion/promociones" });
-    else expect(menuDelDia).toBeUndefined();
-    expect(PESTANAS_DE_PROMOCIONES.map((p) => p.texto)).toEqual(MENU_DEL_DIA_VISIBLE ? ["Promociones", "Menú del día"] : ["Promociones"]);
+  it("el Menú del día se retiró (poda 2026-11-13): no cuelga de Promociones y su ruta ya no es del menú", () => {
+    expect(RUTAS_DE_UNA_ENTRADA.find((r) => r.href === "/movimientos/menu-del-dia")).toBeUndefined();
+    expect(PESTANAS_DE_PROMOCIONES.map((p) => p.texto)).toEqual(["Promociones"]);
   });
 });
 

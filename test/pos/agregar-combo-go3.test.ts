@@ -4,30 +4,29 @@ import { cerrarConexiones, conexionComoApp } from "../setup/gasto";
 import { sembrarCafeDelSalon, type CafeDelSalon } from "../setup/opciones";
 import { sembrarCuenta, sembrarSalon } from "./salon-fixture";
 import { agregarItemsCasoDeUso } from "../../src/server/actions/pos/casos-de-uso/agregar-items";
-import { quitarPlatoDelDiaCasoDeUso } from "../../src/server/actions/carta/casos-de-uso/quitar-plato-del-dia";
+import { actualizarActivaEntradaDeCupoCasoDeUso } from "../../src/server/actions/carta/casos-de-uso/actualizar-activa-entrada-de-cupo";
+import { actorDeCombos } from "../setup/combos-go3b";
 import { guardComandoAgregarItems } from "../../src/core/features/cuentas/cuenta-pedido.guard";
 import type { ComandoAgregarItems } from "../../src/core/features/cuentas/cuenta-pedido.schema";
 import { claveDeConfiguracion } from "../../src/core/pos/promo-combo";
-import { diaDeCalendario, fechaDeColumnaDate, sumarDias, ZONA_ARGENTINA } from "../../src/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA } from "../../src/core/tiempo/zona-horaria";
 
 /**
- * GO-3b (ADR-032, frente D, F5 paso I2): vender un COMBO con cupos de entradas (LISTA y DEL_DIA), contra Postgres real y por el caso de uso. Fija:
- *  - el MENÚ DEL DÍA (el plato de hoy, un postre FIJO que completa el servidor y un café con configuración fija) y el DESAYUNO (el café elegido entre dos configuraciones y el dulce fijo), con el
+ * GO-3b (ADR-032, frente D, F5 paso I2): vender un COMBO con cupos de entradas (LISTA), contra Postgres real y por el caso de uso. Fija:
+ *  - el MENÚ (el plato elegido de una lista, un postre FIJO que completa el servidor y un café con configuración fija) y el DESAYUNO (el café elegido entre dos configuraciones y el dulce fijo), con el
  *    prorrateo exacto al centavo sobre el precio de LISTA de cada entrada en la sucursal (con su configuración, sin el descuento de producto) y el componente configurado escrito con su huella y
  *    sus fotos, colgado de la promo;
- *  - los rechazos tipados, sin escribir nada: `PROMO_CAMBIO`, `MENU_DEL_DIA_SIN_CARGAR` (sin plato de hoy, o solo el de otra sucursal o de mañana), `ENTRADA_NO_DISPONIBLE` (desactivada o con una opción
+ *  - los rechazos tipados, sin escribir nada: `PROMO_CAMBIO`, un lugar sin ninguna entrada activa (`PROMO_INVALIDA`, falla por el mínimo), `ENTRADA_NO_DISPONIBLE` (desactivada o con una opción
  *    apagada en la sucursal), un fijo que se manda distinto (`PROMO_INVALIDA`), la vigencia (`PROMO_INVALIDA`) y `COMBO_ALICUOTAS_DISTINTAS`;
- *  - concurrencia real: quitar el plato del día a la vez que se agrega el menú (con la quita sin confirmar del otro lado, y en un loop de 10 con el caso de uso): o el menú entero con el plato, o el
+ *  - concurrencia real: dar de baja una entrada del plato a la vez que se agrega el menú (con la baja sin confirmar del otro lado, y en un loop de 10 con el caso de uso): o el menú entero con el plato, o el
  *    rechazo; nunca una promo a medias.
+ * Poda 2026-11-13: el plato del día (lugar DEL_DIA, con su tabla por fecha y sucursal) se retiró; el menú de estas pruebas es una lista («Plato») con las mismas entradas.
  *
- * Mutaciones demostradas (rojo y revertidas): sacar el completado del fijo en `promo-combo.ts` (9 en rojo); sacar el filtro de fecha de los platos del día (rojo: «mañana»); saltear la revisión de
- * alícuotas (rojo: «alícuotas»). Sacar el filtro de SUCURSAL de los platos del día sigue verde: la RLS por sucursal de `EntradaDelDiaDeCupo` ya deja afuera el plato de Norte (el filtro queda como
- * defensa en profundidad).
+ * Mutaciones demostradas (rojo y revertidas): sacar el completado del fijo en `promo-combo.ts` (9 en rojo); saltear la revisión de alícuotas (rojo: «alícuotas»).
  */
 let s: Awaited<ReturnType<typeof sembrarSalon>>;
 let c: CafeDelSalon;
 let cuentaId: string;
-let hoy: string;
 
 const actor = () => ({
   usuarioId: s.admin.id,
@@ -46,30 +45,29 @@ async function promo(titulo: string, precio: string, extra: Record<string, unkno
   const seccion = await prisma.seccionCarta.create({ data: { nombre: `Sección ${titulo}` } });
   return (await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId: s.sucursalId } }, seccionCartaId: seccion.id, titulo, precio, ...extra } })).id;
 }
-const cupo = (promoCartaId: string, tipo: "LISTA" | "DEL_DIA", nombre: string, orden: number, cantidadMinima = 1, cantidadMaxima = 1) =>
+const cupo = (promoCartaId: string, tipo: "LISTA", nombre: string, orden: number, cantidadMinima = 1, cantidadMaxima = 1) =>
   prisma.promoCartaCupo.create({ data: { promoCartaId, tipo, nombre, orden, cantidadMinima, cantidadMaxima } });
 const entrada = (cupoId: string, productoId: string, opciones: { opcionId: string; cantidad: number }[] = [], orden = 0) =>
   prisma.entradaDeCupo.create({ data: { cupoId, productoId, orden, claveConfiguracion: claveDeConfiguracion(opciones)!, opciones: { create: opciones } } });
-const platoDelDia = (cupoId: string, productoId: string, dia = hoy, sucursalId = s.sucursalId) =>
-  prisma.entradaDelDiaDeCupo.create({ data: { cupoId, sucursalId, fecha: fechaDeColumnaDate(dia), productoId, actualizadoPorId: s.admin.id } });
 
 beforeEach(async () => {
   await limpiarBaseDeTest();
   s = await sembrarSalon();
   c = await sembrarCafeDelSalon(s);
   cuentaId = (await sembrarCuenta(s.mesa.id, s.admin.id)).id;
-  hoy = diaDeCalendario(new Date(), ZONA_ARGENTINA);
 });
 afterEach(cerrarConexiones);
 
-/** El menú del día: plato de hoy (milanesa 9000 o pizza 12000), postre FIJO (flan 3000) y café mediano con almendras (1000 + 150) fijo, a 10000. */
-async function menuDelDia() {
-  const promoCartaId = await promo("Menú del día", "10000.00");
-  const plato = await cupo(promoCartaId, "DEL_DIA", "Plato del día", 0);
+/** El menú: plato a elegir (milanesa 9000 o pizza 12000), postre FIJO (flan 3000) y café mediano con almendras (1000 + 150) fijo, a 10000. */
+async function menuConPlato() {
+  const promoCartaId = await promo("Menú de la casa", "10000.00");
+  const plato = await cupo(promoCartaId, "LISTA", "Plato", 0);
   const postre = await cupo(promoCartaId, "LISTA", "Postre", 1);
   const bebida = await cupo(promoCartaId, "LISTA", "Bebida", 2);
-  const milanesa = await platoDelDia(plato.id, s.milanesa.id);
-  const pizza = await platoDelDia(plato.id, s.pizza.id);
+  const milanesa = await entrada(plato.id, s.milanesa.id, [], 0);
+  const pizza = await entrada(plato.id, s.pizza.id, [], 1);
+  // Una tercera opción: con solo UNA entrada activa (mínimo = máximo = 1) el lugar pasaría a ser un componente FIJO, y lo que se prueba acá es la baja de una entrada elegible.
+  await entrada(plato.id, s.flan.id, [], 2);
   await entrada(postre.id, s.flan.id);
   await entrada(bebida.id, c.cafeId, [{ opcionId: c.medianoId, cantidad: 1 }, { opcionId: c.almendrasId, cantidad: 1 }]);
   const pedir = (platoId = milanesa.id, extra: Record<string, unknown> = {}) => ({ promoCartaId, elecciones: [{ cupoId: plato.id, elegidos: [{ entradaId: platoId, cantidad: 1 }] }], ...extra });
@@ -77,12 +75,12 @@ async function menuDelDia() {
 }
 
 describe("vender un combo con cupos de entradas (GO-3b, I2)", () => {
-  it("el MENÚ DEL DÍA: plato de hoy, postre fijo y café configurado, prorrateados al centavo (6844,11 + 2281,37 + 874,52 = 10000)", async () => {
-    const m = await menuDelDia();
+  it("el MENÚ: plato elegido, postre fijo y café configurado, prorrateados al centavo (6844,11 + 2281,37 + 874,52 = 10000)", async () => {
+    const m = await menuConPlato();
     const r = await agregar([m.pedir(m.milanesa.id, { precioEsperado: 10000 })]);
     expect(r, r.mensaje).toMatchObject({ ok: true });
     const promoCuenta = await prisma.promoCuenta.findFirstOrThrow({ where: { cuentaId } });
-    expect([promoCuenta.titulo, Number(promoCuenta.precio)]).toEqual(["Menú del día", 10000]);
+    expect([promoCuenta.titulo, Number(promoCuenta.precio)]).toEqual(["Menú de la casa", 10000]);
     const [mila, flan, cafe, ...resto] = await lineas();
     expect(resto).toEqual([]);
     expect([mila, flan, cafe].map((l) => [l!.productoId, Number(l!.cantidad), Number(l!.precioUnitario), Number(l!.precioCartaUnitario), l!.promoCuentaId])).toEqual([
@@ -116,7 +114,7 @@ describe("vender un combo con cupos de entradas (GO-3b, I2)", () => {
   });
 
   it("el descuento de producto NO se aplica dentro del combo: el reparto es sobre el precio de lista", async () => {
-    const m = await menuDelDia();
+    const m = await menuConPlato();
     await prisma.descuentoProductoSucursal.create({ data: { productoId: s.milanesa.id, sucursalId: s.sucursalId, porcentaje: 50 } });
     expect((await agregar([m.pedir()])).ok).toBe(true);
     const [mila] = await lineas();
@@ -125,25 +123,22 @@ describe("vender un combo con cupos de entradas (GO-3b, I2)", () => {
 
   describe("rechazos tipados (y ninguno escribe nada)", () => {
     const casos: [string, () => Promise<ComandoAgregarItems["promos"]>, string, RegExp][] = [
-      ["el precio que vio el mozo ya no es el de hoy", async () => [(await menuDelDia()).pedir(undefined, { precioEsperado: 9500 })], "PROMO_CAMBIO", /el precio de la promo cambió/],
+      ["el precio que vio el mozo ya no es el de hoy", async () => [(await menuConPlato()).pedir(undefined, { precioEsperado: 9500 })], "PROMO_CAMBIO", /el precio de la promo cambió/],
       [
-        "sin plato de hoy (el de mañana y el de otra sucursal no cuentan)",
+        "un lugar sin ninguna entrada activa (todas dadas de baja) con mínimo 1",
         async () => {
-          const m = await menuDelDia();
-          await prismaAdmin.entradaDelDiaDeCupo.updateMany({ where: { cupoId: m.plato.id }, data: { activa: false } });
-          await platoDelDia(m.plato.id, s.milanesa.id, sumarDias(hoy, 1));
-          const norte = await prismaAdmin.sucursal.create({ data: { empresaId: EMPRESA_POR_DEFECTO_ID, nombre: "Norte" } });
-          await prismaAdmin.entradaDelDiaDeCupo.create({ data: { empresaId: EMPRESA_POR_DEFECTO_ID, cupoId: m.plato.id, sucursalId: norte.id, fecha: fechaDeColumnaDate(hoy), productoId: s.milanesa.id, actualizadoPorId: s.admin.id } });
+          const m = await menuConPlato();
+          await prismaAdmin.entradaDeCupo.updateMany({ where: { cupoId: m.plato.id }, data: { activa: false } });
           return [{ promoCartaId: m.promoCartaId, elecciones: [] }];
         },
-        "MENU_DEL_DIA_SIN_CARGAR",
-        /todavía no se cargó el plato de hoy/,
+        "PROMO_INVALIDA",
+        /Elegí al menos 1 opción\(es\) de "Plato"/,
       ],
       [
-        "el plato elegido se quitó del día",
+        "el plato elegido se dio de baja",
         async () => {
-          const m = await menuDelDia();
-          await prismaAdmin.entradaDelDiaDeCupo.update({ where: { id: m.pizza.id }, data: { activa: false } });
+          const m = await menuConPlato();
+          await prismaAdmin.entradaDeCupo.update({ where: { id: m.pizza.id }, data: { activa: false } });
           return [m.pedir(m.pizza.id)];
         },
         "ENTRADA_NO_DISPONIBLE",
@@ -152,7 +147,7 @@ describe("vender un combo con cupos de entradas (GO-3b, I2)", () => {
       [
         "la opción de la configuración del café está apagada en la sucursal (el fijo se queda sin entrada)",
         async () => {
-          const m = await menuDelDia();
+          const m = await menuConPlato();
           await prisma.opcionApagadaEnSucursal.create({ data: { sucursalId: s.sucursalId, opcionId: c.almendrasId, apagada: true, actualizadoPorId: s.admin.id } });
           return [m.pedir()];
         },
@@ -162,7 +157,7 @@ describe("vender un combo con cupos de entradas (GO-3b, I2)", () => {
       [
         "un fijo que se manda distinto de lo que fijó el dueño",
         async () => {
-          const m = await menuDelDia();
+          const m = await menuConPlato();
           const flan = await prisma.entradaDeCupo.findFirstOrThrow({ where: { cupoId: m.postre.id } });
           return [{ ...m.pedir(), elecciones: [...m.pedir().elecciones, { cupoId: m.postre.id, elegidos: [{ entradaId: flan.id, cantidad: 2 }] }] }];
         },
@@ -172,7 +167,7 @@ describe("vender un combo con cupos de entradas (GO-3b, I2)", () => {
       [
         "alícuotas de IVA declaradas distintas entre lo elegido",
         async () => {
-          const m = await menuDelDia();
+          const m = await menuConPlato();
           await prisma.producto.update({ where: { id: s.milanesa.id }, data: { alicuotaIvaVenta: "IVA_21" } });
           await prisma.producto.update({ where: { id: s.flan.id }, data: { alicuotaIvaVenta: "IVA_10_5" } });
           return [m.pedir()];
@@ -190,7 +185,7 @@ describe("vender un combo con cupos de entradas (GO-3b, I2)", () => {
     });
 
     it("control: la misma alícuota declarada entra", async () => {
-      const m = await menuDelDia();
+      const m = await menuConPlato();
       for (const id of [s.milanesa.id, s.flan.id, c.cafeId]) await prisma.producto.update({ where: { id }, data: { alicuotaIvaVenta: "IVA_21" } });
       expect((await agregar([m.pedir()])).ok).toBe(true);
     });
@@ -203,24 +198,24 @@ describe("vender un combo con cupos de entradas (GO-3b, I2)", () => {
     expect(guardComandoAgregarItems({ cuentaId: "c", items: [], promos: [{ promoCartaId: "p", elecciones: [] }] }).ok).toBe(true);
   });
 
-  describe("concurrencia real: quitar el plato del día contra agregar el menú", () => {
-    it("con la quita SIN confirmar del otro lado, el menú entra entero; confirmada, ENTRADA_NO_DISPONIBLE", async () => {
-      const m = await menuDelDia();
+  describe("concurrencia real: dar de baja una entrada del plato contra agregar el menú", () => {
+    it("con la baja SIN confirmar del otro lado, el menú entra entero; confirmada, ENTRADA_NO_DISPONIBLE", async () => {
+      const m = await menuConPlato();
       const otro = await conexionComoApp(undefined, { lectura: [s.sucursalId], escritura: [s.sucursalId] });
       await otro.query("BEGIN ISOLATION LEVEL SERIALIZABLE");
-      await otro.query(`UPDATE "EntradaDelDiaDeCupo" SET activa = false WHERE id = $1`, [m.milanesa.id]);
+      await otro.query(`UPDATE "EntradaDeCupo" SET activa = false WHERE id = $1`, [m.milanesa.id]);
       expect((await agregar([m.pedir()])).ok).toBe(true);
       await otro.query("COMMIT");
       expect(await agregar([m.pedir()])).toMatchObject({ ok: false, codigo: "ENTRADA_NO_DISPONIBLE" });
       expect(await prisma.cuentaItem.count({ where: { cuentaId } })).toBe(3);
     });
 
-    it("el caso de uso de quitar contra el de agregar, a la vez (loop de 10): o el menú ENTERO (3 líneas que suman 10000) o el rechazo; nunca una promo a medias", async () => {
-      const m = await menuDelDia();
-      const quitarActor = { usuarioId: s.admin.id, sucursalId: s.sucursalId, sucursalNombre: s.sucursal.nombre, empresaZonaHoraria: ZONA_ARGENTINA, ahora: new Date(), ...baseDeTest({ lectura: [s.sucursalId], escritura: [s.sucursalId] }) };
+    it("el caso de uso de dar de baja contra el de agregar, a la vez (loop de 10): o el menú ENTERO (3 líneas que suman 10000) o el rechazo; nunca una promo a medias", async () => {
+      const m = await menuConPlato();
+      const quitarActor = actorDeCombos(s.admin.id, s.sucursalId, new Date());
       const vistos = { entro: 0, rechazo: 0 };
       for (let i = 0; i < 10; i++) {
-        await prismaAdmin.entradaDelDiaDeCupo.update({ where: { id: m.milanesa.id }, data: { activa: true } });
+        await prismaAdmin.entradaDeCupo.update({ where: { id: m.milanesa.id }, data: { activa: true } });
         const demora = (ms: number) => new Promise((r) => setTimeout(r, ms));
         const [agregado, quitado] = await Promise.allSettled([
           (async () => {
@@ -229,7 +224,7 @@ describe("vender un combo con cupos de entradas (GO-3b, I2)", () => {
           })(),
           (async () => {
             if (i % 2 === 0) await demora(15);
-            return quitarPlatoDelDiaCasoDeUso(quitarActor, { platoId: m.milanesa.id });
+            return actualizarActivaEntradaDeCupoCasoDeUso(quitarActor, { entradaId: m.milanesa.id, activa: false });
           })(),
         ]);
         expect(agregado.status, `vuelta ${i}`).toBe("fulfilled");

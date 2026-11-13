@@ -35,6 +35,7 @@ const SRC = join(__dirname, "../../src");
  * documentado — no es un hallazgo nuevo, es una decisión ya tomada.
  */
 const RESERVADAS_SIN_USO_TODAVIA: Readonly<Record<string, string>> = {
+  promo_menu_del_dia: "Poda de promos, tiempo 1 (2026-11-13, `docs/diseno-poda-promos-2026-11-12.md`): el menú del día se retiró del código (pantalla, acciones y casos de uso) y la clave se CONSERVA en `ACCIONES`, en la tabla `Accion` y en `PermisoRol` hasta el tiempo 2 (la migración que borra, que requiere el aviso expreso del dueño): sacarla antes rompería la paridad catálogo ↔ base. Sale de esta lista, junto con la clave, en el tiempo 2.",
   compra_recibir: "Paquete 3, M3a (cambio del dueño, 2026-10-12): igual que `compra_repartir`, se da de alta con la migración 20261016100000 antes que su primer consumidor: la bandeja «mercadería por recibir» y confirmar la recepción de la parte de una sucursal, que son de la Etapa C de M3 (docs/adr/ADR-029-factura-de-proveedor-documento-de-empresa.md). Sale de esta lista en cuanto una guarda la use.",
 };
 

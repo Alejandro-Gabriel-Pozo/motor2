@@ -1,7 +1,6 @@
 import "server-only";
 import type { ComandoAgregarEntradaDeCupo, ResultadoAgregarEntradaDeCupo } from "@/core/features/carta/combos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
-import { diaDeCalendario } from "@/core/tiempo/zona-horaria";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
@@ -53,7 +52,6 @@ export async function agregarEntradaDeCupoCasoDeUso(
       const { producto, claveConfiguracion } = validado.componente;
       const alicuotas = await revisarAlicuotasEnTx(tx, {
         lugares: await cargarLugaresActivosDePromo(tx, cupo.promoCartaId),
-        desdeDia: diaDeCalendario(actor.ahora, actor.empresaZonaHoraria),
         sucursalIds: await sucursalesDeLaEmpresa(tx, actor.empresaId),
         producto,
       });

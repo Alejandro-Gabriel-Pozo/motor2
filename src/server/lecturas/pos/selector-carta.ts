@@ -56,10 +56,10 @@ export async function cargarSelectorCartaPos(
    */
   modulosCargados?: ModulosDelPos,
   /**
-   * GO-3b (ADR-032): el día de calendario de la zona de la empresa. CON él (la pantalla de la mesa) el selector ofrece también las promos con cupos de entradas (LISTA y DEL_DIA, con las entradas
-   * elegibles HOY: la MISMA lectura que valida la venta) SIN él (la lectura de la promo para agregar, que solo usa las secciones), lo de siempre.
+   * GO-3b (ADR-032): con `conEntradas` (la pantalla de la mesa) el selector ofrece también las promos con cupos de entradas (LISTA, con las entradas elegibles HOY: la MISMA lectura que valida la venta);
+   * sin él (la lectura de la promo para agregar, que solo usa las secciones), lo de siempre.
    */
-  dia?: string
+  conEntradas = false
 ): Promise<SelectorCartaPos> {
   const modulos = modulosCargados ?? (await modulosDelPosDeSucursal(sucursalId, db));
   // La capacidad `precio_local` se lee UNA vez (o se toma la de quien llama) y la usan todos: la carta, los precios locales, los descuentos y el precio de
@@ -90,9 +90,9 @@ export async function cargarSelectorCartaPos(
     // Sin el módulo Promociones no se lee ninguna promo (ni se ofrece ni se acepta).
     conPromos
       ? db.promoCarta.findMany({
-          // GO-3 (primer despliegue): solo las promos con algún cupo de SECCIÓN activo y NINGÚN cupo activo de un tipo nuevo. GO-3b: con el día, las que tienen algún cupo activo de cualquier tipo.
+          // GO-3 (primer despliegue): solo las promos con algún cupo de SECCIÓN activo y NINGÚN cupo activo de un tipo nuevo. GO-3b: con las entradas, las que tienen algún cupo activo de cualquier tipo.
           where:
-            dia === undefined
+            !conEntradas
               ? { ...wherePromoOfrecidaEn(sucursalId, "salon"), cupos: { some: WHERE_CUPO_DE_SECCION_ACTIVO, none: WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO } }
               : { ...wherePromoOfrecidaEn(sucursalId, "salon"), cupos: { some: { activo: true } } },
           select: {
@@ -103,7 +103,7 @@ export async function cargarSelectorCartaPos(
             sucursales: seleccionDeSucursalDePromo(sucursalId),
             cupos: {
               orderBy: { orden: "asc" },
-              where: dia === undefined ? WHERE_CUPO_DE_SECCION_ACTIVO : { activo: true },
+              where: !conEntradas ? WHERE_CUPO_DE_SECCION_ACTIVO : { activo: true },
               select: { id: true, tipo: true, nombre: true, activo: true, seccionCartaId: true, cantidadMinima: true, cantidadMaxima: true, seccionCarta: { select: { nombre: true } } },
             },
           },
@@ -132,16 +132,16 @@ export async function cargarSelectorCartaPos(
     generoPorProducto: new Map(contenidosConGenero.flatMap((c) => (conGeneros && c.generoCartaId !== null ? [[c.productoId, c.generoCartaId] as const] : []))),
     generoPorAgrupado: new Map(agrupadosConGenero.map((a) => [a.id, a.generoCartaId!])),
   };
-  // GO-3b: con el día, de las promos con cupos de entradas, sus entradas elegibles de hoy (la MISMA lectura que valida la venta).
+  // GO-3b: con las entradas, de las promos con cupos de entradas, sus entradas elegibles de hoy (la MISMA lectura que valida la venta).
   const cuposDeEntradasDe = (p: (typeof promosCarta)[number]): CupoDeEntradasLeido[] =>
-    p.cupos.flatMap((c) => (c.activo && (c.tipo === "LISTA" || c.tipo === "DEL_DIA") && c.nombre !== null ? [{ id: c.id, tipo: c.tipo, nombre: c.nombre, cantidadMinima: c.cantidadMinima, cantidadMaxima: c.cantidadMaxima }] : []));
+    p.cupos.flatMap((c) => (c.activo && c.tipo === "LISTA" && c.nombre !== null ? [{ id: c.id, tipo: c.tipo, nombre: c.nombre, cantidadMinima: c.cantidadMinima, cantidadMaxima: c.cantidadMaxima }] : []));
   const entradasPorPromo = new Map(
-    dia === undefined
+    !conEntradas
       ? []
       : await Promise.all(
           promosCarta
             .filter((p) => cuposDeEntradasDe(p).length > 0)
-            .map(async (p) => [p.id, await cargarEntradasDePromoParaVender(db, { sucursalId, dia, cupos: cuposDeEntradasDe(p), precioLocalActivo: precioLocalActivoLeido })] as const)
+            .map(async (p) => [p.id, await cargarEntradasDePromoParaVender(db, { sucursalId, cupos: cuposDeEntradasDe(p), precioLocalActivo: precioLocalActivoLeido })] as const)
         )
   );
   // Promo «a elegir»: el plato se nombra para quien lo elige con `nombreParaMostrar` (la regla única de la administración de promos): una base con el nombre oculto, por los rótulos de su medida

@@ -4,7 +4,7 @@ import type { ComandoActivarEntradaDeCupo, ComandoAgregarEntradaDeCupo, OpcionDe
 import { LARGO_MAXIMO_DE_ID } from "@/core/datos/limites";
 
 /**
- * Guard de la feature «combos y menú del día» (GO-3b, ADR-032). Formato del comando, ANTES de tocar la base; lo llama la Server Action DENTRO de su `conPermiso…(…)`, así el rechazo por permiso
+ * Guard de la feature «combos» (GO-3b, ADR-032). Formato del comando, ANTES de tocar la base; lo llama la Server Action DENTRO de su `conPermiso…(…)`, así el rechazo por permiso
  * sigue llegando antes que el de formato. Puro: sin Prisma ni permisos.
  */
 

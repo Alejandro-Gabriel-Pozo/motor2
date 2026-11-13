@@ -15,7 +15,7 @@ export interface PromoCartaParaAgregar {
   id: string;
   titulo: string;
   precio: number;
-  /** Los cupos en su orden: los de sección de siempre y (GO-3b) los de entradas, LISTA y DEL_DIA, con sus elegibles de hoy. */
+  /** Los cupos en su orden: los de sección de siempre y (GO-3b) los de entradas, LISTA, con sus elegibles de hoy. */
   cupos: CupoDePromo[];
   /** Precio DE CARTA de cada producto elegible de CUALQUIER cupo DE SECCIÓN de esta promo — lo que `prorratearPrecioPromo` (D3) necesita
    *  para repartir, y lo que se congela en `CuentaItem.precioCartaUnitario`. */
@@ -34,9 +34,8 @@ export interface PromoCartaParaAgregar {
  * `ahora` (O.22-c de docs/pureza-integracion.md) es obligatorio: el caso de uso de agregar ítems pasa `actor.ahora`; solo llega al `generadoEn` de la carta
  * del selector, que acá no se usa.
  *
- * GO-3b (ADR-032, F5 paso I2; el SEGUNDO despliegue de «expandir y contraer»): ya no se excluye una promo con cupos LISTA o DEL_DIA activos: sus cupos se arman con sus entradas elegibles HOY
- * (`cargarEntradasDePromoParaVender`). `dia` es el día de calendario de la zona de la empresa (`diaDeCalendario(actor.ahora, empresaZonaHoraria)`) y decide los platos de un DEL_DIA (solo los de ese día). Sin `dia`, una promo con un cupo DEL_DIA falla
- * cerrado (`null`). Poda 2026-11-13: la promo ya no tiene vigencia (rango de fechas ni días de la semana): vale siempre que esté activa. Una promo solo con cupos de sección (todo lo de antes) lee y devuelve exactamente lo mismo que antes (sin `entradas`); una solo con cupos de entradas no lee el selector.
+ * GO-3b (ADR-032, F5 paso I2; el SEGUNDO despliegue de «expandir y contraer»): ya no se excluye una promo con cupos LISTA activos: sus cupos se arman con sus entradas elegibles HOY
+ * (`cargarEntradasDePromoParaVender`). Poda 2026-11-13: la promo ya no tiene vigencia (rango de fechas ni días de la semana) ni lugar «del día»: vale siempre que esté activa, y una con un cupo activo de otro tipo falla cerrado (`null`). Una promo solo con cupos de sección (todo lo de antes) lee y devuelve exactamente lo mismo que antes (sin `entradas`); una solo con cupos de entradas no lee el selector.
  */
 export async function cargarPromoCartaParaAgregar(
   sucursalId: string,
@@ -44,9 +43,7 @@ export async function cargarPromoCartaParaAgregar(
   db: Db,
   ahora: Date,
   /** Los módulos de la empresa ya leídos por quien llama (`agregarItems`); ausentes, se leen acá. */
-  modulosCargados?: ModulosDelPos,
-  /** GO-3b: «AAAA-MM-DD», el día de calendario de la zona de la empresa (ver arriba). */
-  dia?: string
+  modulosCargados?: ModulosDelPos
 ): Promise<PromoCartaParaAgregar | null> {
   // S-22 / D2: sin Promociones (o sin la Carta que ella requiere) no hay promo que agregar, exista o no la fila: lo contratado manda sobre lo que quedó cargado.
   const modulos = modulosCargados ?? (await modulosDelPosDeSucursal(sucursalId, db));
@@ -61,19 +58,18 @@ export async function cargarPromoCartaParaAgregar(
   if (!promo) return null;
   const cuposDeSeccion = cuposDeSeccionActivos(promo.cupos);
   const cuposDeEntradas: CupoDeEntradasLeido[] = promo.cupos.flatMap((c) =>
-    c.activo && (c.tipo === "LISTA" || c.tipo === "DEL_DIA") && c.nombre !== null ? [{ id: c.id, tipo: c.tipo, nombre: c.nombre, cantidadMinima: c.cantidadMinima, cantidadMaxima: c.cantidadMaxima }] : [],
+    c.activo && c.tipo === "LISTA" && c.nombre !== null ? [{ id: c.id, tipo: c.tipo, nombre: c.nombre, cantidadMinima: c.cantidadMinima, cantidadMaxima: c.cantidadMaxima }] : [],
   );
   // Un cupo activo de un tipo que este código no conoce (no puede pasar: CHECK) falla cerrado: nunca un combo a medias por su precio entero.
   if (promo.cupos.some((c) => c.activo && c.tipo !== "SECCION" && !cuposDeEntradas.some((e) => e.id === c.id))) return null;
   if (!cuposDeSeccion.length && !cuposDeEntradas.length) return null;
-  if (dia === undefined && cuposDeEntradas.some((c) => c.tipo === "DEL_DIA")) return null;
 
   // La capacidad `precio_local` se lee una vez y la comparten el selector y el precio de la promo (O.39: antes 7 lecturas por carga).
   const precioLocalActivoLeido = precioLocalActivoEn(sucursalId, db);
   const [selector, precioLocalActivo, entradas] = await Promise.all([
     cuposDeSeccion.length ? cargarSelectorCartaPos(sucursalId, db, ahora, precioLocalActivoLeido, modulos) : Promise.resolve(null),
     precioLocalActivoLeido,
-    cuposDeEntradas.length ? cargarEntradasDePromoParaVender(db, { sucursalId, dia: dia ?? "", cupos: cuposDeEntradas, precioLocalActivo: precioLocalActivoLeido }) : Promise.resolve(null),
+    cuposDeEntradas.length ? cargarEntradasDePromoParaVender(db, { sucursalId, cupos: cuposDeEntradas, precioLocalActivo: precioLocalActivoLeido }) : Promise.resolve(null),
   ]);
   const pediblesPorSeccion = new Map((selector?.seccionesCarta ?? []).map((s) => [s.seccionCartaId, s.entradas.flatMap(pediblesDeEntrada)]));
 
