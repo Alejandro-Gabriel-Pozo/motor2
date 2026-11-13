@@ -149,6 +149,9 @@ function aplicarModoMarca(valores: Record<ClaveTema, string>, variablesCss: Reco
   const marca = marcaGuardadaLegible(marcaGuardada);
   valores.color_marca = marca ?? "";
   variablesCss[aVariableCss("color_marca")] = marca ?? "";
+  // La marca es de ELEMENTOS (contraste >= 3:1 con el fondo, decisión del dueño 2026-11-13 «Marca 3:1 y textos con tinta del sistema»): todo TEXTO que sin marcador se pinta con la marca (precios, tags, nombre del ítem
+  // especial, etiquetas y números del índice) pasa a la tinta del sistema. Los componentes leen `var(--carta-primary-texto, var(--carta-primary))`: sin esta variable (carta clásica) sigue valiendo la marca.
+  variablesCss["--carta-primary-texto"] = "var(--carta-ink)";
   const canales = marca ? canalesDeMarcaHex(marca) : null;
   return canales ? tintaSobreMarca(canales).css : null;
 }
@@ -168,7 +171,8 @@ export function resolverEstiloCarta(valoresGuardados: unknown): EstiloCarta {
 
   // Con el marcador `marca_derivada = "si"`, SOLO la marca (ver `aplicarModoMarca`); sin él, todo se lee como siempre.
   // Exacto: solo el texto «si» guardado activa el modo (nada de «Si», « si » ni valores raros: todo nace cerrado).
-  const tintaSobreLaMarca = Object.hasOwn(obj, "marca_derivada") && obj.marca_derivada === "si" ? aplicarModoMarca(valores, variablesCss) : null;
+  const modoMarca = Object.hasOwn(obj, "marca_derivada") && obj.marca_derivada === "si";
+  const tintaSobreLaMarca = modoMarca ? aplicarModoMarca(valores, variablesCss) : null;
 
   const heroInk = valores.hero_ink ? resolveHeroInk(valores.hero_ink) : null;
   if (heroInk) variablesCss[aVariableCss("hero_ink")] = heroInk;
@@ -182,7 +186,8 @@ export function resolverEstiloCarta(valoresGuardados: unknown): EstiloCarta {
   // Defecto 2 del ensayo del 2026-11-13: el color de marca se usa también como color de TEXTO (nombre y precio de un plato especial, etiquetas); si no llega a 4,5:1 contra el fondo de la carta
   // (marca #797d62 sobre #181818 = 4,16:1) los textos usan `--carta-primary-texto`, la marca acercada a la tinta lo justo. Con una marca que ya llega no se define y nada cambia.
   const tintaBase = valores.color_fondo_dia ? resolvePrimaryForeground(valores.color_fondo_dia) : null;
-  if (valores.color_marca) {
+  // En modo marca el texto sobre la marca es SIEMPRE la tinta del sistema (`aplicarModoMarca` ya fijó `--carta-primary-texto`): esta corrección es solo del modo clásico.
+  if (valores.color_marca && !modoMarca) {
     const marcaLegible = colorDeTextoLegible(valores.color_marca, valores.color_fondo_dia, tintaBase);
     if (marcaLegible !== valores.color_marca) variablesCss["--carta-primary-texto"] = marcaLegible;
   }

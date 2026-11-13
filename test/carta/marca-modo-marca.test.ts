@@ -83,3 +83,11 @@ describe("el marcador es una clave del catálogo, no un color", () => {
     expect(Object.keys(CLAVES_DE_COLOR_DEL_TEMA)).not.toContain("marca_derivada");
   });
 });
+
+describe("la marca es de elementos, el texto usa la tinta del sistema (decisión del dueño, 2026-11-13: «Marca 3:1 y textos con tinta del sistema (Recomendada)»)", () => {
+  it("en modo marca, `--carta-primary-texto` es la tinta del sistema; sin marcador no existe (sigue valiendo la marca)", () => {
+    expect(resolverEstiloCarta(ENTRADA).variablesCss["--carta-primary-texto"]).toBe("var(--carta-ink)");
+    expect(resolverEstiloCarta(TEMAS_REALES.violeta).variablesCss["--carta-primary-texto"]).toBeUndefined();
+    expect(resolverEstiloCarta({}).variablesCss["--carta-primary-texto"]).toBeUndefined();
+  });
+});
