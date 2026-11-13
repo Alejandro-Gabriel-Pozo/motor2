@@ -36,7 +36,7 @@ Fuentes: `docs/auditoria-primitivas-pedernal-motor2-2026-11-12.md` (§6.3, anexo
 |---|---|---|
 | M1 | Al GUARDAR, el color de marca es `#rrggbb` en minúsculas (lista de permitidos); no se admiten funciones, nombres CSS ni `#rgb`. Al LEER un valor ya guardado: «Se usa si se puede leer (Recomendada)» (2026-11-13): hex corto, rgb, hsl u oklch se convierten a `#rrggbb`; si no se puede leer (nombre CSS, texto), color del sistema | **CONFIRMADA** la lectura (dueño, 2026-11-13); PROPUESTA el guardado estricto |
 | M2 | El texto derivado sobre la marca tiene contraste ≥ 4,5:1; si ninguno de los dos valores fijos llega, **se rechaza al guardar** con un mensaje que dice qué hacer: «Se rechaza y dice qué hacer (Recomendada)» (2026-11-13). Las dos tintas fijas son las de siempre (`oklch(0.96 0.005 80)` ≈ #f3f1ee y `oklch(0.18 0.02 40)` ≈ #190f0b), **no blanco ni negro puros**: algunos colores que llegarían con blanco puro (por ejemplo #d32f2f: 4,98:1) con la tinta del sistema quedan en 4,42:1 y se rechazan | **CONFIRMADA** (dueño, 2026-11-13); las tintas fijas, PROPUESTA |
-| M3 | La marca contra el fondo de la carta tiene contraste ≥ 3:1 (como color de elemento) | PROPUESTA |
+| M3 | La marca contra el fondo de la carta tiene contraste ≥ 3:1 (como color de elemento). Para una marca NUEVA o reeditada el fondo es el **claro del sistema** (`--carta-bg: #ffffff`); las cartas oscuras de hoy no se tocan (se conservan, opción A) | PROPUESTA |
 | M4 | Los colores de estado y los de peligro son del sistema, nunca de marca | PROPUESTA (Pedernal lo decide así) |
 | M5 | Sin color de marca guardado, se usa el del sistema; nada «viene tildado» ni preelegido | CONFIRMADA («todo nace cerrado») |
 | M6 | Las claves de color viejas **no se borran** del JSON: dejan de leerse (reversible) | PROPUESTA |
@@ -94,7 +94,7 @@ Con este diseño, **en una carta que pase a la marca derivada**, dejan de poder 
 
 ## Preguntas abiertas
 
-- **Modo oscuro** (PENDIENTE; no se construye): hoy las 5 cartas son oscuras y el sistema nuevo no tiene modo oscuro; una carta que se pase a la marca derivada pasa a clara. Queda como pregunta abierta, igual que P4 de Pedernal. **No hay dato nuevo de fondo claro u oscuro**: sería una sugerencia solo con el «sí» del dueño.
+- **Fondo claro u oscuro por sucursal: CERRADA, «no se construye ahora»** (el dueño no quiere un dato nuevo de fondo, 2026-11-13, chat del dueño con el orquestador). El **modo oscuro** queda como pregunta abierta, igual que P4 de Pedernal. Contexto: hoy las 5 cartas son oscuras y el sistema nuevo no tiene modo oscuro; una carta que se pase a la marca derivada pasa a clara. Queda como pregunta abierta, igual que P4 de Pedernal. **No hay dato nuevo de fondo claro u oscuro**: sería una sugerencia solo con el «sí» del dueño.
 - **Qué acción exacta es «reeditar»** (PENDIENTE; la plantea el plan de PR): propuesta, un botón explícito «Pasar a color de marca» en el editor, con vista previa a 375 px, y otro «Volver a mis colores anteriores». Ver el plan en el PR de lectura.
 
 ## Estado de las decisiones
@@ -107,7 +107,7 @@ Con este diseño, **en una carta que pase a la marca derivada**, dejan de poder 
 | Rechazar al guardar un color sin contraste (M2) | **CONFIRMADA: «Se rechaza y dice qué hacer (Recomendada)»** (dueño, 2026-11-13) |
 | M1 al guardar (`#rrggbb` estricto), M3, M4, M5 (M5 ya CONFIRMADA), M6 | PROPUESTA (M5 CONFIRMADA: «todo nace cerrado») |
 | Las dos tintas fijas del sistema (no blanco ni negro puros) | PROPUESTA |
-| Modo oscuro | PENDIENTE (pregunta abierta; no se construye) |
+| Fondo claro u oscuro por sucursal | **CERRADA: no se construye ahora** (dueño, 2026-11-13); el modo oscuro queda como pregunta abierta (P4 de Pedernal) |
 | Qué acción exacta es «reeditar» y cómo se vuelve atrás | PROPUESTA (botón explícito y botón de volver; ver el plan) |
 | Versión del tema contra ediciones simultáneas | PENDIENTE (necesita migración: autorización expresa) |
 | Datos reales de cuántas cartas usan cada clave | Medido el 2026-11-13 sobre la copia del 12/11 (ver arriba); la rama principal de producción NO se consultó |
