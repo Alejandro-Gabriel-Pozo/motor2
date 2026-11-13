@@ -1,3 +1,8 @@
+# Poda de promos: auditoría previa por base (solo lectura)
+
+Diseño: `docs/diseno-poda-promos-2026-11-12.md` §7. Es la consulta que hay que correr en CADA base (principal, `zuluhub-demo` y toda otra con datos) antes de desplegar el tiempo 1 y antes de aplicar el tiempo 2. Se pega como dueño de la base; la transacción es `READ ONLY` (si hubiera una escritura por error, la base la rechaza). El resultado se pega en el PR del tiempo; si una cifra marcada «DEBE SER 0» no es 0, se frena y se le pregunta al dueño. Probada contra una base local vacía (todas las cifras en 0).
+
+```sql
 -- Poda de promos — auditoría previa por base (SOLO LECTURA).
 -- Diseño: docs/diseno-poda-promos-2026-11-12.md §7. Es la consulta que hay que correr en CADA base (principal, zuluhub-demo y toda otra con datos)
 -- ANTES de desplegar el tiempo 1 (el código ya no mira la vigencia ni el plato del día) y ANTES de aplicar el tiempo 2 (la migración que borra columnas y tabla).
@@ -46,3 +51,4 @@ GROUP BY "entidad", "campo"
 ORDER BY "entidad", "campo";
 
 ROLLBACK;
+```
