@@ -2,8 +2,8 @@ import { rgbDeColorCss } from "./color-css";
 
 /**
  * La marca de la carta (paso 9 de la auditoría, `docs/diseno-marca-por-sucursal-y-empresa-2026-11-12.md`): UN color por sucursal y UNO por empresa; todo lo demás se DERIVA.
- * Este archivo es el núcleo PURO (sin Prisma, sin React): lee un color guardado, decide si se lee, calcula los contrastes (WCAG 2.1) y deriva la tinta del texto sobre la marca, el tono de
- * «pasar el mouse» y el tinte de fondo suave. Lo usan el guardado (rechaza lo que no se lee, M2 y M3), la lectura de la carta pública y el editor (el aviso de contraste).
+ * Este archivo es el núcleo PURO (sin Prisma, sin React): lee un color guardado, decide si se lee, calcula los contrastes (WCAG 2.1) y deriva la tinta del texto sobre la marca. (El tono de «pasar el
+ * mouse» y el tinte de fondo suave que nombra el diseño se agregan cuando haya una pantalla que los use: hoy ningún componente los consume.) Lo usan el guardado (rechaza lo que no se lee, M2 y M3), la lectura de la carta pública y el editor (el aviso de contraste).
  *
  * Reglas del diseño que cumple:
  *  - M1: al GUARDAR, la marca es `#rrggbb` en minúsculas (`esMarcaHex`: lista de permitidos). Al LEER un valor ya guardado se acepta lo que se pueda convertir (`marcaGuardadaLegible`: hex corto,
@@ -36,9 +36,6 @@ function canalesDeLaTinta(css: string): Canales {
 
 const CANALES_TINTA_CLARA = canalesDeLaTinta(TINTA_CLARA);
 const CANALES_TINTA_OSCURA = canalesDeLaTinta(TINTA_OSCURA);
-
-const NEGRO: Canales = [0, 0, 0];
-const BLANCO: Canales = [255, 255, 255];
 
 const acotar = (n: number) => Math.min(255, Math.max(0, Math.round(n)));
 
@@ -135,26 +132,4 @@ export function mensajeDeMarca(evaluacion: EvaluacionDeMarca): string {
     partes.push(`Este color casi no se distingue del fondo de la carta (contraste ${texto(evaluacion.contrasteMarcaFondo)}:1; hace falta ${texto(CONTRASTE_MINIMO_ELEMENTO)}:1). Elegí uno más fuerte.`);
   }
   return partes.join(" ");
-}
-
-/** Mezcla `parte` (0 a 1) de `b` en `a`, canal por canal. */
-function mezclar(a: Canales, b: Canales, parte: number): Canales {
-  return [a[0] + (b[0] - a[0]) * parte, a[1] + (b[1] - a[1]) * parte, a[2] + (b[2] - a[2]) * parte];
-}
-
-export interface DerivadosDeMarca {
-  marca: string;
-  /** Color del texto sobre la marca (una de las dos tintas fijas). */
-  tinta: string;
-  /** Tono de «pasar el mouse»: la marca movida 12 % hacia el negro (si el texto es claro) o hacia el blanco (si es oscuro), así el texto gana contraste y nunca lo pierde. */
-  hover: string;
-  /** Tinte de fondo suave: el fondo de la carta con 8 % de marca. */
-  tinte: string;
-}
-
-/** Lo que el sistema calcula a partir de la marca (no se guarda): se arma cada vez que se lee. */
-export function derivarDeMarca(marca: Canales, fondo: Canales): DerivadosDeMarca {
-  const tinta = tintaSobreMarca(marca);
-  const haciaDondeSeAleja: Canales = tinta.tinta === "clara" ? NEGRO : BLANCO;
-  return { marca: aHex(marca), tinta: tinta.css, hover: aHex(mezclar(marca, haciaDondeSeAleja, 0.12)), tinte: aHex(mezclar(fondo, marca, 0.08)) };
 }

@@ -4,7 +4,6 @@ import {
   aHex,
   canalesDeMarcaHex,
   contraste,
-  derivarDeMarca,
   esMarcaHex,
   evaluarMarca,
   marcaGuardadaLegible,
@@ -148,33 +147,5 @@ describe("mensaje al rechazar: dice el problema y qué hacer", () => {
     const mensaje = mensajeDeMarca(evaluacion(3, 2, ["TEXTO_SOBRE_MARCA", "MARCA_SOBRE_FONDO"]));
     expect(mensaje).toContain("texto sobre este color");
     expect(mensaje).toContain("fondo de la carta");
-  });
-});
-
-describe("derivados de la marca: tono de hover y tinte de fondo", () => {
-  it("el hover nunca le saca contraste al texto sobre la marca (se mueve hacia la tinta opuesta)", () => {
-    for (const fila of FILAS_DE_MARCA) {
-      const marca = canales(fila.marca);
-      const { tinta, hover } = derivarDeMarca(marca, BLANCO);
-      const canalesTinta = rgbDeColorCss(tinta);
-      if (!canalesTinta) throw new Error("no se pudo leer la tinta");
-      expect(contraste(canales(hover), canalesTinta), fila.marca).toBeGreaterThanOrEqual(contraste(marca, canalesTinta) - 0.02);
-    }
-  });
-
-  it("el tinte de fondo queda entre el fondo y la marca y es #rrggbb", () => {
-    const { tinte, marca } = derivarDeMarca(canales("#5c57a2"), BLANCO);
-    expect(marca).toBe("#5c57a2");
-    expect(esMarcaHex(tinte)).toBe(true);
-    expect(contraste(canales(tinte), BLANCO)).toBeLessThan(contraste(canales("#5c57a2"), BLANCO));
-    expect(contraste(canales(tinte), BLANCO)).toBeGreaterThan(1);
-  });
-
-  it("todos los derivados son #rrggbb o una de las dos tintas fijas", () => {
-    for (const fila of FILAS_DE_MARCA) {
-      const d = derivarDeMarca(canales(fila.marca), BLANCO);
-      expect(esMarcaHex(d.marca) && esMarcaHex(d.hover) && esMarcaHex(d.tinte)).toBe(true);
-      expect([TINTA_CLARA, TINTA_OSCURA]).toContain(d.tinta);
-    }
   });
 });
