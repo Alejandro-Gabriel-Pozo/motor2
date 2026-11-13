@@ -190,15 +190,15 @@ for (const { ancho, alto } of [
     const m = marca();
     const carta = await productoParaLaCarta(m, sucursalId);
     try {
-      // Desde la portada: el paso «En la carta» está en la tira, con su pendiente («Todavía no está en la carta»).
+      // Desde la portada: «Qué falta» dice «Todavía no está en la carta» y su enlace lleva al paso (no hay pestaña: está fuera de la ficha).
       await page.goto(`/catalogo/productos/${carta.producto.id}`);
       const pasos = page.getByRole("navigation", { name: "Pasos del producto" });
-      await expect(pasos.getByRole("link", { name: NOMBRE_DEL_PASO })).toContainText("Pendiente");
-      await pasos.getByRole("link", { name: NOMBRE_DEL_PASO }).click();
+      await expect(pasos).not.toContainText("En la carta");
+      await expect(page.getByText(/Todavía no está en la carta/)).toBeVisible();
+      await page.getByRole("link", { name: NOMBRE_DEL_PASO }).click();
       await expect(page).toHaveURL(new RegExp(`/catalogo/productos/${carta.producto.id}/en-la-carta$`));
       await expect(page.getByRole("heading", { level: 1 })).toContainText(carta.producto.nombre);
       await expect(page.getByRole("heading", { level: 2, name: /^En la carta de «/ })).toBeVisible();
-      await expect(pasos.getByRole("link", { name: NOMBRE_DEL_PASO })).toHaveAttribute("aria-current", "page");
 
       // La ficha de carta del producto viene abierta: se elige la sección y se guarda.
       const ficha = page.locator(`[data-contenido-carta="${carta.producto.nombre}"]`);
@@ -214,9 +214,10 @@ for (const { ancho, alto } of [
 
       const contenido = await prisma.contenidoCartaProducto.findUniqueOrThrow({ where: { sucursalId_productoId: { sucursalId, productoId: carta.producto.id } } });
       expect({ visibleEnCarta: contenido.visibleEnCarta, seccionCartaId: contenido.seccionCartaId }).toEqual({ visibleEnCarta: true, seccionCartaId: carta.seccion.id });
-      // Sigue en el paso, y la tira ya no lo marca como pendiente.
+      // Sigue en el paso, y «Qué falta» de la portada ya no lo menciona.
       await expect(page).toHaveURL(new RegExp(`/catalogo/productos/${carta.producto.id}/en-la-carta$`));
-      await expect(pasos.getByRole("link", { name: NOMBRE_DEL_PASO })).not.toContainText("Pendiente");
+      await page.goto(`/catalogo/productos/${carta.producto.id}`);
+      await expect(page.getByRole("link", { name: NOMBRE_DEL_PASO })).toHaveCount(0);
     } finally {
       await carta.limpiar();
     }
@@ -258,13 +259,10 @@ test("paso 4 «En la carta»: sin el Ver de la carta no se abre por URL y la tir
     await page.goto(`/catalogo/productos/${carta.producto.id}/en-la-carta`);
     await expect(page.getByText(/No tenés permiso/).first()).toBeVisible();
     await expect(page.locator(`[data-contenido-carta]`), "no tenía que llegar a dibujarse la ficha de carta").toHaveCount(0);
-    // En la portada el paso se ve, SIN enlace (ni un camino a «No tenés permiso»), y sin su pendiente (no se leyó la carta).
+    // En la portada la carta ya no tiene pestaña ni enlace, y sin el Ver de la carta no se lee la carta: «Qué falta» no la menciona.
     await page.goto(`/catalogo/productos/${carta.producto.id}`);
-    const pasos = page.getByRole("navigation", { name: "Pasos del producto" });
-    const paso = pasos.locator("li", { hasText: "En la carta" });
-    await expect(paso).toBeVisible();
-    await expect(paso.getByRole("link")).toHaveCount(0);
-    await expect(paso, "sin el Ver de la carta no se lee la carta: sin su pendiente").not.toContainText("Pendiente");
+    await expect(page.getByRole("navigation", { name: "Pasos del producto" })).not.toContainText("En la carta");
+    await expect(page.getByText(/Todavía no está en la carta/)).toHaveCount(0);
   } finally {
     await admin.restaurar();
     await carta.limpiar();
@@ -474,12 +472,13 @@ for (const { ancho, alto } of [
     const producto = await productoDirecto(m, sucursalId);
     await page.goto(`/catalogo/productos/${producto.id}`);
     const pasos = page.getByRole("navigation", { name: "Pasos del producto" });
-    await pasos.getByRole("link", { name: /^Receta/ }).click();
+    await expect(pasos).not.toContainText("Receta");
+    // «Qué falta» dice que no tiene receta y su enlace lleva a ella.
+    await page.getByRole("link", { name: "Receta", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/catalogo/recetas/${producto.id}$`));
-    // El marco: el `h1` es el producto (no el título de la receta), la tira sigue y «Receta» es la actual.
+    // El marco: el `h1` es el producto (no el título de la receta) y la tira sigue (Datos, Precios, Opciones).
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(producto.nombre);
     await expect(page.getByRole("heading", { level: 2, name: `${producto.nombre} — versión vigente: sin receta todavía` })).toBeVisible();
-    await expect(pasos.getByRole("link", { name: /^Receta/ })).toHaveAttribute("aria-current", "page");
     await expect(pasos.getByRole("link", { name: "Datos" })).toBeVisible();
     await expectSinDesborde(page, `${ancho} px: la receta dentro del espacio`);
     expect((await new AxeBuilder({ page }).analyze()).violations, `${ancho} px: la receta dentro del espacio`).toEqual([]);
@@ -489,7 +488,7 @@ for (const { ancho, alto } of [
   });
 }
 
-test("paso 3 «Receta»: una materia prima que se produce lo tiene (Datos y Receta); una que no se produce no tiene receta ni espacio de venta", async ({ paginaAutenticada: page }) => {
+test("paso 3 «Receta»: una materia prima que se produce lo tiene (se llega desde «Qué falta»); una que no se produce no tiene receta ni espacio de venta", async ({ paginaAutenticada: page }) => {
   const m = marca();
   const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const seProduce = await prisma.producto.create({ data: { codigo: `E2E-EP-MPP-${m}`, nombre: `E2E Espacio Salsa ${m}`, tipo: "MP", unidadStockId: kg.id, seProduce: true } });
@@ -498,13 +497,12 @@ test("paso 3 «Receta»: una materia prima que se produce lo tiene (Datos y Rece
     await page.goto(`/catalogo/productos/${seProduce.id}`);
     const pasos = page.getByRole("navigation", { name: "Pasos del producto" });
     await expect(pasos).toContainText("Datos");
-    await expect(pasos).toContainText("Receta");
+    await expect(pasos).not.toContainText("Receta");
     await expect(pasos).not.toContainText("Precios");
     await expect(pasos).not.toContainText("En la carta");
-    await pasos.getByRole("link", { name: /^Receta/ }).click();
+    await page.getByRole("link", { name: "Receta", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/catalogo/recetas/${seProduce.id}$`));
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(seProduce.nombre);
-    await expect(pasos.getByRole("link", { name: /^Receta/ })).toHaveAttribute("aria-current", "page");
     expect((await new AxeBuilder({ page }).analyze()).violations, "receta de una materia prima que se produce, dentro del espacio").toEqual([]);
 
     // Una materia prima que NO se produce: sin paso «Receta» y, por URL, la pantalla dice que no puede tener receta (sin marco).

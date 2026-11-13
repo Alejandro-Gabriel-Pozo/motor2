@@ -99,7 +99,8 @@ test("un rol que solo VE productos no tiene enlace «Editar» en la lista ni «E
     await expect(page.getByRole("button", { name: "Guardar cambios" })).toHaveCount(0);
     const pasos = page.getByRole("navigation", { name: "Pasos del producto" });
     await expect(pasos.getByRole("link")).toHaveText(["Datos", "Precios"]);
-    for (const titulo of ["Opciones", "Receta", "En la carta"]) await expect(pasos.getByText(titulo, { exact: true }), `el paso «${titulo}» se ve como texto`).toBeVisible();
+    await expect(pasos.getByText("Opciones", { exact: true }), "el paso «Opciones» se ve como texto").toBeVisible();
+    for (const titulo of ["Receta", "En la carta"]) await expect(pasos.getByText(titulo, { exact: true }), `«${titulo}» está fuera de la ficha`).toHaveCount(0);
     // Sin permiso para ver un paso, la portada no cuenta qué le falta (ni la receta, ni la carta, ni los precios): no hay «Qué falta» ni insignias de pendiente.
     await expect(page.getByRole("heading", { name: "Qué falta" })).toHaveCount(0);
     await expect(pasos.getByText("Pendiente")).toHaveCount(0);

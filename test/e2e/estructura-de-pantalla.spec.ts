@@ -78,7 +78,8 @@ test("al pasar de pestaña el contenido vuelve arriba (el scroll es el del área
   await page.evaluate(() => {
     document.querySelector("main")!.scrollTop = 400;
   });
-  await page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: "Receta" }).click();
+  // La receta ya no es una pestaña de la ficha (dueño, 2026-11-13): se llega desde Recetas, o por «Qué falta».
+  await page.goto(`/catalogo/recetas/${productoId}`);
   await expect(page.getByRole("heading", { level: 2, name: /versión vigente/ })).toBeVisible();
   expect(await page.evaluate(() => document.querySelector("main")!.scrollTop)).toBe(0);
   expect((await new AxeBuilder({ page }).analyze()).violations, "Receta").toEqual([]);

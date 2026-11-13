@@ -46,7 +46,7 @@ test("la lista lleva a la ficha, que muestra los datos y los enlaces a los repor
   await expect(page.locator(`a[href="/catalogo/recetas/${producto.id}"]`)).toHaveCount(1);
 });
 
-test("la ficha de un producto de venta es la portada del espacio: el nombre es el h1 y las tres pestañas y los dos enlaces son de la ficha, con «Datos» como pantalla actual", async ({ paginaAutenticada: page }) => {
+test("la ficha de un producto de venta es la portada del espacio: el nombre es el h1 y las tres pestañas son de la ficha (sin Receta ni En la carta), con «Datos» como pantalla actual", async ({ paginaAutenticada: page }) => {
   const producto = await crearProducto(Date.now());
   await page.goto(`/catalogo/productos/${producto.id}`);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(producto.nombre);
@@ -55,11 +55,12 @@ test("la ficha de un producto de venta es la portada del espacio: el nombre es e
   await expect(pasos.getByRole("link", { name: "Datos" })).toHaveAttribute("href", `/catalogo/productos/${producto.id}`);
   await expect(pasos.getByRole("link", { name: "Precios" })).toHaveAttribute("href", `/catalogo/productos/${producto.id}/precios`);
   await expect(pasos.getByRole("link", { name: /^Opciones/ })).toHaveAttribute("href", `/catalogo/productos/${producto.id}/opciones`);
-  await expect(pasos.getByRole("link", { name: /^Receta/ })).toHaveAttribute("href", `/catalogo/recetas/${producto.id}`);
-  await expect(pasos.getByRole("link", { name: /^En la carta/ })).toHaveAttribute("href", `/catalogo/productos/${producto.id}/en-la-carta`);
-  // Sin receta no se vende: la portada lo dice en «Qué falta» y la pestaña lo marca.
+  // Receta y «En la carta» están fuera de la ficha (dueño, 2026-11-13): no hay pestaña ni enlace en la tira.
+  await expect(pasos).not.toContainText("Receta");
+  await expect(pasos).not.toContainText("En la carta");
+  // Sin receta no se vende: la portada lo dice en «Qué falta», y ese aviso lleva a la receta.
   await expect(page.getByRole("heading", { name: "Qué falta" })).toBeVisible();
-  await expect(pasos.getByRole("link", { name: /^Receta/ })).toContainText("Pendiente");
+  await expect(page.getByRole("link", { name: "Receta", exact: true })).toHaveAttribute("href", `/catalogo/recetas/${producto.id}`);
   await expect(page.getByText(/no tiene receta: armala en Catálogo/)).toBeVisible();
   // Contraespejo: Datos y Precios están completos (tiene precio): no son un pendiente.
   await expect(pasos.getByRole("link", { name: "Precios" })).not.toContainText("Pendiente");
@@ -80,7 +81,7 @@ test("a 375 px la portada del espacio no se sale por la derecha y los pasos se t
   await expectObjetivosTactiles(pasos.getByRole("link"), "pasos de la portada a 375 px", { alto: 44 });
 });
 
-test("una materia prima tiene el mismo espacio con menos pasos: Datos (y Receta solo si se produce), sin Opciones ni En la carta", async ({ paginaAutenticada: page }) => {
+test("una materia prima tiene el mismo espacio con menos pasos: solo Datos (sin Opciones, Receta ni En la carta); si se produce y no tiene receta, «Qué falta» lleva a la receta", async ({ paginaAutenticada: page }) => {
   const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const marca = Date.now();
   const harina = await prisma.producto.create({ data: { codigo: `E2E-FI-H-${marca}`, nombre: `E2E Harina ${marca}`, tipo: "MP", unidadStockId: kg.id } });
@@ -91,10 +92,9 @@ test("una materia prima tiene el mismo espacio con menos pasos: Datos (y Receta 
   await expect(pasos.getByRole("link")).toHaveText(["Datos"]);
   await expect(pasos.getByRole("link", { name: "Datos" })).toHaveAttribute("href", `/catalogo/productos/${harina.id}`);
   await page.goto(`/catalogo/productos/${masa.id}`);
-  await expect(pasos.getByRole("link")).toHaveText(["Datos", /^Receta/]);
-  await expect(pasos.getByRole("link", { name: /^Receta/ })).toHaveAttribute("href", `/catalogo/recetas/${masa.id}`);
-  // La materia prima que se produce y no tiene receta lo dice (pendiente); la que no se produce no tiene paso de receta.
-  await expect(pasos.getByRole("link", { name: /^Receta/ })).toContainText("Pendiente");
+  await expect(pasos.getByRole("link")).toHaveText(["Datos"]);
+  // La materia prima que se produce y no tiene receta lo dice en «Qué falta», con el enlace a la receta; la que no se produce no tiene paso de receta.
+  await expect(page.getByRole("link", { name: "Receta", exact: true })).toHaveAttribute("href", `/catalogo/recetas/${masa.id}`);
   await expect(page.getByText(/se produce y todavía no tiene receta/)).toBeVisible();
 });
 
