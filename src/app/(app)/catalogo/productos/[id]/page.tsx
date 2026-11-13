@@ -12,9 +12,9 @@ import { ProductoForm } from "../producto-form";
 import { cargarEdicionDelProducto } from "../datos-de-edicion";
 import { DuplicarProducto } from "@/components/catalogo/duplicar-producto";
 import { EnlaceInterno } from "@/components/enlace-interno";
+import { Enlace } from "@/ui/primitivas/enlace";
 import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
-import { PRESENTACIONES_VISIBLES } from "@/core/catalogo/public";
-import { actualizarDisponibilidadProducto, listarPresentaciones } from "@/server/actions/catalogo/productos";
+import { actualizarDisponibilidadProducto } from "@/server/actions/catalogo/productos";
 import { disponibilidadPorSucursalDeProducto } from "@/server/consultas/catalogo/disponibilidad";
 import { obtenerFichaProducto, obtenerSeccionHabitualEnSucursal } from "@/server/consultas/catalogo/productos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
@@ -79,8 +79,7 @@ export default async function FichaProductoPage({
   // Primitivos para el closure "use server" de abajo: lo que captura viaja al cliente y `p` lleva Decimales de Prisma (ver precio-local).
   const productoId = p.id;
 
-  const [presentaciones, disponibilidadPorSucursal, seccionHabitual, opcionesDeVenta] = await Promise.all([
-    PRESENTACIONES_VISIBLES && p.tipo === "MP" ? listarPresentaciones(p.id) : Promise.resolve([]),
+  const [disponibilidadPorSucursal, seccionHabitual, opcionesDeVenta] = await Promise.all([
     disponibilidadPorSucursalDeProducto(p.id, ctx.db),
     // Solo lectura (se configura en Stock › Sección habitual): la de ESTA sucursal, y solo si apunta a una sección activa de acá — la misma regla
     // con la que la usa el cierre de cuenta del salón (docs/plan-seccion-habitual-stock-2026-09-25.md).
@@ -126,7 +125,7 @@ export default async function FichaProductoPage({
           <ul className="flex flex-col gap-1 rounded border border-aviso bg-aviso-tinte px-4 py-3 text-sm text-aviso-tinta">
             {pendientes.map((paso) => (
               <li key={paso.paso}>
-                <span className="font-medium">{paso.titulo}:</span> {paso.estado.tipo === "pendiente" ? paso.estado.texto : null}
+                {paso.href !== null ? <Enlace href={paso.href} className="font-medium">{paso.titulo}</Enlace> : <span className="font-medium">{paso.titulo}</span>}: {paso.estado.tipo === "pendiente" ? paso.estado.texto : null}
               </li>
             ))}
           </ul>
@@ -250,19 +249,6 @@ export default async function FichaProductoPage({
             accion={duplicarProducto}
           />
         </div>
-      )}
-
-      {presentaciones.length > 0 && (
-        <section>
-          <h2 className="mb-2 text-sm font-medium">Presentaciones de compra</h2>
-          <ul className="rounded border border-borde p-4 text-sm">
-            {presentaciones.map((pr) => (
-              <li key={pr.id} className={pr.activa ? "" : "text-tinta-suave"}>
-                {pr.unidadCompraNombre} — {formatearCantidad(pr.factorConversion)} {p.unidadStock.nombre} cada una{pr.activa ? "" : " (inactiva)"}
-              </li>
-            ))}
-          </ul>
-        </section>
       )}
 
       <section>

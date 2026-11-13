@@ -1,5 +1,6 @@
 import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
 import { esBaseConfigurable, type ModoDeVenta } from "@/core/opciones/public";
+import { PRESENTACIONES_VISIBLES } from "./presentaciones-visibles";
 
 /**
  * El ESPACIO DEL PRODUCTO (Fase 6, paso 6.9b; DEC-12): el recorrido de pasos por el que se arma y se mantiene UN producto sin salir de él. Puro: no lee nada. Dice qué pasos tiene un
@@ -23,10 +24,11 @@ import { esBaseConfigurable, type ModoDeVenta } from "@/core/opciones/public";
  */
 
 /**
- * Los pasos del espacio, en orden. La ficha tiene TRES pestañas, como la de Pedernal (docs/diseno-productos-igual-a-pedernal-2026-11-13.md, D4, D8 y D12): Datos, Precios y Opciones (dueño, 2026-11-13: «Sí, así
- * provisorio»); «Receta» y «En la carta» siguen siendo pasos pero se muestran como dos enlaces chicos bajo las pestañas, hasta que el dueño decida la pregunta 6. `precios` es solo de un producto de venta.
+ * Los pasos del espacio, en orden. La ficha tiene como pestañas Datos, Precios y Opciones, y «Cómo se compra» cuando el producto se compra, como la de Pedernal (docs/diseno-productos-igual-a-pedernal-2026-11-13.md, D4, D8 y D12;
+ * dueño, 2026-11-13: «Fuera de la ficha, como Pedernal»: «Receta» y «En la carta» ya no se muestran en la ficha, se llega desde Recetas y Carta; siguen siendo pasos para que «Qué falta» avise y lleve a esas pantallas).
+ * `precios` es solo de un producto de venta; `compra`, solo de una materia prima y mientras las presentaciones estén visibles.
  */
-export const PASOS_DEL_ESPACIO = ["datos", "precios", "opciones", "receta", "en-la-carta"] as const;
+export const PASOS_DEL_ESPACIO = ["datos", "precios", "opciones", "compra", "receta", "en-la-carta"] as const;
 export type PasoDelEspacio = (typeof PASOS_DEL_ESPACIO)[number];
 
 /** Las rutas de cada paso. En el bloque 2 la receta sigue siendo la pantalla de hoy (`/catalogo/recetas/[id]`); `portada` es la ficha del producto. */
@@ -41,6 +43,8 @@ export function rutaDelPaso(productoId: string, paso: PasoDelEspacio | "portada"
       return `/catalogo/productos/${id}/precios`;
     case "opciones":
       return `/catalogo/productos/${id}/opciones`;
+    case "compra":
+      return `/catalogo/productos/${id}/compra`;
     case "receta":
       return `/catalogo/recetas/${id}`;
     case "en-la-carta":
@@ -85,6 +89,7 @@ const SIN_DATO: EstadoDelPaso = { tipo: "sin-dato" };
 function pasoCorrespondeAlProducto(forma: FormaDelProducto, paso: PasoDelEspacio): boolean {
   if (paso === "datos") return true;
   if (forma.esAnclaDeAdicional) return false;
+  if (paso === "compra") return forma.tipo === "MP" && PRESENTACIONES_VISIBLES;
   if (forma.tipo === "MP") return paso === "receta" && forma.seProduce;
   return true; // PV
 }
@@ -146,6 +151,8 @@ export function pendientesDelProducto(h: HechosDelProducto): Record<PasoDelEspac
     datos: estadoDeDatos(h),
     precios: pasoCorrespondeAlProducto(h, "precios") ? estadoDePrecios(h) : SIN_DATO,
     opciones: pasoCorrespondeAlProducto(h, "opciones") ? estadoDeOpciones(h) : SIN_DATO,
+    // «Cómo se compra» no tiene pendiente propio: las presentaciones son opcionales.
+    compra: SIN_DATO,
     receta: pasoCorrespondeAlProducto(h, "receta") ? estadoDeReceta(h) : SIN_DATO,
     "en-la-carta": pasoCorrespondeAlProducto(h, "en-la-carta") ? estadoEnLaCarta(h) : SIN_DATO,
   };
@@ -178,6 +185,8 @@ function tituloDelPaso(forma: FormaDelProducto, paso: PasoDelEspacio): string {
       return "Precios";
     case "opciones":
       return "Opciones";
+    case "compra":
+      return "Cómo se compra";
     case "receta":
       return "Receta";
     case "en-la-carta":
@@ -193,6 +202,8 @@ function aperturaDelPaso(acceso: AccesoAlEspacio, paso: PasoDelEspacio): "si" | 
       return acceso.ver ? "si" : "sin-permiso";
     case "opciones":
       return acceso.opciones ? "si" : "sin-permiso";
+    case "compra":
+      return acceso.ver ? "si" : "sin-permiso";
     case "receta":
       return acceso.receta;
     case "en-la-carta":
