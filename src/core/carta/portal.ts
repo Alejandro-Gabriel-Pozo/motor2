@@ -84,10 +84,16 @@ export function esClavePortal(clave: string): clave is ClavePortal {
  */
 export function extraerUrlImagen(crudo: string): string {
   const s = crudo.trim();
-  const md = /\[[^\]]*\]\(([^)]+)\)/.exec(s);
-  if (md) return md[1].trim();
-  const parentesis = /^\(([^()]+)\)$/.exec(s);
-  if (parentesis) return parentesis[1].trim();
+  const abreLink = s.indexOf("](");
+  if (s.startsWith("[") && abreLink > 0) {
+    const desde = abreLink + 2;
+    const cierre = s.indexOf(")", desde);
+    if (cierre > desde) return s.slice(desde, cierre).trim();
+  }
+  if (s.startsWith("(") && s.endsWith(")") && s.length > 2) {
+    const adentro = s.slice(1, -1);
+    if (!adentro.includes("(") && !adentro.includes(")")) return adentro.trim();
+  }
   return s;
 }
 
