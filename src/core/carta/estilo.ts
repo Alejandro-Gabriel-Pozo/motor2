@@ -1,4 +1,4 @@
-import { resolveHeroInk, resolvePrimaryForeground } from "./color-css";
+import { colorDeTextoLegible, resolveHeroInk, resolvePrimaryForeground } from "./color-css";
 import { variablesDeLaEscala } from "./escala";
 import { CLAVES_TEMA_V1, validarValorTema, type ClaveTema, type DefinicionClaveTema, type FamiliaTipografica } from "./tema";
 
@@ -152,6 +152,14 @@ export function resolverEstiloCarta(valoresGuardados: unknown): EstiloCarta {
     variablesDeLaEscala({ nombre: valores.carta_fuente_item_nombre, precio: valores.carta_fuente_item_precio, descripcion: valores.carta_fuente_item_descripcion, tags: valores.carta_fuente_item_tags }),
   );
 
+  // Defecto 2 del ensayo del 2026-11-13: el color de marca se usa también como color de TEXTO (nombre y precio de un plato especial, etiquetas); si no llega a 4,5:1 contra el fondo de la carta
+  // (marca #797d62 sobre #181818 = 4,16:1) los textos usan `--carta-primary-texto`, la marca acercada a la tinta lo justo. Con una marca que ya llega no se define y nada cambia.
+  const tintaBase = valores.color_fondo_dia ? resolvePrimaryForeground(valores.color_fondo_dia) : null;
+  if (valores.color_marca) {
+    const marcaLegible = colorDeTextoLegible(valores.color_marca, valores.color_fondo_dia, tintaBase);
+    if (marcaLegible !== valores.color_marca) variablesCss["--carta-primary-texto"] = marcaLegible;
+  }
+
   const familiaTipografica = valores.carta_fuente_familia as FamiliaTipografica;
   variablesCss[aVariableCss("carta_fuente_familia")] = FAMILIA_CSS[familiaTipografica];
 
@@ -195,7 +203,7 @@ export function resolverEstiloCarta(valoresGuardados: unknown): EstiloCarta {
       altoDesktop: valores.carta_banda_alto_desktop,
     },
     familiaTipografica,
-    tintaBase: valores.color_fondo_dia ? resolvePrimaryForeground(valores.color_fondo_dia) : null,
+    tintaBase,
   };
 }
 
