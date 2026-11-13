@@ -34,7 +34,8 @@ export function crearEnviadorDelCanal(canal: CanalDeCorreo, source: Entorno, cre
 
 const MAXIMO_DE_DESTINATARIOS = 50;
 const MAXIMO_DEL_TEXTO = 100_000;
-const UNA_LINEA = /^[^\r\n]+$/;
+/** Una línea de texto: letras, marcas, números, puntuación, símbolos y dos espacios (el común y el de no separación). Sin saltos de línea ni controles (lista de PERMITIDOS, «todo nace cerrado»). */
+const UNA_LINEA = /^[\p{L}\p{M}\p{N}\p{P}\p{S} \u00a0]+$/u;
 
 /** Lo que el proveedor rechazaría igual, cortado acá: devuelve el problema, o `null` si el mensaje está bien. */
 function problemaDelMensaje(m: MensajeDeCorreo): string | null {

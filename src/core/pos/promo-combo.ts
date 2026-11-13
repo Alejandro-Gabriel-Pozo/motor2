@@ -160,7 +160,7 @@ export function claveDeComponenteConfigurado(productoId: string, claveConfigurac
 export function claveDeConfiguracion(opciones: readonly { opcionId: string; cantidad: number }[]): string | null {
   const vistas = new Set<string>();
   for (const o of opciones) {
-    if (typeof o.opcionId !== "string" || !/^[^;=\s]+$/.test(o.opcionId) || vistas.has(o.opcionId)) return null;
+    if (typeof o.opcionId !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(o.opcionId) || vistas.has(o.opcionId)) return null;
     if (!Number.isInteger(o.cantidad) || o.cantidad < 1 || o.cantidad > 10) return null;
     vistas.add(o.opcionId);
   }

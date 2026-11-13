@@ -215,7 +215,7 @@ export interface RutaHijaConAccionPropia {
 }
 
 export const RUTAS_HIJAS_CON_ACCION_PROPIA: readonly RutaHijaConAccionPropia[] = [
-  { patron: /^\/catalogo\/productos\/[^/]+\/en-la-carta$/, accion: "carta_ver", pagina: "catalogo/productos/[id]/en-la-carta/page.tsx" },
+  { patron: /^\/catalogo\/productos\/[A-Za-z0-9_-]+\/en-la-carta$/, accion: "carta_ver", pagina: "catalogo/productos/[id]/en-la-carta/page.tsx" },
 ];
 
 const limpiarRuta = (href: string) => href.split(/[?#]/)[0].replace(/\/+$/, "");

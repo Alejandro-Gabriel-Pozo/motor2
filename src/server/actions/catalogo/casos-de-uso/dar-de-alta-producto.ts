@@ -35,7 +35,7 @@ import { crearProductoNuevo, sembrarDisponibilidadDeProductoNuevo } from "@/serv
  * M.2 (D-2 del dueño): sin `producto_campos_sensibles` (`puedeEditarCamposSensibles`, que calcula la Server Action) el alta no puede traer precio de venta distinto de 0, factor de conversión distinto de 1 ni unidad de compra:
  * `SIN_PERMISO_CAMPOS_SENSIBLES`, fallo cerrado y antes de leer o escribir nada. La unidad de stock queda libre.
  *
- * M.2-A4 (auditoría de P6, importante; SUPUESTO declarado, el dueño lo corrige si no): sin esa clave el producto de venta (PV) nace con precio 0 y NO se puede vender hasta que alguien con la clave le cargue el precio
+ * M.2-A4 (auditoría de P6, importante; DEC-0001, ACEPTADA por el dueño el 2026-11-11, ver docs/registro-de-decisiones.md): sin esa clave el producto de venta (PV) nace con precio 0 y NO se puede vender hasta que alguien con la clave le cargue el precio
  * y alguien con `producto_disponibilidad` lo active: se siembra la disponibilidad APAGADA (`disponible: false`) en las sucursales que pedía el tilde, y el POS y la carta pública (que listan solo lo disponible) no lo
  * ofrecen. Una materia prima no se vende: no cambia.
  *

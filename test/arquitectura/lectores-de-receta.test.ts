@@ -80,6 +80,12 @@ const ARCHIVOS_CLASIFICADOS: readonly ArchivoClasificado[] = [
     motivo: "El editor de la receta CENTRAL (obtenerRecetaVigente/listarVersionesDeReceta) — nunca resuelve por sucursal, es lo que se calibra contra. guardarReceta ya no lee la receta acá: delega en su caso de uso (Task #41, P1).",
   },
   {
+    ruta: "server/persistencia/catalogo/duplicar-producto.ts",
+    clase: "series",
+    motivo:
+      "cargarRecetaVigenteDelOrigen (E4, «Duplicar producto»): la receta vigente del original según el lugar elegido como origen —la central (`ALCANCE_CENTRAL`, la «Central») o, con una sucursal, la que RIGE allí (`alcanceDeSucursal`: la propia si la tiene habilitada, si no la central)— para copiarla como versión 1 del producto nuevo. Copia la estructura y las cantidades de esa versión, nunca las calibraciones locales (`rendimientosLocales` no se pide a propósito: la copia es independiente y el producto nuevo no tiene calibraciones); por el embudo (`cargarRecetaVigente`), sin resolver ningún rendimiento efectivo.",
+  },
+  {
     ruta: "server/persistencia/catalogo/guardar-version-de-receta.ts",
     clase: "series",
     motivo:

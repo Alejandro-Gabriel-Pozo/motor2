@@ -24,10 +24,9 @@ export function validarNombreEnCarta(valor: unknown): ResultadoDato<string | nul
   const etiqueta = "«Nombre en la carta»";
   if (typeof valor !== "string") return rechazar("formato", `${etiqueta} no es un texto válido.`);
   if (valor.trim() === "") return aceptar(null);
-  if (/[\r\n]/.test(valor)) return rechazar("formato", `${etiqueta} va en una sola línea: sacá los saltos de línea.`);
   if (valor !== valor.trim()) return rechazar("formato", `${etiqueta} no puede empezar ni terminar con espacios: borralos y volvé a guardar.`);
   if (Array.from(valor).length > LARGO_MAXIMO_DEL_NOMBRE_EN_CARTA) return rechazar("largo", `${etiqueta} tiene hasta ${LARGO_MAXIMO_DEL_NOMBRE_EN_CARTA} caracteres: acortalo.`);
-  if (!RE_TEXTO_CATALOGO.test(valor)) return rechazar("formato", `${etiqueta} tiene caracteres no permitidos. Se admiten letras, números, espacios y - . , ( ) % & / '`);
+  if (!RE_TEXTO_CATALOGO.test(valor)) return rechazar("formato", `${etiqueta} tiene caracteres no permitidos (va en una sola línea: sin saltos de línea). Se admiten letras, números, espacios y - . , ( ) % & / '`);
   if (valor.startsWith("-")) return rechazar("formato", `${etiqueta} no puede empezar con "-".`);
   return aceptar(valor);
 }
@@ -37,7 +36,7 @@ export function guardComandoGuardarContenidoCartaProducto(entrada: { datos: unkn
   if (typeof datos !== "object" || datos === null || Array.isArray(datos)) return rechazar("formato", "Los datos del contenido de la carta no son válidos.");
   const d = datos as { descripcion?: unknown; tags?: unknown; orden?: unknown; seccionCartaId?: unknown; generoCartaId?: unknown; mostrarNombreArriba?: unknown; nombreEnCarta?: unknown };
 
-  const descripcion = validarTextoLibreCarta(d.descripcion, "La descripción", LARGO_MAXIMO_DESCRIPCION_CARTA);
+  const descripcion = validarTextoLibreCarta(d.descripcion, "La descripción", LARGO_MAXIMO_DESCRIPCION_CARTA, { multilinea: true });
   if (!descripcion.ok) return rechazar("largo", descripcion.mensaje);
   const tags = normalizarTagsCarta(d.tags as readonly string[] | string | null | undefined);
   if (!tags.ok) return rechazar("formato", tags.mensaje);
