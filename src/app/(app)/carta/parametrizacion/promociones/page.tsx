@@ -13,7 +13,7 @@ import {
   guardarPromoCarta,
   guardarSoloSalonPromoCarta,
 } from "@/server/actions/carta/promos";
-import { actualizarActivaEntradaDeCupo, agregarEntradaDeCupo, guardarVigenciaPromoCarta } from "@/server/actions/carta/combos";
+import { actualizarActivaEntradaDeCupo, agregarEntradaDeCupo } from "@/server/actions/carta/combos";
 import { precioMinimoPromo } from "@/core/pos/public";
 import { MENU_DEL_DIA_VISIBLE } from "@/core/carta/public";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
@@ -26,7 +26,7 @@ import { FilaDeCarta } from "@/components/fila-de-carta";
 import { PESTANAS_DE_PROMOCIONES } from "@/core/carta/public";
 import { EncabezadoDeCarta } from "../../encabezado-de-carta";
 import estilos from "../../carta-mant.module.css";
-import { BloqueDeVigencia, CamposCupos, CamposLugares, CamposPromo, CamposVigencia, esFijo } from "../formularios";
+import { CamposCupos, CamposLugares, CamposPromo, esFijo } from "../formularios";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { CampoNumero } from "@/components/campo-numero";
@@ -41,7 +41,7 @@ const refrescarSiOk = (r: ResultadoAccion) => {
 };
 
 /**
- * CARTA-MANT: Parametrización › Promociones (prototipo aprobado). Las promos de la empresa (prendidas o no en esta sucursal, con su precio local, sus cupos, sus lugares de entradas y su vigencia), con el
+ * CARTA-MANT: Parametrización › Promociones (prototipo aprobado). Las promos de la empresa (prendidas o no en esta sucursal, con su precio local, sus cupos, sus lugares de entradas), con el
  * MISMO bloque que antes estaba apilado en `/carta`: entrar pide «Ver» de `carta_ver`; cada formulario se dibuja solo con «Editar» de su clave (`carta_promo_definir`, `carta_promo_activar`,
  * `carta_promo_precio_local`); la acción vuelve a exigirlo.
  */
@@ -62,7 +62,7 @@ export default async function PromocionesDeCartaPage() {
   const puedeActivarPromos = nivelPromoActivar.editar;
   const puedePrecioLocalPromos = nivelPromoPrecio.editar;
   const datos = await cargarAdminCarta(ctx.sucursalId, ctx.db, new Date());
-  // GO-3b (U1): los combos de cada promo (lugares de entradas, sus entradas y la vigencia), aparte de `cargarAdminCarta` (que no cambia).
+  // GO-3b (U1): los combos de cada promo (lugares de entradas y sus entradas), aparte de `cargarAdminCarta` (que no cambia).
   const combos = await cargarCombosDeLaCarta(ctx.db, ctx.sucursalId);
   const seccionesActivas = datos.secciones.filter((x) => x.activa);
 
@@ -91,9 +91,9 @@ export default async function PromocionesDeCartaPage() {
             const precioLocalVisto = pr.precioLocal;
             const activa = pr.activa;
             const prendidaAca = pr.prendidaAca;
-            const combo = combos.porPromo[pr.id] ?? { lugares: [], vigencia: { version: 1, vigenteDesde: null, vigenteHasta: null, diasDeSemana: null }, soloSalon: false };
+            const combo = combos.porPromo[pr.id] ?? { lugares: [], version: 1, soloSalon: false };
             const lugares = combo.lugares;
-            const versionDeLaPromo = combo.vigencia.version;
+            const versionDeLaPromo = combo.version;
             return (
               <li key={pr.id} className="rounded border p-3" data-promo-carta={pr.titulo}>
                 <details>
@@ -167,7 +167,7 @@ export default async function PromocionesDeCartaPage() {
                     </DatosSoloLectura>
                   )}
 
-                  {/* Interruptor «solo salón» (docs/diseno-promo-solo-salon-2026-10-26.md): de la empresa, con la versión que vio la pantalla (la misma de la vigencia). */}
+                  {/* Interruptor «solo salón» (docs/diseno-promo-solo-salon-2026-10-26.md): de la empresa, con la versión que vio la pantalla (`PromoCarta.version`). */}
                   <DondeSeVe
                     titulo={pr.titulo}
                     soloSalon={combo.soloSalon}
@@ -309,29 +309,6 @@ export default async function PromocionesDeCartaPage() {
                     </div>
                     );
                   })}
-
-                  {/* GO-3b (D-7): la vigencia de la promo. Oculta por decisión del dueño (`VIGENCIA_DE_PROMO_VISIBLE`): la promo se maneja con activar/desactivar. */}
-                  <BloqueDeVigencia vigencia={combo.vigencia} puedeEditar={puedeDefinirPromos}>
-                    <FormConResultado
-                      accion={async (fd: FormData) => {
-                        "use server";
-                        const dias = [0, 1, 2, 3, 4, 5, 6].filter((d) => fd.get(`dia_${d}`));
-                        const desde = campo(fd, "vigenteDesde").trim();
-                        const hasta = campo(fd, "vigenteHasta").trim();
-                        return refrescarSiOk(
-                          await guardarVigenciaPromoCarta({ promoCartaId: id, versionEsperada: versionDeLaPromo, vigenteDesde: desde || null, vigenteHasta: hasta || null, diasDeSemana: dias })
-                        );
-                      }}
-                      className="mt-1 flex flex-col gap-2"
-                    >
-                      <CamposVigencia vigencia={combo.vigencia} />
-                      <div>
-                        <BotonDeServidor type="submit" tamano="compacto">
-                          Guardar vigencia
-                        </BotonDeServidor>
-                      </div>
-                    </FormConResultado>
-                  </BloqueDeVigencia>
                 </details>
                 {puedeActivarPromos && (
                   <FormConResultado

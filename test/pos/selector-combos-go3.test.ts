@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
+import { limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { sembrarCafeDelSalon, type CafeDelSalon } from "../setup/opciones";
 import { sembrarSalon } from "./salon-fixture";
 import { cargarSelectorCartaDeLaMesa } from "../../src/server/consultas/pos/selector-carta";
@@ -13,7 +13,6 @@ import { diaDeCalendario, fechaDeColumnaDate, sumarDias, ZONA_ARGENTINA } from "
  * GO-3b (ADR-032, F6 paso U5), contra Postgres real: lo que el SELECTOR del POS ofrece de los combos con cupos de entradas (la pantalla de la mesa, con la zona de la empresa). Fija:
  *  - el menú del día se ofrece con su plato de HOY, el postre FIJO y el café con su configuración por nombre y precio de lista; sin la zona (lo de siempre) no aparece;
  *  - PARIDAD con la venta: las entradas que el selector ofrece en cada cupo son EXACTAMENTE las elegibles con que `cargarPromoCartaParaAgregar` valida (la misma lectura);
- *  - la vigencia: una promo que no vale hoy no se ofrece.
  * (El caso de las combinaciones del café con ejes se retiró con GO-3a en la Fase 3 de la ola «precio y carta».)
  *
  * Mutación demostrada (roja y revertida): no filtrar por la vigencia en el selector (rojo: «vigencia»).
@@ -77,13 +76,5 @@ describe("el selector del POS con combos de entradas (GO-3b, U5)", () => {
     expect(delSelector).toEqual(deLaVenta);
     // Las almendras apagadas dejan al café afuera en los dos lados.
     expect(delSelector[2]).toEqual([m.bebida.id, []]);
-  });
-
-  it("la vigencia: una promo que no vale hoy (vencida, o no es su día de la semana) no se ofrece", async () => {
-    const m = await menuDelDia();
-    await prisma.promoCarta.update({ where: { id: m.promoCartaId }, data: { vigenteHasta: fechaDeColumnaDate(sumarDias(hoy, -1)) } });
-    expect(promoDe(await cargarSelectorCartaDeLaMesa(s.sucursalId, prisma, ahora(), ZONA_ARGENTINA), m.promoCartaId)).toBeNull();
-    await prismaAdmin.promoCarta.update({ where: { id: m.promoCartaId }, data: { vigenteHasta: null, vigenteDesde: fechaDeColumnaDate(hoy) } });
-    expect(promoDe(await cargarSelectorCartaDeLaMesa(s.sucursalId, prisma, ahora(), ZONA_ARGENTINA), m.promoCartaId)).not.toBeNull();
   });
 });

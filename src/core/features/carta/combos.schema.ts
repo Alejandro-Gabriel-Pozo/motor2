@@ -1,4 +1,3 @@
-import type { VigenciaDePromo } from "@/core/carta/public";
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**
@@ -45,11 +44,3 @@ export interface ComandoActivarEntradaDeCupo {
 
 export type ResultadoActivarEntradaDeCupo = ResultadoCaso<{ huboCambio: boolean }, "ENTRADA_NO_ENCONTRADA" | "CUPO_INVALIDO" | CodigoDeComponente>;
 
-/** La vigencia nueva de una promo, con la versión que vio la pantalla (control optimista: `PromoCarta.version`). */
-export interface ComandoGuardarVigenciaPromoCarta {
-  promoCartaId: string;
-  versionEsperada: number;
-  vigencia: VigenciaDePromo;
-}
-
-export type ResultadoGuardarVigenciaPromoCarta = ResultadoCaso<{ huboCambio: boolean }, "PROMO_NO_ENCONTRADA" | "VERSION_DESACTUALIZADA">;

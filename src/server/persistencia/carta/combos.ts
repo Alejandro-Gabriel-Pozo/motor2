@@ -27,21 +27,6 @@ export async function fijarActivaDeEntradaDeCupo(db: Prisma.TransactionClient, a
   await db.entradaDeCupo.update({ where: { id: args.id }, data: { activa: args.activa, actualizadoEn: args.ahora } });
 }
 
-/**
- * La vigencia de una promo con su control OPTIMISTA: escribe solo si la versión sigue siendo la que vio la pantalla, y la incrementa. Devuelve cuántas filas cambió (0 = alguien la cambió
- * entre medio: `VERSION_DESACTUALIZADA`).
- */
-export async function cambiarVigenciaDePromo(
-  db: Prisma.TransactionClient,
-  args: { id: string; versionEsperada: number; vigenteDesde: Date | null; vigenteHasta: Date | null; diasDeSemana: number | null },
-): Promise<number> {
-  const { count } = await db.promoCarta.updateMany({
-    where: { id: args.id, version: args.versionEsperada },
-    data: { vigenteDesde: args.vigenteDesde, vigenteHasta: args.vigenteHasta, diasDeSemana: args.diasDeSemana, version: { increment: 1 } },
-  });
-  return count;
-}
-
 /** Un plato del día nuevo de un lugar DEL_DIA en UNA sucursal y fecha. Devuelve el id. */
 export async function crearPlatoDelDia(
   db: Prisma.TransactionClient,

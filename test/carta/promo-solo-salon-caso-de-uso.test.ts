@@ -1,8 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { guardarSoloSalonPromoCartaCasoDeUso } from "../../src/server/actions/carta/casos-de-uso/guardar-solo-salon-promo-carta";
-import { guardarVigenciaPromoCartaCasoDeUso } from "../../src/server/actions/carta/casos-de-uso/guardar-vigencia-promo-carta";
 import { guardComandoGuardarSoloSalonPromoCarta } from "../../src/core/features/carta/promos.guard";
-import { guardComandoGuardarVigenciaPromoCarta } from "../../src/core/features/carta/combos.guard";
 import { limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
 import { actorDeCombos, sembrarCombosAjenos, sembrarCombosGo3b, type EscenarioDeCombosGo3b } from "../setup/combos-go3b";
 
@@ -69,17 +67,6 @@ describe("guardarSoloSalonPromoCartaCasoDeUso", () => {
     expect(await auditoria()).toHaveLength(1);
   });
 
-  it("comparte versión con la vigencia: guardar la vigencia invalida la pantalla del interruptor (y al revés), sin pisar nada", async () => {
-    const c = guardComandoGuardarVigenciaPromoCarta({ promoCartaId: e.promoId, versionEsperada: 1, vigenteDesde: "2026-10-01" });
-    if (!c.ok) throw new Error(c.mensaje);
-    expect(await guardarVigenciaPromoCartaCasoDeUso(actor(), c.valor)).toMatchObject({ ok: true });
-    expect(await guardar(1, true)).toMatchObject({ ok: false, codigo: "VERSION_DESACTUALIZADA" });
-    expect((await promo()).soloSalon).toBe(false);
-    expect(await guardar(2, true)).toMatchObject({ ok: true });
-    expect(await promo()).toMatchObject({ soloSalon: true, version: 3 });
-    expect((await prisma.promoCarta.findUniqueOrThrow({ where: { id: e.promoId } })).vigenteDesde?.toISOString().slice(0, 10)).toBe("2026-10-01");
-  });
-
   it("una promo que no existe se rechaza (PROMO_NO_ENCONTRADA) sin escribir", async () => {
     expect(await guardar(1, true, "no-existe")).toMatchObject({ ok: false, codigo: "PROMO_NO_ENCONTRADA" });
     expect(await prismaAdmin.registroAuditoria.count({ where: { campo: "soloSalon" } })).toBe(0);
@@ -119,18 +106,6 @@ describe("guardarSoloSalonPromoCartaCasoDeUso", () => {
       if (b.ok) expect(b.datos.huboCambio, `iteración ${i}`).toBe(false);
       expect(await promo(), `iteración ${i}`).toMatchObject({ soloSalon: !soloSalon, version: version + 1 });
       expect((await auditoria()).length, `iteración ${i}`).toBe(antes + 1);
-    }
-  });
-
-  it("CONCURRENCIA REAL: el interruptor contra la vigencia sobre la MISMA versión — gana uno y el otro VERSION_DESACTUALIZADA; nada se pisa (loop de 10)", async () => {
-    for (let i = 0; i < ITERACIONES; i++) {
-      const { version, soloSalon } = await promo();
-      const c = guardComandoGuardarVigenciaPromoCarta({ promoCartaId: e.promoId, versionEsperada: version, vigenteHasta: `2026-12-${String(i + 1).padStart(2, "0")}` });
-      if (!c.ok) throw new Error(c.mensaje);
-      const [a, b] = await Promise.all([guardar(version, !soloSalon), guardarVigenciaPromoCartaCasoDeUso(actor(), c.valor)]);
-      expect([a, b].filter((r) => r.ok), `iteración ${i}: ${a.mensaje} | ${b.mensaje}`).toHaveLength(1);
-      expect([a, b].filter((r) => !r.ok).map((r) => (r.ok ? "" : r.codigo))).toEqual(["VERSION_DESACTUALIZADA"]);
-      expect((await promo()).version, `iteración ${i}`).toBe(version + 1);
     }
   });
 });
