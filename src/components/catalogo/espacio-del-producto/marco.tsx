@@ -60,7 +60,7 @@ export function MarcoDelEspacio({ producto, pasos, actual, ancho = "angosto", ch
       <header className="flex flex-col gap-3">
         {fichaVisible && (
           <p className="text-sm">
-            <Enlace href="/catalogo/productos">← Productos</Enlace>
+            <Enlace href="/catalogo/productos" variante="suelto">← Productos</Enlace>
           </p>
         )}
         <div className="flex flex-col gap-1">

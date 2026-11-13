@@ -95,7 +95,7 @@ export default async function EnLaCartaDelProductoPage({ params }: { params: Pro
             {!(puedeEditarContenido || puedeDescuento) && <AvisoSoloLectura />}
             <p className="text-sm text-tinta-suave">
               La ficha de «{producto.nombre}» en la carta de esta sucursal: si se muestra, en qué sección y en qué orden, ★, género, descripción y tags. Lo que no sale en la carta (el POS y el menú del día) se ve en{" "}
-              <EnlaceInterno href="/carta?nivel=visibilidad" className="underline">
+              <EnlaceInterno href="/carta?nivel=visibilidad" className="inline-block min-h-11 py-3 underline">
                 Carta › Hoy › Visibilidad
               </EnlaceInterno>
               .

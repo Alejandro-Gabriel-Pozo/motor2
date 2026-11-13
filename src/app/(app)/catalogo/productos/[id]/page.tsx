@@ -210,7 +210,7 @@ export default async function FichaProductoPage({
               Opciones de venta
             </h2>
             {nivelOpciones.editar && (
-              <Link href={`/catalogo/productos/${p.id}/opciones`} className="text-sm underline">
+              <Link href={`/catalogo/productos/${p.id}/opciones`} className="inline-flex min-h-11 items-center text-sm underline">
                 Editar opciones
               </Link>
             )}
@@ -317,7 +317,7 @@ export default async function FichaProductoPage({
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <div>
-        <Link href="/catalogo/productos" className="mb-3 inline-block text-sm underline">
+        <Link href="/catalogo/productos" className="mb-3 inline-flex min-h-11 items-center text-sm underline">
           ← Productos
         </Link>
         <div className="flex flex-wrap items-center justify-between gap-3">

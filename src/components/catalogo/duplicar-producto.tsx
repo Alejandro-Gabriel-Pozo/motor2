@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useOptimistic, useRef, useState } from "react";
 import { CampoNumero } from "@/components/campo-numero";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { LO_QUE_NO_SE_COPIA } from "@/core/catalogo/public";
@@ -64,6 +64,9 @@ export function DuplicarProducto({ origen, tieneReceta, opciones, puedeCopiarRec
   const [abierto, setAbierto] = useState(false);
   const [duplicadoId, setDuplicadoId] = useState("");
   const [creado, setCreado] = useState<{ id: string; nombre: string; mensaje: string } | null>(null);
+  // Defecto 8 del ensayo del 2026-11-13: mientras el servidor trabaja el botón lo dice («Duplicando…»); antes solo se ponía gris. `useOptimistic` (no `useState`): `duplicar` corre dentro de la
+  // transición de `FormConResultado` y los `setState` de una acción asíncrona se aplican recién cuando termina; el valor optimista se ve ya y vuelve a `false` solo al terminar.
+  const [duplicando, marcarDuplicando] = useOptimistic(false);
   const puedeRecibirReceta = puedeCopiarReceta && tieneReceta;
   const [copiarReceta, setCopiarReceta] = useState(puedeRecibirReceta);
   const puedeRecibirOpciones = puedeCopiarOpciones && opciones !== null;
@@ -82,6 +85,7 @@ export function DuplicarProducto({ origen, tieneReceta, opciones, puedeCopiarRec
   }
 
   async function duplicar(formData: FormData): Promise<ResultadoAccion> {
+    marcarDuplicando(true);
     const resultado = await accion({
       duplicadoId,
       origenId: origen.id,
@@ -201,8 +205,8 @@ export function DuplicarProducto({ origen, tieneReceta, opciones, puedeCopiarRec
               <Boton variante="secundario" tamano="tactil" onClick={() => setAbierto(false)}>
                 Cancelar
               </Boton>
-              <Boton type="submit" tamano="tactil" data-confirmar-duplicar>
-                Duplicar
+              <Boton type="submit" tamano="tactil" cargando={duplicando} data-confirmar-duplicar>
+                {duplicando ? "Duplicando…" : "Duplicar"}
               </Boton>
             </div>
           </FormConResultado>
