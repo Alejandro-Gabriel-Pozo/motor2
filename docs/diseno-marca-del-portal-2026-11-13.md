@@ -22,7 +22,7 @@ Pedernal no tiene portal en v1 (`10-ux-ui/03-experiencia-de-la-carta.md` §13 pu
 
 Contrastes calculados con WCAG 2.1 sobre blanco (fondo del portal derivado = el blanco del sistema). Tinta del sistema `#1c1b19` sobre blanco 17,21:1; tinta suave `#57534e` sobre blanco 7,63:1; tinta sobre el gris real `#e5dfdf` 13,07:1 y tinta suave sobre `#e5dfdf` 5,80:1.
 
-| # | Clave | Qué pinta | Valor actual en la empresa real | Hoy, sin valor, cae a | En modo marca (PROPUESTA) | Contraste (propuesta) |
+| # | Clave | Qué pinta | Valor actual en la empresa real | Hoy, sin valor, cae a | En modo marca | Contraste |
 |---|---|---|---|---|---|---|
 | 1 | `portal_header_bg` | Fondo del encabezado | `#e5dfdf` | transparente | **CONFIRMADA (P1):** neutro del sistema (transparente/blanco); la marca no pinta el encabezado | tinta 17,21:1 sobre blanco |
 | 2 | `portal_header_color` | Texto del encabezado | vacío | hereda | Tinta del sistema (hereda) | 17,21:1 |
