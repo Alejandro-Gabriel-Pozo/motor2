@@ -1,5 +1,8 @@
 # Diseño: el envase de compra vive en el vínculo proveedor × materia prima (opción C) — 2026-11-03
 
+> **REEMPLAZADO (2026-11-13).** El dueño revocó este diseño (envase por proveedor, opción C) y eligió el modelo de Pedernal: presentación por producto. Cita (chat con el orquestador, preguntas con opciones): «El de Pedernal: presentación por producto (Recomendada)». **Nunca se construyó** (no hay columna de factor en `ProveedorPorProducto`). Reemplazo: `docs/diseno-equivalentes-de-pedernal-para-campos-de-ficha-2026-11-13.md` §2. Lo que sigue queda como antecedente.
+
+
 Documento SOLO de diseño, en papel. No hay código ni migraciones en esta rama. Verificado contra `origin/main` (`bc9d1282`), la rama `origin/alegp/compras-etapa-1` (solo lectura) y la copia local de `motor2-docs` (último commit `2af58d6`, 2026-10-09).
 
 ## 0. Resumen para el dueño
