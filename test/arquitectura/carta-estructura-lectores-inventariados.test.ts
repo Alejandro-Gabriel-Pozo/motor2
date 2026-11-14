@@ -26,6 +26,8 @@ const ARCHIVOS_PERMITIDOS = [
   "server/actions/carta/casos-de-uso/actualizar-visible-en-carta.ts",
   "server/actions/carta/casos-de-uso/confirmar-nombre-en-carta.ts",
   "server/consultas/carta/admin.ts",
+  // Productos P1: la lista de Productos dice, en cada fila de venta, la sección de la carta de ESTA sucursal (solo si quien mira ve la carta); lee solo el contenido PROPIO de la sucursal, con su filtro.
+  "server/consultas/carta/seccion-de-productos.ts",
   // Promo «a elegir» (etapa N1, PR B): armar el lugar de una promo muestra, de cada producto de venta, de qué sección de la carta de ESTA sucursal sale (suelto o en un ítem agrupado) o si no está en la carta, con su filtro.
   "server/consultas/carta/combos.ts",
   "server/lecturas/carta/grupo-de-producto.ts",
