@@ -31,8 +31,7 @@ test("al abrir un producto de la lista y tocar «Editar», la pantalla de edici�
   await page.goto(`/catalogo/productos?q=${encodeURIComponent(producto.nombre)}`);
   await page.locator("li[data-producto]", { hasText: producto.nombre }).getByRole("link", { name: producto.nombre }).click();
   await page.waitForURL(new RegExp(`/catalogo/productos/${producto.id}$`));
-  await page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^Qué se vende/ }).click();
-  await page.waitForURL(new RegExp(`/catalogo/productos/${producto.id}/datos$`));
+  // La pestaña Datos ES el formulario de los datos (como en Pedernal): no hay un paso aparte para editar.
   await expect(page.getByRole("heading", { level: 1, name: producto.nombre })).toBeVisible();
 
   // Todos los campos tienen que reflejar el producto, no solo los que siguen a `defaultValue`.

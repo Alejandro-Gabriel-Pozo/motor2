@@ -444,7 +444,7 @@ test("a 375 px la tira de pasos deja a la vista la pestaña actual en cada paso,
   const m = marca();
   const carta = await productoParaLaCarta(m, sucursalId);
   try {
-    for (const ruta of ["datos", "opciones", "en-la-carta"]) {
+    for (const ruta of ["datos", "precios", "opciones"]) {
       await page.goto(`/catalogo/productos/${carta.producto.id}/${ruta}`);
       const actual = page.getByRole("navigation", { name: "Pasos del producto" }).locator('[aria-current="page"]');
       await expect(actual).toBeVisible();

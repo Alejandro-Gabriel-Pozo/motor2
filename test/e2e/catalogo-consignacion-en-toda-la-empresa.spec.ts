@@ -58,8 +58,8 @@ test("admin en Central y operador en la segunda: parado en la segunda ve el bloq
     const guardado = await prisma.producto.findUniqueOrThrow({ where: { id: producto.id } });
     expect(Number(guardado.precioConsignacion)).toBe(2000);
     expect(guardado.proveedorConsignacionId).toBe(proveedor.id);
-    // La ficha (Ver incluye Editar) también muestra el costo estando parada en la segunda.
-    await expect(page.getByText(proveedor.nombre).first()).toBeVisible();
+    // La ficha (la pestaña Datos es el formulario) también trae el costo estando parada en la segunda.
+    await expect(page.getByLabel("Proveedor de consignación")).toHaveValue(proveedor.id);
 
     // Al pasar a Central: lo mismo.
     await page.getByLabel("Sucursal activa").selectOption(sucursalId);
