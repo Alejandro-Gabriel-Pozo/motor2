@@ -40,6 +40,8 @@ export { formatearPrecioCarta } from "./precio-carta";
 export { whereCartaDeSucursal } from "./carta-de-sucursal";
 export type { EstiloCarta } from "./estilo";
 export { resolverEstiloCarta } from "./estilo";
+export { colorDeTextoLegible } from "./color-css";
+export { validarMarcaParaGuardar } from "./marca-derivada";
 export { variablesDeLaEscala } from "./escala";
 export type { EstiloPortal } from "./portal";
 export { decidirLayoutPortal, resolverEstiloPortal } from "./portal";
@@ -72,7 +74,7 @@ export type { DefinicionClaveTema } from "./tema";
 export { ordenSugeridoAlElegirSeccion } from "./orden-sugerido";
 export type { SeccionCartaAdmin, GeneroCartaAdmin, SucursalConCartaPropia, DatosAdminCarta, OpcionItemAgrupadoAdmin, DatosAdminItemsAgrupados, PortalEmpresaAdmin } from "./admin-tipos";
 // GO-3b (U1): los combos de la carta (lugares de entradas, entradas y vigencia).
-export type { CombosDeLaCarta, LugarDeCombo, ProductoParaEntrada, VigenciaDePromoAdmin } from "./admin-tipos";
+export type { CombosDeLaCarta, LugarDeCombo, ProductoParaEntrada } from "./admin-tipos";
 export { esClavePortal } from "./portal";
 export { esClaveTema } from "./tema";
 export { ofrecerSincronizarPrecio } from "./grupo-de-producto";
@@ -85,11 +87,6 @@ export { esHostDeEmpresaUnica } from "./carta-empresa-unica";
 export { estiloCartaPorDefecto } from "./estilo";
 export { posicionCompleta } from "./portal";
 export type { EntradaPortalCarta } from "./portal";
-// GO-3b (ADR-032, D-7): la vigencia de una promo (el guard de la administración la valida; la venta la evalúa al agregar).
-export { TODOS_LOS_DIAS, VIGENCIA_DE_PROMO_VISIBLE, mascaraDeDias, promoVigenteEl, validarVigenciaDePromo } from "./vigencia-de-promo";
-export type { VigenciaDePromo } from "./vigencia-de-promo";
-// GO-3b (ADR-032, D-1): la fecha del menú del día (de hoy a hoy + 13, en la zona de la empresa).
-export { DIAS_DE_ANTICIPACION_DEL_MENU, MENSAJE_MENU_DEL_DIA_APAGADO, MENU_DEL_DIA_VISIBLE, lugarDelDiaApagado, validarFechaDeMenuDelDia } from "./menu-del-dia";
 // Poda 2026-11-11: el interruptor de «Está bien así» y la lista de pendientes (ver `esta-bien-asi.ts`).
 export { ESTA_BIEN_ASI_VISIBLE, MENSAJE_ESTA_BIEN_ASI_APAGADO } from "./esta-bien-asi";
 // Poda 2026-11-06: el interruptor de género de carta e ítem agrupado (ver `genero-e-item-agrupado.ts`).
@@ -106,7 +103,6 @@ export {
   primeraPantallaVisible,
 } from "./ui-config";
 export type { PestanaDeCarta } from "./ui-config";
-export type { CandidatoAPlato, MenuDelDiaDeLaSucursal } from "./menu-del-dia";
 // CARTA-MANT (mantenimiento de la carta): en qué lista va cada producto de la pantalla de la carta («Fuera de carta» es el POS y el menú del día, no un faltante).
 export { coincideConLaBusqueda, lugaresParaPoner, ordenAlFinalDeLaSeccion, organizarCartaParaMantener, ponerEnElLugar, vistaPreviaDeLaForma, vistaPreviaDeOpciones } from "./mantenimiento";
 export { presentacionDeUnProductoSolo } from "./presentacion-en-carta";

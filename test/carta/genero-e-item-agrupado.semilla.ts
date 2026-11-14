@@ -3,8 +3,8 @@ import { sembrarSalon } from "../pos/salon-fixture";
 
 /**
  * La carta sembrada del oráculo (`genero-e-item-agrupado.oraculo.ts`), con nombres y precios reales del dueño. Siempre: sección «Bebidas» (Café $4.000, Capuccino $8.000, Cerveza Patagonia $14.000, los tres con
- * contenido visible; la Cerveza Huinganco $14.000, SIN contenido) y sección «Postres» (Brownie $10.000). Con `conDatos`: el género «Agua» en el Café, el ítem agrupado «Cerveza» (las dos cervezas, mismo precio)
- * con el género «Huinganco», y el género «Agua saborizada» sin productos.
+ * contenido visible; la Cerveza Cordillera $14.000, SIN contenido) y sección «Postres» (Brownie $10.000). Con `conDatos`: el género «Agua» en el Café, el ítem agrupado «Cerveza» (las dos cervezas, mismo precio)
+ * con el género «Cordillera», y el género «Agua saborizada» sin productos.
  */
 export async function sembrarCartaConGeneros(conDatos: boolean) {
   const salon = await sembrarSalon();
@@ -15,7 +15,7 @@ export async function sembrarCartaConGeneros(conDatos: boolean) {
     cafe: await pv("Café", 4000),
     capuccino: await pv("Capuccino", 8000),
     patagonia: await pv("Cerveza Patagonia", 14000),
-    huinganco: await pv("Cerveza Huinganco", 14000),
+    cordillera: await pv("Cerveza Cordillera", 14000),
     brownie: await pv("Brownie", 10000),
   };
   const bebidas = await prisma.seccionCarta.create({ data: { nombre: "Bebidas", orden: 1 } });
@@ -24,7 +24,7 @@ export async function sembrarCartaConGeneros(conDatos: boolean) {
     ? {
         agua: (await prisma.generoCarta.create({ data: { sucursalId, nombre: "Agua", orden: 1 } })).id,
         saborizada: (await prisma.generoCarta.create({ data: { sucursalId, nombre: "Agua saborizada", orden: 2 } })).id,
-        huinganco: (await prisma.generoCarta.create({ data: { sucursalId, nombre: "Huinganco", orden: 3 } })).id,
+        cordillera: (await prisma.generoCarta.create({ data: { sucursalId, nombre: "Cordillera", orden: 3 } })).id,
       }
     : null;
   await prisma.contenidoCartaProducto.createMany({
@@ -38,9 +38,9 @@ export async function sembrarCartaConGeneros(conDatos: boolean) {
   let agrupadoId: string | null = null;
   let opcionPatagoniaId: string | null = null;
   if (generos) {
-    agrupadoId = (await prisma.itemAgrupadoCarta.create({ data: { sucursalId, nombre: "Cerveza", seccionCartaId: bebidas.id, orden: 4, generoCartaId: generos.huinganco } })).id;
+    agrupadoId = (await prisma.itemAgrupadoCarta.create({ data: { sucursalId, nombre: "Cerveza", seccionCartaId: bebidas.id, orden: 4, generoCartaId: generos.cordillera } })).id;
     opcionPatagoniaId = (await prisma.opcionItemAgrupadoCarta.create({ data: { sucursalId, itemAgrupadoCartaId: agrupadoId, productoId: ids.patagonia, orden: 1 } })).id;
-    await prisma.opcionItemAgrupadoCarta.create({ data: { sucursalId, itemAgrupadoCartaId: agrupadoId, productoId: ids.huinganco, orden: 2 } });
+    await prisma.opcionItemAgrupadoCarta.create({ data: { sucursalId, itemAgrupadoCartaId: agrupadoId, productoId: ids.cordillera, orden: 2 } });
   }
   return { ...salon, ids, bebidas: bebidas.id, postres: postres.id, generos, agrupadoId, opcionPatagoniaId };
 }

@@ -25,7 +25,7 @@ Documento SOLO de diseño, en papel. No hay código ni migraciones en esta rama.
 - **Operario de compras** (`proceso_compra`, semilla admin + operador; `src/core/permisos/acciones.ts:107`): carga la factura. Es quien, con C, conoce el envase en el momento.
 - **Administrador** (`producto_campos_sensibles`, semilla SOLO admin; `acciones.ts:235`): hoy es el único que define un factor (de producto o de presentación: `agregar-presentacion-alternativa.ts`, M.2).
 - **Devolución a proveedor** (`proceso_devolucion_proveedor`, semilla admin + operador; `acciones.ts:117`): también convierte con factor (`aplicaFactorConversion: true`, `src/core/movimientos/transiciones.ts:87`).
-- Contexto de datos (producción, CONFIRMADO 2026-11-03): 0 MP, 0 insumos, 0 recetas, 0 presentaciones, 0 vínculos, 47 productos de venta. No hay nada que migrar, pero se diseña como si lo hubiera.
+- Contexto de datos (producción, CONFIRMADO 2026-11-03): 0 MP, 0 insumos, 0 recetas, 0 presentaciones, 0 vínculos, N productos de venta. No hay nada que migrar, pero se diseña como si lo hubiera.
 
 ## 3. Casos de uso
 

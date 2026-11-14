@@ -123,7 +123,7 @@ function ActionButton({ color, textColor, href, icon, grande = false, children }
   return (
     <Link
       href={href}
-      className={`flex w-full min-w-0 items-center justify-center gap-1.5 rounded-lg py-[9px] ${grande ? "text-sm" : "text-[13px]"} font-semibold transition-opacity hover:opacity-90 max-md:min-h-11`}
+      className={`flex w-full min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 py-[9px] text-center ${grande ? "text-sm" : "text-[13px]"} font-semibold transition-opacity hover:opacity-90 max-md:min-h-11`}
       style={{ background: color, color: textColor }}
     >
       {icon}

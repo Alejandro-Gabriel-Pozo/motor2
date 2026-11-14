@@ -1,5 +1,4 @@
 import "server-only";
-import { diaDeColumnaDate } from "@/core/tiempo/zona-horaria";
 import { GENERO_E_ITEM_AGRUPADO_VISIBLE, nombreParaMostrar, whereCartaDeSucursal, type CombosDeLaCarta, type LugarDeCombo, type ProductoParaEntrada } from "@/core/carta/public";
 import { cargarOpcionesParaVender } from "@/server/lecturas/opciones/opciones-para-vender";
 import type { Db } from "@/lib/db-tipos";
@@ -7,7 +6,7 @@ import { grupoVigente, opcionOfrecida } from "@/core/opciones/public";
 
 /**
  * La CONSULTA de los COMBOS de la carta (GO-3b, ADR-032, F6 paso U1), aparte de `cargarAdminCarta` (que sigue igual: su forma la fija una caracterización): de cada promo, sus lugares de ENTRADAS
- * activos (LISTA y DEL_DIA) con las entradas de cada lista (activas o no, con el nombre de su configuración) y su vigencia con la versión que vio la pantalla; y los productos de venta de la
+ * activos (LISTA) con las entradas de cada lista (activas o no, con el nombre de su configuración) y la versión que vio la pantalla; y los productos de venta de la
  * empresa que se pueden sumar a una lista, con los grupos de una sola elección que admiten (para fijar su configuración: el tamaño, la variante). Las entradas son de la EMPRESA; lo que valida si un
  * producto puede ser componente lo decide el servidor al agregarlo. Sin guarda de permiso adentro: la página la pone antes (`carta`). Cuatro consultas más la de las opciones (la última, de dónde sale cada producto en la carta de ESTA sucursal: la fuente para tildar al armar un lugar, no una regla).
  */
@@ -18,11 +17,8 @@ export async function cargarCombosDeLaCarta(db: Db, sucursalId: string): Promise
         id: true,
         version: true,
         soloSalon: true,
-        vigenteDesde: true,
-        vigenteHasta: true,
-        diasDeSemana: true,
         cupos: {
-          where: { activo: true, tipo: { in: ["LISTA", "DEL_DIA"] } },
+          where: { activo: true, tipo: "LISTA" },
           orderBy: [{ orden: "asc" }, { id: "asc" }],
           select: {
             id: true,
@@ -110,12 +106,7 @@ export async function cargarCombosDeLaCarta(db: Db, sucursalId: string): Promise
     porPromo[pr.id] = {
       soloSalon: pr.soloSalon,
       lugares,
-      vigencia: {
-        version: pr.version,
-        vigenteDesde: pr.vigenteDesde ? diaDeColumnaDate(pr.vigenteDesde) : null,
-        vigenteHasta: pr.vigenteHasta ? diaDeColumnaDate(pr.vigenteHasta) : null,
-        diasDeSemana: pr.diasDeSemana,
-      },
+      version: pr.version,
     };
   }
   return { porPromo, productos };

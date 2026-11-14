@@ -13,7 +13,7 @@ Regla de poda (`AGENTS.md`, 2026-10-28): se prefiere achicar antes que mantener 
 1. Se borran del sistema tres cosas que ya no se ven: **la vigencia de una promo** (desde/hasta y días de la semana), **el menú del día** (el plato del día cargado por fecha y sucursal, su pantalla y su permiso) y **dos campos que nadie lee** (`PromoCarta.creadoEn` y `EntradaDeCupo.actualizadoEn`).
 2. Se conserva todo lo que es rastro de dinero: lo que se vendió de una promo (precio congelado, fecha y quién), el orden de los lugares, el control de edición y «solo salón».
 3. Se hace en **dos tiempos**. Tiempo 1: el código deja de leer y escribir esas cosas, **sin tocar la base**; si algo sale mal se revierte el cambio y listo. Tiempo 2: una migración borra las columnas y la tabla; es destructiva, así que va aparte, con respaldo, ensayo y **solo cuando vos avises, base por base**.
-4. Medido hoy en la base principal (por el orquestador, solo lectura): 1 promo, 0 con vigencia, 0 lugares «del día», 0 platos del día, 0 promos vendidas. Las demás bases (demo y otras) **no están verificadas**: antes de aplicar hay que correr una consulta de conteo en cada una (§7); si alguna tiene datos, se frena y se te pregunta.
+4. Medido hoy en la base principal (por el orquestador, solo lectura): N promo, 0 con vigencia, 0 lugares «del día», 0 platos del día, 0 promos vendidas. Las demás bases (demo y otras) **no están verificadas**: antes de aplicar hay que correr una consulta de conteo en cada una (§7); si alguna tiene datos, se frena y se te pregunta.
 5. Sin migración en este PR; este documento no cambia nada del sistema.
 
 ## 1. Inventario contra el código real
@@ -230,7 +230,7 @@ SELECT count(*) AS filas_permiso FROM "PermisoRol" WHERE "accionClave" = 'promo_
 SELECT count(*) AS promos_vendidas FROM "PromoCuenta";
 ```
 
-Medido por el orquestador el 2026-11-12 (solo lectura) en la base principal (proyecto Neon `morning-field-10188884`): 1 promo, 0 con vigencia o días, 0 cupos `DEL_DIA`, 0 platos del día, 0 promos vendidas, 3 cupos, 0 entradas. Las otras bases: **NO VERIFICADO**.
+Medido por el orquestador el 2026-11-12 (solo lectura) en la base principal (proyecto Neon `<proyecto-neon-A>`): N promo, 0 con vigencia o días, 0 cupos `DEL_DIA`, 0 platos del día, 0 promos vendidas, N cupos, 0 entradas. Las otras bases: **NO VERIFICADO**.
 
 ## 8. Preguntas abiertas y hallazgos
 

@@ -44,12 +44,12 @@ SELECT "empresaId", lower(nombre) AS nombre_sin_mayusculas, count(*) FROM "Secci
 ```
 
 - Si alguna devuelve filas, **parar y avisar**: no se aplica nada hasta decidir qué hacer con esos datos (corregirlos o cambiar la regla, decisión del dueño).
-- Verificado en solo lectura el 2026-11-12 contra las dos bases de producción que existían entonces (zuluhub y stockhneuquen): 0 filas en las 5 consultas (V: cuerpo de #250 y #251). **Hay que repetirlo el día del deploy**: son datos vivos. Qué bases de producción existen ese día: NO VERIFICADO (el documento `deploy-con-migraciones.md` del 2026-10-11 habla de una sola instalación; los PR de esta auditoría consultaron dos).
+- Verificado en solo lectura el 2026-11-12 contra las dos bases de producción que existían entonces (zuluhub y empresab): 0 filas en las 5 consultas (V: cuerpo de #250 y #251). **Hay que repetirlo el día del deploy**: son datos vivos. Qué bases de producción existen ese día: NO VERIFICADO (el documento `deploy-con-migraciones.md` del 2026-10-11 habla de una sola instalación; los PR de esta auditoría consultaron dos).
 - Los estados de la base: `node scripts/operaciones/con-env.mjs <archivo-env> -- npx prisma migrate status` tiene que mostrar como pendientes **exactamente estas dos** y ninguna más. Si aparece otra, parar y avisar.
 
 ## 2. Antes: las claves de correo (DEC-0011) — sin pegar la clave en ningún chat
 
-La aplicación **no arranca** si `CORREO_AVISOS_RESEND_API_KEY` o `CORREO_OPERATIVO_RESEND_API_KEY` no cumplen `re_` + letras, números o `_` (V: `src/env.ts`, `claveDeResend`; cambió en #249, paso 5; decisión DEC-0011 **a la espera del OK del dueño**). Antes, bastaba con que empezara con `re_` y no tuviera espacios.
+La aplicación **no arranca** si `CORREO_AVISOS_RESEND_API_KEY` o `CORREO_OPERATIVO_RESEND_API_KEY` no cumplen `re_` + letras, números o `_` (V: `src/env.ts`, `claveDeResend`; cambió en #249, paso 5; decisión **DEC-0011 ACEPTADA** por el dueño el 2026-11-13: «Aceptar y verificar la clave antes de desplegar (Recomendada)», chat del dueño con el orquestador; está en `docs/registro-de-decisiones.md`). **Verificar el formato de la clave de Resend ANTES de desplegar es obligatorio**. Antes, bastaba con que empezara con `re_` y no tuviera espacios.
 
 El dueño verifica **sin mostrar el valor**, con la clave cargada en una variable de su terminal:
 
@@ -59,13 +59,13 @@ printf %s "$CORREO_OPERATIVO_RESEND_API_KEY" | grep -Eq '^re_[A-Za-z0-9_]+$' && 
 ```
 
 - Si alguna dice «NO CUMPLE», **no desplegar**: se genera otra clave en Resend (o se decide aflojar la regla; es una línea, DEC-0011). Una variable sensible de Vercel no se puede leer; se compara contra la copia local o la caja de claves del dueño.
-- DEC-0012 (los espacios Unicode raros no entran en el asunto de un correo) **no pide nada antes del deploy**: solo afecta asuntos con esos caracteres, que el código del sistema no arma.
+- DEC-0012 (ACEPTADA el 2026-11-13: «Aceptar (Recomendada)»; los espacios Unicode raros no entran en el asunto de un correo) **no pide nada antes del deploy**: solo afecta asuntos con esos caracteres, que el código del sistema no arma.
 
 ## 3. Ensayo general (rama de Neon, copia de la base)
 
 Lo hace el dueño; el asistente de desarrollo no ve credenciales ni corre nada contra Neon (`deploy-con-migraciones.md`).
 
-Sobre el ensayo general y la base de producción (el dueño, 2026-11-12, chat del dueño con el orquestador): «Bueno, sí, el ensayo general puede ser. Siempre y cuando no afectemos la base de producción de Stockage Neuquén. Porque mañana, mañana se presenta la carta como existe hoy, digamos.» **Condición innegociable:** el ensayo corre solo en una rama de Neon **copia** (nunca en la base de producción de stockhneuquen, ni con el Preview, que comparte esa base) y no se escribe nada en producción ni en sus variables de Vercel. Si algún paso del ensayo exigiera tocar esa base, se frena y se le pregunta al dueño.
+Sobre el ensayo general y la base de producción (el dueño, 2026-11-12, chat del dueño con el orquestador): «Bueno, sí, el ensayo general puede ser. Siempre y cuando no afectemos la base de producción de Stockage Neuquén. Porque mañana, mañana se presenta la carta como existe hoy, digamos.» **Condición innegociable:** el ensayo corre solo en una rama de Neon **copia** (nunca en la base de producción de empresab, ni con el Preview, que comparte esa base) y no se escribe nada en producción ni en sus variables de Vercel. Si algún paso del ensayo exigiera tocar esa base, se frena y se le pregunta al dueño.
 
 1. Rama de **respaldo** de Neon de la base destino (es el rollback del DEPLOY: código viejo + base vieja).
 2. Rama de **ensayo** (otra copia). En ella: las consultas de la sección 1, y después `node scripts/operaciones/con-env.mjs <env de ensayo> -- npx prisma migrate deploy`.
@@ -77,7 +77,7 @@ Sobre el ensayo general y la base de producción (el dueño, 2026-11-12, chat de
     WHERE indexname IN ('Cliente_empresaId_nombre_lower_key', 'SeccionCarta_empresaId_nombre_lower_key');       -- 2 filas
    ```
 4. Probar en la rama que lo inválido se rechaza y lo válido pasa (ver «Prueba del dueño», sección 6) y **volver atrás y subir otra vez** (sección 5) para comprobar que `down.sql` y la migración son repetibles.
-5. Recorrido real de la app contra la rama de ensayo (no el Preview de `stockhneuquen`: **comparte la base de producción**, ADR-007): login, alta de un cliente, alta de una sección de carta, carta pública.
+5. Recorrido real de la app contra la rama de ensayo (no el Preview de `empresab`: **comparte la base de producción**, ADR-007): login, alta de un cliente, alta de una sección de carta, carta pública.
 6. Borrar la rama de ensayo.
 
 ## 4. Aplicar (solo con la autorización expresa del dueño, base por base)
@@ -114,17 +114,17 @@ Sobre el ensayo general y la base de producción (el dueño, 2026-11-12, chat de
 1. **Comportamiento de `lower()` con letras no ASCII** («Ñandú» contra «ñANDÚ»): depende de la collation de la base de producción de Neon; las pruebas locales usan `C.UTF-8`. En el peor caso el índice es más permisivo que la regla de la app, nunca al revés (V: cuerpo de #251).
 2. **Qué bases de producción existen el día del deploy** y su usuario de `DATABASE_URL` (secreto en Vercel): sin confirmar desde acá.
 3. **Si alguna clave de Resend de producción cumple la forma nueva** (sección 2): el asistente no ve las variables.
-4. **Cuánto tarda** la validación de los CHECK y la creación de los índices sobre los datos reales: no se midió (hoy son pocas filas; en la medición del 2026-10-12 la base tenía 1 empresa y 50 productos).
+4. **Cuánto tarda** la validación de los CHECK y la creación de los índices sobre los datos reales: no se midió (hoy son pocas filas; en la medición del 2026-10-12 la base tenía N empresa y N productos).
 
 ## 8. Lo que ya está en `main` y viaja en el mismo deploy (código, sin migración)
 
 Verificado el 2026-11-13 sobre `main` en `a172974a`: desde #251 **no entró ninguna migración nueva** (`prisma/` sin cambios) y `src/env.ts` solo cambió en #249 (la clave de Resend). Lo que sí viaja:
 
 - **#254 «Todo nace cerrado (PR 3)»**: las 11 validaciones que quedaban por lista de prohibidos pasan a declarar lo permitido. Es código; un dato guardado que ya no cumpla se rechaza **recién al volver a guardarlo**. Qué cambia exactamente: cuerpo del PR #254 (no lo revisé para este documento: NO VERIFICADO).
-- **#257 «Duplicar producto» (E4)**: copiar ficha, receta y opciones a un producto nuevo. Trae tres decisiones **a la espera del OK del dueño** en `docs/registro-de-decisiones.md`: **DEC-0007** (el duplicado nace disponible en todas las sucursales si quien duplica tiene `producto_campos_sensibles`, y apagado en todas si no), **DEC-0008** (un original que se vende por opción se duplica con precio guardado en $0 y exige esa clave) y **DEC-0009** (el selector «Sacar la receta de» arranca en «Central»). Costo de revertir cada una: bajo o muy bajo, sin migración.
+- **#257 «Duplicar producto» (E4)**: copiar ficha, receta y opciones a un producto nuevo. Trae tres decisiones **ACEPTADAS por el dueño el 2026-11-13** (DEC-0007 «Aceptar como está (Recomendada)», DEC-0008 «Aceptar: nace en $0 (Recomendada)», DEC-0009 «Central (Recomendada)»; chat del dueño con el orquestador) en `docs/registro-de-decisiones.md`: **DEC-0007** (el duplicado nace disponible en todas las sucursales si quien duplica tiene `producto_campos_sensibles`, y apagado en todas si no), **DEC-0008** (un original que se vende por opción se duplica con precio guardado en $0 y exige esa clave) y **DEC-0009** (el selector «Sacar la receta de» arranca en «Central»). Costo de revertir cada una: bajo o muy bajo, sin migración.
   - **Prueba del dueño** (con datos reales, a 375 px si se captura): duplicar «Bife a criolla» como «Bife con chimichurri». Resultado esperado: aparece un producto nuevo con la ficha, la receta y las opciones del original, **con la disponibilidad que dice DEC-0007** (disponible en todas las sucursales si el usuario tiene `producto_campos_sensibles`; apagado en todas si no) y sin tocar el original. Duplicar dos veces seguidas con el mismo nombre debe dar «ya existe» y no dos productos.
 
 ## 9. Pendientes que no son de este checklist
 
-- Las decisiones **DEC-0011 y DEC-0012** (cuerpo del PR #249; **no figuran todavía en `docs/registro-de-decisiones.md`**: NO VERIFICADO el motivo) esperan el OK del dueño, igual que DEC-0007, DEC-0008 y DEC-0009.
+- **Ninguna decisión de los agentes queda pendiente de OK en el registro** (todas aceptadas el 2026-11-13, DEC-0001 a DEC-0009, DEC-0011 y DEC-0012; DEC-0010 no existe). Lo único obligatorio del lado del dueño antes de desplegar es la verificación de la clave de Resend (sección 2).
 - #255 (alícuota de IVA, **sin migración**; espera la respuesta del dueño a la pregunta de permisos A/B/C), #252 (ficha de parte, solo diseño, **sin autorización de migrar**; espera su respuesta a «¿un cliente por ficha?» y a las reglas de §6.2) y #256 (menú del día) no entran en este despliegue.

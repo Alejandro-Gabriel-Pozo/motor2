@@ -6,11 +6,10 @@ import { claveDeConfiguracionFija, configuracionMinimaDeGruposEfectivos, opcione
 import { armarLineaConfigurada } from "@/core/pos/public-servidor";
 import { redondearMoneda } from "@/core/moneda";
 import { resolverPrecioVenta } from "@/server/lecturas/movimientos/precio-venta";
-import { cargarAlicuotasPosiblesDeLugares, cargarLugaresActivosDePromo, cargarProductosComoComponentes, type LugaresDeCombo, type ProductoComponenteLeido } from "@/server/lecturas/carta/componentes-de-promo";
-import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
+import { cargarAlicuotasPosiblesDeLugares, cargarProductosComoComponentes, type LugaresDeCombo, type ProductoComponenteLeido } from "@/server/lecturas/carta/componentes-de-promo";
 
 /**
- * Lo que los casos de uso de los combos y del menú del día (GO-3b, ADR-032) validan DENTRO de su transacción SERIALIZABLE, compartido (no es un caso de uso: ninguna Server Action lo importa).
+ * Lo que los casos de uso de los combos (GO-3b, ADR-032) validan DENTRO de su transacción SERIALIZABLE, compartido (no es un caso de uso: ninguna Server Action lo importa).
  *
  *  - `validarComponenteEnTx`: un producto (con su configuración fija, si la lleva) como componente de un combo — la regla pura `rechazoDeComponenteDeCombo` (PV, no ancla, precio de referencia,
  *    receta vigente en la sucursal o stock propio) y la configuración con `armarLineaConfigurada` (lo mismo que valida la venta: opciones admitidas, mínimos y máximos, precio compuesto). En la
@@ -82,12 +81,12 @@ export async function validarComponenteEnTx(
   return { ok: true, componente: { producto, claveConfiguracion: clave, precioDeLista } };
 }
 
-/** D-2: el producto contra todos los componentes posibles de los lugares del combo (de `desdeDia` en adelante para los platos del día; la carta de `sucursalIds` para los de sección). */
+/** D-2: el producto contra todos los componentes posibles de los lugares del combo (la carta de `sucursalIds` para los de sección). */
 export async function revisarAlicuotasEnTx(
   tx: Tx,
-  args: { lugares: LugaresDeCombo; desdeDia: string; sucursalIds: readonly string[]; producto: Pick<ProductoComponenteLeido, "id" | "nombre" | "alicuota"> | null },
+  args: { lugares: LugaresDeCombo; sucursalIds: readonly string[]; producto: Pick<ProductoComponenteLeido, "id" | "nombre" | "alicuota"> | null },
 ): Promise<{ ok: true } | Fracaso<"COMBO_ALICUOTAS_DISTINTAS">> {
-  const posibles = await cargarAlicuotasPosiblesDeLugares(tx, args.lugares, { desdeDia: args.desdeDia, sucursalIds: args.sucursalIds });
+  const posibles = await cargarAlicuotasPosiblesDeLugares(tx, args.lugares, { sucursalIds: args.sucursalIds });
   const todos = args.producto ? [...posibles.filter((p) => p.productoId !== args.producto!.id), { productoId: args.producto.id, nombre: args.producto.nombre, alicuota: args.producto.alicuota }] : posibles;
   const revision = revisarAlicuotasDeCombo(todos);
   return revision.ok ? { ok: true } : fracaso(revision.codigo, revision.mensaje);
@@ -99,21 +98,4 @@ export async function nombreDeLaEntrada(tx: Tx, nombreDelProducto: string, opcio
   const opciones = await tx.opcionDeGrupo.findMany({ where: { id: { in: [...opcionIds] } }, select: { id: true, nombre: true } });
   const porId = new Map(opciones.map((o) => [o.id, o.nombre]));
   return `«${[nombreDelProducto, ...opcionIds.map((id) => porId.get(id) ?? id)].join(" · ")}»`;
-}
-
-/**
- * GO-3b (D5): un producto como PLATO DEL DÍA de un lugar DEL_DIA en la sucursal activa. Lo mismo que cualquier componente (`validarComponenteEnTx`, sin configuración: un plato del día no lleva
- * opciones, D-6), con el precio de la sucursal, más que esté DISPONIBLE en la sucursal y las alícuotas contra los demás componentes posibles del menú (en la carta de esta sucursal).
- */
-export async function validarPlatoDelDiaEnTx(
-  tx: Tx,
-  args: { sucursalId: string; sucursalNombre: string; promoCartaId: string; productoId: string; hoy: string },
-): Promise<{ ok: true; producto: ProductoComponenteLeido } | Fracaso<CodigoDeValidacion | "PRODUCTO_NO_DISPONIBLE" | "COMBO_ALICUOTAS_DISTINTAS">> {
-  const validado = await validarComponenteEnTx(tx, { sucursalId: args.sucursalId, productoId: args.productoId, opciones: [], etiqueta: "como plato del día (un plato del día no lleva opciones)", precioDeLaSucursal: true });
-  if (!validado.ok) return validado;
-  const { producto } = validado.componente;
-  if (!(await productoDisponibleEn(args.sucursalId, producto.id, tx))) return fracaso("PRODUCTO_NO_DISPONIBLE", `«${producto.nombre}» no está disponible en «${args.sucursalNombre}».`);
-  const alicuotas = await revisarAlicuotasEnTx(tx, { lugares: await cargarLugaresActivosDePromo(tx, args.promoCartaId), desdeDia: args.hoy, sucursalIds: [args.sucursalId], producto });
-  if (!alicuotas.ok) return alicuotas;
-  return { ok: true, producto };
 }

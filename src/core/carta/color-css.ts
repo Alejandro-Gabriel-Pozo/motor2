@@ -9,6 +9,8 @@
  *
  * Pura, sin Prisma: la importa también el editor de tema (cliente) para la vista previa. Solo se agregó este encabezado; el cuerpo
  * es el de la carta tal cual (sin punto y coma, como en ese repo).
+ *
+ * AGREGADO LOCAL (2026-11-13, al final del archivo): `colorDeTextoLegible`, que NO está en la copia de la carta (no toca nada de lo copiado).
  */
 /**
  * Valida que un string sea un color CSS seguro antes de inyectarlo en un <style>.
@@ -178,17 +180,58 @@ function parseOklch(v: string): [number, number, number] | null {
  * Para formatos no parseables devuelve null → se usa el valor de globals.css.
  */
 export function resolvePrimaryForeground(color: string): string | null {
-  if (!color) return null
-  const v = color.trim()
-
-  const rgb =
-    parseHex(v) ??
-    parseRgb(v) ??
-    parseHsl(v) ??
-    parseOklch(v)
-
+  const rgb = rgbDeColorCss(color)
   if (!rgb) return null
 
   return inkFromLuminance(relativeLuminance(rgb[0], rgb[1], rgb[2]))
 }
 
+/**
+ * Los canales [r,g,b] (0 a 255) de un color en cualquier formato legible (#rgb, #rrggbb, rgb(), rgba(), hsl(), hsla(), oklch()), o null si no se puede leer
+ * (nombres CSS, funciones que no se parsean, texto cualquiera). Es la misma cadena de parsers que ya usaba `resolvePrimaryForeground`; se extrajo para que la
+ * marca de la carta (`marca-derivada.ts`) lea los colores ya guardados con EXACTAMENTE el mismo criterio. No cambia ningún resultado existente.
+ */
+export function rgbDeColorCss(color: string): [number, number, number] | null {
+  if (!color) return null
+  const v = color.trim()
+
+  return (
+    parseHex(v) ??
+    parseRgb(v) ??
+    parseHsl(v) ??
+    parseOklch(v)
+  )
+}
+
+// ─── Agregado propio de motor2 (NO existe en la copia de la carta) ───────────
+
+const CONTRASTE_MINIMO_TEXTO = 4.5
+/** Fondo y tinta de `.carta-shell` (src/app/globals.css) cuando el tema no carga `color_fondo_dia`: con ellos se mide el texto de una carta sin fondo propio. */
+const FONDO_BASE_DE_LA_CARTA = "#ffffff"
+const TINTA_BASE_DE_LA_CARTA = "#1c1b19"
+
+function razonDeContraste(a: [number, number, number], b: [number, number, number]): number {
+  const la = relativeLuminance(a[0], a[1], a[2])
+  const lb = relativeLuminance(b[0], b[1], b[2])
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05)
+}
+
+/**
+ * Un color de TEXTO que se lee sobre el fondo de la carta (WCAG 1.4.3, 4,5:1). Si `color` ya llega a 4,5:1 contra el fondo se devuelve tal cual (la carta no cambia);
+ * si no, se lo acerca a la tinta del tema en pasos de 5 % hasta el primer punto que llega, así conserva su tono y solo se aclara u oscurece lo justo.
+ * Límite: lee #rgb/#rrggbb, rgb(), hsl() y oklch(); un color en otro formato (nombre CSS, #rrggbbaa, `var(...)`) o un fondo que no se puede leer se devuelve sin tocar,
+ * porque no se puede medir. `fondo` y `tinta` vacíos o `null` = los de `.carta-shell`.
+ */
+export function colorDeTextoLegible(color: string, fondo: string | null, tinta: string | null): string {
+  const c = rgbDeColorCss(color.trim())
+  const f = rgbDeColorCss((fondo || FONDO_BASE_DE_LA_CARTA).trim())
+  const t = rgbDeColorCss((tinta || TINTA_BASE_DE_LA_CARTA).trim())
+  if (!c || !f || !t) return color
+  if (razonDeContraste(c, f) >= CONTRASTE_MINIMO_TEXTO) return color
+  for (let paso = 1; paso <= 20; paso++) {
+    const k = paso / 20
+    const m: [number, number, number] = [0, 1, 2].map((i) => Math.round(c[i]! + (t[i]! - c[i]!) * k)) as [number, number, number]
+    if (razonDeContraste(m, f) >= CONTRASTE_MINIMO_TEXTO) return `rgb(${m[0]}, ${m[1]}, ${m[2]})`
+  }
+  return `rgb(${t[0]}, ${t[1]}, ${t[2]})`
+}

@@ -8,7 +8,7 @@
  *    una empresa activa anterior a la migración sin registro hace fallar el build. Sigue igual que siempre si todo está en orden.
  *  - `aplicar`: solo con `MOTOR2_MIGRAR_EN_BUILD=1` en local o en un build de PRODUCCIÓN de Vercel, puesto a propósito para UN deploy; corre `prisma migrate deploy`.
  *  - `rechazar` (S-31): `MOTOR2_MIGRAR_EN_BUILD=1` en un build de Vercel que NO es de Producción: el build falla antes de tocar nada (no migra la base de producción desde un Preview).
- *  - `omitir`: `MOTOR2_MIGRAR_EN_BUILD=0`, o un build de Vercel que no es de Producción (el Preview de `stockhneuquen` comparte la base de
+ *  - `omitir`: `MOTOR2_MIGRAR_EN_BUILD=0`, o un build de Vercel que no es de Producción (el Preview de `empresab` comparte la base de
  *    producción, ADR-007): no toca la base ni la mira.
  * La aprobación habitual es `npm run migrar:aprobar` contra la base de destino ANTES del deploy (docs/deploy-con-migraciones.md).
  */

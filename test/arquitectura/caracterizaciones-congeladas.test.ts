@@ -661,6 +661,18 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "E1 de la corrección por ajuste (PR2, «quitar unidades de una línea»): `pos.obtenerTicketsRecientes` lee, en una consulta más (`operacion.findMany`), las versiones de las ventas anuladas de la mesa para saber si otra venta las reemplaza (la cadena A → B). Solo cambia el RECUENTO de consultas de sus dos casos, de «1: cuenta.findMany×1» a «2: cuenta.findMany×1, operacion.findMany×1» (2 líneas); el resultado no cambia (ninguna venta del mundo de la caracterización fue reemplazada) y sin ventas anuladas la consulta extra no se hace.",
       },
+      {
+        blob: "b779dd7f781331df96c83a1da28af298b4a4c1fd",
+        commit: "52fa5a3e",
+        motivo:
+          "Marca de la carta, PR B (paso 9; decisión del dueño 2026-11-13, «Botón explícito (Recomendada)»): el catálogo del tema suma la llave `marca_derivada` (el marcador del modo marca, nace vacío) y la lectura de la carta pública la trae en `valores`. Cambia SOLO eso: dos líneas `\"marca_derivada\": \"\"` (una por cada carta resuelta); ningún conteo de consultas ni ningún otro valor. Sin el marcador la carta se ve exactamente igual (lo prueba test/carta/marca-sin-cambio.test.ts con las cinco cartas reales).",
+      },
+      {
+        blob: "64daff3599dea16145c2c2fa590bd300d0fc8031",
+        commit: "489a412a",
+        motivo:
+          "Marca del portal, PR de lectura (paso 9; decisiones del dueño 2026-11-13: «Queda neutro; la marca solo en bordes y flechas (Recomendada)», «Siguen transparentes (Recomendada)»): el catálogo del portal suma `portal_color_marca` y el marcador `portal_marca_derivada` (nacen vacíos) y la lectura de la carta pública los trae en `valores` del portal. Cambia SOLO eso: dos líneas con `\"\"` en el portal resuelto; ningún conteo de consultas ni ningún otro valor. Sin el marcador el portal se ve exactamente igual (lo prueba test/carta/marca-sin-cambio.test.ts con el portal real).",
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {

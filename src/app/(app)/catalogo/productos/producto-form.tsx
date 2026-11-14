@@ -8,6 +8,7 @@ import { GestionPresentaciones } from "@/components/catalogo/gestion-presentacio
 import { CampoNumero } from "@/components/campo-numero";
 import { AyudaCampo } from "@/components/ayuda-campo";
 import { PRESENTACIONES_VISIBLES } from "@/core/catalogo/public";
+import { CampoAlicuotaIva, alicuotasDelFormulario } from "./campo-alicuota-iva";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { SincronizarPrecioGrupo } from "@/components/carta/sincronizar-precio-grupo";
 import { AvisoAltaSinPrecio, AvisoCamposSensibles, ValorSoloLectura } from "@/components/catalogo/campos-sensibles-solo-lectura";
@@ -170,18 +171,17 @@ export function ProductoForm({
           observaciones: texto(form.get("observaciones")) || undefined,
           activoEnTodasLasSucursales: editando ? undefined : activoEnTodas,
         };
-
         startTransition(async () => {
           const resultado = editando
             ? // El precio que mostraba el formulario (control del valor visto): si otra persona lo cambió mientras se editaba, el servidor no pisa su cambio y pide recargar.
               await actualizarProducto(productoExistente!.id, {
                 ...datos,
-                ...sensiblesDeLaEdicion,
+                ...sensiblesDeLaEdicion, ...alicuotasDelFormulario(form, tipo, productoExistente, puedeEditarCamposSensibles).deLaEdicion,
                 precioVentaVisto: productoExistente!.precioVenta,
                 // Fase 4: el modo solo lo manda quien puede cambiarlo (sin la clave, «no viene» es «queda como estaba»).
                 ...(venta && puedeEditarCamposSensibles ? { modoDeVenta } : {}),
               })
-            : await darDeAltaProducto({ ...datos, ...sensiblesDelAlta });
+            : await darDeAltaProducto({ ...datos, ...sensiblesDelAlta, ...alicuotasDelFormulario(form, tipo, undefined, puedeEditarCamposSensibles).delAlta });
           setMensaje(resultado.mensaje);
           setSincronizable(null);
           // Al guardar se vuelve a la ficha del producto, que muestra el aviso de que se guardó (antes se volvía a la lista y el cartel se perdía).
@@ -413,7 +413,7 @@ export function ProductoForm({
             {pesos(productoExistente?.precioVenta ?? 0)}
           </ValorSoloLectura>
         ))}
-
+      <CampoAlicuotaIva key={tipo} tipo={tipo} existente={productoExistente} puedeEditar={puedeEditarCamposSensibles} />
       {!puedeEditarCamposSensibles && (
         <AvisoCamposSensibles>
           {editando ? "Se muestran los valores guardados; el resto de los datos del producto se puede editar." : "El producto se crea con precio $0, factor 1 y sin unidad de compra; después lo completa quien tenga ese permiso."}
