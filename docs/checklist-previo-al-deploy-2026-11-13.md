@@ -65,7 +65,7 @@ printf %s "$CORREO_OPERATIVO_RESEND_API_KEY" | grep -Eq '^re_[A-Za-z0-9_]+$' && 
 
 Lo hace el dueño; el asistente de desarrollo no ve credenciales ni corre nada contra Neon (`deploy-con-migraciones.md`).
 
-Sobre el ensayo general y la base de producción (el dueño, 2026-11-12, chat del dueño con el orquestador): «Bueno, sí, el ensayo general puede ser. Siempre y cuando no afectemos la base de producción de Stockage Neuquén. Porque mañana, mañana se presenta la carta como existe hoy, digamos.» **Condición innegociable:** el ensayo corre solo en una rama de Neon **copia** (nunca en la base de producción de empresab, ni con el Preview, que comparte esa base) y no se escribe nada en producción ni en sus variables de Vercel. Si algún paso del ensayo exigiera tocar esa base, se frena y se le pregunta al dueño.
+Sobre el ensayo general y la base de producción (el dueño, 2026-11-12, chat del dueño con el orquestador): «Bueno, sí, el ensayo general puede ser. Siempre y cuando no afectemos la base de producción de [la empresa]. Porque mañana, mañana se presenta la carta como existe hoy, digamos.» **Condición innegociable:** el ensayo corre solo en una rama de Neon **copia** (nunca en la base de producción de empresab, ni con el Preview, que comparte esa base) y no se escribe nada en producción ni en sus variables de Vercel. Si algún paso del ensayo exigiera tocar esa base, se frena y se le pregunta al dueño.
 
 1. Rama de **respaldo** de Neon de la base destino (es el rollback del DEPLOY: código viejo + base vieja).
 2. Rama de **ensayo** (otra copia). En ella: las consultas de la sección 1, y después `node scripts/operaciones/con-env.mjs <env de ensayo> -- npx prisma migrate deploy`.
@@ -128,3 +128,12 @@ Verificado el 2026-11-13 sobre `main` en `a172974a`: desde #251 **no entró ning
 
 - **Ninguna decisión de los agentes queda pendiente de OK en el registro** (todas aceptadas el 2026-11-13, DEC-0001 a DEC-0009, DEC-0011 y DEC-0012; DEC-0010 no existe). Lo único obligatorio del lado del dueño antes de desplegar es la verificación de la clave de Resend (sección 2).
 - #255 (alícuota de IVA, **sin migración**; espera la respuesta del dueño a la pregunta de permisos A/B/C), #252 (ficha de parte, solo diseño, **sin autorización de migrar**; espera su respuesta a «¿un cliente por ficha?» y a las reglas de §6.2) y #256 (menú del día) no entran en este despliegue.
+
+## 10. Después del deploy: cargar el nombre público de la empresa (solo cuando el código del nombre público esté en `main`)
+
+Hoy el nombre que la carta pública muestra en los títulos es un texto fijo en el código. Cuando entre el diseño `docs/diseno-nombre-publico-de-la-empresa-en-la-carta-2026-11-14.md` (el nombre pasa a ser un dato de cada empresa) el despliegue deja los títulos **neutros** hasta que se carga el dato. Decisión del dueño, 2026-11-14 (chat con el orquestador): **«Lo carga el administrador al desplegar (Recomendada)»**, sin migración.
+
+- [ ] **Inmediatamente después del despliegue, cargar el nombre público en `/carta/portal`** («Nombre público de la empresa», zona «Encabezado y títulos») con **el texto exacto que la carta muestra hoy** (se lee del título actual de la carta pública, no de memoria) y guardar.
+- [ ] **Verificar que la carta lo muestra**: abrir el portal y la carta de una sucursal (ventana privada, a los 60 s de guardar como máximo) y confirmar que el título de la pestaña, la descripción compartida y el nombre del sitio dicen exactamente lo mismo que antes del despliegue.
+- [ ] Si algo no coincide: corregir el texto en `/carta/portal` y guardar de nuevo; nada se rompe mientras tanto (el título neutro es el estado seguro).
+
