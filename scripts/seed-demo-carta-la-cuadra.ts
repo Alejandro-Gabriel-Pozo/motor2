@@ -36,6 +36,7 @@ import { vi, describe, it, expect } from "vitest";
 vi.mock("../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { prisma } from "./demo-seed/cliente";
+import { emailAdminDeLaDemo } from "./demo-seed/admin-de-la-demo";
 import { __setCookieDeTestParaSucursal } from "../test/setup/next-headers-stub";
 import { getUsuarioActual } from "../src/server/sesion/session";
 import { guardarSeccionCarta } from "../src/server/actions/carta/secciones";
@@ -44,7 +45,7 @@ import { guardarTemaCarta } from "../src/server/actions/carta/tema";
 import { agregarSucursalAlPortal, guardarSucursalPublica } from "../src/server/actions/carta/registro-publico";
 import type { ResultadoAccion } from "../src/server/actions/tipos";
 
-const EMAIL_ADMIN = "alepogabriel@gmail.com";
+const EMAIL_ADMIN = emailAdminDeLaDemo(process.env);
 const NOMBRE_SUCURSAL = "La Cuadra";
 
 interface ItemCarta {
