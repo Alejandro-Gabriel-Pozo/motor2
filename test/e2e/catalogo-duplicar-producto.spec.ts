@@ -95,7 +95,10 @@ test("el bife con chimichurri: nombre propio, receta y opciones copiadas, y la r
   await dialogo.locator("[data-abrir-duplicado]").click();
   await page.waitForURL(new RegExp(`/catalogo/productos/${nuevo.id}$`));
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(nuevoNombre);
+  // Las opciones copiadas se ven en su pestaña «Opciones» (la ficha de Datos ya no las resume).
+  await page.goto(`/catalogo/productos/${nuevo.id}/opciones`);
   await expect(page.getByText("Guarnición", { exact: false }).first()).toBeVisible();
+  await page.goto(`/catalogo/productos/${nuevo.id}`);
 
   // Independencia: el original cambia su receta (una versión nueva con otro ingrediente) y la del duplicado sigue como se copió.
   const delOrigen = await prisma.recetaVersion.findFirstOrThrow({ where: { productoId: bife.productoId } });

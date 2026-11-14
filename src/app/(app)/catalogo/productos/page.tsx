@@ -115,7 +115,7 @@ export default async function ProductosPage({
       )}
       </ApartadoDePlanilla>
       {pagina.nextCursor && (
-        <Link href={`/catalogo/productos?${consultaDeLosFiltros(filtros, pagina.nextCursor)}`} className="inline-block text-sm underline">
+        <Link href={`/catalogo/productos?${consultaDeLosFiltros(filtros, pagina.nextCursor)}`} className="inline-flex min-h-11 items-center text-sm underline md:min-h-0">
           Página siguiente →
         </Link>
       )}
