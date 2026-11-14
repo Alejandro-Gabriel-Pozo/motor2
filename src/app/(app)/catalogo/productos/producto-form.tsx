@@ -7,7 +7,7 @@ import { AsistenteHermanar } from "@/components/catalogo/asistente-hermanar";
 import { GestionPresentaciones } from "@/components/catalogo/gestion-presentaciones";
 import { CampoNumero } from "@/components/campo-numero";
 import { AyudaCampo } from "@/components/ayuda-campo";
-import { PRESENTACIONES_VISIBLES } from "@/core/catalogo/public";
+import { OBSERVACIONES_VISIBLES, PRESENTACIONES_VISIBLES } from "@/core/catalogo/public";
 import { CampoAlicuotaIva, alicuotasDelFormulario } from "./campo-alicuota-iva";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { SincronizarPrecioGrupo } from "@/components/carta/sincronizar-precio-grupo";
@@ -69,7 +69,9 @@ export function ProductoForm({
   cantidadSucursales,
   nombreSucursalActual,
   venta,
+  soloLectura = false, sinEncabezado = false,
 }: {
+  sinEncabezado?: boolean; soloLectura?: boolean;
   unidades: OpcionUnidad[];
   insumosIniciales: Opcion[];
   categoriasIniciales: Opcion[];
@@ -197,7 +199,7 @@ export function ProductoForm({
       }}
       className="flex max-w-xl flex-col gap-3"
     >
-      <h2 className="font-medium">{editando ? `Editar "${productoExistente!.nombre}"` : "Nuevo producto"}</h2>
+      {sinEncabezado ? null : <h2 className="font-medium">{editando ? `Editar "${productoExistente!.nombre}"` : "Nuevo producto"}</h2>}
 
       {editando ? (
         <div className="flex flex-col gap-1">
@@ -523,7 +525,7 @@ export function ProductoForm({
         </>
       )}
 
-      <AreaDeTexto etiqueta="Observaciones" etiquetaOculta name="observaciones" placeholder="Observaciones" defaultValue={productoExistente?.observaciones ?? ""} />
+      {OBSERVACIONES_VISIBLES && <AreaDeTexto etiqueta="Observaciones" etiquetaOculta name="observaciones" placeholder="Observaciones" defaultValue={productoExistente?.observaciones ?? ""} />}
 
       {mensaje && (
         <Aviso variante={mensaje.startsWith("Producto") ? "exito" : "error"} forma="en-linea">
@@ -541,9 +543,7 @@ export function ProductoForm({
           } alTerminar={() => irALaFicha(productoExistente.id)} />
       )}
 
-      <Boton type="submit" disabled={pending}>
-        {pending ? "Guardando..." : editando ? "Guardar cambios" : "Crear producto"}
-      </Boton>
+      {soloLectura ? null : <Boton type="submit" disabled={pending}>{pending ? "Guardando..." : editando ? "Guardar cambios" : "Crear producto"}</Boton>}
     </form>
   );
 }

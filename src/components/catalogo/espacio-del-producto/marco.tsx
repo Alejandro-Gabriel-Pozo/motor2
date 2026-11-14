@@ -8,7 +8,7 @@ import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
 
 /**
  * El MARCO del espacio del producto (Fase 6, 6.12; DEC-12): lo que comparten la portada del producto y sus pasos. Arriba, el volver a la lista, el nombre del producto (el `h1` de la pantalla), cómo se
- * vende y si está disponible en la sucursal activa; debajo, la tira de pasos (`PestanasDeRuta`: cada pestaña es OTRA pantalla) con «Resumen» y los pasos que le corresponden al tipo de producto, y después
+ * vende y si está disponible en la sucursal activa; debajo, la tira de pasos (`PestanasDeRuta`: cada pestaña es OTRA pantalla) con las pestañas Datos, Precios, Opciones y «Cómo se compra» (sin Receta ni En la carta: están fuera de la ficha), y después
  * el contenido de la pantalla. Es un componente de SERVIDOR que se usa desde cada página (no un `layout.tsx`): cada página conserva su propia guarda de permiso, que es la barrera.
  *
  * Los pasos ya vienen resueltos (`cargarMarcoDelEspacio`): un paso que el usuario no puede abrir llega con `href: null` y se dibuja como texto, SIN enlace; un paso de un módulo apagado no llega. Un paso con
@@ -52,9 +52,16 @@ function pestanaDelPaso(paso: PasoDeLaPortada, actual: PropsDelMarco["actual"]):
   };
 }
 
+/** Los pasos que son PESTAÑA de la ficha (como la de Pedernal): Datos, Precios, Opciones y «Cómo se compra». «Receta» y «En la carta» no se muestran acá (dueño, 2026-11-13): se llega desde Recetas y Carta. */
+const PASOS_QUE_SON_PESTANA: readonly PasoDelEspacio[] = ["precios", "opciones", "compra"];
+
 export function MarcoDelEspacio({ producto, pasos, actual, ancho = "angosto", children }: PropsDelMarco) {
   const fichaVisible = producto.fichaVisible ?? true;
-  const pestanas: PestanaDeRuta[] = [{ href: fichaVisible ? rutaDelPaso(producto.id, "portada") : null, texto: "Resumen", actual: actual === "portada" }, ...pasos.map((p) => pestanaDelPaso(p, actual))];
+  // La pestaña «Datos» abre la ficha (la portada) y queda marcada también en su formulario de edición (`datos`). Los pasos que no son pestaña (receta, en la carta) no se muestran.
+  const pestanas: PestanaDeRuta[] = [
+    { href: fichaVisible ? rutaDelPaso(producto.id, "portada") : null, texto: "Datos", actual: actual === "portada" || actual === "datos" },
+    ...pasos.filter((p) => PASOS_QUE_SON_PESTANA.includes(p.paso)).map((p) => pestanaDelPaso(p, actual)),
+  ];
   return (
     <div className={`flex flex-col gap-6${ancho === "angosto" ? " max-w-3xl" : ""}`}>
       <header className="flex flex-col gap-3">
@@ -75,7 +82,9 @@ export function MarcoDelEspacio({ producto, pasos, actual, ancho = "angosto", ch
             <Insignia tono={producto.disponibleAca ? "ok" : "aviso"}>{producto.disponibleAca ? `Disponible en «${producto.sucursalNombre}»` : `No disponible en «${producto.sucursalNombre}»`}</Insignia>
           </p>
         </div>
-        <PestanasDeRuta etiqueta="Pasos del producto" pestanas={pestanas} />
+        <nav aria-label="Pasos del producto" className="flex flex-col gap-1">
+        <PestanasDeRuta etiqueta="Pestañas del producto" pestanas={pestanas} />
+        </nav>
       </header>
       {children}
     </div>

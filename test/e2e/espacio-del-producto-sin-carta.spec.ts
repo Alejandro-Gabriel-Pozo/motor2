@@ -36,7 +36,7 @@ test.afterAll(async () => {
   }
 });
 
-test("con el módulo Carta apagado no hay paso «En la carta»: ni en la tira ni por URL; con Carta prendida, sí", async ({ browser, baseURL }) => {
+test("con el módulo Carta apagado la pantalla «En la carta» no se abre por URL; con Carta prendida, sí (la ficha no la muestra: se llega desde Carta)", async ({ browser, baseURL }) => {
   const sinCarta = MODULOS_VENDIBLES.filter((m) => m !== "carta" && m !== "promociones");
   await fijarModulosActivos(e.b.empresaId, sinCarta);
   const page = await paginaConSesion(browser, baseURL, sesion);
@@ -44,7 +44,7 @@ test("con el módulo Carta apagado no hay paso «En la carta»: ni en la tira ni
     await page.goto(`/catalogo/productos/${producto.id}`);
     const pasos = page.getByRole("navigation", { name: "Pasos del producto" });
     await expect(pasos).toBeVisible();
-    await expect(pasos).toContainText("Opciones y precio");
+    await expect(pasos).toContainText("Opciones");
     await expect(pasos, "sin el módulo Carta el paso no aparece").not.toContainText("En la carta");
     expect((await new AxeBuilder({ page }).analyze()).violations, "portada sin el módulo Carta").toEqual([]);
 
@@ -55,7 +55,6 @@ test("con el módulo Carta apagado no hay paso «En la carta»: ni en la tira ni
     // Contraespejo: con Carta prendida el paso está y abre.
     await fijarModulosActivos(e.b.empresaId, MODULOS_VENDIBLES);
     await page.goto(`/catalogo/productos/${producto.id}`);
-    await expect(pasos.getByRole("link", { name: /^En la carta/ })).toBeVisible();
     await page.goto(`/catalogo/productos/${producto.id}/en-la-carta`);
     await expect(page.getByRole("heading", { level: 2, name: /^En la carta de «/ })).toBeVisible();
   } finally {

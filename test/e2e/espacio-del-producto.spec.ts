@@ -52,7 +52,7 @@ for (const { ancho, alto } of [
       ];
 
       await page.goto(`/catalogo/productos/${producto.id}/opciones`);
-      await expect(page.getByRole("heading", { level: 2, name: "Opciones y precio" })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 2, name: "Opciones" })).toBeVisible();
 
       // 1) El grupo de precio final: nombre, «Cada opción define el precio final», tres opciones con su precio.
       await page.getByRole("button", { name: "+ Nuevo grupo", exact: true }).click();
@@ -146,7 +146,7 @@ test("«+ Nuevo grupo» es de quien además puede Editar `opciones_definir`: sin
     // Sin el «Editar» de `opciones_definir`: ve el paso 2 y puede sumar un grupo que ya existe, pero no crear uno.
     await prisma.permisoRol.update({ where: clave, data: { puedeVer: true, puedeEditar: false } });
     await page.goto(`/catalogo/productos/${producto.id}/opciones`);
-    await expect(page.getByRole("heading", { level: 2, name: "Opciones y precio" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Opciones" })).toBeVisible();
     await expect(nuevoGrupo).toHaveCount(0);
     await expect(frase).toBeVisible();
     await expect(page.getByRole("button", { name: "Agregar un grupo existente", exact: true })).toBeVisible();
@@ -154,7 +154,7 @@ test("«+ Nuevo grupo» es de quien además puede Editar `opciones_definir`: sin
     // Contraespejo: con el «Editar» de vuelta, el botón está y la frase no.
     await prisma.permisoRol.update({ where: clave, data: antes });
     await page.goto(`/catalogo/productos/${producto.id}/opciones`);
-    await expect(page.getByRole("heading", { level: 2, name: "Opciones y precio" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Opciones" })).toBeVisible();
     await expect(nuevoGrupo).toBeVisible();
     await expect(frase).toHaveCount(0);
   } finally {
@@ -190,15 +190,15 @@ for (const { ancho, alto } of [
     const m = marca();
     const carta = await productoParaLaCarta(m, sucursalId);
     try {
-      // Desde la portada: el paso «En la carta» está en la tira, con su pendiente («Todavía no está en la carta»).
+      // Desde la portada: «Qué falta» dice «Todavía no está en la carta» y su enlace lleva al paso (no hay pestaña: está fuera de la ficha).
       await page.goto(`/catalogo/productos/${carta.producto.id}`);
       const pasos = page.getByRole("navigation", { name: "Pasos del producto" });
-      await expect(pasos.getByRole("link", { name: NOMBRE_DEL_PASO })).toContainText("Pendiente");
-      await pasos.getByRole("link", { name: NOMBRE_DEL_PASO }).click();
+      await expect(pasos).not.toContainText("En la carta");
+      await expect(page.getByText(/Todavía no está en la carta/)).toBeVisible();
+      await page.getByRole("link", { name: NOMBRE_DEL_PASO }).click();
       await expect(page).toHaveURL(new RegExp(`/catalogo/productos/${carta.producto.id}/en-la-carta$`));
       await expect(page.getByRole("heading", { level: 1 })).toContainText(carta.producto.nombre);
       await expect(page.getByRole("heading", { level: 2, name: /^En la carta de «/ })).toBeVisible();
-      await expect(pasos.getByRole("link", { name: NOMBRE_DEL_PASO })).toHaveAttribute("aria-current", "page");
 
       // La ficha de carta del producto viene abierta: se elige la sección y se guarda.
       const ficha = page.locator(`[data-contenido-carta="${carta.producto.nombre}"]`);
@@ -214,9 +214,10 @@ for (const { ancho, alto } of [
 
       const contenido = await prisma.contenidoCartaProducto.findUniqueOrThrow({ where: { sucursalId_productoId: { sucursalId, productoId: carta.producto.id } } });
       expect({ visibleEnCarta: contenido.visibleEnCarta, seccionCartaId: contenido.seccionCartaId }).toEqual({ visibleEnCarta: true, seccionCartaId: carta.seccion.id });
-      // Sigue en el paso, y la tira ya no lo marca como pendiente.
+      // Sigue en el paso, y «Qué falta» de la portada ya no lo menciona.
       await expect(page).toHaveURL(new RegExp(`/catalogo/productos/${carta.producto.id}/en-la-carta$`));
-      await expect(pasos.getByRole("link", { name: NOMBRE_DEL_PASO })).not.toContainText("Pendiente");
+      await page.goto(`/catalogo/productos/${carta.producto.id}`);
+      await expect(page.getByRole("link", { name: NOMBRE_DEL_PASO })).toHaveCount(0);
     } finally {
       await carta.limpiar();
     }
@@ -258,13 +259,10 @@ test("paso 4 «En la carta»: sin el Ver de la carta no se abre por URL y la tir
     await page.goto(`/catalogo/productos/${carta.producto.id}/en-la-carta`);
     await expect(page.getByText(/No tenés permiso/).first()).toBeVisible();
     await expect(page.locator(`[data-contenido-carta]`), "no tenía que llegar a dibujarse la ficha de carta").toHaveCount(0);
-    // En la portada el paso se ve, SIN enlace (ni un camino a «No tenés permiso»), y sin su pendiente (no se leyó la carta).
+    // En la portada la carta ya no tiene pestaña ni enlace, y sin el Ver de la carta no se lee la carta: «Qué falta» no la menciona.
     await page.goto(`/catalogo/productos/${carta.producto.id}`);
-    const pasos = page.getByRole("navigation", { name: "Pasos del producto" });
-    const paso = pasos.locator("li", { hasText: "En la carta" });
-    await expect(paso).toBeVisible();
-    await expect(paso.getByRole("link")).toHaveCount(0);
-    await expect(paso, "sin el Ver de la carta no se lee la carta: sin su pendiente").not.toContainText("Pendiente");
+    await expect(page.getByRole("navigation", { name: "Pasos del producto" })).not.toContainText("En la carta");
+    await expect(page.getByText(/Todavía no está en la carta/)).toHaveCount(0);
   } finally {
     await admin.restaurar();
     await carta.limpiar();
@@ -284,7 +282,7 @@ test("paso 4 «En la carta»: quien ve la carta pero NO el catálogo lo abre sin
     await expect(main).not.toContainText("Producto de venta (PV)");
     await expect(main).not.toContainText("Directo");
     await expect(main.getByRole("link", { name: "← Productos" })).toHaveCount(0);
-    await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: "Resumen" })).toHaveCount(0);
+    await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: "Datos" })).toHaveCount(0);
     // Y la pantalla de la ficha (que no puede ver) sigue negada por su propia guarda.
     await page.goto(`/catalogo/productos/${carta.producto.id}`);
     await expect(page.getByText(/No tenés permiso/).first()).toBeVisible();
@@ -342,8 +340,8 @@ for (const { ancho, alto } of [
     if (tactil) await expectObjetivosTactiles(pasos.getByRole("link"), `${ancho} px: la tira de pasos`);
 
     // 2) El paso 2: un grupo de precio final con 3 opciones y uno incluido.
-    await pasos.getByRole("link", { name: /^Opciones y precio/ }).click();
-    await expect(page.getByRole("heading", { level: 2, name: "Opciones y precio" })).toBeVisible();
+    await pasos.getByRole("link", { name: /^Opciones/ }).click();
+    await expect(page.getByRole("heading", { level: 2, name: "Opciones" })).toBeVisible();
     await page.getByRole("button", { name: "+ Nuevo grupo", exact: true }).click();
     const ventana = page.getByRole("dialog", { name: /^Nuevo grupo para/ });
     await ventana.getByLabel(/^Nombre del grupo/).fill(tamano);
@@ -362,22 +360,25 @@ for (const { ancho, alto } of [
     await expect(page.locator(`[data-admision-grupo='${incluida}']`)).toBeVisible();
     // Con el grupo de precio final, el producto todavía se vende «Directo»: el paso 2 lo dice y lleva al paso 1.
     const falta = page.locator("[data-falta-por-opcion]");
-    await expect(falta).toContainText("Para venderlo por opción, marcalo «Por opción» en Qué se vende");
+    await expect(falta).toContainText("Para venderlo por opción, marcalo «Por opción» en Datos");
 
     // 3) El paso 1: «Por opción».
-    await falta.getByRole("link", { name: "Qué se vende" }).click();
+    await falta.getByRole("link", { name: "Datos" }).click();
     await expect(page).toHaveURL(/\/catalogo\/productos\/[^/?]+\/datos$/);
     await page.getByRole("group", { name: "¿Cómo se vende?" }).getByRole("radio", { name: /Por opción/ }).check();
     await page.getByRole("button", { name: "Guardar cambios" }).click();
     await expect(page).toHaveURL(/\/catalogo\/productos\/[^/?]+\?guardado=cambios/);
-    await expect(page.locator("[data-se-vende-por-opcion]")).toBeVisible();
+    await expect(page.getByRole("group", { name: "¿Cómo se vende?" }).getByRole("radio", { name: /Por opción/ })).toBeChecked();
 
     // 4) El paso 2, ya sin pendientes: ni la insignia en la tira ni el aviso de «Por opción».
-    await pasos.getByRole("link", { name: /^Opciones y precio/ }).click();
-    await expect(page.getByRole("heading", { level: 2, name: "Opciones y precio" })).toBeVisible();
-    await expect(pasos.getByRole("link", { name: /^Opciones y precio/ })).not.toContainText("Pendiente");
+    await pasos.getByRole("link", { name: /^Opciones/ }).click();
+    await expect(page.getByRole("heading", { level: 2, name: "Opciones" })).toBeVisible();
+    await expect(pasos.getByRole("link", { name: /^Opciones/ })).not.toContainText("Pendiente");
     await expect(page.locator("[data-falta-por-opcion]")).toHaveCount(0);
+    // El precio vive en la pestaña Precios: ahí dice que se vende por opción.
+    await pasos.getByRole("link", { name: "Precios" }).click();
     await expect(page.locator("[data-precio-de-la-sucursal]")).toContainText("Se vende por opción");
+    await pasos.getByRole("link", { name: /^Opciones/ }).click();
     await expectSinDesborde(page, `${ancho} px: el paso 2 al final`);
     await capturar(page, `espacio-paso2-al-final-${ancho}`);
     expect((await new AxeBuilder({ page }).analyze()).violations, `${ancho} px: el paso 2 al final`).toEqual([]);
@@ -410,7 +411,7 @@ for (const { ancho, alto } of [
   });
 }
 
-test("quien solo VE productos: la portada sin formularios y los pasos como texto; por URL, «No tenés permiso» en los pasos 1 y 2", async ({ browser, baseURL, sucursalId }) => {
+test("quien solo VE productos: la portada sin formularios y los pasos como texto; por URL, «No tenés permiso» en Opciones y En la carta", async ({ browser, baseURL, sucursalId }) => {
   const m = marca();
   const producto = await productoDirecto(m, sucursalId);
   const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { producto_ver_catalogo: "ver" });
@@ -418,12 +419,17 @@ test("quien solo VE productos: la portada sin formularios y los pasos como texto
     await page.goto(`/catalogo/productos/${producto.id}`);
     await expect(page.getByRole("heading", { level: 1 })).toContainText(producto.nombre);
     const pasos = page.getByRole("navigation", { name: "Pasos del producto" });
-    // Solo el «Resumen» (la pantalla en la que está) es un enlace: los pasos que no puede abrir quedan como texto.
-    await expect(pasos.getByRole("link")).toHaveCount(1);
-    for (const titulo of ["Qué se vende", "Opciones y precio"]) await expect(pasos).toContainText(titulo);
-    await expect(page.locator("main input, main textarea, main select"), "la portada no tiene formularios").toHaveCount(0);
+    // Quien solo ve abre Datos (la pantalla en la que está) y Precios; los pasos que no puede abrir quedan como texto.
+    await expect(pasos.getByRole("link")).toHaveCount(2);
+    for (const titulo of ["Datos", "Precios", "Opciones"]) await expect(pasos).toContainText(titulo);
+    // La pestaña Datos trae los mismos campos que quien edita, apagados y sin «Guardar».
+    await expect(page.locator("main input:enabled, main textarea:enabled, main select:enabled"), "ningún campo editable").toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Guardar cambios" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Editar opciones" })).toHaveCount(0);
-    for (const ruta of ["datos", "opciones", "en-la-carta"]) {
+    // /datos ya no es una pantalla aparte: lleva a la ficha (donde los campos están apagados).
+    await page.goto(`/catalogo/productos/${producto.id}/datos`);
+    await expect(page).toHaveURL(new RegExp(`/catalogo/productos/${producto.id}$`));
+    for (const ruta of ["opciones", "en-la-carta"]) {
       await page.goto(`/catalogo/productos/${producto.id}/${ruta}`);
       await expect(page.getByText(/No tenés permiso/).first(), ruta).toBeVisible();
       await expect(page.locator("main input, main textarea, main select, main [data-admision-grupo]"), `${ruta}: no se dibuja ningún formulario`).toHaveCount(0);
@@ -438,7 +444,7 @@ test("a 375 px la tira de pasos deja a la vista la pestaña actual en cada paso,
   const m = marca();
   const carta = await productoParaLaCarta(m, sucursalId);
   try {
-    for (const ruta of ["datos", "opciones", "en-la-carta"]) {
+    for (const ruta of ["datos", "precios", "opciones"]) {
       await page.goto(`/catalogo/productos/${carta.producto.id}/${ruta}`);
       const actual = page.getByRole("navigation", { name: "Pasos del producto" }).locator('[aria-current="page"]');
       await expect(actual).toBeVisible();
@@ -466,22 +472,23 @@ for (const { ancho, alto } of [
     const producto = await productoDirecto(m, sucursalId);
     await page.goto(`/catalogo/productos/${producto.id}`);
     const pasos = page.getByRole("navigation", { name: "Pasos del producto" });
-    await pasos.getByRole("link", { name: /^Receta/ }).click();
+    await expect(pasos).not.toContainText("Receta");
+    // «Qué falta» dice que no tiene receta y su enlace lleva a ella.
+    await page.getByRole("link", { name: "Receta", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/catalogo/recetas/${producto.id}$`));
-    // El marco: el `h1` es el producto (no el título de la receta), la tira sigue y «Receta» es la actual.
+    // El marco: el `h1` es el producto (no el título de la receta) y la tira sigue (Datos, Precios, Opciones).
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(producto.nombre);
     await expect(page.getByRole("heading", { level: 2, name: `${producto.nombre} — versión vigente: sin receta todavía` })).toBeVisible();
-    await expect(pasos.getByRole("link", { name: /^Receta/ })).toHaveAttribute("aria-current", "page");
-    await expect(pasos.getByRole("link", { name: /^Qué se vende/ })).toBeVisible();
+    await expect(pasos.getByRole("link", { name: "Datos" })).toBeVisible();
     await expectSinDesborde(page, `${ancho} px: la receta dentro del espacio`);
     expect((await new AxeBuilder({ page }).analyze()).violations, `${ancho} px: la receta dentro del espacio`).toEqual([]);
     // Desde la receta se vuelve a los otros pasos por la tira, sin pasar por el menú.
-    await pasos.getByRole("link", { name: /^Qué se vende/ }).click();
-    await expect(page).toHaveURL(new RegExp(`/catalogo/productos/${producto.id}/datos$`));
+    await pasos.getByRole("link", { name: "Datos" }).click();
+    await expect(page).toHaveURL(new RegExp(`/catalogo/productos/${producto.id}$`));
   });
 }
 
-test("paso 3 «Receta»: una materia prima que se produce lo tiene (Datos y Receta); una que no se produce no tiene receta ni espacio de venta", async ({ paginaAutenticada: page }) => {
+test("paso 3 «Receta»: una materia prima que se produce lo tiene (se llega desde «Qué falta»); una que no se produce no tiene receta ni espacio de venta", async ({ paginaAutenticada: page }) => {
   const m = marca();
   const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const seProduce = await prisma.producto.create({ data: { codigo: `E2E-EP-MPP-${m}`, nombre: `E2E Espacio Salsa ${m}`, tipo: "MP", unidadStockId: kg.id, seProduce: true } });
@@ -490,13 +497,12 @@ test("paso 3 «Receta»: una materia prima que se produce lo tiene (Datos y Rece
     await page.goto(`/catalogo/productos/${seProduce.id}`);
     const pasos = page.getByRole("navigation", { name: "Pasos del producto" });
     await expect(pasos).toContainText("Datos");
-    await expect(pasos).toContainText("Receta");
-    await expect(pasos).not.toContainText("Opciones y precio");
+    await expect(pasos).not.toContainText("Receta");
+    await expect(pasos).not.toContainText("Precios");
     await expect(pasos).not.toContainText("En la carta");
-    await pasos.getByRole("link", { name: /^Receta/ }).click();
+    await page.getByRole("link", { name: "Receta", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/catalogo/recetas/${seProduce.id}$`));
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(seProduce.nombre);
-    await expect(pasos.getByRole("link", { name: /^Receta/ })).toHaveAttribute("aria-current", "page");
     expect((await new AxeBuilder({ page }).analyze()).violations, "receta de una materia prima que se produce, dentro del espacio").toEqual([]);
 
     // Una materia prima que NO se produce: sin paso «Receta» y, por URL, la pantalla dice que no puede tener receta (sin marco).
@@ -521,7 +527,7 @@ test("paso 3 «Receta»: quien ve las recetas pero NO el catálogo la abre sin e
     await expect(main).not.toContainText(`E2E-EP-${m}`);
     await expect(main).not.toContainText("Producto de venta (PV)");
     await expect(main.getByRole("link", { name: "← Productos" })).toHaveCount(0);
-    await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: "Resumen" })).toHaveCount(0);
+    await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: "Datos" })).toHaveCount(0);
   } finally {
     await admin.restaurar();
   }
@@ -537,7 +543,7 @@ test("la biblioteca: «Productos que lo usan» lleva al paso 2 del producto a qu
     await page.goto(`/catalogo/opciones/${grupo.grupoId}`);
     await expect(enlace).toHaveAttribute("href", `/catalogo/productos/${productoId}/opciones`);
     await enlace.click();
-    await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^Opciones y precio/ })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^Opciones/ })).toHaveAttribute("aria-current", "page");
 
     // Contraespejo: quien ve el grupo pero no edita las opciones del producto (el administrador al que se le quita ese Editar) va a la portada, no a una pantalla que le diría «No tenés permiso».
     admin = await ajustarCeldasDelAdmin({ producto_opciones_admitidas: { puedeVer: true, puedeEditar: false } });

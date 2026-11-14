@@ -39,7 +39,7 @@ for (const ancho of [1280, 375]) {
     expect((await new AxeBuilder({ page }).analyze()).violations, "por opción").toEqual([]);
     await page.getByRole("button", { name: /Guardar/ }).click();
     await expect(page).toHaveURL(new RegExp(`/catalogo/productos/${productoId}\\?guardado=cambios`));
-    await expect(page.locator("[data-se-vende-por-opcion]")).toBeVisible();
+    await expect(page.getByRole("group", { name: "¿Cómo se vende?" }).getByRole("radio", { name: /Por opción/ })).toBeChecked();
     expect(await prisma.producto.findUniqueOrThrow({ where: { id: productoId }, select: { modoDeVenta: true, precioVenta: true } })).toEqual({ modoDeVenta: "BASE_CONFIGURABLE", precioVenta: expect.anything() });
     expect(Number((await prisma.producto.findUniqueOrThrow({ where: { id: productoId } })).precioVenta), "el guardado se conserva").toBe(18000);
     expect(await prisma.registroAuditoria.count({ where: { entidad: "Producto", entidadId: productoId, campo: "modoDeVenta" } })).toBe(1);

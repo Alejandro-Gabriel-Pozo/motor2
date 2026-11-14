@@ -26,7 +26,7 @@ test("asignar un tamaño con precio propio: la vista previa muestra los precios 
   await page.goto(`/catalogo/productos/${producto.id}/opciones`);
   // Fase 6 (6.15b): la pantalla es el paso 2 del espacio del producto: el h1 es el producto (lo pone el marco) y el h2 el paso. «Agregar un grupo existente» abre una ventana con el selector del grupo.
   await expect(page.getByRole("heading", { level: 1 })).toContainText(producto.nombre);
-  await expect(page.getByRole("heading", { level: 2, name: "Opciones y precio" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Opciones" })).toBeVisible();
   await expect(page.getByText("todavía no admite opciones")).toBeVisible();
   await page.getByRole("button", { name: "Agregar un grupo existente", exact: true }).click();
   const ventana = page.getByRole("dialog", { name: "Agregar un grupo existente" });
@@ -53,10 +53,10 @@ test("asignar un tamaño con precio propio: la vista previa muestra los precios 
   expect((await new AxeBuilder({ page }).analyze()).violations, "pantalla de edición").toEqual([]);
 
   // La ficha muestra lo mismo, solo para leer, con el enlace para editar (el admin tiene la clave).
-  await page.goto(`/catalogo/productos/${producto.id}`);
-  const seccion = page.getByRole("region", { name: "Opciones de venta" });
+  // La pestaña Precios de la ficha muestra «Así se cobra» (antes lo mostraba la ficha misma en «Opciones de venta»).
+  await page.goto(`/catalogo/productos/${producto.id}/precios`);
+  const seccion = page.getByRole("region", { name: "Así se cobra" });
   await expect(seccion).toContainText("Chico $ 2.500,00 · Mediano $ 2.800,00 · Grande $ 3.100,00");
-  await expect(seccion.getByRole("link", { name: "Editar opciones" })).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations, "ficha").toEqual([]);
 });
 
@@ -94,10 +94,10 @@ test("quien solo ve el catálogo: la ficha muestra las opciones sin «Editar opc
   const { productoId } = await sembrarProductoConOpciones({ nombre: `E2E Milanesa ficha ${m}`, codigo: `E2E-POM-${m}`, precioVenta: 9000, sucursalId, grupos: [{ grupo: extras }] });
   const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { producto_ver_catalogo: "ver" });
   try {
-    await page.goto(`/catalogo/productos/${productoId}`);
-    const seccion = page.getByRole("region", { name: "Opciones de venta" });
+    await page.goto(`/catalogo/productos/${productoId}/precios`);
+    const seccion = page.getByRole("region", { name: "Así se cobra" });
     await expect(seccion).toContainText("Huevo frito + $ 600,00 c/u");
-    await expect(seccion.getByRole("link", { name: "Editar opciones" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Editar opciones" })).toHaveCount(0);
     await page.goto(`/catalogo/productos/${productoId}/opciones`);
     await expect(page.getByText(/No tenés permiso/).first()).toBeVisible();
     await expect(page.getByRole("button", { name: /^Guardar/ })).toHaveCount(0);

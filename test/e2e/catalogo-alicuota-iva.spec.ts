@@ -29,7 +29,7 @@ for (const medida of MEDIDAS) {
       await page.setViewportSize({ width: medida.ancho, height: medida.alto });
       if (medida.ancho === 375) await fijarCelular(page);
       await page.goto(`/catalogo/productos/${producto.id}/datos`);
-      await expect(page.getByText(`Editar "${producto.nombre}"`)).toBeVisible();
+      await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
 
       const bloque = page.locator('[data-alicuota-iva="venta"]');
       const selector = bloque.getByLabel("IVA de venta");
@@ -53,7 +53,7 @@ for (const medida of MEDIDAS) {
 
       // Se lo ve guardado al volver a abrir el formulario.
       await page.goto(`/catalogo/productos/${producto.id}/datos`);
-      await expect(page.getByText(`Editar "${producto.nombre}"`)).toBeVisible();
+      await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
       await expect(page.locator('[data-alicuota-iva="venta"]').getByLabel("IVA de venta")).toHaveValue("IVA_21");
       await expect(page.locator('[data-alicuota-iva="venta"]').getByText("Pendiente de completar", { exact: true })).toHaveCount(0);
       await sinViolacionesDeAxe(page, "formulario con la alícuota guardada");
@@ -70,7 +70,7 @@ test("una materia prima trae «IVA de compra» (no el de venta): se elige IVA 10
   try {
     await fijarCelular(page);
     await page.goto(`/catalogo/productos/${producto.id}/datos`);
-    await expect(page.getByText(`Editar "${producto.nombre}"`)).toBeVisible();
+    await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
     const bloque = page.locator('[data-alicuota-iva="compra"]');
     await expect(page.locator('[data-alicuota-iva="venta"]')).toHaveCount(0);
     await expect(bloque.getByLabel("IVA de compra")).toHaveValue("");

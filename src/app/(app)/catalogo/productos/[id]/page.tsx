@@ -8,17 +8,18 @@ import { puedeEditarCamposSensiblesDelProducto } from "@/server/acceso/campos-se
 import { denegacionDeModuloDeAccion } from "@/server/acceso/modulos-de-empresa";
 import { duplicarProducto } from "@/server/actions/catalogo/duplicar-producto";
 import { leerResumenParaDuplicar } from "@/server/consultas/catalogo/duplicar-producto";
+import { ProductoForm } from "../producto-form";
+import { cargarEdicionDelProducto } from "../datos-de-edicion";
 import { DuplicarProducto } from "@/components/catalogo/duplicar-producto";
+import { OBSERVACIONES_VISIBLES } from "@/core/catalogo/public";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
-import { PRESENTACIONES_VISIBLES } from "@/core/catalogo/public";
-import { actualizarDisponibilidadProducto, listarPresentaciones } from "@/server/actions/catalogo/productos";
+import { actualizarDisponibilidadProducto } from "@/server/actions/catalogo/productos";
 import { disponibilidadPorSucursalDeProducto } from "@/server/consultas/catalogo/disponibilidad";
 import { obtenerFichaProducto, obtenerSeccionHabitualEnSucursal } from "@/server/consultas/catalogo/productos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import { cargarOpcionesDelProducto } from "@/server/consultas/catalogo/opciones-de-venta";
 import type { ProductoDelEspacio } from "@/server/consultas/catalogo/espacio-del-producto";
-import { ResumenDeOpciones } from "@/components/catalogo/resumen-de-opciones";
 import { cargarMarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/datos-del-marco";
 import { MarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/marco";
 import { TablaDeDatos } from "@/ui/componentes/datos/tabla-de-datos";
@@ -42,7 +43,7 @@ const SinValor = ({ children }: { children: React.ReactNode }) => <span classNam
 
 /**
  * La PORTADA del producto en el espacio del producto (Fase 6, 6.12; DEC-12): el resumen de un producto, de cualquier tipo, dentro del marco con su tira de pasos. Es de solo lectura: reúne sus datos y lleva a
- * los reportes que ya existen; los formularios están en cada paso (Qué se vende o Datos, Opciones y precio, Receta y En la carta), a los que se llega por las pestañas del marco. Al guardar un alta o una
+ * los reportes que ya existen; los formularios están en cada paso (Qué se vende o Datos, Precios, Opciones; Receta y En la carta son enlaces), a los que se llega por las pestañas del marco. Al guardar un alta o una
  * edición se vuelve acá, con el aviso de que se guardó.
  *
  * Los pasos dependen del tipo (`pasosDelEspacio`): un producto de venta tiene los cuatro; una materia prima, Datos y —si se produce— Receta. El producto interno que respalda un adicional NO se maneja con el
@@ -78,8 +79,7 @@ export default async function FichaProductoPage({
   // Primitivos para el closure "use server" de abajo: lo que captura viaja al cliente y `p` lleva Decimales de Prisma (ver precio-local).
   const productoId = p.id;
 
-  const [presentaciones, disponibilidadPorSucursal, seccionHabitual, opcionesDeVenta, nivelOpciones] = await Promise.all([
-    PRESENTACIONES_VISIBLES && p.tipo === "MP" ? listarPresentaciones(p.id) : Promise.resolve([]),
+  const [disponibilidadPorSucursal, seccionHabitual, opcionesDeVenta] = await Promise.all([
     disponibilidadPorSucursalDeProducto(p.id, ctx.db),
     // Solo lectura (se configura en Stock › Sección habitual): la de ESTA sucursal, y solo si apunta a una sección activa de acá — la misma regla
     // con la que la usa el cierre de cuenta del salón (docs/plan-seccion-habitual-stock-2026-09-25.md).
@@ -87,7 +87,6 @@ export default async function FichaProductoPage({
     // GO-2d: las opciones de venta del producto, con los precios que calcula el servidor para la sucursal activa (solo leer). El enlace a editarlas, solo con «Editar» de
     // `producto_opciones_admitidas` (cortesía: esa pantalla exige el permiso por su cuenta).
     p.tipo === "PV" ? cargarOpcionesDelProducto(ctx.db, p.id, ctx.sucursalId) : Promise.resolve(null),
-    p.tipo === "PV" ? obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_opciones_admitidas", ctx.db) : Promise.resolve({ ver: false, editar: false }),
   ]);
   const disponibleAca = disponibilidadPorSucursal.find((d) => d.sucursalId === ctx.sucursalId)?.disponible ?? false;
   const esDeRespaldo = opcionesDeVenta?.producto.esAnclaDeAdicional ?? false;
@@ -105,29 +104,19 @@ export default async function FichaProductoPage({
     precioVenta: Number(p.precioVenta),
     seProduce: p.seProduce,
     esAnclaDeAdicional: esDeRespaldo,
+    unidadStockNombre: p.unidadStock.nombre,
   };
   // El marco (los pasos con su enlace y su estado) solo para lo que se maneja con el espacio; el producto de respaldo se muestra como siempre. Las opciones y la disponibilidad ya están leídas: no se vuelven a leer.
   const marco = esDeRespaldo ? null : await cargarMarcoDelEspacio(ctx, productoDelEspacio, { opciones: p.tipo === "PV" ? opcionesDeVenta : undefined, disponibleAca });
   const pendientes = marco?.pasos.filter((paso) => paso.estado.tipo === "pendiente") ?? [];
+  // La pestaña Datos trae el formulario de los datos (el del alta y la edición), salvo en el producto de respaldo, que se muestra como siempre.
+  const formulario = esDeRespaldo ? null : await cargarEdicionDelProducto(ctx, p.id);
+  if (!esDeRespaldo && !formulario) notFound();
 
   const cuerpo = (
     <>
-      {guardado && <Aviso variante="exito">{guardado === "alta" ? "Producto creado." : "Cambios guardados."}</Aviso>}
-
-      {duplicar && (
-        <div className="flex justify-end">
-          <DuplicarProducto
-            origen={{ id: p.id, nombre: p.nombre, esDeVenta: p.tipo === "PV", esBase: esBaseConfigurable(p.modoDeVenta), precioVenta: Number(p.precioVenta) }}
-            tieneReceta={duplicar.resumen.tieneReceta}
-            opciones={duplicar.resumen.opciones}
-            puedeCopiarReceta={duplicar.puedeCopiarReceta}
-            puedeCopiarOpciones={duplicar.puedeCopiarOpciones}
-            puedeFijarPrecio={duplicar.puedeFijarPrecio}
-            sucursalesDeLaReceta={duplicar.sucursalesDeLaReceta}
-            accion={duplicarProducto}
-          />
-        </div>
-      )}
+      {/* Tras editar, el propio formulario (que sigue en pantalla) dice que guardó: no se repite. Tras crear, el formulario es nuevo y el aviso lo dice. */}
+      {guardado && (guardado === "alta" || !formulario) && <Aviso variante="exito">{guardado === "alta" ? "Producto creado." : "Cambios guardados."}</Aviso>}
 
       {pendientes.length > 0 && (
         <section aria-labelledby="titulo-pendientes">
@@ -137,13 +126,27 @@ export default async function FichaProductoPage({
           <ul className="flex flex-col gap-1 rounded border border-aviso bg-aviso-tinte px-4 py-3 text-sm text-aviso-tinta">
             {pendientes.map((paso) => (
               <li key={paso.paso}>
-                <span className="font-medium">{paso.titulo}:</span> {paso.estado.tipo === "pendiente" ? paso.estado.texto : null}
+                {paso.href !== null ? <EnlaceInterno href={paso.href} className="font-medium underline">{paso.titulo}</EnlaceInterno> : <span className="font-medium">{paso.titulo}</span>}: {paso.estado.tipo === "pendiente" ? paso.estado.texto : null}
               </li>
             ))}
           </ul>
         </section>
       )}
 
+      {formulario ? (
+        // La pestaña Datos ES el formulario de los datos (como en Pedernal): quien no puede editar ve los mismos campos, apagados y sin «Guardar».
+        <section aria-label="Datos del producto" className="flex flex-col gap-3">
+          {/* `fieldset disabled` apaga los campos de quien no edita; `soloLectura` saca «Guardar» y `sinEncabezado` el título que la ficha ya dice. La barrera es el servidor. */}
+          <fieldset disabled={!puedeEditarProducto} className="contents">
+            <ProductoForm key={id} {...formulario} soloLectura={!puedeEditarProducto} sinEncabezado />
+          </fieldset>
+          {p.tipo === "PV" && (
+            <dl>
+              <Dato etiqueta={`Sección habitual en «${ctx.sucursalNombre}»`}>{seccionHabitual ? seccionHabitual.seccion.nombre : <SinValor>Sin sección habitual (sale de donde haya stock)</SinValor>}</Dato>
+            </dl>
+          )}
+        </section>
+      ) : (
       <section>
         <h2 className="mb-2 text-sm font-medium">Datos</h2>
         <dl className="grid grid-cols-1 gap-x-6 gap-y-3 rounded border border-borde p-4 sm:grid-cols-2">
@@ -195,31 +198,15 @@ export default async function FichaProductoPage({
               "No"
             )}
           </Dato>
-          {p.observaciones && (
+          {OBSERVACIONES_VISIBLES && p.observaciones && (
             <div className="sm:col-span-2">
               <Dato etiqueta="Observaciones">{p.observaciones}</Dato>
             </div>
           )}
         </dl>
       </section>
-
-      {opcionesDeVenta && !esDeRespaldo && (
-        <section aria-labelledby="titulo-opciones-de-venta">
-          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-            <h2 id="titulo-opciones-de-venta" className="text-sm font-medium">
-              Opciones de venta
-            </h2>
-            {nivelOpciones.editar && (
-              <Link href={`/catalogo/productos/${p.id}/opciones`} className="inline-flex min-h-11 items-center text-sm underline">
-                Editar opciones
-              </Link>
-            )}
-          </div>
-          <div className="rounded border border-borde p-4">
-            <ResumenDeOpciones resumen={opcionesDeVenta.vistaPrevia} sucursalNombre={ctx.sucursalNombre} />
-          </div>
-        </section>
       )}
+
       {esDeRespaldo && <p className="text-sm text-tinta-suave">Este es el producto interno que respalda el stock de un adicional: lo maneja el sistema y se vende solo como adicional.</p>}
 
       <section>
@@ -253,17 +240,19 @@ export default async function FichaProductoPage({
         />
       </section>
 
-      {presentaciones.length > 0 && (
-        <section>
-          <h2 className="mb-2 text-sm font-medium">Presentaciones de compra</h2>
-          <ul className="rounded border border-borde p-4 text-sm">
-            {presentaciones.map((pr) => (
-              <li key={pr.id} className={pr.activa ? "" : "text-tinta-suave"}>
-                {pr.unidadCompraNombre} — {formatearCantidad(pr.factorConversion)} {p.unidadStock.nombre} cada una{pr.activa ? "" : " (inactiva)"}
-              </li>
-            ))}
-          </ul>
-        </section>
+      {duplicar && (
+        <div className="flex justify-end">
+          <DuplicarProducto
+            origen={{ id: p.id, nombre: p.nombre, esDeVenta: p.tipo === "PV", esBase: esBaseConfigurable(p.modoDeVenta), precioVenta: Number(p.precioVenta) }}
+            tieneReceta={duplicar.resumen.tieneReceta}
+            opciones={duplicar.resumen.opciones}
+            puedeCopiarReceta={duplicar.puedeCopiarReceta}
+            puedeCopiarOpciones={duplicar.puedeCopiarOpciones}
+            puedeFijarPrecio={duplicar.puedeFijarPrecio}
+            sucursalesDeLaReceta={duplicar.sucursalesDeLaReceta}
+            accion={duplicarProducto}
+          />
+        </div>
       )}
 
       <section>

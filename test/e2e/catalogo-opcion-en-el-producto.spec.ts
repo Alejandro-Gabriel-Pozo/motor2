@@ -146,7 +146,7 @@ test("quién lo ve: sin Editar de `opciones_definir` no hay «+ Opción» (sigue
   const admin = await ajustarCeldasDelAdmin({ opciones_definir: { puedeVer: true, puedeEditar: false } });
   try {
     await page.goto(`/catalogo/productos/${p.productoId}/opciones`);
-    await expect(page.getByRole("heading", { level: 2, name: "Opciones y precio" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Opciones" })).toBeVisible();
     await expect(page.getByRole("button", { name: /^\+ (Opción|Extra)/ })).toHaveCount(0);
     await expect(page.getByText("Los grupos nuevos los crea quien arma las opciones")).toBeVisible();
 
