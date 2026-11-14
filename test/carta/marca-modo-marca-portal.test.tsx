@@ -114,6 +114,6 @@ describe("el catálogo del portal: las dos claves nuevas nacen vacías y cerrada
     expect(marcador && "opciones" in marcador ? marcador.opciones : null).toEqual(["si"]);
     expect(marcador?.defaultPortal).toBe("");
     expect(marca?.defaultPortal).toBe("");
-    expect(CLAVES_PORTAL_V1).toHaveLength(24);
+    expect(CLAVES_PORTAL_V1).toHaveLength(25);
   });
 });

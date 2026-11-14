@@ -95,6 +95,50 @@ describe("Server Action guardarPortalEmpresa", () => {
     expect(await guardado()).toEqual({ portal_titulo: "Original" });
   });
 
+  it("nombre público de la empresa: se guarda recortado y en NFC", async () => {
+    expect((await guardarPortalEmpresa({ portal_nombre_publico: "  Cafe\u0301 Sur  " })).ok).toBe(true);
+    expect(await guardado()).toEqual({ portal_nombre_publico: "Caf\u00e9 Sur" });
+  });
+
+  it.each([
+    ["con < y >", "Empresa <B>"],
+    ["con un invisible", "Empresa\u200bB"],
+    ["con un salto de línea", "Empresa\nB"],
+    ["de más de 60 caracteres", "a".repeat(61)],
+  ])("nombre público de la empresa %s: rechazado, con el nombre del campo, sin escribir nada", async (_motivo, nombre) => {
+    await guardarPortalEmpresa({ portal_nombre_publico: "Empresa B" });
+    const r = await guardarPortalEmpresa({ portal_titulo: "Nuevo", portal_nombre_publico: nombre });
+    expect(r.ok).toBe(false);
+    expect(r.mensaje).toContain("Nombre público de la empresa");
+    expect(await guardado()).toEqual({ portal_nombre_publico: "Empresa B" });
+  });
+
+  it("nombre público de la empresa: quitarlo (vacío) lo deja sin cargar, y repetir el mismo guardado deja UNA fila", async () => {
+    await guardarPortalEmpresa({ portal_nombre_publico: "Empresa B" });
+    await guardarPortalEmpresa({ portal_nombre_publico: "Empresa B" });
+    expect(await prisma.portalCartaEmpresa.count()).toBe(1);
+    await guardarPortalEmpresa({ portal_nombre_publico: "" });
+    expect(await guardado()).toEqual({});
+  });
+
+  it("nombre público de la empresa: dos administradores guardan a la vez nombres distintos: gana uno entero, una sola fila, sin error", async () => {
+    const resultados = await Promise.all([guardarPortalEmpresa({ portal_nombre_publico: "Empresa B" }), guardarPortalEmpresa({ portal_nombre_publico: "Empresa C" })]);
+    expect(resultados.every((r) => r.ok)).toBe(true);
+    expect(await prisma.portalCartaEmpresa.count()).toBe(1);
+    expect(["Empresa B", "Empresa C"]).toContain(((await guardado()) as { portal_nombre_publico: string }).portal_nombre_publico);
+  });
+
+  it("nombre público de la empresa: cada empresa guarda el suyo y no toca el de la otra", async () => {
+    await prismaAdmin.empresa.create({ data: { id: "norte", nombre: "Norte", slug: "norte", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" } });
+    await activarTodosLosModulos("norte");
+    await prismaAdmin.portalCartaEmpresa.create({ data: { empresaId: "norte", valores: { portal_nombre_publico: "Empresa C" } } });
+    await guardarPortalEmpresa({ portal_nombre_publico: "Empresa B" });
+    expect(await prismaAdmin.portalCartaEmpresa.findMany({ orderBy: { empresaId: "asc" }, select: { empresaId: true, valores: true } })).toEqual([
+      { empresaId: EMPRESA_POR_DEFECTO_ID, valores: { portal_nombre_publico: "Empresa B" } },
+      { empresaId: "norte", valores: { portal_nombre_publico: "Empresa C" } },
+    ]);
+  });
+
   it("varios errores juntos en un solo mensaje, con la etiqueta de cada campo, sin escribir", async () => {
     const r = await guardarPortalEmpresa({ portal_card_bg: "a;b", portal_bg_overlay: "9", portal_bg_proporcion: "x", empresa_logo_url: "http://x.com/l.png" });
     expect(r.ok).toBe(false);
