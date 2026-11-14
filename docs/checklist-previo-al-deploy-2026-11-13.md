@@ -65,7 +65,7 @@ printf %s "$CORREO_OPERATIVO_RESEND_API_KEY" | grep -Eq '^re_[A-Za-z0-9_]+$' && 
 
 Lo hace el dueño; el asistente de desarrollo no ve credenciales ni corre nada contra Neon (`deploy-con-migraciones.md`).
 
-Sobre el ensayo general y la base de producción (el dueño, 2026-11-12, chat del dueño con el orquestador): «Bueno, sí, el ensayo general puede ser. Siempre y cuando no afectemos la base de producción de Stockage Neuquén. Porque mañana, mañana se presenta la carta como existe hoy, digamos.» **Condición innegociable:** el ensayo corre solo en una rama de Neon **copia** (nunca en la base de producción de empresab, ni con el Preview, que comparte esa base) y no se escribe nada en producción ni en sus variables de Vercel. Si algún paso del ensayo exigiera tocar esa base, se frena y se le pregunta al dueño.
+Sobre el ensayo general y la base de producción (el dueño, 2026-11-12, chat del dueño con el orquestador): «Bueno, sí, el ensayo general puede ser. Siempre y cuando no afectemos la base de producción de [la empresa]. Porque mañana, mañana se presenta la carta como existe hoy, digamos.» **Condición innegociable:** el ensayo corre solo en una rama de Neon **copia** (nunca en la base de producción de empresab, ni con el Preview, que comparte esa base) y no se escribe nada en producción ni en sus variables de Vercel. Si algún paso del ensayo exigiera tocar esa base, se frena y se le pregunta al dueño.
 
 1. Rama de **respaldo** de Neon de la base destino (es el rollback del DEPLOY: código viejo + base vieja).
 2. Rama de **ensayo** (otra copia). En ella: las consultas de la sección 1, y después `node scripts/operaciones/con-env.mjs <env de ensayo> -- npx prisma migrate deploy`.
