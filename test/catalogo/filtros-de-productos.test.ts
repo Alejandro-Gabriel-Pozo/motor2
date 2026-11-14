@@ -220,7 +220,7 @@ describe("listarProductosPagina: filtros de la lista de Productos", () => {
         const pendiente = pendientesDelProducto(hechos);
         expect({ nombre, sinPrecio: sinPrecio.has(nombre), sinReceta: sinReceta.has(nombre), fuera: fuera.has(nombre) }).toEqual({
           nombre,
-          sinPrecio: pendiente.datos.tipo === "pendiente",
+          sinPrecio: pendiente.precios.tipo === "pendiente",
           sinReceta: pendiente.receta.tipo === "pendiente",
           fuera: hechos.carta?.estado === "fuera",
         });

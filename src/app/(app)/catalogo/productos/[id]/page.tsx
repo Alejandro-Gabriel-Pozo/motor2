@@ -13,7 +13,6 @@ import { cargarEdicionDelProducto } from "../datos-de-edicion";
 import { DuplicarProducto } from "@/components/catalogo/duplicar-producto";
 import { OBSERVACIONES_VISIBLES } from "@/core/catalogo/public";
 import { EnlaceInterno } from "@/components/enlace-interno";
-import { Enlace } from "@/ui/primitivas/enlace";
 import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
 import { actualizarDisponibilidadProducto } from "@/server/actions/catalogo/productos";
 import { disponibilidadPorSucursalDeProducto } from "@/server/consultas/catalogo/disponibilidad";
@@ -105,6 +104,7 @@ export default async function FichaProductoPage({
     precioVenta: Number(p.precioVenta),
     seProduce: p.seProduce,
     esAnclaDeAdicional: esDeRespaldo,
+    unidadStockNombre: p.unidadStock.nombre,
   };
   // El marco (los pasos con su enlace y su estado) solo para lo que se maneja con el espacio; el producto de respaldo se muestra como siempre. Las opciones y la disponibilidad ya están leídas: no se vuelven a leer.
   const marco = esDeRespaldo ? null : await cargarMarcoDelEspacio(ctx, productoDelEspacio, { opciones: p.tipo === "PV" ? opcionesDeVenta : undefined, disponibleAca });
@@ -126,7 +126,7 @@ export default async function FichaProductoPage({
           <ul className="flex flex-col gap-1 rounded border border-aviso bg-aviso-tinte px-4 py-3 text-sm text-aviso-tinta">
             {pendientes.map((paso) => (
               <li key={paso.paso}>
-                {paso.href !== null ? <Enlace href={paso.href} className="font-medium">{paso.titulo}</Enlace> : <span className="font-medium">{paso.titulo}</span>}: {paso.estado.tipo === "pendiente" ? paso.estado.texto : null}
+                {paso.href !== null ? <EnlaceInterno href={paso.href} className="font-medium underline">{paso.titulo}</EnlaceInterno> : <span className="font-medium">{paso.titulo}</span>}: {paso.estado.tipo === "pendiente" ? paso.estado.texto : null}
               </li>
             ))}
           </ul>
@@ -136,7 +136,10 @@ export default async function FichaProductoPage({
       {formulario ? (
         // La pestaña Datos ES el formulario de los datos (como en Pedernal): quien no puede editar ve los mismos campos, apagados y sin «Guardar».
         <section aria-label="Datos del producto" className="flex flex-col gap-3">
-          <ProductoForm key={id} {...formulario} soloLectura={!puedeEditarProducto} sinEncabezado />
+          {/* `fieldset disabled` apaga los campos de quien no edita; `soloLectura` saca «Guardar» y `sinEncabezado` el título que la ficha ya dice. La barrera es el servidor. */}
+          <fieldset disabled={!puedeEditarProducto} className="contents">
+            <ProductoForm key={id} {...formulario} soloLectura={!puedeEditarProducto} sinEncabezado />
+          </fieldset>
           {p.tipo === "PV" && (
             <dl>
               <Dato etiqueta={`Sección habitual en «${ctx.sucursalNombre}»`}>{seccionHabitual ? seccionHabitual.seccion.nombre : <SinValor>Sin sección habitual (sale de donde haya stock)</SinValor>}</Dato>

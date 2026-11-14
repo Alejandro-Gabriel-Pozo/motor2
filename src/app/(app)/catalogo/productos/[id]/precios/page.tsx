@@ -58,6 +58,7 @@ export default async function PreciosDelProductoPage({ params }: { params: Promi
       producto={{ id: productoId, nombre: producto.nombre, codigo: productoDelEspacio.codigo, tipo: "PV", modoDeVenta: productoDelEspacio.modoDeVenta, disponibleAca: marco.disponibleAca, sucursalNombre: ctx.sucursalNombre }}
       pasos={marco.pasos}
       actual="precios"
+      ancho="ancho"
     >
       <div className="flex flex-col gap-4">
         <p className="text-sm text-tinta-suave" data-precio-de-la-sucursal="">

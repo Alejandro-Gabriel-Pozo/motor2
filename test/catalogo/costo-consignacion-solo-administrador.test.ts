@@ -11,7 +11,6 @@ import { __limpiarCookiesDeTest, __setCookieDeTestParaEmpresa, __setCookieDeTest
 import { modulosQueIncluyen } from "../../src/core/modulos/clausura";
 import { actualizarProducto, darDeAltaProducto, type DatosProducto } from "../../src/server/actions/catalogo/productos";
 import FichaProductoPage from "../../src/app/(app)/catalogo/productos/[id]/page";
-import DatosDelProductoPage from "../../src/app/(app)/catalogo/productos/[id]/datos/page";
 import NuevoProductoPage from "../../src/app/(app)/catalogo/productos/nuevo/page";
 import { ProductoForm } from "../../src/app/(app)/catalogo/productos/producto-form";
 
@@ -112,11 +111,12 @@ describe("S-12: el costo de consignación es de quien tiene pagar_consignante", 
     await como(operadorId, "operador@test.com");
   });
 
-  describe("la ficha del producto (solo lectura)", () => {
+  describe("la ficha del producto (la pestaña Datos es el formulario)", () => {
     const ficha = () => FichaProductoPage({ params: Promise.resolve({ id: quesoId }), searchParams: Promise.resolve({}) });
 
     it("EL ATAQUE: un rol con producto_ver_catalogo y sin pagar_consignante no recibe el importe ni el consignante (antes: «$1.234,56 por unidad vendida» y el nombre del proveedor)", async () => {
-      const textos = textosDe(await ficha()).join(" | ");
+      const arbol = await ficha();
+      const textos = textosDe(arbol).join(" | ") + " | " + JSON.stringify(propsDe(arbol, ProductoForm));
       expect(textos).toContain("Queso");
       expect(textos).not.toContain("por unidad vendida");
       expect(textos).not.toMatch(/1\.?234/);
@@ -124,19 +124,20 @@ describe("S-12: el costo de consignación es de quien tiene pagar_consignante", 
     });
 
     it("sigue diciendo que el producto es de consignación (el dato no es el costo)", async () => {
-      expect(textosDe(await ficha())).toContain("Sí");
+      const props = propsDe(await ficha(), ProductoForm)[0]!;
+      expect((props.productoExistente as DatosProducto).esConsignacion).toBe(true);
     });
 
-    it("control: el administrador (que tiene pagar_consignante) lo ve completo", async () => {
+    it("control: el administrador (que tiene pagar_consignante) lo recibe completo", async () => {
       await como(adminId, "admin@test.com");
-      const textos = textosDe(await ficha()).join(" | ");
-      expect(textos).toContain("Lácteos Reservados SA");
-      expect(textos).toContain("por unidad vendida");
+      const props = propsDe(await ficha(), ProductoForm)[0]!;
+      expect((props.productoExistente as DatosProducto).proveedorConsignacionId).toBe(proveedorAId);
+      expect((props.productoExistente as DatosProducto).precioConsignacion).toBe(PRECIO);
     });
   });
 
   describe("el formulario de edición (los props viajan al navegador)", () => {
-    const edicion = async () => propsDe(await DatosDelProductoPage({ params: Promise.resolve({ id: quesoId }) }), ProductoForm)[0]!;
+    const edicion = async () => propsDe(await FichaProductoPage({ params: Promise.resolve({ id: quesoId }), searchParams: Promise.resolve({}) }), ProductoForm)[0]!;
 
     it("EL ATAQUE: sin pagar_consignante el formulario no recibe el precio ni el consignante (antes: ambos como prop del componente de cliente)", async () => {
       const props = await edicion();
@@ -254,7 +255,7 @@ describe("S-12: el costo de consignación es de quien tiene pagar_consignante", 
     const parado = (id: string | undefined) => __setCookieDeTestParaSucursal(id);
 
     const ficha = () => FichaProductoPage({ params: Promise.resolve({ id: quesoId }), searchParams: Promise.resolve({}) });
-    const edicion = async () => propsDe(await DatosDelProductoPage({ params: Promise.resolve({ id: quesoId }) }), ProductoForm)[0]!;
+    const edicion = async () => propsDe(await FichaProductoPage({ params: Promise.resolve({ id: quesoId }), searchParams: Promise.resolve({}) }), ProductoForm)[0]!;
 
     beforeEach(async () => {
       __limpiarCookiesDeTest();
@@ -291,9 +292,6 @@ describe("S-12: el costo de consignación es de quien tiene pagar_consignante", 
         { sucursalId: norteId, rolId: rolOperadorId },
       ]);
       parado(norteId);
-      const textos = textosDe(await ficha()).join(" | ");
-      expect(textos).toContain("Lácteos Reservados SA");
-      expect(textos).toContain("por unidad vendida");
       const props = await edicion();
       expect(props.puedeGestionarConsignacion).toBe(true);
       expect((props.productoExistente as DatosProducto).precioConsignacion).toBe(PRECIO);

@@ -5,7 +5,6 @@ import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/li
 import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { listarPresentaciones } from "@/server/actions/catalogo/productos";
 import { leerProductoDelEspacio } from "@/server/consultas/catalogo/espacio-del-producto";
-import { obtenerFichaProducto } from "@/server/consultas/catalogo/productos";
 import { PRESENTACIONES_VISIBLES } from "@/core/catalogo/public";
 import { formatearCantidad } from "@/core/formato-de-numero";
 import { cargarMarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/datos-del-marco";
@@ -40,14 +39,14 @@ export default async function CompraDelProductoPage({ params }: { params: Promis
       </div>
     );
   }
-  const [marco, presentaciones, ficha] = await Promise.all([cargarMarcoDelEspacio(ctx, producto), listarPresentaciones(producto.id), obtenerFichaProducto(producto.id, ctx.db)]);
-  if (!ficha) notFound();
+  const [marco, presentaciones] = await Promise.all([cargarMarcoDelEspacio(ctx, producto), listarPresentaciones(producto.id)]);
 
   return (
     <MarcoDelEspacio
       producto={{ id: producto.id, nombre: producto.nombre, codigo: producto.codigo, tipo: "MP", modoDeVenta: producto.modoDeVenta, disponibleAca: marco.disponibleAca, sucursalNombre: ctx.sucursalNombre }}
       pasos={marco.pasos}
       actual="compra"
+      ancho="ancho"
     >
       {presentaciones.length === 0 ? (
         <p className="text-sm text-tinta-suave">Sin presentaciones</p>
@@ -55,7 +54,7 @@ export default async function CompraDelProductoPage({ params }: { params: Promis
         <ul aria-label="Presentaciones de compra" className="rounded border border-borde p-4 text-sm">
           {presentaciones.map((pr) => (
             <li key={pr.id} className={pr.activa ? "" : "text-tinta-suave"}>
-              {pr.unidadCompraNombre} — {formatearCantidad(pr.factorConversion)} {ficha.unidadStock.nombre} cada una{pr.activa ? "" : " (inactiva)"}
+              {pr.unidadCompraNombre} — {formatearCantidad(pr.factorConversion)} {producto.unidadStockNombre} cada una{pr.activa ? "" : " (inactiva)"}
             </li>
           ))}
         </ul>
