@@ -12,14 +12,16 @@ import { PORTAL_REAL, TEMAS_REALES } from "./marca-sin-cambio-fixtures";
  */
 const GOLDEN: Record<string, unknown> = JSON.parse(readFileSync(join(__dirname, "marca-sin-cambio.golden.json"), "utf8"));
 const comoJson = (valor: unknown) => JSON.parse(JSON.stringify(valor));
-/** Portal: las ÚNICAS diferencias permitidas respecto del golden son las dos claves nuevas en `valores` (vacías mientras nadie apriete el botón) y que no aparece `modoMarca`. */
+/** Portal: las ÚNICAS diferencias permitidas respecto del golden son las tres claves nuevas en `valores` (vacías mientras nadie apriete el botón o cargue el nombre público) y que no aparece `modoMarca`. */
 function portalSinLasClavesNuevas(estilo: { valores: Record<string, string> }) {
   const copia = comoJson(estilo);
   expect(copia.valores.portal_color_marca, "sin marcador, la clave nueva sale vacía").toBe("");
   expect(copia.valores.portal_marca_derivada, "sin marcador, la clave nueva sale vacía").toBe("");
+  expect(copia.valores.portal_nombre_publico, "sin nombre público cargado, la clave nueva sale vacía").toBe("");
   expect(copia, "sin marcador no hay `modoMarca`").not.toHaveProperty("modoMarca");
   delete copia.valores.portal_color_marca;
   delete copia.valores.portal_marca_derivada;
+  delete copia.valores.portal_nombre_publico;
   return copia;
 }
 /** La ÚNICA diferencia permitida respecto del golden: la clave nueva `marca_derivada` en `valores` (vacía mientras nadie apriete el botón). */

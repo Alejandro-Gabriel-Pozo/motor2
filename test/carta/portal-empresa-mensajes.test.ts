@@ -3,17 +3,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 vi.mock("../../src/server/actions/carta/revalidar", () => ({ revalidarCartasPublicas: vi.fn() }));
 
-import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, sembrarBase } from "../setup/test-db";
+import { EMPRESA_POR_DEFECTO_ID, crearUsuarioConMembresia, limpiarBaseDeTest, prisma, sembrarBase } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { revalidarCartasPublicas } from "../../src/server/actions/carta/revalidar";
 import { guardarPortalEmpresa } from "../../src/server/actions/carta/portal-empresa";
 
 /**
- * Los textos EXACTOS de `guardarPortalEmpresa`, que NO invalida la carta pública a propósito (el portal lee la fila en cada pedido, sin caché) y que valida todo
- * ANTES de escribir (Hito 5, bloque D, `docs/plan-hito-5-pureza.md` §6.1), ANTES de mudarla a un caso de uso. `acciones-portal-empresa.test.ts` cubre qué se guarda,
- * pero no el texto del éxito (singular y plural), ni el del rechazo, ni que nunca se revalide la carta. Verde contra el código de antes de la mudanza y después.
+ * Los textos EXACTOS de `guardarPortalEmpresa` y que valida todo ANTES de escribir (Hito 5, bloque D, `docs/plan-hito-5-pureza.md` §6.1). `acciones-portal-empresa.test.ts` cubre qué se guarda,
+ * pero no el texto del éxito (singular y plural), ni el del rechazo, ni la revalidación. Desde el PR 2 del nombre público (`docs/diseno-nombre-publico-de-la-empresa-en-la-carta-2026-11-14.md`, nivel 7) un guardado
+ * que sale bien invalida las cartas públicas DE ESA EMPRESA (el nombre público sale en los títulos de la carta de cada sucursal, que se cachea); uno rechazado no invalida nada.
  */
-describe("portal de la empresa: mensajes, rechazos sin escribir y ninguna revalidación", () => {
+describe("portal de la empresa: mensajes, rechazos sin escribir y revalidación de la carta de la empresa", () => {
   beforeEach(async () => {
     vi.mocked(revalidarCartasPublicas).mockClear();
     await limpiarBaseDeTest();
@@ -22,7 +22,7 @@ describe("portal de la empresa: mensajes, rechazos sin escribir y ninguna revali
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
 
-  it("éxito: el texto cuenta los valores (uno en singular, varios y ninguno en plural) y NO revalida la carta pública", async () => {
+  it("éxito: el texto cuenta los valores (uno en singular, varios y ninguno en plural) e invalida la carta pública de la empresa (solo si salió bien)", async () => {
     expect(await guardarPortalEmpresa({ portal_titulo: "Sucursales" })).toEqual({
       ok: true,
       mensaje: "Apariencia del portal guardada (1 valor cargado; el resto usa el default). El portal la toma al recargarlo.",
@@ -35,7 +35,9 @@ describe("portal de la empresa: mensajes, rechazos sin escribir y ninguna revali
       ok: true,
       mensaje: "Apariencia del portal guardada (0 valores cargados; el resto usa el default). El portal la toma al recargarlo.",
     });
-    expect(vi.mocked(revalidarCartasPublicas)).not.toHaveBeenCalled();
+    // Tres guardados correctos = tres invalidaciones, todas de la empresa que guardó (y de ninguna otra).
+    const empresa = await prisma.empresa.findUniqueOrThrow({ where: { id: EMPRESA_POR_DEFECTO_ID } });
+    expect(vi.mocked(revalidarCartasPublicas).mock.calls).toEqual([[empresa.slug], [empresa.slug], [empresa.slug]]);
     expect(await prisma.portalCartaEmpresa.count()).toBe(1);
   });
 

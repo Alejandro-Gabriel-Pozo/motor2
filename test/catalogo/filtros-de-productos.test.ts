@@ -139,6 +139,30 @@ describe("listarProductosPagina: filtros de la lista de Productos", () => {
     });
   });
 
+  describe("estado (Activo / Falta completar / Desactivado, como Pedernal)", () => {
+    it("los tres estados no se pisan y juntos son TODOS los productos", async () => {
+      const [activo, falta, desactivado, todos] = [await nombres({ estado: "activo" }), await nombres({ estado: "falta-completar" }), await nombres({ estado: "desactivado" }), await TODOS()];
+      expect([...activo, ...falta, ...desactivado].sort()).toEqual(todos);
+      expect(new Set([...activo, ...falta, ...desactivado]).size).toBe(todos.length);
+    });
+
+    it("«Desactivado» es lo que no está disponible en ninguna sucursal; «Falta completar» es lo que está disponible en alguna y le falta algo de lo que se ve", async () => {
+      expect(await nombres({ estado: "desactivado" })).toEqual(["Apagado", "Nunca activado"]);
+      const faltas = await faltasQueSePuedenFiltrar({ usuarioId: adminId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId, db: prisma });
+      const conAlguna = new Set((await Promise.all(faltas.map((f) => nombres({ falta: f })))).flat());
+      const alguna = new Set(await nombres({ disponible: "en-alguna" }));
+      expect(await nombres({ estado: "falta-completar" })).toEqual([...conAlguna].filter((n) => alguna.has(n)).sort());
+      expect(await nombres({ estado: "falta-completar" })).toEqual(expect.arrayContaining(["Sin precio", "Milanesas"]));
+      expect(await nombres({ estado: "activo" })).not.toContain("Sin precio");
+    });
+
+    it("se combina con el tipo y un valor raro se ignora", async () => {
+      expect(await nombres({ estado: "desactivado", tipo: "venta" })).toEqual(["Apagado", "Nunca activado"]);
+      expect(await nombres({ estado: "desactivado", tipo: "materia-prima" })).toEqual([]);
+      expect(await nombres({ estado: "Activo" })).toEqual(await TODOS());
+    });
+  });
+
   describe("le falta algo", () => {
     it("sin precio: solo un producto de venta DIRECTO con precio 0 (no el que se vende por opción ni el de respaldo)", async () => {
       expect(await nombres({ falta: "sin-precio" })).toEqual(["Sin precio"]);
@@ -284,7 +308,7 @@ describe("listarProductosPagina: filtros de la lista de Productos", () => {
       const unidadAjena = await otra.unidad.create({ data: { nombre: "u", magnitud: "CANTIDAD", decimales: 0 } });
       await otra.producto.create({ data: { codigo: "PV_AJENO", nombre: "Ajeno sin nada", tipo: "PV", unidadStockId: unidadAjena.id, precioVenta: 0 } });
       await otra.producto.create({ data: { codigo: "MP_AJENA", nombre: "Ajena produce", tipo: "MP", unidadStockId: unidadAjena.id, seProduce: true } });
-      const filtros: Record<string, unknown>[] = [{}, { tipo: "venta" }, { tipo: "se-produce" }, { disponible: "en-ninguna" }, { disponible: "no-aca" }, { falta: "sin-precio" }, { falta: "sin-receta" }, { falta: "fuera-de-la-carta" }];
+      const filtros: Record<string, unknown>[] = [{}, { tipo: "venta" }, { tipo: "se-produce" }, { disponible: "en-ninguna" }, { estado: "desactivado" }, { estado: "falta-completar" }, { estado: "activo" }, { disponible: "no-aca" }, { falta: "sin-precio" }, { falta: "sin-receta" }, { falta: "fuera-de-la-carta" }];
       for (const f of filtros) expect(await nombres(f)).not.toEqual(expect.arrayContaining(["Ajeno sin nada"]));
       for (const f of filtros) expect(await nombres(f, "Ajen")).toEqual([]);
     });

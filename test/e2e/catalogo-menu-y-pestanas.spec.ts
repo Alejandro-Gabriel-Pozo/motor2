@@ -116,7 +116,7 @@ test("M2 y M1: se encuentra el producto escribiendo lo que dice la factura, y la
     await busqueda.fill("ancho rioplatense");
     await busqueda.press("Enter");
     await page.waitForURL(/q=ancho/);
-    await expect(page.locator("tr", { hasText: s.producto.nombre })).toBeVisible();
+    await expect(page.locator("li[data-producto]", { hasText: s.producto.nombre })).toBeVisible();
     await capturar(page, "1280-productos-busqueda-por-factura");
 
     await page.goto(`/catalogo/proveedores/${s.proveedor.id}`);

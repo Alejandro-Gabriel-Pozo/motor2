@@ -1754,6 +1754,7 @@
         "--portal-card-alto-defecto": "6"
       },
       "valores": {
+        "portal_nombre_publico": "",
         "empresa_logo_url": "",
         "portal_header_bg": "#112233",
         "portal_header_color": "",

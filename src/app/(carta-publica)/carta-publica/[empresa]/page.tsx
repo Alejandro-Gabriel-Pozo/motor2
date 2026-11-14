@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
-import { descripcionDelPortal, imagenParaCompartir, MARCA_PUBLICA, tituloDelPortal } from "@/core/carta/public";
+import { descripcionDelPortal, imagenParaCompartir, nombrePublicoUsable, tituloDelPortal } from "@/core/carta/public";
 import { configPortalPublica, empresaCartaPublica, portalCartaPublico } from "@/server/carta-publica/sin-sesion";
 import { PortalVista } from "@/components/carta-publica/portal-vista";
 import { direccionPublicaDeCarta, hrefDeCartaPublica, metadataDeCartaPublica } from "@/components/carta-publica/metadatos";
@@ -20,16 +20,17 @@ const resolver = cache(async (empresa: string) => {
   return { empresa: empresaCarta, sucursales, estilo: await configPortalPublica(empresaCarta) };
 });
 
-/** Buscadores y vistas previas: el nombre es la marca (o el título que cargó en el portal), la descripción lista sus sucursales y la dirección canónica es la del host público. */
+/** Buscadores y vistas previas: el nombre es el título que cargó en el portal (con el nombre público de la empresa, si lo cargó; sin él, neutro), la descripción lista sus sucursales y la dirección canónica es la del host público. */
 export async function generateMetadata({ params }: { params: Promise<{ empresa: string }> }): Promise<Metadata> {
   const { empresa } = await params;
   const resuelta = await resolver(empresa);
   if (!resuelta) return {};
+  const nombreEmpresa = nombrePublicoUsable(resuelta.estilo.valores.portal_nombre_publico);
   return metadataDeCartaPublica({
-    titulo: tituloDelPortal(resuelta.estilo.valores.portal_titulo),
-    descripcion: descripcionDelPortal(resuelta.sucursales.map((s) => s.etiqueta)),
+    titulo: tituloDelPortal(resuelta.estilo.valores.portal_titulo, nombreEmpresa),
+    descripcion: descripcionDelPortal(resuelta.sucursales.map((s) => s.etiqueta), nombreEmpresa),
     ...direccionPublicaDeCarta(resuelta.empresa.slug),
-    nombreSitio: MARCA_PUBLICA,
+    nombreSitio: nombreEmpresa,
     imagen: imagenParaCompartir(resuelta.estilo.valores.empresa_logo_url),
   });
 }
