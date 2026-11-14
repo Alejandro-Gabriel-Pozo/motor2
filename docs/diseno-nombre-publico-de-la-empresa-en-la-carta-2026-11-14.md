@@ -1,7 +1,7 @@
 # Nombre público de la empresa en la carta pública (diseño)
 
 > **Estado:** DISEÑO, nada construido. Escalera de diseño de 10 niveles (`AGENTS.md`). Etiquetas: **CONFIRMADA** (dicha por el dueño, con su cita) · **PROPUESTA** (mía, a confirmar) · **PENDIENTE** (decide el dueño) · **NO VERIFICADO** (no pude respaldarlo). Sin datos reales: se usa «Empresa B» donde hace falta un ejemplo.
-> Compuerta: no se migra nada hasta confirmar los niveles 1 a 5. Este documento propone **una opción sin migración**; si el dueño elige una carga automática del valor actual, esa carga es una migración de DATOS y **requiere autorización expresa** (no se escribe acá).
+> Compuerta: no se migra nada hasta confirmar los niveles 1 a 5. Este documento propone y el dueño confirmó **una opción sin migración** (el administrador carga el valor al desplegar); una carga automática sería una migración de DATOS y **requiere autorización expresa** (descartada, nivel 10).
 
 ## 1. Propósito y alcance
 
@@ -119,15 +119,14 @@ Un guardián falla si aparece una dimensión nueva (otra superficie `og:*`, otra
 ### Migración y operación
 
 - **Código: sin migración** (opción B). El orden de los PR es: (1) la clave, su validación y el campo del editor; (2) las funciones de metadatos reciben el nombre, las dos páginas lo leen, se invalida la caché y desaparece `MARCA_PUBLICA`.
-- **Cargar el valor actual («la carta de hoy debe seguir diciendo exactamente lo mismo») — PENDIENTE, una pregunta para el dueño.** Como la producción está congelada hasta el despliegue único, el campo no existe antes de desplegar, así que el valor se carga **justo después** de desplegar. Opciones:
-  1. **(PROPUESTA, la más barata)** El administrador carga el nombre actual en `/carta/portal` apenas se despliega; hasta que guarda (≈ un minuto más los 60 s de caché) los títulos salen **neutros** (nunca el de otra empresa, nunca rotos).
-  2. Una **migración de DATOS** que cargue la clave al desplegar (cero ventana). **Requiere autorización expresa**; además pondría el nombre real dentro de una migración del repositorio público, o lo copiaría de `Empresa.nombre` (cuyo valor actual hay que verificar con una lectura de solo lectura autorizada).
-  3. Transitoria: usar `Empresa.nombre` como respaldo hasta que se cargue la clave; solo sirve si ese valor coincide hoy con el texto de la carta (a verificar) y mantiene el acoplamiento que la opción B quiere evitar.
+- **Cargar el valor actual («la carta de hoy debe seguir diciendo exactamente lo mismo») — CONFIRMADA.** Decisión del dueño, 2026-11-14, chat con el orquestador (pregunta con opciones; cita literal): **«Lo carga el administrador al desplegar (Recomendada)»** (sin migración; unos 60 s con títulos neutros hasta que se actualiza la caché). Como la producción está congelada hasta el despliegue único y el campo no existe antes de desplegar, el valor se carga **justo después** de desplegar, desde `/carta/portal`; hasta que se guarda (y pasan los 60 s de la caché) los títulos salen **neutros** (nunca rotos ni con el nombre de otra empresa). Paso de despliegue: `docs/checklist-previo-al-deploy-2026-11-13.md` §10.
+  - *Descartada: migración de DATOS que cargue la clave al desplegar (cero ventana).* Motivo: requiere autorización expresa de migrar, pondría el nombre real dentro de una migración del repositorio público (o lo copiaría de `Empresa.nombre`, cuyo valor actual habría que verificar con una lectura de producción autorizada) y no hace falta para un dato que se carga en un minuto.
+  - *Descartada: respaldo transitorio a `Empresa.nombre`.* Motivo: solo serviría si ese valor coincide hoy con el texto de la carta (sin verificar) y mantiene el acoplamiento entre lo público y el nombre interno que la opción B quiere evitar; además deja de ser «fallar cerrado».
 - **Operación:** sin variables nuevas, sin cambios en Vercel ni en el CI. La instalación de una sola empresa por dominio (`CARTA_EMPRESA_UNICA`) no cambia: el nombre sale de la empresa que resuelve el dominio.
 
-## Lo que se pregunta (una sola)
+## Preguntas abiertas
 
-Al desplegar, ¿se acepta el minuto de títulos neutros mientras el administrador carga el nombre actual (opción 1), o se prefiere la carga automática con una migración de datos que usted autorice (opción 2)? **Recomendación: opción 1**; no cambia nada para quien abre la carta una vez cargado el nombre.
+Ninguna: la carga del valor actual quedó CONFIRMADA (nivel 10). Lo que sigue pendiente es solo el OK del dueño para construir (los dos PR del nivel 10).
 
 ## Necesidad, poda y alcance
 
