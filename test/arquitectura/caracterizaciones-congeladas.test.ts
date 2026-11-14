@@ -1150,6 +1150,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Decisión del dueño (2026-11-10, «el ,00 solo si hay decimales que mostrar»; SOLO FORMATO de la CARTA PÚBLICA, no cambia ningún valor, forma ni orden): los precios de la carta pública pasan de «$ 18.000,00» / «+$ 2.000,00» a «$ 18.000» / «+$ 2.000» (importe entero sin decimales; con centavos saldrían 2: «$ 1.234,50»). Cambian solo las líneas con precios de la carta (58). Regenerado a partir del golden anterior a #223 (con «$18.000») aplicando el formato nuevo (el texto visible se normaliza con espacios comunes), no corrido contra el navegador.",
       },
+      {
+        blob: "3cdc2a7f288695111c7ac2f406d5237ba8f46c0a",
+        // El commit PADRE de este (b41faafa) es el último antes de la regeneración; el texto lo cambió 7d5558d3 (Productos P2: la ficha del producto pasa a pestañas).
+        commit: "b41faafa",
+        motivo:
+          "Productos P2 (cambio de texto de ADMINISTRACIÓN, no de la carta pública; dueño, 2026-11-13: «Sí, así provisorio (Recomendada)», ficha de tres pestañas): la ficha del producto pasa de «Resumen / Qué se vende / Opciones y precio / Receta / En la carta» a «Datos / Precios / Opciones», y la pantalla de opciones suma la línea «El precio del producto está en la pestaña Precios». Regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra la base e2e local y revisado: solo cambian las pestañas de la ficha y el título y la ayuda de la pantalla de opciones (10 líneas agregadas, 16 quitadas), ninguna línea de la carta pública.",
+      },
     ],
   },
 };
