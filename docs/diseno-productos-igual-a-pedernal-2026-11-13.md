@@ -73,7 +73,7 @@ Capturas: Pedernal `…/scratchpad/pedernal/<estado>.png`, motor2 `…/scratchpa
 | Lista | 139 | 290 | Pedernal: «Producto B · Producto vendible · Productos B · Según medida». motor2: «Buscá por nombre o código, filtrá por tipo o disponibilidad y operá cada producto desde su fila.» |
 | Nuevo | 87 | 239 | Pedernal: «Se arma o se produce y se vende; tiene composición.» (1 línea bajo «¿Qué es?»). motor2: «Agrupa esta materia prima con otras que sean, en la práctica, la misma (ej. comprada a proveedores distintos) — comparten stock automáticamente si una se queda sin stock, y se comparan sus precios entre sí.» |
 | Datos | 111 | 262 | Pedernal: «La unidad base no se cambia después de crear el producto.» motor2: «Dejalo vacío para vender siempre de a una unidad entera (lo habitual). Con un paso (ej. 0,5), se puede vender esa fracción — 0,5 vende media unidad al 50% del precio — y cualquier cantidad que no sea múltiplo exacto del paso se rechaza al cargarla.» |
-| Precios / opciones (hamburguesa) | 58 | 456 | Pedernal: «Guarnición — Papas fritas · Ensalada» + «Editar». motor2: 6 controles y 3 párrafos por grupo |
+| Precios / opciones (plato C) | 58 | 456 | Pedernal: «Guarnición — Papas fritas · Ensalada» + «Editar». motor2: 6 controles y 3 párrafos por grupo |
 | Recargos (plato D) | 70 | 585 | Pedernal: «Ejemplo: Producto D · Con queso y salame · Carne = $ 12.300,00». motor2: la misma cuenta repetida por opción y por combinación |
 | Variante + consumo (productoB) | 58 + 66 | 471 | Pedernal separa en dos pantallas; motor2 junta variante, grupos, consumos, vista de carta y «Así se cobra» en una pantalla de ~9 pantallas de alto |
 
