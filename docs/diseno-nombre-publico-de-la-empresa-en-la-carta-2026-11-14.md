@@ -1,6 +1,6 @@
 # Nombre público de la empresa en la carta pública (diseño)
 
-> **Estado:** DISEÑO, nada construido. Escalera de diseño de 10 niveles (`AGENTS.md`). Etiquetas: **CONFIRMADA** (dicha por el dueño, con su cita) · **PROPUESTA** (mía, a confirmar) · **PENDIENTE** (decide el dueño) · **NO VERIFICADO** (no pude respaldarlo). Sin datos reales: se usa «Empresa B» donde hace falta un ejemplo.
+> **Estado:** CONSTRUIDO en dos PR (2026-11-14, autorizado por el dueño: «Sí, construí el nombre público»): PR 1 #280 (la clave `portal_nombre_publico`, su validación y el campo en `/carta/portal`) y PR 2 (los títulos de la carta pública usan el nombre, neutros si no hay; `MARCA_PUBLICA` borrada; invalidación de la carta al guardar). Lo de abajo es el diseño original. Escalera de diseño de 10 niveles (`AGENTS.md`). Etiquetas: **CONFIRMADA** (dicha por el dueño, con su cita) · **PROPUESTA** (mía, a confirmar) · **PENDIENTE** (decide el dueño) · **NO VERIFICADO** (no pude respaldarlo). Sin datos reales: se usa «Empresa B» donde hace falta un ejemplo.
 > Compuerta: no se migra nada hasta confirmar los niveles 1 a 5. Este documento propone y el dueño confirmó **una opción sin migración** (el administrador carga el valor al desplegar); una carga automática sería una migración de DATOS y **requiere autorización expresa** (descartada, nivel 10).
 
 ## 1. Propósito y alcance
