@@ -107,15 +107,17 @@ test("un rol que solo VE productos no tiene enlace «Editar» en la lista ni el 
   }
 });
 
-test("un rol CON producto_editar y producto_disponibilidad ve «Editar» en la lista, el paso «Qué se vende» en la ficha y «Desactivar» en las dos, y lleva al formulario", async ({ browser, baseURL, sucursalId }) => {
+test("un rol CON producto_editar y producto_disponibilidad ve «Editar» (el paso «Qué se vende») y «Desactivar» en la ficha, y lleva al formulario", async ({ browser, baseURL, sucursalId }) => {
   // Contraespejo: impide «arreglarlo» escondiendo el enlace para todos.
   const producto = await crearProducto(Date.now(), sucursalId);
   const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { editarProducto: true, disponibilidad: true });
   const enlaceEditar = page.locator(`a[href="/catalogo/productos/${producto.id}/datos"]:visible`);
   try {
+    // La lista es como la de Pedernal: la fila lleva a la ficha y no tiene «Editar» ni «Desactivar»; se edita y se desactiva en la ficha.
     await page.goto(`/catalogo/productos?q=${encodeURIComponent(producto.nombre)}`);
-    await expect(enlaceEditar).toHaveCount(1);
-    await expect(page.getByRole("button", { name: "Desactivar", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: producto.nombre })).toHaveAttribute("href", `/catalogo/productos/${producto.id}`);
+    await expect(enlaceEditar).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Desactivar", exact: true })).toHaveCount(0);
 
     await page.goto(`/catalogo/productos/${producto.id}`);
     await expect(enlaceEditar).toHaveCount(1);

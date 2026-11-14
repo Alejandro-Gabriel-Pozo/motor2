@@ -31,7 +31,7 @@ test("al abrir un producto de la lista y tocar «Editar», la pantalla de edici�
   await page.goto(`/catalogo/productos?q=${encodeURIComponent(producto.nombre)}`);
   await page.locator("li[data-producto]", { hasText: producto.nombre }).getByRole("link", { name: producto.nombre }).click();
   await page.waitForURL(new RegExp(`/catalogo/productos/${producto.id}$`));
-  await page.getByRole("link", { name: "Editar", exact: true }).click();
+  await page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^Qué se vende/ }).click();
   await page.waitForURL(new RegExp(`/catalogo/productos/${producto.id}/datos$`));
   await expect(page.getByText(`Editar "${producto.nombre}"`)).toBeVisible();
 
