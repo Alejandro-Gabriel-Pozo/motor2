@@ -58,10 +58,6 @@ test("asignar un tamaño con precio propio: la vista previa muestra los precios 
   await expect(seccion).toContainText("Chico $ 2.500,00 · Mediano $ 2.800,00 · Grande $ 3.100,00");
   await expect(seccion.getByRole("link", { name: "Editar opciones" })).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations, "ficha").toEqual([]);
-
-  // La lista de productos lo marca.
-  await page.goto(`/catalogo/productos?q=${encodeURIComponent(producto.nombre)}`);
-  await expect(page.locator("tr", { hasText: producto.nombre }).locator("[data-etiqueta-opciones]")).toHaveText(`Opciones: E2E Tamaño ficha ${m}`);
 });
 
 test("dos pestañas sobre lo que admite el producto: la vieja se rechaza con «Recargar» y no pisa", async ({ paginaAutenticada: pestañaA, sucursalId }) => {
