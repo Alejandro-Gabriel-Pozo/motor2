@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
-import { descripcionDeCartaDeSucursal, imagenParaCompartir, MARCA_PUBLICA, tituloDeCartaDeSucursal } from "@/core/carta/public";
-import { cartaPublica, empresaCartaPublica } from "@/server/carta-publica/sin-sesion";
+import { descripcionDeCartaDeSucursal, imagenParaCompartir, nombrePublicoUsable, tituloDeCartaDeSucursal } from "@/core/carta/public";
+import { cartaPublica, configPortalPublica, empresaCartaPublica } from "@/server/carta-publica/sin-sesion";
 import { CartaVista } from "@/components/carta-publica/carta-vista";
 import { direccionPublicaDeCarta, hrefDeCartaPublica, metadataDeCartaPublica } from "@/components/carta-publica/metadatos";
 
@@ -25,7 +25,7 @@ const resolver = cache(async (empresa: string, sucursal: string) => {
 });
 
 /**
- * Buscadores y vistas previas: el título y la descripción salen del nombre que el comercio le puso a la carta (o el de la sucursal) y de la marca fija (`MARCA_PUBLICA`); la dirección canónica es la del host
+ * Buscadores y vistas previas: el título y la descripción salen del nombre que el comercio le puso a la carta (o el de la sucursal) y del nombre público de la empresa (`portal_nombre_publico`; sin él, neutros); la dirección canónica es la del host
  * público definitivo (`<empresa>.<dominio de cartas>/<sucursal>`), no la ruta técnica `/carta-publica/...`. Una carta que no resuelve no define nada: la página da 404 y queda el neutro del layout.
  */
 export async function generateMetadata({ params }: { params: Promise<{ empresa: string; sucursal: string }> }): Promise<Metadata> {
@@ -34,15 +34,18 @@ export async function generateMetadata({ params }: { params: Promise<{ empresa: 
   if (!resuelta) return {};
   const { carta, estilo } = resuelta;
   const nombre = estilo.valores.restaurante_nombre || carta.sucursal.nombre;
+  // El nombre público de la empresa sale de la apariencia del portal de ESA empresa (la que resolvió la URL; RLS por empresa); sin nombre cargado (o inválido), los textos salen neutros (F1).
+  const nombreEmpresa = nombrePublicoUsable((await configPortalPublica(resuelta.empresa)).valores.portal_nombre_publico);
   return metadataDeCartaPublica({
-    titulo: tituloDeCartaDeSucursal(nombre),
+    titulo: tituloDeCartaDeSucursal(nombre, nombreEmpresa),
     descripcion: descripcionDeCartaDeSucursal({
       nombre,
+      nombreEmpresa,
       descripcionPropia: estilo.valores.restaurante_descripcion,
       secciones: carta.secciones.filter((s) => s.items.length > 0 || s.promos.length > 0).map((s) => s.titulo || s.nombre),
     }),
     ...direccionPublicaDeCarta(resuelta.empresa.slug, sucursal),
-    nombreSitio: MARCA_PUBLICA,
+    nombreSitio: nombreEmpresa,
     imagen: imagenParaCompartir(estilo.valores.hero_imagen_fondo_url) ?? imagenParaCompartir(estilo.valores.restaurante_logo_url),
   });
 }
