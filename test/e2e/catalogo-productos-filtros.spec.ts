@@ -83,7 +83,7 @@ for (const { ancho, alto } of [
 
         if (ancho === 375) {
           await expectSinDesborde(page, "lista de Productos filtrada a 375 px");
-          await expectObjetivosTactiles(formulario.locator("input, select, button"), "controles de los filtros");
+          await expectObjetivosTactiles(formulario.locator("input, select, button, summary"), "controles de los filtros (incluido «Más filtros»)");
         }
 
         await page.getByRole("link", { name: "Limpiar filtros" }).click();
@@ -127,6 +127,9 @@ test("la página siguiente conserva los filtros", async ({ paginaAutenticada: pa
     await expect(page.locator("li[data-producto]")).toHaveCount(50);
     const siguiente = page.getByRole("link", { name: /Página siguiente/ });
     await expect(siguiente).toHaveAttribute("href", /tipo=materia-prima/);
+    // A 375 px «Página siguiente →» se toca con el dedo (44 px de alto, aceptado por el dueño el 2026-11-13: «Sí, a 44×44»).
+    await page.setViewportSize({ width: 375, height: 800 });
+    await expectObjetivosTactiles(siguiente, "«Página siguiente →» a 375 px");
     await siguiente.click();
     await expect(page).toHaveURL(/tipo=materia-prima/);
     await expect(page.locator("li[data-producto]")).toHaveCount(2);

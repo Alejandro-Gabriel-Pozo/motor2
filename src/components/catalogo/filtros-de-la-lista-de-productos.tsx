@@ -61,7 +61,7 @@ export function FiltrosDeLaListaDeProductos({ accion, filtros, clases, estados, 
         </Selector>
       </div>
       <details open={hayMasFiltros} className="text-sm">
-        <summary className="cursor-pointer text-tinta-suave underline">Más filtros</summary>
+        <summary className="inline-flex min-h-11 cursor-pointer items-center text-tinta-suave underline md:min-h-0">Más filtros</summary>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {masFiltros.map((f) => (
             <Selector key={f.nombre} etiqueta={f.etiqueta} name={f.nombre} defaultValue={f.valor}>
