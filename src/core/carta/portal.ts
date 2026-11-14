@@ -1,3 +1,4 @@
+import { canalesDeMarcaHex, marcaGuardadaLegible } from "./marca-derivada";
 import { validarValorDefinicion, type TipoValorTema } from "./tema";
 import type { Resultado } from "./validaciones";
 
@@ -45,6 +46,9 @@ export const CLAVES_PORTAL_V1 = [
   { clave: "portal_etiqueta_color", zona: "Encabezado y títulos", etiqueta: "Color de la etiqueta", defaultPortal: "", ...COLOR },
   { clave: "portal_titulo", zona: "Encabezado y títulos", etiqueta: "Título del portal", defaultPortal: "", tipo: "texto", maximo: 120 },
   { clave: "portal_titulo_color", zona: "Encabezado y títulos", etiqueta: "Color del título", defaultPortal: "", ...COLOR },
+  // Marca del portal (`docs/diseno-marca-del-portal-2026-11-13.md`): UN color por empresa y el marcador del modo marca (nace vacío: sin él el portal se lee como siempre).
+  { clave: "portal_color_marca", zona: "Encabezado y títulos", etiqueta: "Color de marca del portal", defaultPortal: "", ...COLOR },
+  { clave: "portal_marca_derivada", zona: "Encabezado y títulos", etiqueta: "Usar solo el color de marca", defaultPortal: "", tipo: "enum", opciones: ["si"] },
 
   { clave: "portal_fondo_color", zona: "Fondo y mapa", etiqueta: "Color de fondo del portal", defaultPortal: "", ...COLOR },
   { clave: "portal_bg_image_url", zona: "Fondo y mapa", etiqueta: "URL de la imagen del mapa", defaultPortal: "", ...IMAGEN },
@@ -178,6 +182,8 @@ export interface EstiloPortal {
   proporcion: string;
   /** Alto por defecto de una tarjeta sobre el mapa, % del alto del mapa. */
   altoTarjetaPct: number;
+  /** Solo presente (`true`) con el marcador `portal_marca_derivada = «si»`: la vista lo pone como `data-modo-marca` (las tarjetas del mapa siguen transparentes). Ausente = portal de siempre. */
+  modoMarca?: true;
 }
 
 /** `portal_card_bg` → `--portal-card-bg`. Solo las que empiezan con `portal_`; el resto (logo, derechos) no es CSS. */
@@ -197,6 +203,28 @@ function valorResuelto(obj: Record<string, unknown>, d: DefinicionClavePortal): 
 }
 
 /**
+ * MODO MARCA del portal (`docs/diseno-marca-del-portal-2026-11-13.md`; decisiones del dueño 2026-11-13: encabezado «Queda neutro; la marca solo en bordes y flechas (Recomendada)», tarjetas del mapa «Siguen
+ * transparentes (Recomendada)»): con `portal_marca_derivada = «si»` el portal se lee SOLO desde `portal_color_marca`. Las demás claves de color guardadas siguen en la base (M6: nunca se borran) pero NO se leen:
+ * salen vacías y mandan los tokens del sistema (encabezado neutro, textos con la tinta del sistema). La marca (lectura tolerante de `marca-derivada.ts`; si no se puede leer, el portal usa el sistema) solo
+ * pinta ELEMENTOS: el borde de la tarjeta al pasar el mouse y su flecha; las tarjetas del mapa se mantienen transparentes por CSS (`data-modo-marca`).
+ */
+function aplicarModoMarcaPortal(valores: Record<ClavePortal, string>, variablesCss: Record<string, string>): void {
+  const marcaGuardada = valores.portal_color_marca;
+  for (const d of CLAVES_PORTAL_V1) {
+    if (d.tipo !== "color") continue;
+    valores[d.clave] = "";
+    const variable = aVariableCss(d.clave);
+    if (variable) delete variablesCss[variable];
+  }
+  const marca = marcaGuardadaLegible(marcaGuardada);
+  valores.portal_color_marca = marca && canalesDeMarcaHex(marca) ? marca : "";
+  if (valores.portal_color_marca) {
+    variablesCss["--portal-card-border-hover"] = valores.portal_color_marca;
+    variablesCss["--portal-card-flecha-color"] = valores.portal_color_marca;
+  }
+}
+
+/**
  * Resuelve el Json guardado de `PortalCartaEmpresa.valores`. VUELVE a validar cada valor (una carga por `db:studio` no pasa
  * por la Server Action): lo inválido, ausente o vacío cae al default del catálogo. Sin config (`{}`), el estilo por defecto.
  */
@@ -213,6 +241,10 @@ export function resolverEstiloPortal(valoresGuardados: unknown): EstiloPortal {
     if (variable && v && (d.tipo === "color" || d.tipo === "tamanoFuente" || d.tipo === "porcentaje")) variablesCss[variable] = v;
   }
 
+  // Exacto: solo el texto «si» guardado activa el modo (nada de «Si», « si » ni valores raros: todo nace cerrado).
+  const modoMarca = Object.hasOwn(obj, "portal_marca_derivada") && obj.portal_marca_derivada === "si";
+  if (modoMarca) aplicarModoMarcaPortal(valores, variablesCss);
+
   const overlay = Math.max(0, Math.min(1, Number(valores.portal_bg_overlay) || 0));
   const altoTarjetaPct = Number(valores.portal_card_alto_defecto);
   return {
@@ -222,6 +254,7 @@ export function resolverEstiloPortal(valoresGuardados: unknown): EstiloPortal {
     overlay,
     proporcion: valores.portal_bg_proporcion,
     altoTarjetaPct: altoTarjetaPct > 0 ? altoTarjetaPct : ALTO_TARJETA_POR_DEFECTO,
+    ...(modoMarca ? { modoMarca: true as const } : {}),
   };
 }
 

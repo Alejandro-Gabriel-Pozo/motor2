@@ -58,7 +58,7 @@ Contexto: Argentina (UTC-3); todo en pesos; cada empresa solo ve lo suyo y cada 
 - **Insumo** (`Insumo`): el concepto genérico que agrupa materias primas equivalentes («Bife angosto»); lo usan las recetas y el costo por insumo. Solo tiene nombre y grupo.
 - **Materia prima** (`Producto` con `tipo = MP`): lo concreto que se compra, con **nuestro** código y **nuestro** nombre, unidad de stock, unidad de compra, factor de conversión y alícuota de IVA de compra. Puede apuntar a un insumo (`insumoId`, opcional; el asistente de hermanar los une).
 - **Lo que dice el proveedor** (`ProveedorPorProducto`, una fila por proveedor × producto × unidad de compra): unidad de compra, último precio, última compra y **un solo texto libre**, `referenciaProveedor`, que hoy mezcla el código y el nombre del proveedor. La línea de la factura (`FacturaProveedorRenglon`) **no** guarda lo que decía la factura: ese texto solo sirve para escribir o actualizar el vínculo.
-- **Producción:** 0 materias primas, 0 insumos, 0 proveedores, 0 vínculos y 47 productos de venta. No hay nada que migrar de este lado.
+- **Producción:** 0 materias primas, 0 insumos, 0 proveedores, 0 vínculos y N productos de venta. No hay nada que migrar de este lado.
 
 **Principio (PROPUESTA): cada dato vive en un solo lugar, y se pregunta de quién es.**
 

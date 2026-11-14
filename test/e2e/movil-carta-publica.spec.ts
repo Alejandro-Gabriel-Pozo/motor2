@@ -52,7 +52,7 @@ async function sembrar(sucursalId: string) {
   await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId: especial.id, visibleEnCarta: true, seccionCartaId: seccion.id, orden: 1, especial: true } });
   await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId: comun.id, visibleEnCarta: true, seccionCartaId: seccion.id, orden: 2 } });
   await prisma.sucursalPublica.create({ data: { sucursalId, slug, publicada: true } });
-  await prisma.temaCartaSucursal.create({ data: { sucursalId, aplicarEnCarta: true, valores: { color_fondo_dia: FONDO_DE_LA_PRUEBA, color_marca: MARCA_DE_LA_PRUEBA, topbar_back_label: "← PORTAL" } } });
+  await prisma.temaCartaSucursal.create({ data: { sucursalId, aplicarEnCarta: true, valores: { color_fondo_dia: FONDO_DE_LA_PRUEBA, color_marca: MARCA_DE_LA_PRUEBA, topbar_back_label: "← PORTAL", restaurante_instagram: "@e2e", restaurante_whatsapp: "5492991234567" } } });
   return {
     ruta: `/carta-publica/e2e/${slug}`,
     nombreEspecial: especial.nombre,
@@ -78,6 +78,11 @@ test("carta pública en celular (375 px): el texto de los platos llega a 4,5:1 c
     await expectSinDesborde(page, "carta pública, portada");
     await expectObjetivosTactiles(page.locator("[data-carta-topbar] button, [data-carta-topbar] a"), "carta pública: barra superior");
 
+    // Íconos de redes de la barra inferior (portada): 44 × 44 (antes 40 × 40).
+    const redes = page.locator("[data-carta-nav] a");
+    await expect(redes).toHaveCount(2);
+    await expectObjetivosTactiles(redes, "carta pública: íconos de redes de la portada", { ancho: 44 });
+
     // El índice: cada botón de sección mide 44 px o más.
     await page.getByRole("button", { name: "Página siguiente" }).click();
     const botonesDelIndice = page.locator("[data-carta-indice-lista] button");
@@ -98,6 +103,10 @@ test("carta pública en celular (375 px): el texto de los platos llega a 4,5:1 c
     const renglonComun = page.locator("h3", { hasText: d.nombreComun }).locator("xpath=ancestor::*[.//*[@data-rol='precio']][1]");
     expect.soft(await contrasteDe(page, renglonComun.locator("[data-rol='precio']"), libro), "contraste del precio del plato común").toBeGreaterThanOrEqual(4.5);
     await capturar(page, "carta-publica-seccion");
+    // En las páginas de sección los íconos de redes van en su propia fila bajo las flechas: también 44 × 44 (antes 32 × 32), y la barra sigue dentro de la pantalla.
+    await expectObjetivosTactiles(page.locator("[data-carta-nav] a"), "carta pública: íconos de redes de una sección", { ancho: 44 });
+    const barra = (await page.locator("[data-carta-nav]").boundingBox())!;
+    expect.soft(barra.y + barra.height, "la barra de navegación termina dentro de la pantalla").toBeLessThanOrEqual(812 + 1);
 
     await expectSinDesborde(page, "carta pública, sección");
     const { violations } = await new AxeBuilder({ page }).analyze();

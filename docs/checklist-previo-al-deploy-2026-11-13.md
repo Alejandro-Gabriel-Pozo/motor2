@@ -44,7 +44,7 @@ SELECT "empresaId", lower(nombre) AS nombre_sin_mayusculas, count(*) FROM "Secci
 ```
 
 - Si alguna devuelve filas, **parar y avisar**: no se aplica nada hasta decidir qué hacer con esos datos (corregirlos o cambiar la regla, decisión del dueño).
-- Verificado en solo lectura el 2026-11-12 contra las dos bases de producción que existían entonces (zuluhub y stockhneuquen): 0 filas en las 5 consultas (V: cuerpo de #250 y #251). **Hay que repetirlo el día del deploy**: son datos vivos. Qué bases de producción existen ese día: NO VERIFICADO (el documento `deploy-con-migraciones.md` del 2026-10-11 habla de una sola instalación; los PR de esta auditoría consultaron dos).
+- Verificado en solo lectura el 2026-11-12 contra las dos bases de producción que existían entonces (zuluhub y empresab): 0 filas en las 5 consultas (V: cuerpo de #250 y #251). **Hay que repetirlo el día del deploy**: son datos vivos. Qué bases de producción existen ese día: NO VERIFICADO (el documento `deploy-con-migraciones.md` del 2026-10-11 habla de una sola instalación; los PR de esta auditoría consultaron dos).
 - Los estados de la base: `node scripts/operaciones/con-env.mjs <archivo-env> -- npx prisma migrate status` tiene que mostrar como pendientes **exactamente estas dos** y ninguna más. Si aparece otra, parar y avisar.
 
 ## 2. Antes: las claves de correo (DEC-0011) — sin pegar la clave en ningún chat
@@ -65,7 +65,7 @@ printf %s "$CORREO_OPERATIVO_RESEND_API_KEY" | grep -Eq '^re_[A-Za-z0-9_]+$' && 
 
 Lo hace el dueño; el asistente de desarrollo no ve credenciales ni corre nada contra Neon (`deploy-con-migraciones.md`).
 
-Sobre el ensayo general y la base de producción (el dueño, 2026-11-12, chat del dueño con el orquestador): «Bueno, sí, el ensayo general puede ser. Siempre y cuando no afectemos la base de producción de Stockage Neuquén. Porque mañana, mañana se presenta la carta como existe hoy, digamos.» **Condición innegociable:** el ensayo corre solo en una rama de Neon **copia** (nunca en la base de producción de stockhneuquen, ni con el Preview, que comparte esa base) y no se escribe nada en producción ni en sus variables de Vercel. Si algún paso del ensayo exigiera tocar esa base, se frena y se le pregunta al dueño.
+Sobre el ensayo general y la base de producción (el dueño, 2026-11-12, chat del dueño con el orquestador): «Bueno, sí, el ensayo general puede ser. Siempre y cuando no afectemos la base de producción de Stockage Neuquén. Porque mañana, mañana se presenta la carta como existe hoy, digamos.» **Condición innegociable:** el ensayo corre solo en una rama de Neon **copia** (nunca en la base de producción de empresab, ni con el Preview, que comparte esa base) y no se escribe nada en producción ni en sus variables de Vercel. Si algún paso del ensayo exigiera tocar esa base, se frena y se le pregunta al dueño.
 
 1. Rama de **respaldo** de Neon de la base destino (es el rollback del DEPLOY: código viejo + base vieja).
 2. Rama de **ensayo** (otra copia). En ella: las consultas de la sección 1, y después `node scripts/operaciones/con-env.mjs <env de ensayo> -- npx prisma migrate deploy`.
@@ -77,7 +77,7 @@ Sobre el ensayo general y la base de producción (el dueño, 2026-11-12, chat de
     WHERE indexname IN ('Cliente_empresaId_nombre_lower_key', 'SeccionCarta_empresaId_nombre_lower_key');       -- 2 filas
    ```
 4. Probar en la rama que lo inválido se rechaza y lo válido pasa (ver «Prueba del dueño», sección 6) y **volver atrás y subir otra vez** (sección 5) para comprobar que `down.sql` y la migración son repetibles.
-5. Recorrido real de la app contra la rama de ensayo (no el Preview de `stockhneuquen`: **comparte la base de producción**, ADR-007): login, alta de un cliente, alta de una sección de carta, carta pública.
+5. Recorrido real de la app contra la rama de ensayo (no el Preview de `empresab`: **comparte la base de producción**, ADR-007): login, alta de un cliente, alta de una sección de carta, carta pública.
 6. Borrar la rama de ensayo.
 
 ## 4. Aplicar (solo con la autorización expresa del dueño, base por base)
@@ -114,7 +114,7 @@ Sobre el ensayo general y la base de producción (el dueño, 2026-11-12, chat de
 1. **Comportamiento de `lower()` con letras no ASCII** («Ñandú» contra «ñANDÚ»): depende de la collation de la base de producción de Neon; las pruebas locales usan `C.UTF-8`. En el peor caso el índice es más permisivo que la regla de la app, nunca al revés (V: cuerpo de #251).
 2. **Qué bases de producción existen el día del deploy** y su usuario de `DATABASE_URL` (secreto en Vercel): sin confirmar desde acá.
 3. **Si alguna clave de Resend de producción cumple la forma nueva** (sección 2): el asistente no ve las variables.
-4. **Cuánto tarda** la validación de los CHECK y la creación de los índices sobre los datos reales: no se midió (hoy son pocas filas; en la medición del 2026-10-12 la base tenía 1 empresa y 50 productos).
+4. **Cuánto tarda** la validación de los CHECK y la creación de los índices sobre los datos reales: no se midió (hoy son pocas filas; en la medición del 2026-10-12 la base tenía N empresa y N productos).
 
 ## 8. Lo que ya está en `main` y viaja en el mismo deploy (código, sin migración)
 

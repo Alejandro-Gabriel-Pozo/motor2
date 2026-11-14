@@ -65,7 +65,7 @@ async function correr(cliente: Client, vars: Record<string, string>, opciones: {
   }
 }
 
-const base_ = { slug: "stockhneuquen", condicion: "RESPONSABLE_INSCRIPTO", admin_email: "dueno@plataforma.test" };
+const base_ = { slug: "empresab", condicion: "RESPONSABLE_INSCRIPTO", admin_email: "dueno@plataforma.test" };
 const aplicar = (extra: Record<string, string> = {}) => ({ ...base_, aplicar: "1", ...extra });
 
 const q = <T extends object = Record<string, unknown>>(texto: string, params: unknown[] = []) => base.cliente.query<T>(texto, params).then((r) => r.rows);
@@ -99,7 +99,7 @@ beforeAll(async () => {
   await base.cliente.query("BEGIN");
   await ejecutarScript(CREAR_ROL, base.cliente, { restringir: "1" }, escapar(base.cliente));
   await base.cliente.query("COMMIT");
-  for (const id of ["stockhneuquen", "otra"]) {
+  for (const id of ["empresab", "otra"]) {
     await base.cliente.query(`INSERT INTO "Empresa" ("id","nombre","slug","zonaHoraria","moneda","estado") VALUES ($1,$1,$1,'America/Argentina/Buenos_Aires','ARS','ACTIVE')`, [id]);
   }
   await base.cliente.query(`INSERT INTO "AdminPlataforma" ("id","email","nombre","secretoTotp","activo") VALUES ('adm-1','dueno@plataforma.test','Dueño','x',true), ('adm-2','baja@plataforma.test','De baja','x',false)`);
@@ -120,8 +120,8 @@ describe("M0-IVA: paso de datos de la condición de la empresa frente al IVA", (
     if (!hayRoles || !plataforma) return ctx.skip();
     await reiniciarEmpresas();
     const r = await correr(plataforma, base_);
-    expect(r).toMatchObject({ slug: "stockhneuquen", condicion_actual: null, condicion_pedida: "RESPONSABLE_INSCRIPTO", cambiaria: true });
-    expect(await condicionDe("stockhneuquen")).toBeNull();
+    expect(r).toMatchObject({ slug: "empresab", condicion_actual: null, condicion_pedida: "RESPONSABLE_INSCRIPTO", cambiaria: true });
+    expect(await condicionDe("empresab")).toBeNull();
     expect(await auditorias()).toEqual([]);
   });
 
@@ -129,11 +129,11 @@ describe("M0-IVA: paso de datos de la condición de la empresa frente al IVA", (
     if (!hayRoles || !plataforma) return ctx.skip();
     await reiniciarEmpresas();
     const otraAntes = (await q(`SELECT * FROM "Empresa" WHERE "slug" = 'otra'`))[0];
-    const propiaAntes = (await q<Record<string, unknown>>(`SELECT * FROM "Empresa" WHERE "slug" = 'stockhneuquen'`))[0]!;
+    const propiaAntes = (await q<Record<string, unknown>>(`SELECT * FROM "Empresa" WHERE "slug" = 'empresab'`))[0]!;
     expect(await correr(plataforma, aplicar())).toEqual({ empresas_cambiadas: 1, auditorias_escritas: 1 });
-    expect(await condicionDe("stockhneuquen")).toBe("RESPONSABLE_INSCRIPTO");
+    expect(await condicionDe("empresab")).toBe("RESPONSABLE_INSCRIPTO");
     const sinCondicion = (fila: Record<string, unknown>) => Object.fromEntries(Object.entries(fila).filter(([columna]) => columna !== "condicionIva"));
-    const propiaDespues = (await q<Record<string, unknown>>(`SELECT * FROM "Empresa" WHERE "slug" = 'stockhneuquen'`))[0]!;
+    const propiaDespues = (await q<Record<string, unknown>>(`SELECT * FROM "Empresa" WHERE "slug" = 'empresab'`))[0]!;
     expect(sinCondicion(propiaDespues), "ninguna otra columna de la empresa cambió").toEqual(sinCondicion(propiaAntes));
     expect((await q(`SELECT * FROM "Empresa" WHERE "slug" = 'otra'`))[0], "aislamiento: la otra empresa quedó intacta").toEqual(otraAntes);
     const filas = await auditorias();
@@ -142,7 +142,7 @@ describe("M0-IVA: paso de datos de la condición de la empresa frente al IVA", (
       adminId: "adm-1",
       adminEmail: "dueno@plataforma.test",
       accion: "condicion-iva",
-      empresaAfectadaId: "stockhneuquen",
+      empresaAfectadaId: "empresab",
       detalle: { campo: "condicionIva", antes: null, despues: "RESPONSABLE_INSCRIPTO", origen: "script-sql" },
     });
   });
@@ -153,7 +153,7 @@ describe("M0-IVA: paso de datos de la condición de la empresa frente al IVA", (
     await correr(plataforma, aplicar());
     for (let i = 0; i < 2; i++) expect(await correr(plataforma, aplicar()), `repetición ${i + 1}`).toEqual({ empresas_cambiadas: 0, auditorias_escritas: 0 });
     expect(await auditorias()).toHaveLength(1);
-    expect(await condicionDe("stockhneuquen")).toBe("RESPONSABLE_INSCRIPTO");
+    expect(await condicionDe("empresab")).toBe("RESPONSABLE_INSCRIPTO");
   });
 
   it("un cambio posterior deja su propia auditoría con el «antes» correcto, y la historia anterior sigue (no se borra, se agrega)", async (ctx) => {
@@ -180,7 +180,7 @@ describe("M0-IVA: paso de datos de la condición de la empresa frente al IVA", (
     expect(primera).toEqual({ empresas_cambiadas: 1, auditorias_escritas: 1 });
     expect(await segunda).toEqual({ empresas_cambiadas: 0, auditorias_escritas: 0 });
     expect(await auditorias(), "exactamente una auditoría").toHaveLength(1);
-    expect(await condicionDe("stockhneuquen")).toBe("RESPONSABLE_INSCRIPTO");
+    expect(await condicionDe("empresab")).toBe("RESPONSABLE_INSCRIPTO");
   });
 
   it("CONCURRENCIA, valores distintos: se serializan; 2 cambios, 2 auditorías, y el «antes» de la segunda es el «después» de la primera", async (ctx) => {
@@ -194,7 +194,7 @@ describe("M0-IVA: paso de datos de la condición de la empresa frente al IVA", (
     expect(await segunda).toEqual({ empresas_cambiadas: 1, auditorias_escritas: 1 });
     const filas = await auditorias();
     expect(filas.map((f) => [f.detalle.antes, f.detalle.despues])).toEqual([[null, "RESPONSABLE_INSCRIPTO"], ["RESPONSABLE_INSCRIPTO", "EXENTO"]]);
-    expect(await condicionDe("stockhneuquen")).toBe("EXENTO");
+    expect(await condicionDe("empresab")).toBe("EXENTO");
   });
 
   it("ATOMICIDAD: si la auditoría no se puede escribir, el cambio de la empresa tampoco queda (una sola sentencia, una transacción)", async (ctx) => {
@@ -206,7 +206,7 @@ describe("M0-IVA: paso de datos de la condición de la empresa frente al IVA", (
     } finally {
       await base.cliente.query(`ALTER TABLE "AuditoriaPlataforma" DROP CONSTRAINT "zz_prueba_rechaza"`);
     }
-    expect(await condicionDe("stockhneuquen"), "la empresa quedó como estaba").toBeNull();
+    expect(await condicionDe("empresab"), "la empresa quedó como estaba").toBeNull();
     expect(await auditorias()).toEqual([]);
   });
 
@@ -233,7 +233,7 @@ describe("M0-IVA: paso de datos de la condición de la empresa frente al IVA", (
     await reiniciarEmpresas();
     // Sin BEGIN, cada sentencia es su propia transacción: el DO de la guarda no ve lo que fijó el set_config anterior y se niega.
     await expect(ejecutarScript(SCRIPT_SQL, plataforma, { ...aplicar() }, escapar(plataforma))).rejects.toThrow(/falta el slug de la empresa/);
-    expect(await condicionDe("stockhneuquen")).toBeNull();
+    expect(await condicionDe("empresab")).toBeNull();
     expect(await auditorias()).toEqual([]);
   });
 

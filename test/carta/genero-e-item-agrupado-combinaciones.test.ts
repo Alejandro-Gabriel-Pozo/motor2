@@ -89,14 +89,14 @@ describe("combinaciones: interruptor × datos × superficie contra el oráculo (
           const { selector } = await conInterruptor(interruptor, semilla.admin);
           const sel = await selector.cargarSelectorCartaPos(semilla.sucursalId, prisma, AHORA_DE_LA_CORRIDA);
           expect(seccionesPos(sel)).toEqual(ordenado(seccionesDelPos(interruptor, datos)));
-          const sembrados = new Set(["Café", "Capuccino", "Cerveza Patagonia", "Cerveza Huinganco", "Brownie"]);
+          const sembrados = new Set(["Café", "Capuccino", "Cerveza Patagonia", "Cerveza Cordillera", "Brownie"]);
           expect(sel.fueraDeCarta.map((p) => p.nombre).filter((n) => sembrados.has(n)).sort()).toEqual([...fueraDeCartaDelPos(interruptor, datos)].sort());
         });
 
         const pedido = (accion: AccionDeEscritura, m: Awaited<ReturnType<typeof conInterruptor>>) => {
           const agrupadoId = semilla.agrupadoId ?? "no-existe";
           const opcionId = semilla.opcionPatagoniaId ?? "no-existe";
-          const hermanos = [semilla.ids.patagonia, semilla.ids.huinganco];
+          const hermanos = [semilla.ids.patagonia, semilla.ids.cordillera];
           switch (accion) {
             case "guardarGeneroCarta": return m.generos.guardarGeneroCarta({ nombre: "Gaseosas" });
             case "actualizarActivoGeneroCarta": return m.generos.actualizarActivoGeneroCarta(semilla.generos?.agua ?? "no-existe", false);
