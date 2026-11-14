@@ -48,7 +48,7 @@ test("consola en celular (375 px): la tarjeta cabe, cada empresa es una tarjeta 
   expect.soft((await celdaCuit.boundingBox())!.height - etiqueta, "el CUIT ocupa un solo renglón").toBeLessThanOrEqual(letra * 1.5 + 12);
 
   await expectObjetivosTactiles(page.locator("section.tarjeta a:visible"), "consola: enlaces");
-  const color = await page.getByRole("link", { name: /^Ver Hoteles/ }).evaluate((n) => getComputedStyle(n).color);
+  const color = await page.getByRole("link", { name: /^Ver Empresa B/ }).evaluate((n) => getComputedStyle(n).color);
   expect(color, "el enlace no es el azul por defecto del navegador").not.toBe("rgb(0, 0, 238)");
   expect((await new AxeBuilder({ page }).analyze()).violations, "axe en la consola").toEqual([]);
 });
