@@ -2,7 +2,7 @@ import { ARCHIVOS_DEL_HOST_CARTA, armarHostCarta, esSlugPublicoValido, patronHos
 
 /**
  * ADD-ON `CARTA_EMPRESA_UNICA` (ADR-006, sección «Carta de una empresa única en el dominio base»): con la variable puesta a un slug de empresa, el dominio
- * base de las cartas (`CARTA_DOMINIO_BASE`, p. ej. `carta.hotelesdelneuquen.com.ar`) ES la carta de ESA empresa, sin su slug en la URL: `/` es el portal y
+ * base de las cartas (`CARTA_DOMINIO_BASE`, p. ej. `carta.empresab.com.ar`) ES la carta de ESA empresa, sin su slug en la URL: `/` es el portal y
  * `/<sucursal>` la carta. Es otra forma de resolver el host, no un reemplazo: `<slug>.<CARTA_DOMINIO_BASE>` sigue funcionando.
  *
  * Apagado por defecto (sin la variable, todo devuelve `[]`/`false`). Quitarlo = borrar este archivo, su test y los enganches de una línea

@@ -30,7 +30,7 @@
 -- ATENCIÓN con `restringir`: el script solo mira si la variable ESTÁ DEFINIDA (`\if :{?restringir}`), no su valor: `-v restringir=0` TAMBIÉN restringe. Para no restringir, no pasarla.
 -- En Neon: SOLO con psql y este archivo, conectado como el dueño (`neondb_owner`); no hace falta superusuario. NUNCA crear el rol desde la consola o la API de
 -- Neon: esos roles nacen como `neon_superuser` con BYPASSRLS y se saltarían el aislamiento por empresa. Los roles son POR RAMA de Neon: hay que correrlo en
--- cada rama (la de producción de cada despliegue; stockhneuquen y zuluhub son proyectos distintos). Idempotente. Reversa: quitar-rol-motor2-plataforma.sql
+-- cada rama (la de producción de cada despliegue; empresab y zuluhub son proyectos distintos). Idempotente. Reversa: quitar-rol-motor2-plataforma.sql
 -- La URL del rol (PLATAFORMA_DATABASE_URL) vive SOLO en un archivo local gitignored (p. ej. `.env.plataforma.<despliegue>`) y se usa con
 -- `DOTENV_CONFIG_PATH=.env.plataforma.<despliegue> npx tsx scripts/politica-empresa.ts ...`. NO se carga en Vercel de la aplicación: la aplicación no debe tener las
 -- credenciales del rol que escribe `Empresa` (cargar-env-vercel.sh la rechaza). La consola de plataforma sí la lleva, en SU proyecto de Vercel (ADR-019).

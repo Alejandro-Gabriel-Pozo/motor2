@@ -11,6 +11,7 @@ import { Boton } from "@/ui/primitivas/boton";
 import { CampoNumero } from "@/components/campo-numero";
 import { Campo } from "@/ui/primitivas/campo";
 import { CampoColor } from "./campo-color";
+import { SeccionMarca } from "./editor-marca";
 
 /**
  * Editor de la apariencia del portal de la empresa (ADR-006). Formulario NO controlado (`FormConResultado`), un campo por clave de
@@ -53,6 +54,9 @@ export function EditorPortal({ valoresIniciales, version, accion, empresaNombre,
     </FormConResultado>
   );
 }
+
+/** La marca del portal no se edita como un campo más: la maneja la sección «Color de marca» (`SeccionMarca`); el marcador viaja escondido para que «Guardar apariencia» lo conserve (guardar reemplaza TODO lo guardado). */
+const CLAVES_DE_LA_MARCA: ReadonlySet<string> = new Set(["portal_color_marca", "portal_marca_derivada"]);
 
 function leerValores(form: HTMLFormElement): Record<string, string> {
   const fd = new FormData(form);
@@ -160,8 +164,20 @@ function CuerpoEditor({ valoresIniciales, empresaNombre, sucursales: guardadas, 
     <div onInput={releer} onChange={releer} className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_26rem]">
       {/* Solo los CAMPOS se deshabilitan (DEC-33): la vista previa queda fuera, para que se siga recorriendo con el teclado (arrastrar se corta en `alPresionar`). */}
       <fieldset disabled={soloLectura} className="flex min-w-0 flex-col gap-2" data-solo-lectura={soloLectura ? "" : undefined}>
+      <input type="hidden" name="portal_marca_derivada" defaultValue={valoresIniciales.portal_marca_derivada ?? ""} />
+      <SeccionMarca
+        modoMarca={valoresIniciales.portal_marca_derivada === "si"}
+        marcaInicial={valoresIniciales.portal_color_marca ?? ""}
+        valores={valores}
+        soloLectura={soloLectura}
+        portal={{
+          vistaPrevia: (marca) => (
+            <PortalVista sucursales={sucursales} empresaNombre={empresaNombre} estilo={resolverEstiloPortal({ ...valores, portal_color_marca: marca, portal_marca_derivada: "si" })} hrefDe={() => "#"} modo="vista-previa" />
+          ),
+        }}
+      />
       {ZONAS_PORTAL.map((zona, i) => {
-        const campos = CLAVES_PORTAL_V1.filter((d) => d.zona === zona);
+        const campos = CLAVES_PORTAL_V1.filter((d) => d.zona === zona && !CLAVES_DE_LA_MARCA.has(d.clave));
         const cargados = campos.filter((d) => valores[d.clave]?.trim()).length;
         return (
           <details key={zona} open={i === 0} className="rounded border p-3" data-zona-portal={zona}>

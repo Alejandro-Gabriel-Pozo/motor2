@@ -47,7 +47,7 @@ describe("reemplazar la carta con la de otra sucursal", () => {
       await prisma.disponibilidadProducto.create({ data: { sucursalId: destinoId, productoId: p.id, disponible: true } });
       return p.id;
     };
-    ids = { pizza: await pv("PV_PIZZA", "Pizza"), coca: await pv("PV_COCA", "Coca"), bife: await pv("PV_BIFE", "Bife"), jugo: await pv("PV_JUGO", "Jugo Fresli") };
+    ids = { pizza: await pv("PV_PIZZA", "Pizza"), coca: await pv("PV_COCA", "Coca"), bife: await pv("PV_BIFE", "Bife"), jugo: await pv("PV_JUGO", "Jugo Natural") };
   });
   afterEach(limpiarTrampas);
 
@@ -136,7 +136,7 @@ describe("reemplazar la carta con la de otra sucursal", () => {
     expect(fila.actorId).toBe(adminId);
     const foto = JSON.parse(fila.valorAnterior ?? "null") as { generos: { nombre: string }[]; itemsAgrupados: { nombre: string; genero: string; opciones: { producto: string }[] }[]; productos: { producto: string; descripcion: string }[] };
     expect(foto.generos.map((g) => g.nombre)).toEqual(["Del destino"]);
-    expect(foto.itemsAgrupados.map((i) => [i.nombre, i.genero, i.opciones.map((o) => o.producto)])).toEqual([["Jugos", "Del destino", ["Jugo Fresli"]]]);
+    expect(foto.itemsAgrupados.map((i) => [i.nombre, i.genero, i.opciones.map((o) => o.producto)])).toEqual([["Jugos", "Del destino", ["Jugo Natural"]]]);
     expect(foto.productos.map((p) => [p.producto, p.descripcion])).toEqual([["Bife", "Del destino"]]);
   });
 

@@ -98,7 +98,7 @@ export function PortalVista({ sucursales, empresaNombre, estilo, hrefDe, modo }:
 
   return (
     // Fase 5 (DEC-35): la escala de letra única de la carta (sin tema: el portal no tiene tamaños de ítem), y encima lo del portal.
-    <div className={`portal ${publico ? "min-h-screen" : ""}`} style={{ ...variablesDeLaEscala(), ...estilo.variablesCss } as CSSProperties}>
+    <div className={`portal ${publico ? "min-h-screen" : ""}`} data-modo-marca={estilo.modoMarca ? "" : undefined} style={{ ...variablesDeLaEscala(), ...estilo.variablesCss } as CSSProperties}>
       <Encabezado estilo={estilo} empresaNombre={empresaNombre} publico={publico} />
       <Cuerpo className="mx-auto px-6 pb-10 pt-4" style={{ maxWidth: layout.modo === "mapa" ? 648 : 576 }}>
         {publico && !hayTitulo && <h1 className="sr-only">Sucursales</h1>}

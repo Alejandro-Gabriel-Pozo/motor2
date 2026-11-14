@@ -10,7 +10,7 @@
 
 **Lo que pidió.** Usted quiere ver sus números en tres niveles. El primero es la **sucursal** (la hostería), que es su centro de costos. El segundo es la **unidad de negocio** dentro de la sucursal (Restaurante, Alojamiento). El tercero es el **rubro** de cada venta (Confitería, Productos regionales). Su ejemplo: «mi unidad de negocio es Restaurante, el rubro de esa venta fue Confitería, pero cuando compro va todo a Restaurante».
 
-**Lo más barato, que se puede usar hoy sin tocar nada.** Hoy usted tiene las categorías «Restaurante» y «Hostería», y ningún producto las tiene asignadas. Si le asigna su categoría a cada uno de los 47 productos de venta (y a las materias primas), el reporte «Por categoría» que ya existe le muestra **las ventas por unidad de negocio**. No hace falta programar nada. (VERIFICADO: el formulario de producto ya tiene el selector de categoría, `src/app/(app)/catalogo/productos/producto-form.tsx:224-231`, y el reporte ya agrupa por categoría, `src/server/consultas/reportes/periodo.ts:256-269`.)
+**Lo más barato, que se puede usar hoy sin tocar nada.** Hoy usted tiene las categorías «Restaurante» y «Hostería», y ningún producto las tiene asignadas. Si le asigna su categoría a cada uno de los N productos de venta (y a las materias primas), el reporte «Por categoría» que ya existe le muestra **las ventas por unidad de negocio**. No hace falta programar nada. (VERIFICADO: el formulario de producto ya tiene el selector de categoría, `src/app/(app)/catalogo/productos/producto-form.tsx:224-231`, y el reporte ya agrupa por categoría, `src/server/consultas/reportes/periodo.ts:256-269`.)
 
 **Lo que sí requiere un cambio chico en la base.** Para tener rubros adentro de cada unidad, la categoría gana un dato opcional: **«pertenece a»**. Así, «Confitería» pertenece a «Restaurante». No se crea otro catálogo y no se usan las 5 tablas de centros de costos. Es una migración **aditiva y reversible**. **Requiere su autorización expresa** antes de aplicarla.
 
@@ -28,7 +28,7 @@
 |---|---|---|---|
 | N-1 | Tres niveles: sucursal (= centro de costos) → unidad de negocio → rubro | Dueño, 2026-11-06 (decisión 1) | CONFIRMADA |
 | N-2 | «El centro de costo es la sucursal». Las 5 tablas de centros de costos compiten con esto | Dueño, 2026-11-06 (decisión 2) | CONFIRMADA |
-| N-3 | En producción `CategoriaProducto` tiene «Restaurante» y «Hostería» (o sea, hoy hace de unidad) con 0 productos asignados; los 47 productos de venta no tienen categoría | Dueño, 2026-11-06 (decisión 3) | CONFIRMADA (dato de producción NO VERIFICADO por mí: no leí la base) |
+| N-3 | En producción `CategoriaProducto` tiene «Restaurante» y «Hostería» (o sea, hoy hace de unidad) con 0 productos asignados; los N productos de venta no tienen categoría | Dueño, 2026-11-06 (decisión 3) | CONFIRMADA (dato de producción NO VERIFICADO por mí: no leí la base) |
 | N-4 | El rubro sale **del producto que se vende** (de su categoría), no de la sección de la carta, porque hay ventas por fuera de la carta | Dueño, 2026-11-06 (decisiones 3 y 4) | CONFIRMADA |
 | N-5 | Un solo cliente por ahora; se mantiene el multiempresa | Dueño, 2026-11-06 (decisión 5) | CONFIRMADA |
 | N-6 | La caja diaria de hoy (planilla) tiene «cargos por rubro: restaurante, alojamiento, y en mostrador merchandising, productos regionales» | Dueño, 2026-11-04, `docs/diseno-caja-y-cobros-2026-11-04.md:57` | CONFIRMADA (VERIFICADO el texto) |
@@ -206,7 +206,7 @@ La unidad de una compra **se deduce** de la categoría de la materia prima. No s
 | | Leer el vigente (como hoy) | Congelar en la venta |
 |---|---|---|
 | Qué guarda | Nada nuevo | Una copia de `categoriaId` en cada línea de venta y de compra (`MovimientoStock` u `Operacion`, tablas que se usan muchísimo; VERIFICADO `schema.prisma:1095,1302`) |
-| Si corrijo la categoría de un producto | **Se corrige también el pasado.** Es lo que conviene hoy, que los 47 productos están sin asignar y se van a cargar después de vender | El pasado queda en «Pendiente de completar» para siempre, salvo que se reescriba |
+| Si corrijo la categoría de un producto | **Se corrige también el pasado.** Es lo que conviene hoy, que los N productos están sin asignar y se van a cargar después de vender | El pasado queda en «Pendiente de completar» para siempre, salvo que se reescriba |
 | Si muevo «Confitería» de Restaurante a otra unidad | Todo lo vendido en Confitería pasa a la otra unidad, **también los meses ya cerrados** | Lo viejo queda en Restaurante |
 | Costo | Cero | Una migración en las tablas más usadas, más el escritor en cada venta, compra y traspaso |
 | Antecedente | Los reportes ya leen así la categoría (`comun.ts:104`) | Así se congelan el precio y el nombre del ticket (`schema.prisma:2397-2399,2421`) |
@@ -345,7 +345,7 @@ Se crea con la implementación en `docs/oraculo-combinaciones-categoria-unidad-y
 
 | Etapa | Qué | Migración | Quién y cuánto |
 |---|---|---|---|
-| **E0 (hoy mismo)** | Usar «Restaurante» y «Hostería» como unidades: asignarle la suya a cada uno de los 47 productos de venta y a las materias primas, desde Catálogo › Productos. El reporte «Por categoría» ya muestra ventas por unidad | **Ninguna** y **sin código** | Usted o administración, producto por producto: no hay carga masiva (VERIFICADO: el formulario edita de a uno). Cuántas materias primas hay: NO VERIFICADO |
+| **E0 (hoy mismo)** | Usar «Restaurante» y «Hostería» como unidades: asignarle la suya a cada uno de los N productos de venta y a las materias primas, desde Catálogo › Productos. El reporte «Por categoría» ya muestra ventas por unidad | **Ninguna** y **sin código** | Usted o administración, producto por producto: no hay carga masiva (VERIFICADO: el formulario edita de a uno). Cuántas materias primas hay: NO VERIFICADO |
 | **E1** | «Sin categoría» pasa a «Pendiente de completar»; compras por unidad en el reporte del período; el formulario ofrece solo categorías activas (I7) | **Ninguna** | Código chico (Sonnet) |
 | **E2** | Dos niveles (`nivel`, `padreId`, `nivelDelPadre`); pantalla de Categorías por unidad; mover rubro con aviso del pasado; reportes por rubro y por unidad; herencia del food cost; S1 en permisos | **Sí, aditiva y reversible. Requiere autorización expresa** | Código (Sonnet) + migración |
 | **E3** | Resultado por unidad | Ninguna | Código |

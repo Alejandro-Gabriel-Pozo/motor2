@@ -14,13 +14,13 @@ const BASE = {
   PLATAFORMA_CLAVE_TOTP: randomBytes(32).toString("base64"),
   PLATAFORMA_URL_APP: "https://zuluhub.ejemplo.test",
 };
-const ADICIONAL = [{ id: "stockhneuquen", nombre: "Stock Neuquén", urlApp: "https://stock.ejemplo.test" }];
+const ADICIONAL = [{ id: "empresab", nombre: "Empresa B", urlApp: "https://stock.ejemplo.test" }];
 const CON_ADICIONAL = {
   ...BASE,
   PLATAFORMA_INSTALACION_ID: "zuluhub",
   PLATAFORMA_INSTALACION_NOMBRE: "Zuluhub",
   PLATAFORMA_INSTALACIONES_ADICIONALES: JSON.stringify(ADICIONAL),
-  PLATAFORMA_DATABASE_URL_STOCKHNEUQUEN: url("ep-stock.c-2.us-west-2.aws.neon.tech", "neondb", ROL_DE_PLATAFORMA, "clave-secreta-dos"),
+  PLATAFORMA_DATABASE_URL_EMPRESAB: url("ep-stock.c-2.us-west-2.aws.neon.tech", "neondb", ROL_DE_PLATAFORMA, "clave-secreta-dos"),
 };
 const SOLO_DATABASE_URL = { DATABASE_URL: url("ep-dueno.neon.tech", "neondb", "motor2", "clave-del-duenio") };
 
@@ -40,12 +40,12 @@ describe("resolverConexionDePlataforma", () => {
   });
 
   it("con --instalacion de una adicional, resuelve a SU conexión, no a la de la principal; el actor se verifica en la base de identidad (la principal)", () => {
-    const c = resolverConexionDePlataforma(CON_ADICIONAL, "stockhneuquen");
+    const c = resolverConexionDePlataforma(CON_ADICIONAL, "empresab");
     expect(c).toEqual({
       origen: "instalacion",
-      id: "stockhneuquen",
-      nombre: "Stock Neuquén",
-      databaseUrl: CON_ADICIONAL.PLATAFORMA_DATABASE_URL_STOCKHNEUQUEN,
+      id: "empresab",
+      nombre: "Empresa B",
+      databaseUrl: CON_ADICIONAL.PLATAFORMA_DATABASE_URL_EMPRESAB,
       // Mutación: devolver `instalacion.databaseUrl` también como identidad (verificar al administrador en la base que se opera) pone este test en rojo.
       identidadDatabaseUrl: CON_ADICIONAL.PLATAFORMA_DATABASE_URL,
     });
@@ -53,10 +53,10 @@ describe("resolverConexionDePlataforma", () => {
 
   it("un id inexistente NO cae en la principal: falla nombrando el id pedido y los ids configurados", () => {
     // Mutación: `instalacionPorId(lista, id) ?? lista[0]` pone este test en rojo.
-    const m = mensaje(CON_ADICIONAL, "neuquen");
-    expect(m).toContain("neuquen");
+    const m = mensaje(CON_ADICIONAL, "norte");
+    expect(m).toContain("norte");
     expect(m).toContain("zuluhub");
-    expect(m).toContain("stockhneuquen");
+    expect(m).toContain("empresab");
   });
 
   it.each([["vacío", ""], ["solo espacios", "   "]])("--instalacion %s pide un id", (_n, id) => {
@@ -72,7 +72,7 @@ describe("resolverConexionDePlataforma", () => {
     const m = mensaje(CON_ADICIONAL, undefined);
     expect(m).toMatch(/--instalacion/);
     expect(m).toContain("zuluhub");
-    expect(m).toContain("stockhneuquen");
+    expect(m).toContain("empresab");
   });
 
   it("sin --instalacion y sin instalaciones adicionales, usa PLATAFORMA_DATABASE_URL (comportamiento de siempre) y nombra a la instalación como la consola (por defecto `principal`)", () => {
@@ -123,7 +123,7 @@ describe("resolverConexionDePlataforma", () => {
 
   it("ningún mensaje de error repite una clave de conexión", () => {
     const mensajes = [
-      mensaje(CON_ADICIONAL, "neuquen"),
+      mensaje(CON_ADICIONAL, "norte"),
       mensaje(CON_ADICIONAL, undefined),
       mensaje({ ...CON_ADICIONAL, PLATAFORMA_CLAVE_TOTP: undefined }, "zuluhub"),
     ];
@@ -136,10 +136,10 @@ describe("resolverConexionDePlataforma", () => {
 
 describe("describirConexion", () => {
   it("nombra la instalación (id y nombre), nunca una URL", () => {
-    const c = resolverConexionDePlataforma(CON_ADICIONAL, "stockhneuquen");
+    const c = resolverConexionDePlataforma(CON_ADICIONAL, "empresab");
     const texto = describirConexion(c);
-    expect(texto).toContain("stockhneuquen");
-    expect(texto).toContain("Stock Neuquén");
+    expect(texto).toContain("empresab");
+    expect(texto).toContain("Empresa B");
     expect(texto).not.toContain("clave-secreta-dos");
   });
 

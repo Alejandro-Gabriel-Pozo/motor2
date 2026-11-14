@@ -189,7 +189,7 @@ export function NavegacionCarta({ children, paginas, hrefVolver, volver, colorIc
                     {redesSociales.map((r) => {
                       const Icono = ICONO_POR_RED[r.id];
                       return (
-                        <a key={r.id} href={r.href} target="_blank" rel="noopener noreferrer" aria-label={r.label} className={`flex h-10 w-10 items-center justify-center rounded-full transition-opacity hover:opacity-100${colorIconos ? "" : " opacity-55"}`} style={colorIconos ? { color: colorIconos } : undefined}>
+                        <a key={r.id} href={r.href} target="_blank" rel="noopener noreferrer" aria-label={r.label} className={`flex h-11 w-11 items-center justify-center rounded-full transition-opacity hover:opacity-100${colorIconos ? "" : " opacity-55"}`} style={colorIconos ? { color: colorIconos } : undefined}>
                           <Icono />
                         </a>
                       );
@@ -235,7 +235,7 @@ export function NavegacionCarta({ children, paginas, hrefVolver, volver, colorIc
               {redesSociales.map((r) => {
                 const Icono = ICONO_POR_RED[r.id];
                 return (
-                  <a key={r.id} href={r.href} target="_blank" rel="noopener noreferrer" aria-label={r.label} className={`flex h-8 w-8 items-center justify-center transition-opacity hover:opacity-100${colorIconos ? "" : " opacity-40"}`} style={colorIconos ? { color: colorIconos } : undefined}>
+                  <a key={r.id} href={r.href} target="_blank" rel="noopener noreferrer" aria-label={r.label} className={`flex h-11 w-11 items-center justify-center transition-opacity hover:opacity-100${colorIconos ? "" : " opacity-40"}`} style={colorIconos ? { color: colorIconos } : undefined}>
                     <Icono />
                   </a>
                 );
