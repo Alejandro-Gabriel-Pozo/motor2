@@ -46,7 +46,7 @@ const esquema = z.object({
   // Cómo se llama la instalación principal en las URLs y en el selector (por defecto `principal`).
   PLATAFORMA_INSTALACION_ID: z.string().regex(ID_DE_INSTALACION, "minúsculas y dígitos, 2 a 30 caracteres, empieza con una letra").optional(),
   PLATAFORMA_INSTALACION_NOMBRE: z.string().trim().min(1).max(60).optional(),
-  // Las demás instalaciones: un JSON SIN secretos `[{"id":"stockhneuquen","nombre":"Stock Neuquén","urlApp":"https://…"}]`; cada una con su `PLATAFORMA_DATABASE_URL_<ID EN MAYÚSCULAS>`.
+  // Las demás instalaciones: un JSON SIN secretos `[{"id":"empresab","nombre":"Empresa B","urlApp":"https://…"}]`; cada una con su `PLATAFORMA_DATABASE_URL_<ID EN MAYÚSCULAS>`.
   PLATAFORMA_INSTALACIONES_ADICIONALES: z.string().optional(),
 });
 

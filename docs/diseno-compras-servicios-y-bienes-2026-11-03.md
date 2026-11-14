@@ -16,7 +16,7 @@ Fuentes leídas (código de `main` en `3836bf97` y planes):
 - `prisma/schema.prisma`, `src/core/catalogo/no-comestibles.ts`, `src/core/reportes/` (`comun.ts`, `periodo-compras.ts`, `costos.ts`, `valuacion.ts`), `src/core/permisos/acciones.ts`, `src/core/modulos/catalogo.ts`, `prisma/migrations/20261016111000_renglon_sin_stock`, `prisma/migrations/20261016114000_permisos_gastos`.
 - `docs/diseno-circuito-de-abastecimiento-2026-10-27.md`, `docs/auditoria-circuito-de-abastecimiento-2026-10-27.md`, `docs/diseno-factura-de-proveedor-e3a-2026-10-27.md`.
 - `motor2-docs/_planes/`: `plan-unificado-gastos-compras-y-ventas.md` (§1, §6.bis, §6.ter, §6.quinquies, §6.sexies C), `plan-distribucion-de-costos-y-servicios.md`, `grounding-app-main-categorias-servicios-recursos-2026-10-03.md` y su nota, `grounding-dolibarr-activos-fijos.md` (§16, §17) y adendas 1 a 3, `_decisiones-del-dueno-2026-10-06.md` (Actualizaciones 12, 16, 17, 19).
-- Datos de producción (informados, no consultados): 0 materias primas, 0 insumos, 0 proveedores, 0 vínculos, 47 productos de venta. **No hay nada que migrar.**
+- Datos de producción (informados, no consultados): 0 materias primas, 0 insumos, 0 proveedores, 0 vínculos, N productos de venta. **No hay nada que migrar.**
 
 ---
 

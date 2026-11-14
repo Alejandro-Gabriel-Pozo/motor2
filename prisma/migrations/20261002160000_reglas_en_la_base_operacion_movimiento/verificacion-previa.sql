@@ -1,5 +1,5 @@
 -- Verificación previa de 20261002160000_reglas_en_la_base_operacion_movimiento. SOLO LEE (un SELECT).
--- Se corre con el rol dueño (el que migra) en CADA base (zuluhub, stockhneuquen) ANTES de aprobar la migración:
+-- Se corre con el rol dueño (el que migra) en CADA base (zuluhub, empresab) ANTES de aprobar la migración:
 --   psql "<DIRECT_URL de la base>" -f prisma/migrations/20261002160000_reglas_en_la_base_operacion_movimiento/verificacion-previa.sql
 -- Cada fila es una regla; `fuera_de_regla` tiene que ser 0 en todas. Si alguna da más de 0, la migración fallaría en ESA base (el VALIDATE
 -- revertiría todo): no se aprueba hasta decidir qué hacer con esas filas (corregirlas o sacar esa regla de la migración).

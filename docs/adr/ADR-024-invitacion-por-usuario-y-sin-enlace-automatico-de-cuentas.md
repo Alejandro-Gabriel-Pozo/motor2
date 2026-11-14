@@ -9,7 +9,7 @@
 Hasta E8, `agregarOActualizarUsuario` creaba el `User` por email **antes** de que la persona entrara, y Auth.js lo vinculaba solo al primer ingreso con Google gracias a
 `allowDangerousEmailAccountLinking: true`. Eso significa que quien controle una cuenta de Google con ese email entra como ese usuario, sin que nadie le haya demostrado nada: el
 correo no se verificó por un canal propio y el usuario precargado queda a disposición de cualquiera que lo adivine. Con varias empresas en la misma base el riesgo crece. Medido
-el 2026-10-05: zuluhub 0 precargados sin Google; stockhneuquen 1 activo sin Google.
+el 2026-10-05: zuluhub 0 precargados sin Google; empresab 1 activo sin Google.
 
 ## Decisión
 
@@ -79,7 +79,7 @@ reescribe por tipo: la app inserta, rota, revoca y acepta solo lo suyo; **la pla
 
 - **Requisito previo en cada app de Vercel:** `CORREO_AVISOS_*` (Resend) y `AUTH_URL` (fija, ADR-007). Sin ellos las invitaciones quedan «sin enviar» y nadie puede ser invitado.
 - **Orden de despliegue:** primero la consola (ya filtra por `rolEmpresa = 'gerente'`), después la migración en cada base, después la app.
-- **Quien siga precargado sin invitación queda afuera** al desplegar: antes, `medir-precargados` y «Invitar a vincular» a cada uno (hoy, 1 en stockhneuquen).
+- **Quien siga precargado sin invitación queda afuera** al desplegar: antes, `medir-precargados` y «Invitar a vincular» a cada uno (hoy, 1 en empresab).
 - **Cuenta de Google rehecha (mismo email, otro identificador):** queda bloqueada hasta que soporte actúe (ver el runbook).
 - **El gerente ve a la persona invitada en «Invitaciones pendientes», no en la tabla de usuarios**, hasta que acepta. Hay que explicarlo en la ayuda.
 - **Pendientes explícitos:** mudar `crearEmpresa` (fixture de pruebas que todavía precarga) a `test/setup`; revocar las pendientes al apagar una cuenta; que la app pueda saber si un email es de un

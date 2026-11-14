@@ -5,12 +5,12 @@
 
 ## 0. ACTUALIZACIÓN (2026-10-05, tarde): esto reemplaza lo viejo de §4, §5 y §6
 
-- **La migración de E8 ya está aplicada en las dos bases de producción**, con respaldo, ensayo y verificación (zuluhub: rama `vercel-dev`, no `main`; stockhneuquen: `main`). Respaldos: `respaldo-pre-e8-zuluhub-2026-10-05` y
-  `respaldo-pre-e8-stockhneuquen-2026-10-05`. La app desplegada sigue con el código anterior, que no usa las tablas nuevas. En zuluhub se borró la rama de preview `preview/ccr-32ed95d2-vsvc5a` para liberar el límite de ramas de Neon.
+- **La migración de E8 ya está aplicada en las dos bases de producción**, con respaldo, ensayo y verificación (zuluhub: rama `vercel-dev`, no `main`; empresab: `main`). Respaldos: `respaldo-pre-e8-zuluhub-2026-10-05` y
+  `respaldo-pre-e8-empresab-2026-10-05`. La app desplegada sigue con el código anterior, que no usa las tablas nuevas. En zuluhub se borró la rama de preview `preview/ccr-32ed95d2-vsvc5a` para liberar el límite de ramas de Neon.
 - **La consola única para las dos instalaciones está implementada** (ADR-025): la instalación va en la ruta (`/instalaciones/<id>/empresas…`), una base por instalación, identidad aparte y cada fila de auditoría lleva la instalación.
   Hay **un solo proyecto de Vercel** de la consola; sus variables y su configuración están en `docs/guion-produccion-2026-10-05.md` (§3 y §4, con los nombres exactos). Sin migraciones. El CI crea una segunda base (`motor2_b_e2e`).
 - **Lo que sigue siendo del dueño** (necesita terminal o panel): crear el rol `motor2_plataforma` en cada base de Neon (guion §2), el proyecto de Vercel de la consola con sus variables (guion §3–§4), el primer administrador (guion §5),
-  y las variables `AUTH_URL` + `CORREO_AVISOS_*` en los proyectos de la **app** de cada instalación y su redeploy (guion §6), más «Invitar a vincular» a la persona precargada de stockhneuquen.
+  y las variables `AUTH_URL` + `CORREO_AVISOS_*` en los proyectos de la **app** de cada instalación y su redeploy (guion §6), más «Invitar a vincular» a la persona precargada de empresab.
 - Los 4 pendientes menores de la consola única (ADR-025) quedaron resueltos (mismo día, sesión aparte): `crear-primer-admin` revisa también las bases adicionales, aviso de CUIT repetido entre instalaciones, `--instalacion` en
   `modulos-empresa`/`politica-empresa`, y el aviso de instalación atrasada en migraciones (variante M: lee `_prisma_migrations`, necesita un `GRANT SELECT` adicional —requiere autorización expresa— en cada base de
   producción; sin él, el código queda inerte y el aviso no aparece). De paso se corrigió un riesgo real: varias consultas de la consola sin `select` explícito que, contra una base un paso atrás en migraciones, rompían el
@@ -48,16 +48,16 @@ C2 = `crearSucursalConAdmin` exige un primer admin que ya sea miembro. Solicitud
 
 ## 4. Estado de producción (Neon / Vercel)
 
-- Dos instalaciones: **zuluhub** (multiempresa, 2 empresas activas; proyecto Neon `solitary-queen-72133594`, rama `br-fragrant-voice-b4buzhky`) y **stockhneuquen** (una empresa;
-  `morning-field-10188884`, rama `br-steep-wind-af8iop63`). Archivos de entorno locales: `.env.vercel.zuluhub` y `.env.vercel.empresa` (no se commitean ni se imprimen).
+- Dos instalaciones: **zuluhub** (multiempresa, 2 empresas activas; proyecto Neon `<proyecto-neon-B>`, rama `<rama-neon-C>`) y **empresab** (una empresa;
+  `<proyecto-neon-A>`, rama `<rama-neon-K>`). Archivos de entorno locales: `.env.vercel.zuluhub` y `.env.vercel.empresa` (no se commitean ni se imprimen).
 - Migraciones ya aplicadas en ambas bases de producción: `20261010120000_invitaciones` (E5) y `20261011120000_app_empresa_actual_sin_respaldo` (ADR-022).
 - **NO aplicada en producción: `20261012120000_invitacion_de_usuario` (E8).** Solo está en `motor2_dev` y `motor2_e2e` locales. Aplicarla pide **autorización expresa**, rama de
-  respaldo y rama de ensayo en Neon (nunca ensayar con el Preview de stockhneuquen: comparte la base de producción).
+  respaldo y rama de ensayo en Neon (nunca ensayar con el Preview de empresab: comparte la base de producción).
 - El rol `motor2_plataforma` **no existe** todavía en ninguna base de Neon.
-- Medición del 2026-10-05 (`npm run medir-precargados`): zuluhub 1 usuario, todos con Google, 0 precargados; stockhneuquen 2 usuarios, **1 precargado activo sin Google** (hay que
+- Medición del 2026-10-05 (`npm run medir-precargados`): zuluhub N usuario(s), todos con Google, 0 precargados; empresab N usuarios, **1 precargado activo sin Google** (hay que
   mandarle «Invitar a vincular» antes de que el cambio de E8 lo deje afuera; hoy nunca entró, así que no se corta un uso real).
 - ADR-022 se migró el 2026-10-04: vigilar Sentry unas 48 horas (`P2011`/`23502` sobre `empresaId`, `42501`).
-- Respaldos de Neon conservados: `respaldo-pre-e5-adr022-zuluhub-2026-10-04` y `respaldo-pre-e5-adr022-stockhneuquen-2026-10-04`.
+- Respaldos de Neon conservados: `respaldo-pre-e5-adr022-zuluhub-2026-10-04` y `respaldo-pre-e5-adr022-empresab-2026-10-04`.
 
 ## 5. Qué falta para estar live (en orden)
 
@@ -73,7 +73,7 @@ C2 = `crearSucursalConAdmin` exige un primer admin que ya sea miembro. Solicitud
 2. Solo lectura antes: `node scripts/operaciones/con-env.mjs .env.vercel.<zuluhub|empresa> -- npx prisma migrate status` y `… -- npm run medir-precargados`.
 3. Orden por base (zuluhub primero): desplegar la **consola** → rama de respaldo + rama de ensayo con `migrate deploy` → comprobar privilegios y triggers → `… -- npm run migrar:aprobar`
    → desplegar la **app**. Borrar la rama de ensayo al terminar.
-4. «Invitar a vincular» a la persona de stockhneuquen (Administración → Usuarios) y prueba de humo con una cuenta real: alta de una persona nueva → mail → enlace → Google → Aceptar.
+4. «Invitar a vincular» a la persona de empresab (Administración → Usuarios) y prueba de humo con una cuenta real: alta de una persona nueva → mail → enlace → Google → Aceptar.
 5. En cada app de Vercel conviene borrar `BOOTSTRAP_ADMIN_EMAILS` (ya no se usa).
 
 ## 6. Lo que sigue en el código: una consola para las dos instalaciones

@@ -41,7 +41,7 @@ export function rechazadaPorElInterruptor(interruptor: Interruptor): boolean {
 
 /**
  * La carta sembrada (nombres y precios reales del dueño): sección «Bebidas» con Café $4.000, Capuccino $8.000 y la Cerveza Patagonia $14.000 (con contenido visible);
- * la Cerveza Huinganco $14.000 NO tiene contenido de carta; sección «Postres» con Brownie $10.000. Con datos: el género «Agua» en el Café, el género «Huinganco» en el ítem agrupado
+ * la Cerveza Cordillera $14.000 NO tiene contenido de carta; sección «Postres» con Brownie $10.000. Con datos: el género «Agua» en el Café, el género «Cordillera» en el ítem agrupado
  * «Cerveza» (que agrupa las dos cervezas), y un género «Agua saborizada» sin productos.
  */
 export function seccionesDeLaCartaPublica(interruptor: Interruptor, datos: Datos): Record<string, string[]> {
@@ -54,21 +54,21 @@ export function seccionesDeLaCartaPublica(interruptor: Interruptor, datos: Datos
 
 /** R3/R4: las opciones del ítem agrupado «Cerveza» en la carta pública (solo existe encendido y con datos). */
 export function opcionesDelAgrupadoEnLaCartaPublica(interruptor: Interruptor, datos: Datos): string[] | null {
-  return interruptor === "encendido" && datos === "con" ? ["Cerveza Huinganco", "Cerveza Patagonia"] : null;
+  return interruptor === "encendido" && datos === "con" ? ["Cerveza Cordillera", "Cerveza Patagonia"] : null;
 }
 
 /** Lo que dibuja el selector del POS, por sección: `carpeta:<género>{…}`, `agrupado:<ítem>[opciones]` o el nombre del producto suelto. */
 export function seccionesDelPos(interruptor: Interruptor, datos: Datos): Record<string, string[]> {
   const conEstructura = interruptor === "encendido" && datos === "con";
   return {
-    Bebidas: conEstructura ? ["Capuccino", "carpeta:Agua{Café}", "carpeta:Huinganco{agrupado:Cerveza[Cerveza Huinganco,Cerveza Patagonia]}"] : ["Café", "Capuccino", "Cerveza Patagonia"],
+    Bebidas: conEstructura ? ["Capuccino", "carpeta:Agua{Café}", "carpeta:Cordillera{agrupado:Cerveza[Cerveza Cordillera,Cerveza Patagonia]}"] : ["Café", "Capuccino", "Cerveza Patagonia"],
     Postres: ["Brownie"],
   };
 }
 
 /** Los productos sembrados que el POS deja en «Fuera de carta» (los demás productos del salón de prueba no cuentan). */
 export function fueraDeCartaDelPos(interruptor: Interruptor, datos: Datos): string[] {
-  return interruptor === "encendido" && datos === "con" ? [] : ["Cerveza Huinganco"];
+  return interruptor === "encendido" && datos === "con" ? [] : ["Cerveza Cordillera"];
 }
 
 /**

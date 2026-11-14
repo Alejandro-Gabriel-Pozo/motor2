@@ -1,5 +1,5 @@
 -- Verificación previa de 20261003120000_extensiones_btree_gist_trgm_unaccent. SOLO LEE (un SELECT).
--- Se corre con el rol dueño (el que migra) en CADA base (zuluhub, stockhneuquen) ANTES de aprobar la migración:
+-- Se corre con el rol dueño (el que migra) en CADA base (zuluhub, empresab) ANTES de aprobar la migración:
 --   psql "<DIRECT_URL de la base>" -f prisma/migrations/20261003120000_extensiones_btree_gist_trgm_unaccent/verificacion-previa.sql
 -- `disponible` tiene que ser true en las tres (la base ofrece la extensión) y `instalada` dice si ya estaba (entonces la migración no hace nada).
 

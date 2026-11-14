@@ -14,7 +14,7 @@ mantener para siempre); el costo es este recordatorio manual.
 - Postgres local corriendo (`docker compose up -d`, ver README) — MISMO servidor que usa `motor2_dev`, puerto 5432,
   usuario `motor2`/`motor2`.
 - `motor2_dev` ya con el seed base corrido al menos una vez (`npm run db:seed`), y un `User` con el email
-  `alepogabriel@gmail.com` — el runbook de abajo crea uno en la base NUEVA si no existe, pero necesita saber cuál
+  `<correo-del-dueño>` — el runbook de abajo crea uno en la base NUEVA si no existe, pero necesita saber cuál
   email usar (está hardcodeado en `scripts/seed-demo-pizzeria-6-meses.ts`, `EMAIL_ADMIN`).
 - Nada de esto toca `motor2_dev` ni Neon en ningún paso hasta el §5 de acá abajo (Neon), que además necesita
   autorización expresa por separado.
@@ -57,7 +57,7 @@ Da roles/acciones + sucursal "Central" + las 5 unidades base — el mismo seed q
 ## 3. Usuario admin
 
 El ejecutor (`scripts/seed-demo-pizzeria-6-meses.ts`) necesita que YA exista un `User` con el email de
-`EMAIL_ADMIN` (`alepogabriel@gmail.com`) y membresía admin en "Central" — es quien da de alta "La Cuadra" y queda
+`EMAIL_ADMIN` (`<correo-del-dueño>`) y membresía admin en "Central" — es quien da de alta "La Cuadra" y queda
 como su primer admin. Si la base es nueva (recién creada en el §1), crearlo a mano:
 
 ```js
@@ -67,8 +67,8 @@ import { PrismaPg } from "@prisma/adapter-pg";
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: "postgresql://motor2:motor2@localhost:5432/motor2_demo" }) });
 const central = await prisma.sucursal.findUniqueOrThrow({ where: { nombre: "Central" } });
 const admin = await prisma.rol.findUniqueOrThrow({ where: { nombre: "admin" } });
-let user = await prisma.user.findUnique({ where: { email: "alepogabriel@gmail.com" } });
-if (!user) user = await prisma.user.create({ data: { email: "alepogabriel@gmail.com", name: "Alejandro" } });
+let user = await prisma.user.findUnique({ where: { email: "<correo-del-dueño>" } });
+if (!user) user = await prisma.user.create({ data: { email: "<correo-del-dueño>", name: "Alejandro" } });
 const yaTiene = await prisma.usuarioSucursal.findFirst({ where: { usuarioId: user.id, sucursalId: central.id } });
 if (!yaTiene) await prisma.usuarioSucursal.create({ data: { usuarioId: user.id, sucursalId: central.id, rolId: admin.id } });
 await prisma.$disconnect();
@@ -126,7 +126,7 @@ DIRECT_URL="postgresql://motor2:motor2@localhost:5432/motor2_demo" \
   npm run dev
 ```
 
-Entrar como `alepogabriel@gmail.com` (el login de Google real pide esa cuenta) y cambiar a la sucursal "La Cuadra"
+Entrar como `<correo-del-dueño>` (el login de Google real pide esa cuenta) y cambiar a la sucursal "La Cuadra"
 con el selector del encabezado. **No dejar el `.env` apuntando a `motor2_demo` por error** — al terminar, confirmar
 que `DATABASE_URL` vuelve a `motor2_dev` antes de seguir desarrollando.
 
@@ -136,7 +136,7 @@ Por diseño (§5 del plan), el seed NUNCA corrió contra Neon directo — a Neon
 en verde), aplicado a una rama NUEVA creada desde `main` (para heredar las migraciones con sus checksums), sin
 sembrar sobre la rama viva. Ejecutado con autorización expresa del usuario, paso a paso:
 
-- Rama nueva `demo-la-cuadra-6-meses-2026-09-22` (`br-sweet-term-aff8ggxs`), creada desde `main`.
+- Rama nueva `demo-la-cuadra-6-meses-2026-09-22` (`<rama-neon-L>`), creada desde `main`.
 - Migración de datos verificada completa y correcta (conteo de filas + integridad de FKs, 0 hallazgos).
 - Cutover de Vercel: `DATABASE_URL`/`DIRECT_URL` de Producción apuntados a la rama nueva (cambio manual del usuario
   en el dashboard — un cambio de variable de entorno no dispara redeploy solo, así que se forzó uno con un commit

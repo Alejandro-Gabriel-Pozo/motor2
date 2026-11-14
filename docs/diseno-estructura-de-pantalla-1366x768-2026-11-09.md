@@ -12,7 +12,7 @@ Estados: **CONFIRMADA** (dicha por el dueño) · **PROPUESTA** · **PENDIENTE** 
 
 Se midió con Chromium, sesión real de administrador, **90 pantallas de (app) y (pos)** (`next dev`, base local descartable) a 1366×768, 1280×720 y 390×844: alto del documento ÷ 768.
 
-**Datos de maqueta (declarados):** base local con una empresa «Maqueta Gastronomía», 2 sucursales (Varvarco, Centro), 17 materias primas con compra y proveedor (bife, nalga, papa, Jugo Fresli, etc.), 7 productos de venta con receta (Milanesa con papas fritas $18.000, Bife de chorizo, Jugo Fresli…), 7 grupos de opciones (Tamaño, Guarnición, Punto de cocción, Ingredientes incluidos, Adicionales, Salsa, Sabor del jugo) y una carta. **Producción tiene 0 recetas y 0 ventas; la maqueta no tiene ventas**: los reportes y listados con filas dependen del volumen real, así que su alto aquí es un piso, no un techo. Nada de esto toca producción.
+**Datos de maqueta (declarados):** base local con una empresa «Maqueta Gastronomía», 2 sucursales (Norte, Centro), 17 materias primas con compra y proveedor (bife, nalga, papa, Jugo Natural, etc.), 7 productos de venta con receta (Milanesa con papas fritas $18.000, Bife de chorizo, Jugo Natural…), 7 grupos de opciones (Tamaño, Guarnición, Punto de cocción, Ingredientes incluidos, Adicionales, Salsa, Sabor del jugo) y una carta. **Producción tiene 0 recetas y 0 ventas; la maqueta no tiene ventas**: los reportes y listados con filas dependen del volumen real, así que su alto aquí es un piso, no un techo. Nada de esto toca producción.
 
 **Resultado:** 45 de 89 pantallas (51 %) miden más de una pantalla a 1366×768; 44 caben en una. Ranking de las más largas (1366×768):
 
