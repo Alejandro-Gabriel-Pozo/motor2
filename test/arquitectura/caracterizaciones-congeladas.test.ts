@@ -673,6 +673,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Marca del portal, PR de lectura (paso 9; decisiones del dueño 2026-11-13: «Queda neutro; la marca solo en bordes y flechas (Recomendada)», «Siguen transparentes (Recomendada)»): el catálogo del portal suma `portal_color_marca` y el marcador `portal_marca_derivada` (nacen vacíos) y la lectura de la carta pública los trae en `valores` del portal. Cambia SOLO eso: dos líneas con `\"\"` en el portal resuelto; ningún conteo de consultas ni ningún otro valor. Sin el marcador el portal se ve exactamente igual (lo prueba test/carta/marca-sin-cambio.test.ts con el portal real).",
       },
+      {
+        blob: "a5abd7ca14257c85a6ed2eddfc74c6786605ff1e",
+        // El commit PADRE de este (609b09fc, «Nombre público de la empresa en la carta, PR 1») es el último antes de la regeneración; el cambio es del mismo PR 1.
+        commit: "609b09fc",
+        motivo:
+          "Nombre público de la empresa en la carta, PR 1 (decisión del dueño 2026-11-14: «Configurable por empresa, como Pedernal (Recomendada)»; construir: «Sí, construí el nombre público»): el catálogo del portal suma la clave `portal_nombre_publico` (nace vacía) y la lectura de la carta pública la trae en `valores` del portal. Cambia SOLO eso: UNA línea con `\"\"` en el portal resuelto; ningún conteo de consultas ni ningún otro valor. Sin nombre cargado el portal se ve exactamente igual (lo prueba test/carta/marca-sin-cambio.test.ts con el portal real).",
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {

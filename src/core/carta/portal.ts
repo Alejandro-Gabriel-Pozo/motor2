@@ -1,4 +1,5 @@
 import { canalesDeMarcaHex, marcaGuardadaLegible } from "./marca-derivada";
+import { LARGO_MAXIMO_NOMBRE_PUBLICO, validarNombrePublico } from "./nombre-publico";
 import { validarValorDefinicion, type TipoValorTema } from "./tema";
 import type { Resultado } from "./validaciones";
 
@@ -39,6 +40,8 @@ const ALTO_TARJETA_POR_DEFECTO = 6;
 
 /** El orden es el del formulario: por zona, y dentro de cada zona como se lee el portal. */
 export const CLAVES_PORTAL_V1 = [
+  // Nombre público de la empresa (`docs/diseno-nombre-publico-de-la-empresa-en-la-carta-2026-11-14.md`): nace vacío (sin él, los títulos de la carta salen neutros). Lo valida `validarNombrePublico` (NFC, 1 a 60, sin `<` `>`).
+  { clave: "portal_nombre_publico", zona: "Encabezado y títulos", etiqueta: "Nombre público de la empresa (títulos y vista previa al compartir)", defaultPortal: "", tipo: "texto", maximo: LARGO_MAXIMO_NOMBRE_PUBLICO },
   { clave: "empresa_logo_url", zona: "Encabezado y títulos", etiqueta: "URL del logo de la empresa", defaultPortal: "", ...IMAGEN },
   { clave: "portal_header_bg", zona: "Encabezado y títulos", etiqueta: "Fondo del encabezado", defaultPortal: "", ...COLOR },
   { clave: "portal_header_color", zona: "Encabezado y títulos", etiqueta: "Color del texto del encabezado", defaultPortal: "", ...COLOR },
@@ -136,6 +139,7 @@ export function validarValorPortal(clave: string, valor: unknown): Resultado<str
   if (typeof valor !== "string") return { ok: false, mensaje: "tiene que ser texto" };
   const v = valor.trim();
   if (!v) return { ok: true, valor: null };
+  if (clave === "portal_nombre_publico") return validarNombrePublico(v);
   if (d.tipo === "fraccion") return validarFraccion(v);
   if (d.tipo === "proporcion") return validarProporcion(v);
   return validarValorDefinicion(d.tipo === "imagen" ? extraerUrlImagen(v) : v, d);

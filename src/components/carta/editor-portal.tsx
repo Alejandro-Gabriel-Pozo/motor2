@@ -235,11 +235,16 @@ const AYUDA: Partial<Record<DefinicionClavePortal["tipo"], string>> = {
   porcentaje: "Porcentaje del alto del mapa (0 a 100). Cada sucursal puede tener su propio alto en su posición.",
 };
 
+/** La ayuda propia de una clave (gana a la del tipo). */
+const AYUDA_POR_CLAVE: Readonly<Record<string, string>> = {
+  portal_nombre_publico: "Es lo que aparece junto al nombre de la carta en la pestaña del navegador y en Google. Vacío = sin nombre.",
+};
+
 function CampoDeClave({ d, inicial, actual, aviso }: { d: DefinicionClavePortal; inicial: string; actual: string; aviso: string | null }) {
   const id = `portal-${d.clave}`;
   const r = actual.trim() ? validarValorPortal(d.clave, actual) : null;
   const error = r && !r.ok ? `No es válido: ${r.mensaje}.` : undefined;
-  const ayuda = AYUDA[d.tipo];
+  const ayuda = AYUDA_POR_CLAVE[d.clave] ?? AYUDA[d.tipo];
   const placeholder = d.defaultPortal || "sin valor";
   // El aviso del mapa (solo la imagen del fondo) es un texto más de la ayuda del campo: el lector de pantalla lo lee al entrar (`aria-describedby`) y, como `role="status"`, también cuando aparece.
   const ayudaConAviso =
