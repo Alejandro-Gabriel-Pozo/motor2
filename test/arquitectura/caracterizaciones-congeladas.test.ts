@@ -252,6 +252,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Pagos X0 (ADITIVO; clave nueva): `ACCIONES 129 a 130` y las dos filas `PERMISO` de `declarar_pago_compra` (admin ver=true editar=true; operador sin Ver ni Editar). Revisado con `git diff`: solo se suman esas tres líneas; ningún otro permiso ni rol cambia.",
       },
+      {
+        blob: "2980410872d06ad79fb48a8e54e15ec259570742",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `7320b3f2` («E1: mensaje genérico de Pedernal para nombres que no cumplen y mensajes del CUIT de Pedernal»).
+        commit: "7320b3f2",
+        motivo:
+          "E1 (paridad con Pedernal; CAMBIA COMPORTAMIENTO, decisión del dueño, 2026-11-15, chat con el orquestador, relatada: «Como Pedernal (Recomendada)» para los mensajes del CUIT): validarCuit usa los textos de Pedernal (apps/plataforma/logica/errores-de-plataforma.ts:84-88 de ZuluHub-ERP). Cambian SOLO la línea de mensaje de CUIT (formato); el resto de la huella queda idéntico.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-aceptacion.golden.txt": {
@@ -259,7 +266,15 @@ const CONGELADAS: Record<string, Congelada> = {
     desde: "94011900",
     motivo:
       "Huella de aceptación (B3-1, O.34): aceptar gerente y aceptar usuario con todos sus rechazos (texto y orden), éxito y segundo uso. Red de B3: mudar las dos aceptaciones a casos de uso no cambia nada.",
-    regeneraciones: [],
+    regeneraciones: [
+      {
+        blob: "2d7ee80ddf36acc817cdc417274efd2ea3ee2ebf",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `7320b3f2` («E1: mensaje genérico de Pedernal para nombres que no cumplen y mensajes del CUIT de Pedernal»).
+        commit: "7320b3f2",
+        motivo:
+          "E1 (paridad con Pedernal; CAMBIA COMPORTAMIENTO, decisión del dueño, 2026-11-15, chat con el orquestador, relatada: «Como Pedernal (Recomendada)» para los mensajes del CUIT): validarCuit usa los textos de Pedernal (apps/plataforma/logica/errores-de-plataforma.ts:84-88 de ZuluHub-ERP). Cambian SOLO las dos líneas de mensaje de CUIT (formato y dígito verificador); el resto de la huella queda idéntico.",
+      },
+    ],
   },
   "test/movimientos/caracterizacion/venta-matriz.golden.txt": {
     blob: "5166de7e5b4db922c884b99e381dbfd52b3021b0",

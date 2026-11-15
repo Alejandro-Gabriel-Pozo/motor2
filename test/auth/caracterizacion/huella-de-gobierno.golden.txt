@@ -686,7 +686,7 @@
   SUCURSALES Casa central/true
   ACCIONES 130
 ### 7a. Aceptar con un CUIT inválido
-  resultado: {"ok":false,"mensaje":"El CUIT no tiene un formato válido: son 11 dígitos, por ejemplo 30-12345678-1."}
+  resultado: {"ok":false,"mensaje":"El CUIT no tiene un formato válido. Escribilo con 11 números."}
   EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F llevaIvaDeCompras=false moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires
   EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
   INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=dueno@gmail.com empresaId=F enviadaEn=null estado=PENDIENTE hashToken=<enmascarado> id=inv1 invitadoPorId=null revocadaEn=null rolEmpresa=gerente venceEn=<enmascarado>

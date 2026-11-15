@@ -97,7 +97,7 @@
   USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc2 notas=null rolId=rolAdmin sucursalId=norte usuarioId=gerente
   USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc3 notas=null rolId=rolAdmin sucursalId=central usuarioId=admin2
 ### G10. CUIT con formato inválido
-  resultado: {"ok":false,"mensaje":"El CUIT no tiene un formato válido: son 11 dígitos, por ejemplo 30-12345678-1."}
+  resultado: {"ok":false,"mensaje":"El CUIT no tiene un formato válido. Escribilo con 11 números."}
   INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=dueno@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv1 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
   INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=dueno@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv2 invitadoPorId=null revocadaEn=<enmascarado> rolEmpresa=gerente venceEn=<enmascarado>
   INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=dueno@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv3 invitadoPorId=null revocadaEn=<enmascarado> rolEmpresa=gerente venceEn=<enmascarado>
@@ -111,7 +111,7 @@
   USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc2 notas=null rolId=rolAdmin sucursalId=norte usuarioId=gerente
   USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc3 notas=null rolId=rolAdmin sucursalId=central usuarioId=admin2
 ### G11. CUIT con el dígito verificador mal
-  resultado: {"ok":false,"mensaje":"El CUIT no es válido: el dígito verificador no coincide."}
+  resultado: {"ok":false,"mensaje":"El CUIT no es válido. Revisá los números."}
   INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=dueno@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv1 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
   INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=dueno@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv2 invitadoPorId=null revocadaEn=<enmascarado> rolEmpresa=gerente venceEn=<enmascarado>
   INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=dueno@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv3 invitadoPorId=null revocadaEn=<enmascarado> rolEmpresa=gerente venceEn=<enmascarado>
