@@ -24,7 +24,7 @@ export interface EntradaProducto {
   unidadCompraId?: string | null;
   unidadStockId: string;
   factorConversion: number;
-  observaciones?: string;
+  observaciones?: string | null;
   insumoId?: string | null;
   precioVenta?: number;
   pasoVenta?: number | null;
@@ -45,12 +45,19 @@ export interface EntradaProducto {
 export type CampoSensibleDelProducto = "unidadCompraId" | "unidadStockId" | "factorConversion" | "precioVenta";
 
 /**
+ * Edición parcial de un producto (decisión de Pedernal DEC-0356, 13/11/2026; el dueño pidió ser iguales a Pedernal el 2026-11-13): además de los cuatro sensibles, el nombre y el tipo también pueden faltar en una edición.
+ * Un campo AUSENTE (`undefined`) NO se toca y conserva lo guardado; `null` o vacío enviado a propósito SÍ lo borra. Todos los campos del producto están declarados en `TRATAMIENTO_DE_AUSENTE`
+ * (server/lecturas/catalogo/completar-edicion-de-producto.ts): agregar uno acá sin declararlo ahí no compila.
+ */
+export type CampoAusenteEnLaEdicion = "nombre" | "tipo";
+
+/**
  * Los datos de una EDICIÓN (M.2-A4): como `EntradaProducto`, pero los cuatro campos sensibles son opcionales. «No viene» (`undefined`) es «queda como estaba»: el formulario abierto sin
  * `producto_campos_sensibles` no los manda (un input deshabilitado no viaja), y si mientras edita le dan la clave el servidor, con la clave, los completa igual con lo guardado. Distinto de `null` en
  * la unidad de compra, que es «sin unidad de compra» a propósito. El alta NO los acepta ausentes (`EntradaProducto`).
  */
-export type EntradaEdicionProducto = Omit<EntradaProducto, CampoSensibleDelProducto> &
-  Partial<Pick<EntradaProducto, CampoSensibleDelProducto>> & {
+export type EntradaEdicionProducto = Omit<EntradaProducto, CampoSensibleDelProducto | CampoAusenteEnLaEdicion> &
+  Partial<Pick<EntradaProducto, CampoSensibleDelProducto | CampoAusenteEnLaEdicion>> & {
     /**
      * El precio de venta que mostraba el formulario al abrirse (ola «precio y carta», Fase 2, paso A4). Si el precio que se guardaría es distinto del guardado, este tiene que ser el
      * guardado: si no, `PRECIO_DESACTUALIZADO` y no se guarda nada (también si no viene: falla cerrado). Si el precio no cambia, no se mira.

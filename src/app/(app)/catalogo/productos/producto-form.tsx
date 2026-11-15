@@ -170,7 +170,8 @@ export function ProductoForm({
             proveedorConsignacionId: esConsignacion ? proveedorConsignacionId || null : null,
             precioConsignacion: numeroDelCampo(String(form.get("precioConsignacion") ?? "")) ?? 0,
           }),
-          observaciones: texto(form.get("observaciones")) || undefined,
+          // Edición parcial (DEC-0356): con el campo oculto (`OBSERVACIONES_VISIBLES` apagado) no se manda y lo guardado queda; con el campo a la vista, vaciarlo lo borra (`null` explícito), no «no lo mando».
+          observaciones: !OBSERVACIONES_VISIBLES ? undefined : texto(form.get("observaciones")) || (editando ? null : undefined),
           activoEnTodasLasSucursales: editando ? undefined : activoEnTodas,
         };
         startTransition(async () => {
