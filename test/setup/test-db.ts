@@ -186,6 +186,8 @@ export async function limpiarBaseDeTest() {
   await prismaAdmin.seccionHabitualProducto.deleteMany();
   await prismaAdmin.frecuenciaConteoProducto.deleteMany();
   await prismaAdmin.disponibilidadProducto.deleteMany();
+  // «Ocultar» (E3): la marca referencia al producto, a la sucursal y al User (RESTRICT): antes que ellos.
+  await prismaAdmin.ocultamientoProducto.deleteMany();
   await prismaAdmin.traspasoSucursal.deleteMany();
   await prismaAdmin.seccion.deleteMany();
 
