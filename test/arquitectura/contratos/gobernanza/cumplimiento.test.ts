@@ -68,6 +68,7 @@ describe("cumplimiento del cableado del guardián (repo real)", () => {
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 const SHA = "a".repeat(40);
+const APAGADA = "github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CI_EN_MAIN != 'si'";
 const CI_VALIDO = [
   "name: CI",
   "on:",
@@ -77,6 +78,7 @@ const CI_VALIDO = [
   "    branches: [main]",
   "jobs:",
   "  estatico:",
+  `    if: \${{ !(${APAGADA}) }}`,
   "    name: Estático",
   "    runs-on: ubuntu-latest",
   "    steps:",
@@ -93,10 +95,12 @@ const CI_VALIDO = [
   "          if-no-files-found: error",
   "          retention-days: 7",
   "  build:",
+  `    if: \${{ !(${APAGADA}) }}`,
   "    runs-on: ubuntu-latest",
   "    steps:",
   "      - run: npm run build",
   "  integracion:",
+  `    if: \${{ !(${APAGADA}) }}`,
   "    runs-on: ubuntu-latest",
   "    steps:",
   "      - name: npm test",
@@ -109,12 +113,13 @@ const CI_VALIDO = [
   "          echo '# no es un comentario de YAML, es el script'",
   "          echo continue-on-error: true",
   "  e2e:",
+  `    if: \${{ !(${APAGADA}) }}`,
   "    runs-on: ubuntu-latest",
   "    steps:",
   "      - run: npm run test:e2e",
   "  gate:",
   "    name: Gate (requerido)",
-  "    if: always()",
+  `    if: \${{ always() && !(${APAGADA}) }}`,
   "    needs: [estatico, build, integracion, e2e]",
   "    runs-on: ubuntu-latest",
   "    steps:",
@@ -133,7 +138,7 @@ describe("evaluarWorkflow (ci.yml)", () => {
   });
 
   const casos: { titulo: string; de: string; a: string; tipo: TipoDeCumplimiento; donde: string }[] = [
-    { titulo: "un job del gate desaparece (se renombra)", de: "  build:\n", a: "  construir:\n", tipo: "ci-job-ausente", donde: "jobs:" },
+    { titulo: "un job del gate desaparece (se renombra)", de: `  build:\n    if: \${{ !(${APAGADA}) }}\n`, a: "  construir:\n", tipo: "ci-job-ausente", donde: "jobs:" },
     { titulo: "el paso de `npm test` se reemplaza por un echo", de: "run: npm test -- --shard=1/4", a: "run: echo omitido -- --shard=1/4", tipo: "ci-sin-paso", donde: "  integracion:" },
     { titulo: "el paso de `npm run arquitectura` se reemplaza", de: "- run: npm run arquitectura", a: "- run: echo omitido", tipo: "ci-sin-paso", donde: "  estatico:" },
     { titulo: "`continue-on-error: true` en el paso de `npm test`", de: "      - name: npm test\n", a: "      - name: npm test\n        continue-on-error: true\n", tipo: "ci-continue-on-error", donde: "continue-on-error: true" },
