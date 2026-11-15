@@ -8,8 +8,8 @@ Estado: **diseño en papel.** Sin código, sin migración escrita, sin tocar nin
 
 1. **Qué es una clase:** lo que el producto ES para el negocio, elegido al crearlo entre cinco valores cerrados: **Materia prima, Insumo, Reventa, Elaborado, Producto vendible**. De la clase depende qué datos lleva y qué puede hacer. La clase **no cambia** después de crear el producto.
 2. **Qué tiene Motor2 hoy:** dos tipos (`MP`/`PV`) más la marca «se produce» (`seProduce`). Con eso se **derivan tres** de las cinco clases (Materia prima, Elaborado, Vendible). **Insumo y Reventa no existen como dato**, y no se pueden deducir con seguridad de lo cargado.
-3. **Lo más barato que alcanza para empezar:** (E0) la lista ya dice las tres clases derivadas; (E1) **una columna nueva y opcional** con la clase, rellenada por reglas y con un marcador «clase por confirmar» para lo dudoso; (E2) el alta y la ficha eligen la clase y muestran su descripción corta; (E3) Insumo con sus reglas; (E4) Reventa. Cada etapa se puede usar sin la siguiente.
-4. **Tres preguntas de negocio abiertas** (§11): cómo se rellenan los productos que ya existen, qué pasa con los pares «compra + venta» actuales de lo que se revende, y si «se produce» se sigue pudiendo prender y apagar en una materia prima.
+3. **Lo más barato que alcanza para empezar:** (E0) la lista ya dice las tres clases derivadas; (E1) **una columna nueva y opcional** con la clase, rellenada **solo con lo seguro** (respuesta 1 del dueño); (E2) el alta y la ficha eligen la clase y muestran su descripción corta; (E3) Insumo con sus reglas; (E4) Reventa. Cada etapa se puede usar sin la siguiente.
+4. **Tres preguntas de negocio** (§11): dos **CONFIRMADAS** por el dueño el 2026-11-15 (relleno solo con lo seguro; «se produce» ya no se prende ni se apaga en una materia prima) y una **abierta**: el dueño preguntó «Como lo hace pedernal?» sobre los pares «compra + venta» actuales de lo que se revende. La respuesta con evidencia está en §11.2.
 5. **Un hallazgo que conviene saber antes de leer:** en Motor2 la palabra «Insumo» ya significa **otra cosa** (el nodo de familia de Maestros → Insumos, el modelo `Insumo`). En Pedernal «Insumo» es una **clase** (packaging, limpieza). No se renombra nada sin pedido (§4.4, D-T1).
 
 ## 1. Nivel 1 — Propósito y alcance
@@ -29,7 +29,7 @@ Estado: **diseño en papel.** Sin código, sin migración escrita, sin tocar nin
 
 | Actor | Qué hace con la clase | Permiso (hoy) |
 |---|---|---|
-| Gerente / administrador | Elige la clase **al crear** el producto; la ve en lista y ficha; confirma una clase «por confirmar» (si el dueño responde A en la pregunta 1). | Los de alta de producto de Motor2 (`NO VERIFICADO` el nombre exacto de la acción; no se inventa uno nuevo: se reutiliza el del alta). |
+| Gerente / administrador | Elige la clase **al crear** el producto; la ve en lista y ficha. | Los de alta de producto de Motor2 (`NO VERIFICADO` el nombre exacto de la acción; no se inventa uno nuevo: se reutiliza el del alta). |
 | Operador de compras / cocina | **Ve** la clase donde ya ve el producto (alta rápida desde compra o receta: solo ofrece las clases que esa pantalla admite). No la cambia. | Sin permiso nuevo. |
 | Sistema | Hace cumplir lo que la clase pide y prohíbe (base y servidor); la deduce al rellenar lo existente. | — |
 | Contexto | **Multiempresa** (todo filtra por empresa) y **sucursales**; la clase es de la **empresa**, no de la sucursal. Dinero en `Decimal` con moneda; fechas en zona Argentina. | RLS de `Producto` (ya existe). |
@@ -42,9 +42,8 @@ Estado: **diseño en papel.** Sin código, sin migración escrita, sin tocar nin
 | C2 | **Alta rápida** (desde compra o receta) | «Agregar producto nuevo» | Pide nombre, qué es y unidad; solo ofrece las clases que esa pantalla admite; nace «Falta completar». |
 | C3 | **Filtrar la lista por «¿Qué es?»** | Chips de la lista | Todos / Materia prima / Insumo / Reventa / Elaborado / Producto vendible. |
 | C4 | **Ver la clase y su descripción corta** | Alta y ficha | Línea de ayuda bajo «¿Qué es?» con la descripción de la clase elegida. |
-| C5 | **Corregir una clase equivocada** | El dueño se dio cuenta | **No se cambia:** se crea el producto correcto y se desactiva el otro (Pedernal; 2026-11-13). Excepción propuesta solo para lo rellenado: C6. |
-| C6 | **Confirmar una clase rellenada** | Productos «clase por confirmar» (solo si la pregunta 1 = A) | El dueño confirma o corrige **una vez**, con registro de quién y cuándo. |
-| C7 | **Rellenar los productos existentes** | Etapa E1 | Cada producto recibe clase por regla; lo dudoso queda «por confirmar»; nada se pierde. |
+| C5 | **Corregir una clase equivocada** | El dueño se dio cuenta | **No se cambia:** se crea el producto correcto y se desactiva el otro (Pedernal; 2026-11-13). Sin excepciones (respuesta 1 = C). |
+| C6 | **Rellenar los productos existentes** | Etapa E1 | Cada producto recibe clase solo si es seguro (Materia prima, Elaborado, Vendible); nada se pierde; Insumo y Reventa solo en altas nuevas. |
 
 ## 4. Nivel 4 — Conceptos y ciclo de vida
 
@@ -115,7 +114,7 @@ La clase es **inmutable** desde el alta (disparador `producto_clase_de_uso_inmut
 | I3 | Una clase que no vende no lleva alícuota, sección, nombre de cocina ni descripción de carta; no tiene precio ni grupos de opciones. | CONFIRMADA en dirección (1.3); en Motor2 la alícuota y el precio hoy dependen de `tipo` (`PV`), ver 6.3 |
 | I4 | Solo se compran **Materia prima, Insumo y Reventa**. | CONFIRMADA en dirección |
 | I5 | Una **opción** consume solo Materia prima, Insumo, Reventa y —por decisión del 12/11— **Elaborado**. Nunca su propio producto. | Pedernal: CONFIRMADA (12/11, punto b; en Pedernal «el servidor todavía lo rechaza»: pendiente de su E6). En Motor2: PROPUESTA igualarlo cuando se haga. |
-| I6 | La **receta** lleva solo ingredientes: Materia prima, Elaborado y Reventa. **El Insumo no va en la receta** (el servidor lo rechaza). | Pedernal: CONFIRMADA 2026-11-14 (opción A, fila «Receta e insumos operativos», `ZH-docs/11-especificaciones/conceptos/clase-de-uso.md` §6). En Motor2: **ver pregunta 1**, porque hoy el packaging entra en recetas. |
+| I6 | La **receta** lleva solo ingredientes: Materia prima, Elaborado y Reventa. **El Insumo no va en la receta** (el servidor lo rechaza). | Pedernal: CONFIRMADA 2026-11-14 (opción A, fila «Receta e insumos operativos», `ZH-docs/11-especificaciones/conceptos/clase-de-uso.md` §6). En Motor2: aplica a las altas nuevas de Insumo; el packaging ya cargado queda como Materia prima (respuesta 1 = C) y **sigue pudiendo entrar** en las recetas hasta que el dueño decida crear los Insumos nuevos. |
 | I7 | Solo **Elaborado** y **Producto vendible** tienen composición propia (receta). | Pedernal: leído en `ERP:0032_lotes_y_recetas.sql:113-124`. En Motor2: ya es así (receta solo para PV o MP que se produce). |
 | I8 | Un **Elaborado** tiene stock propio (se produce en tanda); un **Vendible** lo tiene solo si se produce. | Pedernal: `ERP:0032:78`. En Motor2: ya es `seProduce`. |
 | I9 | Un producto **desactivado** u **oculto** conserva su clase. | PROPUESTA (consecuencia de I2) |
@@ -147,7 +146,6 @@ Ubicación prevista: `prisma/migrations/<fecha>_clase_de_uso_del_producto/{migra
 ```sql
 -- migration.sql  (PROPUESTO; no se escribe todavía)
 ALTER TABLE "Producto" ADD COLUMN "claseDeUso" text;            -- NULL = «todavía sin clase» (relleno pendiente)
-ALTER TABLE "Producto" ADD COLUMN "claseSinConfirmar" boolean NOT NULL DEFAULT false;  -- SOLO si la pregunta 1 = A
 
 -- Lista de permitidos (regla «todo nace cerrado»).
 ALTER TABLE "Producto" ADD CONSTRAINT "Producto_claseDeUso_chk"
@@ -159,7 +157,7 @@ ALTER TABLE "Producto" ADD CONSTRAINT "Producto_claseDeUso_tipo_chk" CHECK (
   OR ("tipo" = 'MP' AND "claseDeUso" IN ('MATERIA_PRIMA','INSUMO','ELABORADO'))
   OR ("tipo" = 'PV' AND "claseDeUso" = 'VENDIBLE')) NOT VALID;
 
--- «Elaborado» es la que se produce; la materia prima y el insumo no (solo si la pregunta 3 = A).
+-- «Elaborado» es la que se produce; la materia prima y el insumo no (respuesta 3 = A, CONFIRMADA).
 ALTER TABLE "Producto" ADD CONSTRAINT "Producto_claseDeUso_seProduce_chk" CHECK (
   "claseDeUso" IS NULL
   OR ("claseDeUso" = 'ELABORADO') = ("tipo" = 'MP' AND "seProduce")
@@ -169,7 +167,7 @@ ALTER TABLE "Producto" VALIDATE CONSTRAINT "Producto_claseDeUso_chk";   -- ningu
 ALTER TABLE "Producto" VALIDATE CONSTRAINT "Producto_claseDeUso_tipo_chk";
 ALTER TABLE "Producto" VALIDATE CONSTRAINT "Producto_claseDeUso_seProduce_chk";
 
--- Disparador: la clase se escribe UNA vez (de NULL a un valor) y después no cambia; sin excepción salvo la confirmación única de 6.5.
+-- Disparador: la clase se escribe UNA vez (de NULL a un valor) y después no cambia; sin excepciones.
 -- (Motor2 ya usa disparadores en 11 migraciones: p. ej. 20261001230000_auditoria_inmutable.)
 ```
 ```sql
@@ -179,14 +177,13 @@ DROP FUNCTION IF EXISTS producto_clase_de_uso_inmutable();
 ALTER TABLE "Producto" DROP CONSTRAINT IF EXISTS "Producto_claseDeUso_seProduce_chk";
 ALTER TABLE "Producto" DROP CONSTRAINT IF EXISTS "Producto_claseDeUso_tipo_chk";
 ALTER TABLE "Producto" DROP CONSTRAINT IF EXISTS "Producto_claseDeUso_chk";
-ALTER TABLE "Producto" DROP COLUMN IF EXISTS "claseSinConfirmar";
 ALTER TABLE "Producto" DROP COLUMN IF EXISTS "claseDeUso";
 ```
 
 - **Compatible hacia atrás:** el código viejo no lee ni escribe la columna; con `NULL` todo se comporta como hoy. **No hay cambio destructivo.** El único dato que se descartaría al revertir es la clase misma (se puede rehacer por las reglas de 6.4).
 - **Prisma:** `claseDeUso String?` (como `modoDeVenta String`, que también es texto con `CHECK` a mano), no un `enum` de Postgres: agregar un valor es cambiar un `CHECK`, reversible (mismo criterio de Pedernal y del `TIPOS_DE_GRUPO_DE_OPCIONES` de Motor2).
 - **RLS y permisos de columna:** la columna cuelga de `Producto`, que ya tiene RLS por empresa. **NO VERIFICADO** si las concesiones de la aplicación son por columna (en Pedernal sí lo son); se verifica antes de escribir.
-- **Historia:** no hay tabla de historial nueva. El cambio de clase (excepción 6.5) deja fila en el registro de cambios auditado que Motor2 ya usa (`registrarCambioAuditado`); no se borra nada.
+- **Historia:** no hay tabla de historial nueva. La clase se escribe una sola vez (en el alta o en el relleno); el alta y el relleno quedan en el registro de cambios auditado que Motor2 ya usa (`registrarCambioAuditado`); no se borra nada.
 - **Puntos de extensión previstos (sin crear tablas muertas):** el `CHECK` se relaja para `REVENTA` en E4; `NOT NULL` se agrega en E1b cuando no queden filas sin clase; una clase sexta sería agregar un valor al `CHECK`.
 
 ### 6.3 Qué NO se migra en E1 (y por qué)
@@ -198,27 +195,56 @@ ALTER TABLE "Producto" DROP COLUMN IF EXISTS "claseDeUso";
 
 Se hace con un **script idempotente con ensayo previo (dry-run)**, no con SQL puro: la regla de «No comestibles» necesita normalizar nombres y recorrer el árbol de familias (`src/core/catalogo/no-comestibles.ts`), cosa que ya existe como función pura y no se duplica en SQL. Solo toca filas con `claseDeUso IS NULL`. **Se corre únicamente con autorización expresa, en una copia primero.**
 
-| Producto existente | Clase rellenada | Seguridad | Marca «por confirmar» |
+| Producto existente | Clase rellenada | Seguridad | Marca |
 |---|---|---|---|
-| `MP` y `seProduce = true` | `ELABORADO` | Alta | No |
-| `MP`, `seProduce = false` y fuera de «No comestibles» | `MATERIA_PRIMA` | Alta | No |
-| `MP`, `seProduce = false` y bajo «No comestibles» | **según pregunta 1**: A → `INSUMO` marcado «por confirmar»; B → `INSUMO`; C → `MATERIA_PRIMA` | Media | Solo en A |
-| `PV` (incluye respaldo de adicional y los que además `seProduce`) | `VENDIBLE` | Alta | No |
+| `MP` y `seProduce = true` | `ELABORADO` | Alta | — |
+| `MP`, `seProduce = false` y fuera de «No comestibles» | `MATERIA_PRIMA` | Alta | — |
+| `MP`, `seProduce = false` y bajo «No comestibles» | `MATERIA_PRIMA` (respuesta 1 = C: **no se rellena Insumo**; sale en el informe como «candidato a Insumo») | Alta (no infiere de más) | No |
+| `PV` (incluye respaldo de adicional y los que además `seProduce`) | `VENDIBLE` | Alta | — |
 | Un `PV` con receta de **un solo ingrediente 1:1** (posible reventa) | `VENDIBLE` | Baja | **No se infiere `REVENTA`**; sale en el **informe «candidatos a revisar»** (solo lectura, §9) |
 
-Garantías: **sin pérdida** (no se borra ni se mueve nada; solo se llena una columna vacía); **idempotente** (repetirlo no cambia lo ya relleno: filtra por `IS NULL`); **atómico por empresa** (una transacción por empresa; si falla, esa empresa queda como estaba); **informe de lo dudoso** antes de aplicar (cuántos de cada regla, sin nombres en el repositorio). Lo que no se puede inferir queda **«pendiente de completar»**: no se inventa.
+Garantías: **sin pérdida** (no se borra ni se mueve nada; solo se llena una columna vacía); **idempotente** (repetirlo no cambia lo ya relleno: filtra por `IS NULL`); **atómico por empresa** (una transacción por empresa; si falla, esa empresa queda como estaba); **informe de lo dudoso** antes de aplicar (cuántos de cada regla, sin nombres en el repositorio). Lo que no se puede inferir (Insumo, Reventa) **no se rellena**: queda para altas nuevas y en el informe como «pendiente de completar»; no se inventa.
 
-### 6.5 Excepción propuesta a «la clase no cambia» (solo si la pregunta 1 = A)
+### 6.5 Excepción a «la clase no cambia»: **descartada**
 
-Un producto con `claseSinConfirmar = true` puede **confirmar o corregir su clase una única vez**, con permiso de alta/edición de producto, registro de quién y cuándo, y con el producto **sin movimientos que dependan de la clase vieja** (receta, compra o venta que la use) **o** corrigiendo solo hacia una clase compatible. Después de esa vez la marca pasa a `false` y la clase queda inmutable como en Pedernal. **Diferencia con Pedernal, declarada:** Pedernal nace con la clase elegida por el dueño, así que no necesita corrección; Motor2 tiene **datos ya existentes** cuya clase se dedujo, y es el motivo (datos existentes en producción).
+La opción A de la pregunta 1 (marca «clase por confirmar» y confirmación única) **no fue la elegida**: el dueño eligió C (2026-11-15). No hay columna `claseSinConfirmar` ni corrección única. Si una clase rellenada resulta equivocada, rige Pedernal: se crea el producto correcto y se desactiva el otro.
+
+### 6.6 Consulta de solo lectura para la respuesta 3 («se produce» ya no se prende ni se apaga en una materia prima)
+
+Cuenta cuántas materias primas ya tienen «se produce» encendido y cuántas chocan con lo que un Elaborado «ni se compra ni se vende». **Es solo lectura; se corre primero en una copia descartable y, solo con autorización, en una base real; el resultado se informa sin nombres.**
+
+```sql
+-- SOLO LECTURA (PROPUESTO; no se corre)
+SELECT p."empresaId",
+  count(*) FILTER (WHERE p."tipo" = 'MP' AND p."seProduce")                                    AS mp_con_se_produce,
+  count(*) FILTER (WHERE p."tipo" = 'MP' AND p."seProduce" AND EXISTS (
+      SELECT 1 FROM "RecetaVersion" r WHERE r."empresaId" = p."empresaId" AND r."productoId" = p."id")) AS con_receta,
+  count(*) FILTER (WHERE p."tipo" = 'MP' AND p."seProduce" AND NOT EXISTS (
+      SELECT 1 FROM "RecetaVersion" r WHERE r."empresaId" = p."empresaId" AND r."productoId" = p."id")) AS sin_receta,
+  count(*) FILTER (WHERE p."tipo" = 'MP' AND p."seProduce" AND EXISTS (
+      SELECT 1 FROM "MovimientoStock" m WHERE m."empresaId" = p."empresaId" AND m."productoId" = p."id"
+        AND m."proceso" = 'COMPRA'))                                                          AS tambien_comprada,
+  count(*) FILTER (WHERE p."tipo" = 'PV' AND p."seProduce")                                   AS vendibles_que_se_producen
+FROM "Producto" p GROUP BY p."empresaId";
+```
+(Nombres de tablas y columnas leídos en `prisma/schema.prisma:353-423,778,1302,974`; **NO VERIFICADO** que ejecute tal cual: se prueba en una copia.)
+
+**Qué se hace con cada grupo (PROPUESTA):**
+| Grupo | Qué pasa | Corrección |
+|---|---|---|
+| `con_receta` y no comprada | Se rellena `ELABORADO` (la clase coincide con lo que ya son) | **Ninguna** |
+| `sin_receta` | Se rellena `ELABORADO`; sale en el informe como «Elaborado sin receta: pendiente de completar» | Ninguna: la receta se carga cuando se pueda |
+| `tambien_comprada` (uso mixto: se compra y se produce) | Se rellena `ELABORADO`; **sus compras viejas no se tocan** (historia inmutable). Pedernal no deja comprar un Elaborado (I4): la compra futura de ese producto se rechaza. | **Sí, a mano por el dueño:** si de verdad se sigue comprando, crear una Materia prima nueva (o Reventa, desde E4) para lo comprado |
+| `vendibles_que_se_producen` | Se rellena `VENDIBLE` (como la medialuna que se vende y se produce) | Ninguna |
+| `MP` con `seProduce = false` | `MATERIA_PRIMA`; desde E1 **no puede prenderse** «se produce» (respuesta 3 = A) | Quien quiera producirla, crea el Elaborado y desactiva la materia prima |
 
 ## 7. Nivel 7 — Atomicidad y concurrencia
 
 - **Alta con clase:** una sola transacción crea el producto con su clase; la clase se escribe en el `INSERT` (nunca en un segundo paso), así no hay estado a medias.
 - **Idempotencia del alta:** la clave es la misma que ya usa Motor2 para el alta (`codigo` único por empresa; el id lo manda la app en Pedernal, **NO VERIFICADO** en Motor2): repetir el alta con los mismos datos no crea un duplicado.
 - **Relleno:** una transacción por empresa; filtra `IS NULL` dentro de la transacción; dos corridas simultáneas: la segunda no encuentra filas vacías (o espera el bloqueo de fila) y no cambia nada.
-- **Confirmación única (6.5):** `UPDATE … WHERE claseSinConfirmar` condicionado y con versión esperada; dos confirmaciones simultáneas: gana una, la otra ve `claseSinConfirmar = false` y se rechaza («ya confirmada»). La base lo garantiza con el disparador, no solo la pantalla.
-- **Receta/compra contra clase:** el disparador de inmutabilidad hace que una receta o una compra que miró la clase hace un instante no pueda quedar inválida por un cambio concurrente (la clase no cambia, salvo la confirmación única, que exige que no haya dependientes).
+- **«Se produce» en materia prima:** el `CHECK` de coherencia y el servidor rechazan el cambio; una edición que llega con «se produce» distinto del guardado falla entera (no a medias).
+- **Receta/compra contra clase:** el disparador de inmutabilidad hace que una receta o una compra que miró la clase hace un instante no pueda quedar inválida por un cambio concurrente (la clase no cambia nunca).
 
 ### Tabla «¿qué pasa si…?» por comando
 
@@ -226,8 +252,8 @@ Un producto con `claseSinConfirmar = true` puede **confirmar o corregir su clase
 |---|---|---|---|---|---|---|---|---|
 | **Crear producto con clase** | Mismo alta dos veces: un solo producto (único por empresa) | Dos altas del mismo nombre: gana una, la otra «ya existe» | — | Se corta la red tras el clic: reintento seguro | Idem repetición | Nada a medias (una transacción) | Sin clase: se rechaza (no hay valor por defecto) | Sin permiso de alta: se rechaza en el servidor |
 | **Alta rápida** | Idem | Idem | — | Idem | Idem | Nace «Falta completar» | Pide nombre, clase y unidad | Idem |
-| **Rellenar existentes** | Segunda corrida no cambia nada | Dos corridas: la segunda espera y no cambia | Una transacción por empresa | **Dudoso = «por confirmar»**, no inventado | Idempotente | Falla una empresa: solo esa queda sin rellenar | Producto sin `tipo` válido: se informa y se salta | Solo con permiso de plataforma/administración |
-| **Confirmar clase (6.5)** | Segunda vez: rechazada | Una gana | — | Muestra lo que cambia antes de guardar | Idempotente por versión | Todo o nada | — | Sin permiso: rechazada; cambia el permiso entre abrir y guardar: se valida en el servidor al guardar |
+| **Rellenar existentes** | Segunda corrida no cambia nada | Dos corridas: la segunda espera y no cambia | Una transacción por empresa | **Dudoso (Insumo, Reventa) = no se rellena**, no se inventa | Idempotente | Falla una empresa: solo esa queda sin rellenar | Producto sin `tipo` válido: se informa y se salta | Solo con permiso de plataforma/administración |
+| **Prender/apagar «se produce» en una materia prima** | Rechazado siempre (respuesta 3 = A): mismo mensaje | — | — | — | — | — | — | Sin efecto: nadie puede |
 | **Filtrar por clase** | (lectura) | (lectura) | — | Clase desconocida en la URL: se ignora (lista de permitidos) | — | — | Sin clase (`NULL`): aparece como «Falta completar la clase» | Solo ve productos de su empresa |
 
 ## 8. Nivel 8 — Acceso e interfaces
@@ -249,7 +275,7 @@ Un producto con `claseSinConfirmar = true` puede **confirmar o corregir su clase
 
 ### 10.1 Dimensiones y oráculo de combinaciones (regla del 2026-10-28)
 
-**Dimensiones que cambian dinero, permisos, visibilidad o stock:** clase (5) × se vende (derivado) × se compra × se produce × tiene receta × es componente de receta × lo consume una opción × stock propio × aparece en carta/POS × cuenta en el food cost × estado (activo / desactivado / oculto) × «clase por confirmar».
+**Dimensiones que cambian dinero, permisos, visibilidad o stock:** clase (5) × se vende (derivado) × se compra × se produce × tiene receta × es componente de receta × lo consume una opción × stock propio × aparece en carta/POS × cuenta en el food cost. × estado (activo / desactivado / oculto).
 
 **Oráculo (tabla escrita aparte del código; un test recorre todas las combinaciones contra ella):**
 
@@ -279,24 +305,40 @@ Fuente de cada celda: 5.1, 5.2 y Pedernal `0025`/`0032`. **Celdas NO VERIFICADAS
 
 Orden: (1) escribir la migración E1 con `down.sql`, llevarla a `main` (autorizado, aditivo); (2) **ensayo del relleno en una copia descartable** con informe; (3) **aplicar en bases reales solo con autorización expresa** (sigue congelado). Ninguna base se toca para este diseño.
 
-## 11. Preguntas de NEGOCIO abiertas (solo las que cambian modelo de datos, dinero o permisos)
+## 11. Preguntas de NEGOCIO (respuestas del dueño del 2026-11-15 y una pregunta suya abierta)
 
-**Pregunta 1 — clave `relleno-clases-existentes`.** *Para los productos que ya existen y cuya clase hay que deducir (los de «No comestibles» podrían ser Insumo), ¿cómo se rellenan y se corrigen?*
-- **A.** Por regla, **marcados «clase por confirmar»**; el dueño confirma o corrige **una sola vez** por producto, con registro (excepción 6.5). Cambia el modelo (una columna más).
-- **B.** Por regla y **sin posibilidad de corregir** (Pedernal puro): equivocarse = crear el producto nuevo y desactivar el viejo (se pierde el historial de stock y compras del viejo).
-- **C.** Solo lo seguro: Materia prima, Elaborado y Vendible; **Insumo y Reventa solo para altas nuevas**; el packaging existente queda como Materia prima.
-- **Recomendación: C** (más barata, sin columna extra, nada se infiere de más). **A** si el dueño quiere que lo existente quede bien clasificado. *Si no se responde:* se hace **C**.
+### 11.1 Respondidas (CONFIRMADAS)
 
-**Pregunta 2 — clave `pares-compra-venta-existentes`.** *Lo que hoy se revende está cargado como **dos** productos (una materia prima que se compra y un producto que se vende con receta 1:1). ¿Qué pasa con esos pares cuando exista la clase Reventa?*
-- **A.** **Conviven**: los pares quedan como están (Materia prima + Vendible) y Reventa es solo para lo que se cargue de ahora en adelante.
-- **B.** **Fusión guiada, par por par, después** (etapa aparte, con autorización y respaldo): una herramienta propone el par y el dueño confirma.
-- **C.** Fusionar todos de una vez (**destructivo**: reescribe stock, compras y ventas; no entra en la autorización permanente).
-- **Recomendación: A.** *Si no se responde:* **A**.
+| # | Clave | Respuesta del dueño (cita literal) | Estado | Qué fija |
+|---|---|---|---|---|
+| 1 | `relleno-clases-existentes` | «Solo lo seguro; Insumo y Reventa para altas nuevas (Recomendada)» — 2026-11-15, chat dueño ↔ orquestador (opción C) | **CONFIRMADA** | Se rellena Materia prima, Elaborado y Vendible; **Insumo y Reventa solo en altas nuevas**; el packaging existente queda como Materia prima. Sin columna «por confirmar» ni excepción a «la clase no cambia» (6.5). |
+| 3 | `se-produce-en-materia-prima` | «No, como Pedernal (Recomendada)» — 2026-11-15, chat dueño ↔ orquestador (opción A) | **CONFIRMADA** | «Se produce» **no se prende ni se apaga** en una materia prima ya cargada; para producir se crea el Elaborado y se desactiva la materia prima. Puede obligar a corregir casos existentes: consulta de solo lectura y qué se hace con cada grupo en **§6.6**. |
 
-**Pregunta 3 — clave `se-produce-en-materia-prima`.** *Hoy «se produce» se puede prender y apagar en una materia prima ya cargada. Con «la clase no cambia», Elaborado y Materia prima son clases distintas. ¿Se sigue pudiendo?*
-- **A.** **No** (como Pedernal): una materia prima es Elaborado o no desde el alta; para producir algo ya cargado se crea el Elaborado y se desactiva la materia prima.
-- **B.** **Sí, durante la transición**: «se produce» sigue editable en las materias primas existentes y la clase acompaña (Materia prima ↔ Elaborado) hasta que el dueño diga que se cierre. **Excepción a «la clase no cambia»**.
-- **Recomendación: A** (es lo que pidió: «iguales en todo»), con el costo de que quien hoy prende «se produce» sobre un producto cargado debe crear otro. *Si no se responde:* **B** hasta que responda, porque **no rompe el uso actual** (más barato: no cambia nada que hoy ande).
+### 11.2 Pregunta 2 — `pares-compra-venta-existentes`: **pregunta del dueño: «Como lo hace pedernal?»** (2026-11-15, chat dueño ↔ orquestador). **ABIERTA: no se eligió por el dueño.**
+
+**La respuesta, con evidencia (código de Pedernal `main` leído el 2026-11-15; lo que no leí está marcado NO VERIFICADO):**
+
+1. **Pedernal modela una Reventa como UN solo producto** de clase `REVENTA` que se compra y se vende tal cual. Es comprable (`ERP:src/modulos/catalogo/dominio/clase-comprable.ts:5`, `CLASES_COMPRABLES`) y se vende (`ERP:src/modulos/catalogo/dominio/clases.ts:22`, `vendeLaClase`); lleva alícuota, sección, precio y opciones (`ERP:migraciones/0025_catalogo.sql:177-179`).
+2. **Sin receta 1:1.** El stock lo lleva **su propio artículo**: la base lo admite (`ERP:migraciones/0030_stock.sql:420`, `MATERIA_PRIMA`, `INSUMO`, `REVENTA`) y la venta descuenta ese artículo directo: «con artículo activo (reventa): un renglón del artículo × `q`» (`ERP:src/modulos/stock/dominio/explosion.ts:23`, resolución en `:146-155`, `situacionDeConsumo`: `ARTICULO` antes que `COMPOSICION`). Una Reventa sin artículo «no se controla» y **no** da el aviso «falta receta» (`explosion.ts:25-27`; `ZH-docs/11-especificaciones/conceptos/explosion-de-la-venta.md` §«Vender un producto sin receta ni artículo»).
+3. **Receta:** una reventa no necesita receta (decisión 140, `ZH-docs/11-especificaciones/catalogo-y-niveles-maqueta.md`, línea 1430, 2026-11-08, «Aceptaste mi recomendación»). La composición propia es solo de `VENDIBLE` y `ELABORADO` (`ERP:migraciones/0032_lotes_y_recetas.sql:113-125`).
+4. **Costo:** el de una materia prima o reventa sale del **último costo de compra** y, si nunca se compró, del **costo promedio del depósito de venta** (`ZH-docs/11-especificaciones/conceptos/costo-de-la-receta.md`, línea 14; `ERP:src/modulos/stock/casos-de-uso/lectura-de-recetas.ts:189-211`). Ese cálculo vale para la reventa como ingrediente de otra receta. **NO VERIFICADO:** el costo de una reventa vendida suelta (el cierre de la venta).
+5. **Precio:** el del propio producto, en `precio_de_venta` con historial de solo inserción (`ERP:migraciones/0025_catalogo.sql`, K5 y K6, líneas 43-52).
+6. **Marcas de lo mismo (gaseosas):** productos independientes dentro de una **familia**, cada uno con su código de barras, stock, costo y compra (`ZH-docs/11-especificaciones/decisiones-del-dueno-2026-11.md`, línea 91, 2026-11-12, punto a), que **prevalece sobre** la decisión 81 del 2026-11-08 (marcas como opciones de un solo producto).
+
+**¿Pedernal tuvo o resolvió el caso de dos productos (materia prima + producto de venta con receta 1:1)?** **No lo tuvo.** El catálogo de Pedernal nace en `0025` como «PRIMERA migración del catálogo: no hay ninguna tabla de catálogo que migrar» (`ERP:migraciones/0025_catalogo.sql`, líneas 9-10), con la clase elegida desde el alta. El único estudio de Pedernal sobre pasar de Motor2 es `ZH-docs/11-especificaciones/migracion-de-la-carta-de-motor2-especificacion.md` (condicionado y **no confirmado** por el dueño, según su propio encabezado): ahí un `PV` de Motor2 se convierte en `VENDIBLE` o `REVENTA` **sin inferirlo** («la elige el dueño producto por producto», P3, línea 93; regla de lectura: «lo que se compra hecho y se vende igual = reventa; lo demás = vendible», línea 445), y las materias primas, recetas y stock **quedan fuera de esa tanda** (líneas 48 y 90): **no resuelve el par MP+PV**. **NO VERIFICADO:** que exista otro documento de Pedernal que lo resuelva.
+
+**Qué pasaría en Motor2 con cada opción:**
+
+| | **A. Conviven** | **B. Se unen, par por par, con el dueño** | **C. Se unen todos de una vez** |
+|---|---|---|---|
+| **Qué se hace** | Nada sobre lo cargado. Los pares siguen como Materia prima + Vendible. Reventa es para lo que se cargue desde E4. | Por cada par: se crea el producto `REVENTA` nuevo y se **desactivan** la Materia prima y el Vendible viejos (no se cambia la clase: regla del 2026-11-13). | Lo mismo, para todos los pares, sin revisar uno por uno. |
+| **Stock** | La Materia prima sigue con su stock; la venta del Vendible la descuenta por la receta 1:1, como hoy. | El stock del par viejo **no se mueve solo**: el nuevo arranca con un ingreso inicial (**NO VERIFICADO** que Motor2 tenga un motivo de ajuste con costo para eso). El Kardex viejo queda intacto, en el producto desactivado. | Ídem, en bloque. |
+| **Recetas** | Intactas. | La receta 1:1 del Vendible viejo queda en su historial; el Reventa nuevo no lleva receta. Las **recetas de otros platos** que usan esa Materia prima apuntan al viejo y hay que reapuntarlas a mano (**NO VERIFICADO** cuántas hay). | Ídem, y si alguna no se reapunta, ese plato descuenta del producto desactivado. |
+| **Costos** | Siguen: último costo de compra de la Materia prima. | El costo **empieza de cero** en el nuevo (sin compras propias) hasta la primera compra o hasta un ingreso inicial con costo; el historial de costos queda partido en dos. | Ídem, en bloque. |
+| **Ventas ya registradas** | Intactas. | Intactas: quedan apuntando al Vendible desactivado (la historia no se reescribe). Los reportes por producto muestran dos filas (viejo y nuevo). | Ídem. |
+| **Riesgo / reversibilidad** | Ninguno. Convive la forma vieja y la nueva (se ven dos formas de cargar lo mismo). | Medio: es trabajo manual y cada par se puede revisar; se revierte reactivando el viejo mientras no haya movimientos nuevos. | **Alto: destructivo para los reportes y fuera de la autorización permanente** (no es aditivo ni reversible). |
+
+**Recomendación: A.** Es lo más barato, no toca datos y deja la unión (B) para después, **si el dueño la quiere**, sin ninguna herramienta nueva: coincide con la regla de Pedernal (la clase no cambia; se crea el correcto y se desactiva el otro). **Qué pasa si no se responde:** rige **A**. **Opción C: no se recomienda.**
 
 ## 12. Decisiones técnicas (no cambian negocio; las toma el ingeniero y el dueño las puede corregir)
 
@@ -315,7 +357,7 @@ Orden: (1) escribir la migración E1 con `down.sql`, llevarla a `main` (autoriza
 | Etapa | Qué | Migración | Depende de |
 |---|---|---|---|
 | **E0** (hecha en el diseño del 13/11) | La lista ya dice «Materia prima / Elaborado / Producto vendible» derivadas. Nada que construir. | No | — |
-| **E1** | Columna `claseDeUso` (+ `claseSinConfirmar` si pregunta 1 = A), `CHECK`s, disparador, **relleno con ensayo** e informe «candidatos a revisar» | **Sí, aditiva, con `down.sql`** | Preguntas 1 y 3 (o sus opciones por defecto) |
+| **E1** | Columna `claseDeUso`, `CHECK`s, disparador, **relleno con ensayo** e informe «candidatos a revisar» | **Sí, aditiva, con `down.sql`** | Preguntas 1 y 3 (o sus opciones por defecto) |
 | **E1b** | `NOT NULL` sobre `claseDeUso` cuando no queden filas vacías | Sí, aditiva | E1 aplicada y rellena |
 | **E2** | Alta y ficha con «¿Qué es?» + descripción corta; la lista lee la clase real; chips de las 5 | No | E1 |
 | **E3** | **Insumo**: alta, fuera de receta nueva, fuera del food cost, consumible por una opción | No (o relaja un `CHECK`) | E2; pregunta 1 |
@@ -329,7 +371,6 @@ Orden: (1) escribir la migración E1 con `down.sql`, llevarla a `main` (autoriza
 | Diferencia | Motivo | Estado |
 |---|---|---|
 | Columna **opcional** y con relleno (Pedernal nace con la clase en el alta) | **Datos ya existentes** en producción | Imposición de los datos |
-| Marca «clase por confirmar» y confirmación única (6.5) | **Datos existentes** cuya clase se dedujo | PROPUESTA (solo con pregunta 1 = A) |
 | `tipo` MP/PV sigue vivo junto a la clase | **Datos y código existentes** (~63 archivos lo leen) | Imposición |
 | Etiqueta `respaldo` en la lista | Existe en Motor2 y nadie pidió sacarla | PROPUESTA |
 | Columna por `Prisma` (`String?` + `CHECK` a mano) en vez de SQL puro | **Prisma** | Imposición |
