@@ -97,9 +97,9 @@
 - **CON_EQUIVALENTE** (`codigoFijo` con uno de los 14): se muestra el nombre de la equivalente; el nombre original queda guardado (es la columna `nombre` de siempre, que **no se toca**).
 - No hay vuelta atrás automática: pasar de CON a SIN o cambiar de código es una acción explícita y auditada (I7).
 
-**Qué significa «la más parecida» (PROPUESTA, a confirmar):** una unidad existente es **equivalente** a una de las 14 solo si 1 de la vieja = 1 de la nueva, en la misma dimensión. Eso cubre kg, kilo, gr, g, l, lt, ml, cc, «unidad», «un», «u». **Todo lo que no sea exactamente 1 a 1** («docena» = 12, «par» = 2, «media docena») **no se convierte**: quedaría una cantidad distinta de la que se cargó. Esas, y las que no tienen dimensión clara, quedan «pendiente de completar».
+**Qué significa «la más parecida» (PROPUESTA):** una unidad existente es **equivalente** a una de las 14 solo si 1 de la vieja = 1 de la nueva, en la misma dimensión. Eso cubre kg, kilo, gr, g, l, lt, ml, cc, «unidad», «un», «u». **Todo lo que no sea exactamente 1 a 1** («docena» = 12, «par» = 2, «media docena») **no se convierte**: quedaría una cantidad distinta de la que se cargó. Esas, y las que no tienen dimensión clara, quedan «pendiente de completar».
 
-**Qué pasa con «caja», «pack», «bolsa», «botella»** (unidades de compra que no son medidas). En Pedernal son **presentaciones** (nombre + cantidad en la unidad base), no unidades. En Motor2 hoy son una unidad con un factor al stock. La más parecida de las 14 es **UNIDAD** (1 caja = 1 de conteo; el contenido sigue en el `factorConversion` del producto). La cantidad cargada («3 cajas») y el stock resultante (3 × 4,5 kg) **no cambian**. Lo que se pierde es solo el *nombre* «caja» en pantalla; por eso el nombre original se conserva y la pantalla puede seguir mostrándolo junto a la unidad. **Esto es una decisión de negocio (Q-U2).**
+**Qué pasa con «caja», «pack», «bolsa», «botella»** (unidades de compra que no son medidas). En Pedernal son **presentaciones** (nombre + cantidad en la unidad base), no unidades. En Motor2 hoy son una unidad con un factor al stock. La más parecida de las 14 es **UNIDAD** (1 caja = 1 de conteo; el contenido sigue en el `factorConversion` del producto). La cantidad cargada («3 cajas») y el stock resultante (3 × 4,5 kg) **no cambian**. Lo que se pierde es solo el *nombre* «caja» en pantalla; por eso el nombre original se conserva y la pantalla puede seguir mostrándolo junto a la unidad. **CONFIRMADA por el dueño (Q-U2, 2026-11-15).**
 
 ## 5. Nivel 5. Invariantes y políticas
 
@@ -156,8 +156,8 @@ Un script de operaciones por base, a la manera de `scripts/operaciones/m0-iva-co
 | l, lt, lts, litro(s) + VOLUMEN | LITRO |
 | ml, cc, mililitro(s) + VOLUMEN | MILILITRO |
 | unidad, un, u, unid, unidades + CANTIDAD | UNIDAD |
-| caja, pack, bolsa, botella, lata, paquete, bandeja, atado… + CANTIDAD | UNIDAD **solo si el dueño responde Q-U2 «a Unidad»**; si no, pendiente |
-| docena, par, media docena, cualquier nombre con otro cociente + CANTIDAD | **pendiente de completar** (nunca 1 a 1) |
+| caja, pack, bolsa, botella, lata, paquete, bandeja, atado… + CANTIDAD | UNIDAD (Q-U2 CONFIRMADA: «a Unidad») |
+| cualquier nombre con otro cociente (docena, par…) + CANTIDAD | **pendiente de completar** (red de seguridad; Q-U1: no se crea nada y se usa la lista de Pedernal) |
 | cualquier otro nombre, o magnitud que no calza con el nombre (p. ej. «kg» con magnitud CANTIDAD) | **pendiente de completar** |
 
 ### 6.3 U3: completar las 14 en las empresas existentes
@@ -278,7 +278,7 @@ WHERE us.magnitud = uc.magnitud AND p."factorConversion" <> 1;
 | Equivalencia | «kg» + PESO | KILOGRAMO |
 | Equivalencia | «docena» + CANTIDAD | pendiente (no 1 a 1) |
 | Equivalencia | «kg» + CANTIDAD | pendiente (magnitud no calza) |
-| Equivalencia | «caja» + CANTIDAD | UNIDAD si Q-U2 = «a Unidad»; si no, pendiente |
+| Equivalencia | «caja» + CANTIDAD | UNIDAD (Q-U2 confirmada) |
 | Coherencia | compra «kg», stock «g», factor 1.000 | coherente; factor 900 → «pendiente de revisar» |
 | Stock | 3 «caja» × factor 4,5 kg, antes y después de U1b | 13,5 kg en los dos |
 | Decimales | unidad con 0 decimales, 0,4 | se redondea como hoy (I3); no cambia con la etapa |
@@ -291,22 +291,13 @@ WHERE us.magnitud = uc.magnitud AND p."factorConversion" <> 1;
 
 **Verificación previa por base:** la consulta de §9 y el listado de equivalencias propuestas, enviados al dueño para su revisión (en el repositorio privado de documentos, con los datos reales; **este documento público no los lleva**).
 
-## 10. Preguntas de NEGOCIO abiertas
+## 10. Preguntas de NEGOCIO (resueltas por el dueño el 2026-11-15)
 
-> Cada una cambia lo que ve el cliente, el modelo de datos o el stock. Una clave por pregunta.
+> Respuestas del dueño en el chat con el orquestador, 2026-11-15. No queda ninguna pregunta de negocio abierta en esta pieza.
 
-- **Q-U1 — ¿Qué se hace con las unidades que no tienen una equivalente 1 a 1 (docena, par, media docena)?**
-  - **A (recomendada):** quedan «pendiente de completar» y las resuelve el dueño una por una (crear el producto con la presentación correcta, o dejarlas así).
-  - **B:** convertirlas con su cociente (docena → 12 UNIDAD) y multiplicar todas las cantidades ya cargadas. **No la recomiendo:** cambia cantidades guardadas y no es reversible sin copia.
-  - **Si no se responde:** rige A (nace cerrado).
-- **Q-U2 — «Caja», «pack», «bolsa», «botella»: ¿se pasan a «Unidad» (conteo)?**
-  - **A (recomendada):** sí, a UNIDAD, con el nombre original visible junto a la unidad; el contenido sigue en el factor del producto, como hoy. Es lo más parecido y no cambia ninguna cantidad.
-  - **B:** dejarlas «pendiente de completar» hasta que exista el nombre de presentación (etapa posterior que nadie pidió).
-  - **Si no se responde:** rige B (más cerrado).
-- **Q-U3 — ¿Querés que las empresas que ya existen reciban las 14 unidades completas o solo las que ya usan?**
-  - **A (recomendada):** las 14, como Pedernal («las 14 fijas»).
-  - **B:** solo las equivalentes a las que ya tienen; las demás se agregan al pedirlas.
-  - **Si no se responde:** rige A (lo que se confirmó el 2026-11-15, «Igual a pedernal»).
+- **Q-U1 — Unidades sin equivalente 1 a 1 (docena, par, media docena): CONFIRMADA.** Literal: «Nadid creo nada asi que usar lo de pedernal». Se usa la lista de Pedernal tal cual: no se crea ninguna unidad nueva ni se convierte con cociente. **Hecho verificado en solo lectura por el orquestador sobre una copia reciente de una base** (sin nombres ni cifras de clientes): las unidades existentes son las cinco sembradas (unidad, g, kg, l, ml) y los productos usan «unidad» como unidad de stock; **no hay docena, par ni envases**. Consecuencia: la regla «lo que no es 1 a 1 queda pendiente» sigue como red de seguridad para otras bases, pero deja de ser un caso a diseñar.
+- **Q-U2 — Envases («caja», «pack», «bolsa», «botella»): CONFIRMADA.** Literal: «A UNIDAD, con el nombre original visible (Recomendada)». Se pasan a UNIDAD; el nombre original sigue visible; el contenido queda en el factor del producto.
+- **Q-U3 — Empresas existentes: CONFIRMADA en dirección.** Literal: «Sí, se agregan las 14 sin borrar nada (Recomendada)». Aplicarlo en cada base queda para el despliegue, con **autorización expresa por base, copia de respaldo y ensayo** (§11).
 
 ## 11. Qué hay que autorizar expresamente
 
@@ -343,7 +334,7 @@ Esta pieza **escribe datos existentes** (la columna nueva de cada unidad). La au
 
 ## 14. Riesgos y pendientes
 
-- **«Caja» → UNIDAD pierde el nombre en pantalla** (Q-U2): se conserva el original.
+- **«Caja» → UNIDAD pierde el nombre en pantalla** (Q-U2, confirmada): se conserva el original.
 - **Equivalencias mal asignadas** son el riesgo central: por eso la lista la revisa el dueño por base y hay reversa probada.
 - **Dos unidades equivalentes a la misma** (kg y Kilo): conviven; fusionarlas es otra etapa.
 - **Factores incoherentes con la tabla** (I8): se listan, no se corrigen.
