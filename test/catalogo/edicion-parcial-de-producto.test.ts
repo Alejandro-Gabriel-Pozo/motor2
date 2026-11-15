@@ -5,7 +5,7 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, sembrarBase, sembrarProductoDisponible } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { actualizarProducto, type DatosProductoEdicion } from "../../src/server/actions/catalogo/productos";
-import { TRATAMIENTO_DE_AUSENTE } from "../../src/server/lecturas/catalogo/completar-edicion-de-producto";
+import { TRATAMIENTO_DE_AUSENTE } from "../../src/core/features/catalogo/completar-edicion-de-producto";
 
 /**
  * EDICIÓN PARCIAL del producto (decisión 0356 de Pedernal, 13/11/2026; el dueño pidió ser iguales a Pedernal en todo, 2026-11-13), por la Server Action pública y contra Postgres real:

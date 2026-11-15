@@ -1,4 +1,3 @@
-import "server-only";
 import type { EntradaEdicionProducto, EntradaProducto } from "@/core/features/catalogo/productos.schema";
 import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
 

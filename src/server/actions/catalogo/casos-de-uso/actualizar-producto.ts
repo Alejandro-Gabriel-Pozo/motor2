@@ -10,7 +10,7 @@ import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { datosParaGuardar, validarDatosDeProducto } from "@/server/lecturas/catalogo/datos-de-producto";
-import { completarEdicionConLoGuardado } from "@/server/lecturas/catalogo/completar-edicion-de-producto";
+import { completarEdicionConLoGuardado } from "@/core/features/catalogo/completar-edicion-de-producto";
 import { productoTieneHistoria, productoTieneLiquidaciones } from "@/server/lecturas/catalogo/historia-de-producto";
 import { itemAgrupadoDelProductoEn } from "@/server/lecturas/carta/grupo-de-producto";
 import { actualizarCamposDeProducto, tomarFilaDeProducto } from "@/server/persistencia/catalogo/productos";

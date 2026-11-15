@@ -47,7 +47,7 @@ export type CampoSensibleDelProducto = "unidadCompraId" | "unidadStockId" | "fac
 /**
  * Edición parcial de un producto (decisión 0356 de Pedernal, 13/11/2026; el dueño pidió ser iguales a Pedernal el 2026-11-13): además de los cuatro sensibles, el nombre y el tipo también pueden faltar en una edición.
  * Un campo AUSENTE (`undefined`) NO se toca y conserva lo guardado; `null` o vacío enviado a propósito SÍ lo borra. Todos los campos del producto están declarados en `TRATAMIENTO_DE_AUSENTE`
- * (server/lecturas/catalogo/completar-edicion-de-producto.ts): agregar uno acá sin declararlo ahí no compila.
+ * (core/features/catalogo/completar-edicion-de-producto.ts): agregar uno acá sin declararlo ahí no compila.
  */
 export type CampoAusenteEnLaEdicion = "nombre" | "tipo";
 
