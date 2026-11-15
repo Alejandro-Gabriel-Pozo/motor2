@@ -154,6 +154,31 @@ Nota: la regla vieja (`esCuitValido`) también rechazaba el dígito verificador 
 - `caracter_prohibido`, `demasiado_largo`, `sin_letras`, `vacio` = filas ya guardadas que **dejarían de poder editarse sin corregir el nombre**, y los comandos que las vuelvan a validar (por ejemplo una edición del mismo producto sin cambiar el nombre) las rechazarían. Qué hacer con esas filas (corregirlas a mano, una excepción por fila existente, o dejarlas) es decisión del dueño DESPUÉS del recuento; este documento no propone reescribir datos. Cualquier corrección masiva es una migración de datos y necesita su propio diseño y autorización expresa.
 - Una cifra del recuento no autoriza endurecer: el dueño decide con el número en la mano.
 
+## 4.1 Recuento sobre la copia del 12/11 (corrido por el orquestador, solo lectura)
+
+Consultas de §2 y §3, sobre UNA copia de la base del 12/11, con un rol sin RLS: 1 empresa y 75 productos. Sin nombres de empresa ni ids.
+
+| Columna | Filas | Pasan | Rompen | Se reescribirían al normalizar |
+|---|---|---|---|---|
+| `Producto.nombre` | 75 | 75 | 0 | 0 |
+| `CategoriaProducto.nombre` | 2 | 2 | 0 | 0 |
+| `GrupoDeOpciones.nombre` | 47 | 47 | 0 | 0 |
+| `OpcionDeGrupo.nombre` | 126 | 126 | 0 | 3 (espacios o NFC) |
+| `SeccionCarta.nombre` | 14 | 14 | 0 | 0 |
+| `Proveedor.nombre` | 1 | 1 | 0 | 0 |
+| `GeneroCarta.nombre` | 10 | 10 | 0 | 0 |
+| `MotivoMerma.nombre` | 6 | 6 | 0 | 0 |
+| `DestinoConsumo.nombre` | 5 | 5 | 0 | 0 |
+| `Rol.nombre` | 3 | 3 | 0 | 0 |
+| `Seccion.nombre` | 2 | 2 | 0 | 0 |
+| `Sucursal.nombre` | 6 | 6 | 0 | 0 |
+| `Empresa.nombre` | 1 | 1 | 0 | 0 |
+| `Insumo`, `Cliente`, `Grupo`, `ItemAgrupadoCarta`, `ConceptoDeGasto` | 0 | – | – | – |
+
+Cero filas con `vacio`, `caracter_prohibido`, `demasiado_largo` o `sin_letras`. CUIT: `Empresa.cuit` 1 de 1 pasa (sin guiones, sin formato ni verificador inválido, sin depender del prefijo); `Proveedor.cuit` e `Invitacion.cuitDeclarado` sin filas con CUIT.
+
+**Límite:** es UNA copia del 12/11. El recuento se repite en cada base antes de conectar y antes del deploy. Este resultado no autoriza conectar: eso lo decide el dueño.
+
 ## 5. Puntos de validación que existen hoy y a qué ficha corresponderían
 
 Inventario verificado en el código de Motor2 (rama `main`, 2026-11-15). **Ninguno se cambió.** Hoy todos validan con `validarTextoCatalogo` / `RE_TEXTO_CATALOGO` (`src/core/texto.ts`: cualquier letra o número Unicode, más `- . , ( ) % & / ' _`, 80 caracteres, sin `-` inicial), que acepta alfabetos no latinos y `_` y no admite `+ : ; " # ¿ ¡ ? ! $ ° ª º « » ® ™`.
