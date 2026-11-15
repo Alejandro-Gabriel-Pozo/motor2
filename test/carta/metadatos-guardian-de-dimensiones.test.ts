@@ -3,7 +3,8 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { metadataDeCartaPublica } from "../../src/components/carta-publica/metadatos";
-import { CLAVES_DE_OPEN_GRAPH_DECLARADAS, PAGINAS_PUBLICAS_DECLARADAS } from "./oraculo-metadatos";
+import { descripcionDeCartaDeSucursal } from "../../src/core/carta/metadatos";
+import { CLAVES_DE_OPEN_GRAPH_DECLARADAS, DESCRIPCIONES_PROPIAS, PAGINAS_PUBLICAS_DECLARADAS, SECCIONES_DE_LA_CARTA, SUCURSAL_DE_LA_CARTA } from "./oraculo-metadatos";
 
 /**
  * Guardián de dimensiones (regla de combinaciones, 2026-10-28; `docs/diseno-nombre-publico-de-la-empresa-en-la-carta-2026-11-14.md`, nivel 10): el oráculo de los metadatos públicos (`oraculo-metadatos.ts`) declara las
@@ -36,5 +37,14 @@ describe("dimensiones de los metadatos públicos", () => {
     const base = { titulo: "T", descripcion: "D", url: null, origen: null, imagen: null };
     expect(Object.keys(metadataDeCartaPublica({ ...base, nombreSitio: null }).openGraph ?? {})).not.toContain("siteName");
     expect((metadataDeCartaPublica({ ...base, nombreSitio: "Empresa B" }).openGraph as { siteName?: string }).siteName).toBe("Empresa B");
+  });
+
+  it("la descripción propia del comercio se usa solo si dice algo (letra o dígito); vacía o solo adornos cae a la neutra (oráculo DESCRIPCIONES_PROPIAS)", () => {
+    const neutra = descripcionDeCartaDeSucursal({ nombre: SUCURSAL_DE_LA_CARTA, secciones: SECCIONES_DE_LA_CARTA });
+    expect(neutra).toBe("Carta de Sucursal 1. Entradas, Platos.");
+    for (const fila of DESCRIPCIONES_PROPIAS) {
+      const r = descripcionDeCartaDeSucursal({ nombre: SUCURSAL_DE_LA_CARTA, descripcionPropia: fila.propia, secciones: SECCIONES_DE_LA_CARTA });
+      expect(r, JSON.stringify(fila.propia)).toBe(fila.esperada ?? neutra);
+    }
   });
 });
