@@ -21,7 +21,7 @@ Fotos: Motor2 `origin/main` `a7077f52` (2026-11-15). Pedernal: código `ZuluHub-
 9. El alojamiento se **declara aparte** como concepto: no es un ticket y no crea cobros.
 10. Tablas propuestas: **cuatro** para cargar (N1) y **dos** para conciliar (N2), más la del renglón congelado. Menos que las cinco y tres que contaba el plan: explico por qué (§5).
 11. Cambia el comportamiento de tres casos de uso que ya existen (corregir ticket, anular venta de una cuenta cerrada, quitar unidades): no podrán bajar lo ya facturado.
-12. **Tres preguntas de negocio** al final.
+12. Las **tres preguntas de negocio** del final quedaron respondidas el 2026-11-15 con las opciones recomendadas.
 
 ---
 
@@ -42,6 +42,7 @@ El 04/11 está citado en `diseno-caja-y-cobros-2026-11-04.md` §0.1 y §«Decisi
 | F-9 | 2026-11-15 | «Sí, copiar a Pedernal en esas cinco (Recomendada)» | mismo archivo | E5: lo nuevo nace con uuid, `timestamptz` y solo inserción | **CONFIRMADA en dirección** |
 | F-10 | 2026-11-14 | «Revisa pedernal» (facturar por partes como lo decidido o lo construido) y «Ok. Facturación como pedernal» (destino de emisión propia, etapa futura) | mismo archivo | Se sigue lo **decidido** en Pedernal; la emisión con ARCA es un destino futuro que se diseña aparte; **la factura externa sigue vigente hasta que exista** | **CONFIRMADA** (ver el archivo: la anotación «reemplazada» del 04/11 era demasiado amplia y se corrigió) |
 | F-11 | 2026-11-13 | «Necesitamos ser iguales en todo. Por la salvedad de que nosotros usamos Prisma…» | `AGENTS.md` | Paridad con Pedernal; toda diferencia lleva motivo | **CONFIRMADA** |
+| F-12 | 2026-11-15 | «Solo el DNI en el comprobante»; «Solo se registra»; «Administración y gerente» (a Q-1, Q-2 y Q-3 de este documento) | chat del dueño con el orquestador (relatado; opciones elegidas, todas las recomendadas) | Q-1: en factura B con DNI se anota solo el DNI en el comprobante, sin ficha. Q-2: la nota de débito externa solo se registra, sin efecto en tickets. Q-3: concilian administración y gerente | **CONFIRMADA** |
 | — | — | Autorización de cada migración | — | — | **PENDIENTE** (no existe ninguna) |
 
 Del 04/11, lo que sigue **confirmado y se conserva sin cambios**: facturan en otro sistema y no se integra (punto 1); tipo de comprobante, clase, punto de venta por sucursal con su nombre, número y fecha, monto (punto 2); número sugerido con freno y fundamentación (C7, C33, C35); cliente por CUIT (punto 4); la conciliación parte del comprobante (punto 5); alojamiento declarado como concepto con lista de la empresa y «anticipo recibido» que resta (puntos 9, P9, C19, C20); un comprobante, una sucursal (C11); la nota de crédito baja el monto a conciliar de su factura y no mueve dinero (C22); reglas de letra (C9, solo la parte del CUIT).
@@ -363,17 +364,17 @@ Cuenta cruda aproximada: ~9 × 4 × 6 × 5 × 2 × 4 × 4 × 5 × 2 × 3 × 3 �
 
 ## 9. Preguntas de NEGOCIO abiertas
 
-**Q-1 (dato personal y modelo de datos). En una factura B a un consumidor final con DNI, ¿se guarda también la ficha de esa persona o solo se anota el DNI en el comprobante?**
+**Q-1 — CONFIRMADA, opción 1 (dueño, 2026-11-15, chat con el orquestador, opción elegida: «Solo el DNI en el comprobante»). En una factura B a un consumidor final con DNI, ¿se guarda también la ficha de esa persona o solo se anota el DNI en el comprobante?**
 - **Opción 1 (recomendada):** solo se anota en el comprobante (copia: nombre y DNI), sin crear ficha. Menos datos personales guardados y menos carga; la ficha se crea solo si la persona se vuelve cliente.
 - **Opción 2:** se crea siempre una ficha (cada DNI queda cargado). Sirve para reconocerlo la próxima vez, pero guarda un dato personal por cada factura B.
 - **Si no se responde:** se asume la opción 1 (declarado como supuesto); pasar a la opción 2 después es aditivo.
 
-**Q-2 (dinero). ¿Qué efecto tiene una nota de débito externa sobre los tickets?** (el 04/11 solo diseñó la nota de crédito; pediste los nueve tipos)
+**Q-2 — CONFIRMADA, opción 1 (dueño, 2026-11-15, chat con el orquestador, opción elegida: «Solo se registra»). ¿Qué efecto tiene una nota de débito externa sobre los tickets?** (el 04/11 solo diseñó la nota de crédito; pediste los nueve tipos)
 - **Opción 1 (recomendada):** solo se **registra** (número, monto, receptor); no toca tickets ni renglones. Nace cerrado.
 - **Opción 2:** se trata como un cargo extra que se explica con conceptos declarados (como el alojamiento).
 - **Si no se responde:** opción 1.
 
-**Q-3 (permisos). ¿Quién puede conciliar (aplicar tickets a una factura)?**
+**Q-3 — CONFIRMADA, opción 1 (dueño, 2026-11-15, chat con el orquestador, opción elegida: «Administración y gerente»). ¿Quién puede conciliar (aplicar tickets a una factura)?**
 - **Opción 1 (recomendada):** administración y gerente (como cargar el comprobante); el operario no.
 - **Opción 2:** también el operario de la sucursal.
 - **Si no se responde:** opción 1 (los permisos nuevos nacen excluidos y se le da a quien se decida).
