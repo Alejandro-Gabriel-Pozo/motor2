@@ -162,7 +162,7 @@ describe("edición parcial del producto (decisión 0356 de Pedernal)", () => {
     expect([a.ok, b.ok].filter(Boolean)).toHaveLength(1);
     const rechazada = a.ok ? b : a;
     expect(rechazada.ok).toBe(false);
-    expect(!rechazada.ok && rechazada.mensaje).toContain("mientras lo editabas");
+    expect(!rechazada.ok && rechazada.mensaje).toContain("El precio vigente ahora es");
     expect([1800, 1900]).toContain((await leer(ids.pv)).precioVenta);
   });
 });
