@@ -21,7 +21,7 @@
 -- no incluye ANONIMIZADA ni «alta rápida» (supuestos S1 y S3, CONFIRMADOS).
 --
 -- RLS por empresa (`aislamiento_empresa`) como el resto (sin FORCE: ver T-5 del diseño; los scripts de operación leen con el rol dueño). Sin DELETE ni TRUNCATE para la app; INSERT y UPDATE por columna.
--- Reversa: down.sql (a mano, como dueño, `psql -1 -v ON_ERROR_STOP=1 -f down.sql`; después `prisma migrate resolve --rolled-back 20261115120000_parte_ficha_unica_p1`). Se NIEGA si hay fichas que no vienen de la migración
+-- Reversa: down.sql (a mano, como dueño, `psql -1 -v ON_ERROR_STOP=1 -f down.sql`; después `prisma migrate resolve --rolled-back 20261115140000_parte_ficha_unica_p1`). Se NIEGA si hay fichas que no vienen de la migración
 -- (o editadas); `SET LOCAL motor2.confirmar_reversion = 'SI'` solo con aviso al dueño. Verificación previa de conteos: verificacion-previa.sql (solo lectura).
 
 DO $$

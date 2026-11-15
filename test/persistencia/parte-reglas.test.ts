@@ -6,7 +6,7 @@ import { EMPRESA_TESTIGO_ID } from "../setup/empresa-de-prueba";
 import { EMPRESA_POR_DEFECTO_ID as A, limpiarBaseDeTest, prismaAdmin } from "../setup/test-db";
 
 /**
- * Parte P1 (migración 20261115120000_parte_ficha_unica_p1) contra la base real: la BASE hace cumplir lo que el diseño declara (docs/diseno-parte-2026-11-12.md §4), con el nombre de cada restricción.
+ * Parte P1 (migración 20261115140000_parte_ficha_unica_p1) contra la base real: la BASE hace cumplir lo que el diseño declara (docs/diseno-parte-2026-11-12.md §4), con el nombre de cada restricción.
  * Oráculo A (naturaleza × documento) recorrido COMPLETO, más los casos de documento, nombre, domicilio, contacto, nota, únicos, FK compuesta, disparador (identidad, versión, columnas calculadas) y privilegios del rol de la app.
  * Mutación demostrada: sacar un CHECK de la migración hace caer su caso «rechaza»; sacar el único del documento hace caer los de choque.
  * Concurrencia e idempotencia del alta: `parte-alta-concurrencia.test.ts`. Paridad con el código: `parte-paridad-con-el-codigo.test.ts`.

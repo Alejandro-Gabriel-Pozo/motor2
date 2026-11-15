@@ -1,5 +1,5 @@
--- Verificación previa de 20261115120000_parte_ficha_unica_p1. SOLO LEE (transacción de solo lectura). Se corre con el rol dueño en CADA base real ANTES de aprobar la migración (y de nuevo DESPUÉS, para comparar):
---   psql "<DIRECT_URL de la base>" -f prisma/migrations/20261115120000_parte_ficha_unica_p1/verificacion-previa.sql
+-- Verificación previa de 20261115140000_parte_ficha_unica_p1. SOLO LEE (transacción de solo lectura). Se corre con el rol dueño en CADA base real ANTES de aprobar la migración (y de nuevo DESPUÉS, para comparar):
+--   psql "<DIRECT_URL de la base>" -f prisma/migrations/20261115140000_parte_ficha_unica_p1/verificacion-previa.sql
 -- Devuelve SOLO cuentas e identificadores internos (nunca nombres, documentos ni contactos): la salida se puede pegar en un chat.
 -- Cómo leerla:
 --   1. «invalidos» tiene que dar 0: es la cantidad de proveedores cuyo nombre la regla de la ficha no acepta; si no es 0 la migración se detiene y lista esos ids (corregirlos antes).

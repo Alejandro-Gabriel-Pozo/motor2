@@ -5,7 +5,7 @@ import { digitoVerificadorDeCuit } from "../../src/core/fiscal/cuit-estricto";
 import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/base-temporal-migrada";
 
 /**
- * Parte, etapa P1 (docs/diseno-parte-ficha-unica-2026-11-15.md §5): SUBIR, BAJAR y SUBIR de la migración real `20261115120000_parte_ficha_unica_p1` sobre una base TEMPORAL descartable (`crearBaseTemporalMigrada`:
+ * Parte, etapa P1 (docs/diseno-parte-ficha-unica-2026-11-15.md §5): SUBIR, BAJAR y SUBIR de la migración real `20261115140000_parte_ficha_unica_p1` sobre una base TEMPORAL descartable (`crearBaseTemporalMigrada`:
  * solo Postgres local, jamás `motor2_dev`, `motor2_e2e` ni una base real), con su `down.sql` tal cual está en el repo. Parte del estado anterior: todas las migraciones previas aplicadas y proveedores y clientes cargados.
  * Los datos de ejemplo son inventados (el repositorio es público).
  *
@@ -16,7 +16,7 @@ import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/bas
  *  5. BAJAR DOS VECES no falla; SUBIR OTRA VEZ deja el catálogo idéntico al de la primera subida y el mismo conteo.
  */
 const RAIZ = join(__dirname, "../../prisma/migrations");
-const P1 = "20261115120000_parte_ficha_unica_p1";
+const P1 = "20261115140000_parte_ficha_unica_p1";
 const sql = (archivo: "migration.sql" | "down.sql") => readFileSync(join(RAIZ, P1, archivo), "utf8");
 
 const E1 = "empresa_p1_a";

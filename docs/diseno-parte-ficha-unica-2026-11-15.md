@@ -209,7 +209,7 @@ Ninguna pregunta de negocio abierta (P-1 quedó CONFIRMADA, opción 1). La autor
 
 ## 11. Estado de implementación — P1, etapa (a) (2026-11-15)
 
-Migración `20261115120000_parte_ficha_unica_p1` (aditiva, con `down.sql` y `verificacion-previa.sql`; **sin aplicar en ninguna base real**): funciones `cuit_valido` y `texto_de_ficha_valido`, tabla `Parte`, `Proveedor.parteId` y relleno sin pérdida; pruebas de migración (subir–bajar–subir, relleno, idempotencia), reglas contra la base, concurrencia e idempotencia del alta y paridad SQL ↔ código. Faltan (b) casos de uso, permisos y auditoría y (c) pantallas.
+Migración `20261115140000_parte_ficha_unica_p1` (aditiva, con `down.sql` y `verificacion-previa.sql`; **sin aplicar en ninguna base real**): funciones `cuit_valido` y `texto_de_ficha_valido`, tabla `Parte`, `Proveedor.parteId` y relleno sin pérdida; pruebas de migración (subir–bajar–subir, relleno, idempotencia), reglas contra la base, concurrencia e idempotencia del alta y paridad SQL ↔ código. Faltan (b) casos de uso, permisos y auditoría y (c) pantallas.
 
 Diferencias con Pedernal y con el diseño del 11-12, cada una con su motivo (regla de paridad):
 - Sin tabla de roles (`parte_rol`, `rol_de_parte`): el rol es tener la ficha del rol (D18, CONFIRMADA). Sin `tipo_de_vinculo` ni vínculos (P2).
@@ -221,5 +221,6 @@ Diferencias con Pedernal y con el diseño del 11-12, cada una con su motivo (reg
 - RLS `aislamiento_empresa` SIN `FORCE` (T-5: Motor2 no usa `FORCE` hoy y los scripts de operación leen con el rol dueño); Pedernal la fuerza. Decisión pendiente del dueño si se quiere igualar.
 - Versión y fecha de cambio las fija un disparador (`Parte_proteger`) y la identidad es inmutable; la app solo condiciona su UPDATE por la versión que leyó. Pedernal hace lo mismo con `fijar_version_y_fecha`.
 - «Cliente» no se toca en P1 (su ficha es la etapa P3, D9 y D12).
+- Sugerencias (no implementadas): `FORCE ROW LEVEL SECURITY` como Pedernal; etapas (b) casos de uso y (c) pantallas.
 
 Autoría: este documento lo escribió **Sonnet** (sesión de diseño en papel). No hay código.

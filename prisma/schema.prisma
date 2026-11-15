@@ -656,7 +656,7 @@ model Proveedor {
   ofreceServicios Boolean @default(false)
   /// M3e (C36): la condición del proveedor frente al IVA (`CONDICIONES_IVA` de src/core/fiscal/iva.ts, la misma lista que `Empresa.condicionIva`; CHECK "Proveedor_condicionIva_check"). NULL = «no declarada»: quien la lea falla cerrado.
   condicionIva    String?
-  /// Parte, etapa P1 (docs/diseno-parte-ficha-unica-2026-11-15.md): la ficha única de la persona o empresa (identidad: nombre, documento, contacto). NULL = todavía sin ficha. Único por empresa (un proveedor, una ficha). Migración 20261115120000_parte_ficha_unica_p1.
+  /// Parte, etapa P1 (docs/diseno-parte-ficha-unica-2026-11-15.md): la ficha única de la persona o empresa (identidad: nombre, documento, contacto). NULL = todavía sin ficha. Único por empresa (un proveedor, una ficha). Migración 20261115140000_parte_ficha_unica_p1.
   parteId         String? @db.Uuid
   parte           Parte?  @relation(fields: [empresaId, parteId], references: [empresaId, id], map: "Proveedor_parte_fkey")
 
@@ -679,7 +679,7 @@ model Proveedor {
 /// (decisiones del dueño D1 y D2, 2026-11-12). Guarda SOLO quién es: lo de cada rol (condiciones de pago del proveedor, % de descuento del cliente) sigue en su propia ficha y la APUNTA; el rol es tener la ficha del rol (D18).
 /// El `id` lo manda la aplicación (uuid); `idempotenciaAlta` es la clave de reintento del alta (única por empresa). Un documento, una parte por empresa, también entre inactivas (`Parte_documento_uk`, índice parcial que solo vive en la migración).
 /// Los CHECK (naturaleza, documento por tipo, domicilio, correo, teléfono, nota, estado, `Parte_naturaleza_o_migrada_chk`: sin naturaleza solo si vino de la migración) y las tres columnas calculadas por la base
-/// (`nombreBusqueda`, `documentoNormalizado`, `telefonoDigitos`: GENERATED ALWAYS, el código no las escribe) los declara solo la migración 20261115120000_parte_ficha_unica_p1 (Prisma no los modela).
+/// (`nombreBusqueda`, `documentoNormalizado`, `telefonoDigitos`: GENERATED ALWAYS, el código no las escribe) los declara solo la migración 20261115140000_parte_ficha_unica_p1 (Prisma no los modela).
 /// `version` y `actualizadoEn` los fija un disparador (`Parte_proteger`); la aplicación solo condiciona su UPDATE por la versión que leyó. Nunca se borra: se desactiva (`estado`). La app no tiene DELETE.
 model Parte {
   id                   String   @id @db.Uuid

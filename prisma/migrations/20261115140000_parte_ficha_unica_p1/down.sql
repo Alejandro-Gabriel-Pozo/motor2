@@ -1,4 +1,4 @@
--- Reversa de 20261115120000_parte_ficha_unica_p1 (Parte, etapa P1). A mano, como dueño (evade RLS), con `psql -1 -v ON_ERROR_STOP=1 -f down.sql`; después `prisma migrate resolve --rolled-back 20261115120000_parte_ficha_unica_p1`.
+-- Reversa de 20261115140000_parte_ficha_unica_p1 (Parte, etapa P1). A mano, como dueño (evade RLS), con `psql -1 -v ON_ERROR_STOP=1 -f down.sql`; después `prisma migrate resolve --rolled-back 20261115140000_parte_ficha_unica_p1`.
 -- Quita la columna "Proveedor"."parteId" (con su FK y su único), la tabla "Parte" y las tres funciones. NO toca ninguna columna vieja de "Proveedor": el código anterior sigue andando porque nunca dejó de leerlas.
 -- SE NIEGA si hay fichas que NO vienen de la migración ("migradaDe" IS NULL: altas hechas desde la app) o fichas migradas que ya se completaron o editaron (versión > 1): se perderían datos cargados a mano.
 -- Con aviso previo al dueño y respaldo, se confirma así dentro de la misma transacción:  BEGIN; SET LOCAL motor2.confirmar_reversion = 'SI'; \i down.sql  COMMIT;
@@ -15,7 +15,7 @@ BEGIN
     END IF;
     SELECT count(*) FILTER (WHERE "migradaDe" IS NULL), count(*) FILTER (WHERE "migradaDe" IS NOT NULL AND "version" > 1) INTO v_nuevas, v_editadas FROM "Parte";
     IF (v_nuevas > 0 OR v_editadas > 0) AND coalesce(current_setting('motor2.confirmar_reversion', true), '') <> 'SI' THEN
-      RAISE EXCEPTION 'No se puede bajar 20261115120000_parte_ficha_unica_p1: hay % ficha(s) nueva(s) y % ficha(s) migrada(s) editada(s); avisar al dueño, tener un respaldo y repetir con SET LOCAL motor2.confirmar_reversion = ''SI''', v_nuevas, v_editadas USING ERRCODE = '55000';
+      RAISE EXCEPTION 'No se puede bajar 20261115140000_parte_ficha_unica_p1: hay % ficha(s) nueva(s) y % ficha(s) migrada(s) editada(s); avisar al dueño, tener un respaldo y repetir con SET LOCAL motor2.confirmar_reversion = ''SI''', v_nuevas, v_editadas USING ERRCODE = '55000';
     END IF;
   END IF;
 END
