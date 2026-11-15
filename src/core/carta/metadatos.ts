@@ -30,6 +30,8 @@ export interface MetadatosPublicos {
 }
 
 const normalizarEspacios = (texto: string) => texto.replace(/\s+/g, " ").trim();
+/** Fallar cerrado: una descripción propia solo se usa si dice algo, es decir, si tiene al menos una letra o un dígito. Solo adornos («✦», «***», «———») o vacía = no se usa y cae a la descripción neutra. */
+const TIENE_LETRA_O_DIGITO = /[\p{L}\p{N}]/u;
 const contiene = (texto: string, parte: string) => texto.toLocaleLowerCase("es").includes(parte.toLocaleLowerCase("es"));
 
 /** F1 (fallar cerrado): el nombre público tal como se puede usar en un texto (recortado, NFC, 1 a 60, sin `<` `>` ni invisibles) o `null`: nada, vacío o inválido = sin nombre. */
@@ -61,12 +63,12 @@ export function tituloDeCartaDeSucursal(nombre: string, nombreEmpresa?: string |
 }
 
 /**
- * Descripción de la carta de una sucursal. Si el comercio cargó la suya en el tema (`restaurante_descripcion`), esa. Si no, «Carta de <sucursal> — <nombre público>.» (sin el « — <nombre público>» si no hay) seguida
+ * Descripción de la carta de una sucursal. Si el comercio cargó la suya en el tema (`restaurante_descripcion`) y dice algo (tiene al menos una letra o un dígito; una de solo adornos como «✦» no se usa), esa. Si no, «Carta de <sucursal> — <nombre público>.» (sin el « — <nombre público>» si no hay) seguida
  * de los nombres de las secciones (lo que de verdad ofrece la carta), todo recortado al largo de una descripción.
  */
 export function descripcionDeCartaDeSucursal(datos: { nombre: string; nombreEmpresa?: string | null; descripcionPropia?: string | null; secciones: readonly string[] }): string {
   const propia = datos.descripcionPropia ? normalizarEspacios(datos.descripcionPropia) : "";
-  if (propia) return recortarTexto(propia, LARGO_MAXIMO_DESCRIPCION_PUBLICA);
+  if (TIENE_LETRA_O_DIGITO.test(propia)) return recortarTexto(propia, LARGO_MAXIMO_DESCRIPCION_PUBLICA);
   const nombre = normalizarEspacios(datos.nombre);
   const empresa = nombrePublicoUsable(datos.nombreEmpresa);
   const encabezado = !empresa || contiene(nombre, empresa) ? `Carta de ${nombre}.` : `Carta de ${nombre} — ${empresa}.`;
