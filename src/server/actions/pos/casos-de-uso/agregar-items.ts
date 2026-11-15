@@ -19,6 +19,8 @@ import { exito, fracaso } from "@/core/resultado-caso";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { cargarNombresDeCartaParaElTicket } from "@/server/lecturas/carta/nombres-para-el-ticket";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
+import { productoOcultoEn } from "@/server/lecturas/catalogo/ocultamiento";
+import { MENSAJE_PRODUCTO_OCULTO } from "@/core/catalogo/public";
 import { modulosDelPosDeEmpresa, type ModulosDelPos } from "@/server/lecturas/pos/modulos-del-pos";
 import { cargarPromoCartaParaAgregar } from "@/server/lecturas/pos/promo-para-agregar";
 import { cargarOpcionesParaVender, completarPreciosDeSucursal } from "@/server/lecturas/opciones/opciones-para-vender";
@@ -144,6 +146,8 @@ export async function agregarItemsCasoDeUso(
       if (!producto) return fracaso("PRODUCTO_INVALIDO", "El producto no existe.");
       if (producto.tipo !== "PV") return fracaso("PRODUCTO_INVALIDO", `«${producto.nombre}» no se puede pedir: solo se piden productos de venta (PV).`);
       if (!(await productoDisponibleEn(actor.sucursalId, producto.id, tx))) return fracaso("PRODUCTO_INVALIDO", `«${producto.nombre}» no está disponible en «${actor.sucursalNombre}».`);
+      // «Ocultar» (diseño 2026-11-15, I-6): una línea NUEVA de un producto oculto (en este local o en toda la empresa) no se agrega; lo ya cargado se cobra. Va DESPUÉS de «no disponible» (gana el desactivado, decisión técnica 7).
+      if (await productoOcultoEn(actor.sucursalId, producto.id, tx)) return fracaso("PRODUCTO_INVALIDO", MENSAJE_PRODUCTO_OCULTO);
       const paso = producto.pasoVenta !== null ? { pasoVenta: Number(producto.pasoVenta), tieneStockReal: tieneStockReal(producto.tipo, producto.seProduce) } : null;
       const cantidad = validarCantidadPedido(item.cantidad, producto.unidadStock.decimales, paso);
       if (!cantidad.ok) return fracaso("PRODUCTO_INVALIDO", `«${producto.nombre}»: ${cantidad.mensaje}`);
