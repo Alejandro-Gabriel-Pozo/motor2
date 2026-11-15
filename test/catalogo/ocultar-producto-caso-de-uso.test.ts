@@ -4,6 +4,7 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 
 import { randomUUID } from "node:crypto";
 import { baseDeTest, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia } from "../setup/test-db";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 import { ocultarProductoCasoDeUso, type ComandoOcultarProducto } from "../../src/server/actions/catalogo/casos-de-uso/ocultar-producto";
 
 /**
@@ -18,7 +19,7 @@ describe("ocultarProductoCasoDeUso", () => {
   let seccionA: string;
   let seccionB: string;
   let productoId: string;
-  const hoy = new Date("2026-11-15T15:00:00.000Z");
+  const hoy = AHORA_DE_LA_CORRIDA;
 
   /** El contexto de quien opera en la sucursal `sucursalId`; con `empresa` la transacción se ensancha a las dos (lo hace la acción). */
   const actor = (sucursalId: string, empresa = false) => ({
