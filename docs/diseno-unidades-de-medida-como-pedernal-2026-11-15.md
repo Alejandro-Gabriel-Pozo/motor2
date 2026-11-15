@@ -36,8 +36,8 @@
 | # | Necesidad | Quién la pidió y dónde está escrita | Estado |
 |---|---|---|---|
 | N-1 | Motor2 igual a Pedernal en todo: mismo resultado y misma forma, salvo lo que imponen Prisma, RLS o los datos ya existentes | Dueño, 2026-11-13: «Necesitamos ser iguales en todo… el resultado tiene que ser el mismo y sobre todo de las mismas formas, salvo porque nosotros usamos Prisma» (regla permanente de `AGENTS.md`) | CONFIRMADA |
-| N-2 | Estado final de las unidades: las 14 fijas de Pedernal | Dueño, chat con el orquestador, «Igual a pedernal». **Fecha:** el encargo de esta sesión dice 2026-11-15; el plan de paridad (`_planes/plan-de-paridad-con-pedernal-2026-11-14.md`, E2) registra la misma respuesta el 2026-11-14. La fecha exacta la confirma el orquestador | CONFIRMADA (fecha NO VERIFICADA) |
-| N-3 | Las unidades que cada empresa ya creó se pasan a la más parecida de las 14 | Dueño, chat con el orquestador, «Convertir cada una a la más parecida» (misma nota de fecha). **No autoriza ninguna migración que reescriba datos** | CONFIRMADA |
+| N-2 | Estado final de las unidades: las 14 fijas de Pedernal | Dueño, 2026-11-15, chat con el orquestador: «Igual a pedernal» (fecha confirmada por el orquestador; el plan de paridad la registra en el bloque del 14/11; fuente: `motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, «Preguntas de datos del plan de paridad») | CONFIRMADA |
+| N-3 | Las unidades que cada empresa ya creó se pasan a la más parecida de las 14 | Dueño, 2026-11-15, chat con el orquestador: «Convertir cada una a la más parecida» (misma fuente). **No autoriza ninguna migración que reescriba datos** | CONFIRMADA |
 | N-4 | Los nombres que se ven son los de la maqueta de productos de Pedernal | Dueño (de Pedernal), 2026-11-13, T2a: «las 14 unidades se muestran con los nombres de la maqueta de productos» (`decisiones-del-dueno-2026-11.md`, fila del 13/11) | CONFIRMADA (Pedernal) |
 | N-5 | Orden de las etapas: «Primero la opción más barata»; este tema reescribe datos y necesita autorización expresa por base y con ensayo | `AGENTS.md`; encargo del orquestador | CONFIRMADA |
 
@@ -329,7 +329,7 @@ Esta pieza **escribe datos existentes** (la columna nueva de cada unidad). La au
 5. **U3 — completar las 14 en las empresas existentes** (con DT-U2 si el dueño quiere longitud, superficie y tiempo). Autorización expresa.
 6. **Etapas posteriores con nombre (NO pedidas):** fusionar equivalentes duplicadas; nombres de presentaciones; unidad de venta separada; cambiar una unidad mal cargada (en Pedernal la propuesta es crear el producto correcto y desactivar el equivocado).
 
-**Supuestos declarados (el dueño los corrige):** S1 los decimales de las unidades existentes no se tocan; S2 la lista de 14 es la de Pedernal sin agregar ni quitar; S3 no se toca ninguna cantidad ni factor ya cargado; S4 la fecha de la respuesta del dueño (2026-11-14 o 2026-11-15) la confirma el orquestador.
+**Supuestos declarados (el dueño los corrige):** S1 los decimales de las unidades existentes no se tocan; S2 la lista de 14 es la de Pedernal sin agregar ni quitar; S3 no se toca ninguna cantidad ni factor ya cargado; S4 (resuelto) la fecha de las respuestas del dueño es 2026-11-15.
 
 ## 13. Diferencias con Pedernal (cada una con su motivo)
 
