@@ -9,7 +9,6 @@ import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
-import { texto } from "@/core/texto";
 import { datosParaGuardar, validarDatosDeProducto } from "@/server/lecturas/catalogo/datos-de-producto";
 import { productoTieneHistoria, productoTieneLiquidaciones } from "@/server/lecturas/catalogo/historia-de-producto";
 import { itemAgrupadoDelProductoEn } from "@/server/lecturas/carta/grupo-de-producto";
@@ -125,7 +124,7 @@ async function actualizarProductoEnTransaccion(
       unidadCompraId: pedidos.unidadCompraId === undefined ? existente.unidadCompraId : pedidos.unidadCompraId,
     };
     const hayAusentes = pedidos.unidadStockId === undefined || pedidos.factorConversion === undefined || pedidos.precioVenta === undefined || pedidos.unidadCompraId === undefined;
-    let puerta = hayAusentes ? guardComandoDatosDeProducto({ datos }) : comando.puerta;
+    let puerta = hayAusentes ? guardComandoDatosDeProducto({ datos, modo: "EDICION" }) : comando.puerta;
 
     // S-12 (D8 del dueño): el costo de consignación (es consignación, proveedor y precio) es de quien tiene `pagar_consignante` en alguna sucursal de la empresa (P20). Sin esa clave un campo que NO viene queda como estaba
     // (la pantalla del operador no lo manda) y uno que viene DISTINTO del guardado se rechaza: nunca se confía en lo que manda el cliente.
@@ -142,7 +141,7 @@ async function actualizarProductoEnTransaccion(
       }
       datos = { ...datos, esConsignacion: existente.esConsignacion, proveedorConsignacionId: existente.proveedorConsignacionId, precioConsignacion: Number(existente.precioConsignacion ?? 0) };
       // S-52: los campos de consignación ya no son los del cliente sino los guardados: la puerta se vuelve a calcular con los datos que de verdad se validan (el guard es la única definición).
-      puerta = guardComandoDatosDeProducto({ datos });
+      puerta = guardComandoDatosDeProducto({ datos, modo: "EDICION" });
     }
     // datosParaGuardar (abajo) no incluye `tipo` a propósito — cambiar el
     // tipo de un producto con historial (recetas, ventas, stock) rompe
@@ -156,11 +155,11 @@ async function actualizarProductoEnTransaccion(
       );
     }
 
-    const validado = await validarDatosDeProducto(tx, datos, productoId, puerta);
+    const validado = await validarDatosDeProducto(tx, datos, productoId, puerta, existente.nombre);
     if ("error" in validado) return fracaso("DATOS_INVALIDOS", validado.error);
 
-    const nuevos = datosParaGuardar(datos, validado.numeros);
-    const nombreActual = texto(datos.nombre);
+    const nuevos = datosParaGuardar(datos, validado.numeros, validado.nombre);
+    const nombreActual = validado.nombre;
 
     // Alícuota de IVA (paso 13): lista cerrada y tipo contra campo (I1, I2), con el tipo GUARDADO (ya se comprobó que el formulario trae el mismo). Solo se escribe la del tipo del producto; un valor que no viene (`undefined`) queda como estaba.
     const alicuotaValida = guardAlicuotaIvaDelProducto({ tipo: existente.tipo, alicuotaIvaVenta: pedidos.alicuotaIvaVenta, alicuotaIvaCompra: pedidos.alicuotaIvaCompra });

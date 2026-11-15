@@ -1,7 +1,7 @@
 import "server-only";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { mensajeCuitDuplicado, validarContactoDeProveedor } from "@/core/features/catalogo/contacto-de-proveedor";
-import { nombreDeCatalogo } from "@/core/features/catalogo/nombre-de-catalogo";
+import { nombreDeFichaSiCambio } from "@/core/datos/nombre-de-ficha";
 import { validarOferta } from "@/core/features/catalogo/oferta-de-proveedor";
 import type { ComandoActualizarProveedor, ResultadoActualizarProveedor } from "@/core/features/catalogo/proveedores.schema";
 import { cambiosPorColumna } from "@/core/opciones/public";
@@ -49,7 +49,8 @@ export async function actualizarProveedorCasoDeUso(actor: Pick<ContextoDeAccion,
       // El nombre: no viene = no se toca. Viene igual al vigente = no hay cambio. Viene distinto = hay que probar que se editó sobre el vigente y que está libre.
       let nombre = proveedor.nombre;
       if (comando.nombre !== undefined) {
-        const pedido = nombreDeCatalogo(comando.nombre, "El nombre no puede estar vacío.", "El nombre");
+        // Regla de nombre de Pedernal (E1): solo si el nombre CAMBIA respecto del guardado (leído por el servidor); un proveedor con un nombre cargado antes que no cumple se sigue editando.
+        const pedido = nombreDeFichaSiCambio(comando.nombre, proveedor.nombre, "RAZON_SOCIAL", "El nombre no puede estar vacío.", "El nombre");
         if (!pedido.ok) return fracaso("DATO_INVALIDO", pedido.mensaje);
         if (pedido.valor !== proveedor.nombre) {
           if (comando.nombreEsperado === undefined) return fracaso("DATO_INVALIDO", "Falta el nombre que tenía el proveedor al abrir la pantalla: recargala y volvé a intentar.");

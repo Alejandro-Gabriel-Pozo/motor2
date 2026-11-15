@@ -1,6 +1,6 @@
 import { validarImporte } from "@/core/datos/importe";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
-import { nombreDeCatalogo } from "./nombre-de-catalogo";
+import { nombreDeFicha } from "@/core/datos/nombre-de-ficha";
 import type { ComandoDuplicarProducto } from "./duplicar-producto.schema";
 
 /**
@@ -31,7 +31,7 @@ export function guardComandoDuplicarProducto(entrada: {
   }
   // Un nombre que no es texto (un número, un objeto) no se «convierte»: es un pedido mal armado.
   if (entrada.nombre !== undefined && entrada.nombre !== null && typeof entrada.nombre !== "string") return rechazar("formato", "El nombre del producto nuevo no es válido.");
-  const nombre = nombreDeCatalogo(entrada.nombre, "El nombre del producto nuevo no puede estar vacío.", "El nombre");
+  const nombre = nombreDeFicha(entrada.nombre, "PRODUCTO", "El nombre del producto nuevo no puede estar vacío.", "El nombre");
   if (!nombre.ok) return rechazar(nombre.codigo, nombre.mensaje);
   if (typeof copiarReceta !== "boolean" || typeof copiarOpciones !== "boolean") return rechazar("formato", "No se entendió qué copiar. Recargá la pantalla y volvé a intentar.");
   if (sucursalDeLaRecetaId !== null && sucursalDeLaRecetaId !== undefined && (typeof sucursalDeLaRecetaId !== "string" || sucursalDeLaRecetaId === "" || sucursalDeLaRecetaId.length > LARGO_MAXIMO_DE_ID)) {

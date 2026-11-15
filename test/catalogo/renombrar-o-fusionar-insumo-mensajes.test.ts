@@ -35,11 +35,19 @@ describe("renombrarOFusionarInsumo: mensajes y orden de los chequeos", () => {
     await sembrarProductoDisponible({ codigo: "MP_HARINA_A", nombre: "Harina A", tipo: "MP", unidadStockId: kgId, insumoId: harinaId }, base.sucursal.id);
   });
 
-  it("el nombre se valida antes que el insumo, y el insumo inexistente se rechaza", async () => {
+  it("el vacío se rechaza antes de leer el insumo; la regla de nombre de Pedernal (E1) se aplica después de leerlo, así que un insumo inexistente gana", async () => {
     expect(await renombrarOFusionarInsumo("no-existe", "   ")).toEqual({ ok: false, mensaje: "El nombre nuevo no puede estar vacío." });
-    expect(await renombrarOFusionarInsumo("no-existe", "-Harina")).toEqual({ ok: false, mensaje: 'El nombre del insumo no puede empezar con "-".' });
+    expect(await renombrarOFusionarInsumo("no-existe", "-Harina")).toEqual({ ok: false, mensaje: "No se encontró el insumo." });
     expect(await renombrarOFusionarInsumo("no-existe", "Harina 0000")).toEqual({ ok: false, mensaje: "No se encontró el insumo." });
     expect(vi.mocked(refresh)).not.toHaveBeenCalled();
+  });
+
+  it("E1: un nombre nuevo que no cumple la regla de Pedernal se rechaza con el mensaje de siempre y no cambia nada; uno que cumple se canoniza", async () => {
+    expect(await renombrarOFusionarInsumo(harinaId, "-Harina")).toEqual({ ok: false, mensaje: 'El nombre del insumo no puede empezar con "-".' });
+    expect(await renombrarOFusionarInsumo(harinaId, "Harina_0000")).toMatchObject({ ok: false, mensaje: expect.stringContaining("tiene caracteres no permitidos") });
+    expect(await renombrarOFusionarInsumo(harinaId, "Харина")).toMatchObject({ ok: false, mensaje: expect.stringContaining("tiene caracteres no permitidos") });
+    expect((await prisma.insumo.findUniqueOrThrow({ where: { id: harinaId } })).nombre).not.toMatch(/_|Харина/);
+    expect(await renombrarOFusionarInsumo(harinaId, "  Harina   0000 ")).toEqual({ ok: true, mensaje: 'Insumo renombrado a "Harina 0000".' });
   });
 
   it("renombre: responde con el nombre recortado y no refresca", async () => {

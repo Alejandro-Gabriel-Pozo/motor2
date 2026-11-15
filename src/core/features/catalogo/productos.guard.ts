@@ -5,8 +5,7 @@ import { LARGO_MAXIMO_NOTAS, validarTextoLibre } from "@/core/datos/limites";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { ALICUOTAS_IVA, type AlicuotaIva } from "@/core/fiscal/public";
 import { esNumeroEstricto } from "@/core/numero";
-import { texto, validarTextoCatalogo } from "@/core/texto";
-import { nombreDeCatalogo } from "./nombre-de-catalogo";
+import { nombreDeFicha, nombreMinimoDeFicha } from "@/core/datos/nombre-de-ficha";
 import type { ComandoDarDeAltaProductoRapido, ComandoSincronizarPrecioGrupoCarta, PuertaDeDatosDeProducto } from "./productos.schema";
 
 /**
@@ -43,7 +42,7 @@ export const MENSAJE_PRESENTACION_NO_ENCONTRADA = "No se encontró la presentaci
  * la unidad de stock. Que el nombre esté libre lo resuelve el caso de uso.
  */
 export function guardComandoDarDeAltaProductoRapido(entrada: { nombre: unknown; unidadStockId: string }): ResultadoDato<ComandoDarDeAltaProductoRapido> {
-  const nombre = nombreDeCatalogo(entrada.nombre, "El nombre no puede estar vacío.", "El nombre");
+  const nombre = nombreDeFicha(entrada.nombre, "PRODUCTO", "El nombre no puede estar vacío.", "El nombre");
   if (!nombre.ok) return rechazar(nombre.codigo, nombre.mensaje);
   if (!entrada.unidadStockId) return rechazar("vacio", "La unidad de stock es obligatoria.");
   return aceptar({ nombre: nombre.valor, unidadStockId: entrada.unidadStockId });
@@ -80,7 +79,7 @@ const DECIMALES_MAXIMOS_DE_UNIDAD = 6;
  * (`PuertaDeDatosDeProducto`): la acción lo CALCULA con lo que mandó el cliente y `validarDatosDeProducto` aplica cada rechazo en el LUGAR de siempre (antes de leer la unidad, o después
  * de leerla), así que un dato inválido nunca gana sobre una unidad inexistente, ni cambia qué mensaje sale primero. Un cuerpo que no es un objeto se rechaza en la primera etapa.
  */
-export function guardComandoDatosDeProducto(entrada: { datos: unknown }): PuertaDeDatosDeProducto {
+export function guardComandoDatosDeProducto(entrada: { datos: unknown; modo?: "ALTA" | "EDICION" }): PuertaDeDatosDeProducto {
   const d = (typeof entrada.datos === "object" && entrada.datos !== null && !Array.isArray(entrada.datos) ? entrada.datos : null) as {
     nombre?: unknown;
     tipo?: unknown;
@@ -96,10 +95,12 @@ export function guardComandoDatosDeProducto(entrada: { datos: unknown }): Puerta
 
   const antesDeLaUnidad = ((): ResultadoDato<null> => {
     if (d === null) return rechazar("formato", "Los datos del producto no son válidos.");
-    const nombre = texto(d.nombre);
-    if (!nombre) return rechazar("vacio", "El nombre no puede estar vacío.");
-    const invalido = validarTextoCatalogo(nombre, "El nombre");
-    if (invalido) return rechazar("formato", invalido);
+    // Regla de nombre de Pedernal (E1): en el ALTA, la estricta; en la EDICIÓN el guard no conoce el nombre guardado, así que solo mira el mínimo (recortado, no vacío, tope) y
+    // `validarDatosDeProducto` aplica la estricta SOLO si el nombre cambió respecto del guardado.
+    const nombre = entrada.modo === "EDICION"
+      ? nombreMinimoDeFicha(d.nombre, "PRODUCTO", "El nombre no puede estar vacío.", "El nombre")
+      : nombreDeFicha(d.nombre, "PRODUCTO", "El nombre no puede estar vacío.", "El nombre");
+    if (!nombre.ok) return rechazar(nombre.codigo === "vacio" ? "vacio" : "formato", nombre.mensaje);
     const observaciones = validarTextoLibre(d.observaciones, "Las observaciones", LARGO_MAXIMO_NOTAS);
     if (!observaciones.ok) return rechazar("largo", observaciones.mensaje);
     if (typeof d.unidadStockId !== "string" || !d.unidadStockId) return rechazar("vacio", "La unidad de stock es obligatoria.");

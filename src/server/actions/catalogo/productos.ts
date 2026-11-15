@@ -404,7 +404,7 @@ export async function darDeAltaProducto(datos: DatosProducto): Promise<Resultado
 export async function actualizarProducto(productoId: string, datos: DatosProductoEdicion): Promise<ResultadoConSincronizable> {
   return conPermisoDeEmpresa<ResultadoConSincronizable>("producto_editar", async (ctx) => {
     // S-52: el guard se CALCULA acá pero `validarDatosDeProducto` aplica cada rechazo en el lugar de siempre (después de leer el producto y la unidad): un producto inexistente gana sobre un dato inválido.
-    const puerta = guardComandoDatosDeProducto({ datos });
+    const puerta = guardComandoDatosDeProducto({ datos, modo: "EDICION" });
     if (typeof datos !== "object" || datos === null) return error(puerta.antesDeLaUnidad.ok ? "Los datos del producto no son válidos." : puerta.antesDeLaUnidad.mensaje);
     const puedeCamposSensibles = await puedeEditarCamposSensiblesDelProducto(ctx);
     const r = await actualizarProductoCasoDeUso(ctx, {

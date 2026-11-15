@@ -1,4 +1,5 @@
 import "server-only";
+import { nombreDeFichaSiCambio } from "@/core/datos/nombre-de-ficha";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { cambioDeCliente } from "@/core/features/clientes/auditoria-de-cliente";
 import type { ComandoActualizarCliente, ResultadoActualizarCliente } from "@/core/features/clientes/clientes.schema";
@@ -34,7 +35,11 @@ export async function actualizarClienteCasoDeUso(
 
   // El rechazo del guard (nombre y después %, calculado por la acción con `guardComandoActualizarCliente`) se aplica ACÁ, después de leer el cliente: un id inexistente gana sobre un dato inválido.
   if (!comando.datos.ok) return fracaso("DATO_INVALIDO", comando.datos.mensaje);
-  const n = comando.datos.valor.nombre;
+  // El guard de la edición solo recortó el nombre y miró el tope: la regla estricta (Pedernal) se aplica ACÁ y solo si el nombre CAMBIA respecto del guardado (leído por el servidor). Un
+  // cliente cargado con un nombre que la regla nueva no admite se puede seguir editando (el % de descuento) mientras no se le cambie el nombre.
+  const nombre = nombreDeFichaSiCambio(comando.datos.valor.nombre, cliente.nombre, "RAZON_SOCIAL", "El nombre del cliente no puede estar vacío.", "El nombre del cliente");
+  if (!nombre.ok) return fracaso("DATO_INVALIDO", nombre.mensaje);
+  const n = nombre.valor;
   const pct = { valor: comando.datos.valor.descuentoPorcentaje };
 
   const dup = await actor.db.cliente.findFirst({ where: { id: { not: clienteId }, nombre: { equals: n, mode: "insensitive" } } });

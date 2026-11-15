@@ -1,6 +1,7 @@
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import type { ComandoCrearInsumo, ComandoCrearOActualizarGrupo, ComandoRenombrarOFusionarInsumo } from "./insumos.schema";
 import { nombreDeCatalogo } from "./nombre-de-catalogo";
+import { nombreDeFicha, nombreMinimoDeFicha } from "@/core/datos/nombre-de-ficha";
 
 /**
  * Guard de la feature «insumos y grupos» (convención «guard por feature», 2026-09-25; Hito 4, bloque 4.3, paso H4C-9). Formato del comando, ANTES de tocar la
@@ -18,14 +19,14 @@ export const MENSAJE_GRUPO_NO_ENCONTRADO = "No se encontró el grupo.";
 
 /** Guard del comando «crear (o reusar) un insumo». */
 export function guardComandoCrearInsumo(entrada: { nombre: unknown }): ResultadoDato<ComandoCrearInsumo> {
-  const nombre = nombreDeCatalogo(entrada.nombre, "El nombre del insumo no puede estar vacío.", "El nombre del insumo");
+  const nombre = nombreDeFicha(entrada.nombre, "PRODUCTO", "El nombre del insumo no puede estar vacío.", "El nombre del insumo");
   if (!nombre.ok) return rechazar(nombre.codigo, nombre.mensaje);
   return aceptar({ nombre: nombre.valor });
 }
 
-/** Guard del comando «renombrar o fusionar un insumo»: solo el nombre nuevo (la confirmación de la fusión la mira el caso de uso, después de leer). */
+/** Guard del comando «renombrar o fusionar un insumo»: solo el nombre nuevo, con el mínimo de una edición (recortado, no vacío, tope); la regla estricta y la confirmación de la fusión las mira el caso de uso, después de leer. */
 export function guardComandoRenombrarOFusionarInsumo(entrada: { insumoId: string; nombreNuevo: unknown; confirmarFusion: boolean }): ResultadoDato<ComandoRenombrarOFusionarInsumo> {
-  const nombre = nombreDeCatalogo(entrada.nombreNuevo, "El nombre nuevo no puede estar vacío.", "El nombre del insumo");
+  const nombre = nombreMinimoDeFicha(entrada.nombreNuevo, "PRODUCTO", "El nombre nuevo no puede estar vacío.", "El nombre del insumo");
   if (!nombre.ok) return rechazar(nombre.codigo, nombre.mensaje);
   return aceptar({ insumoId: entrada.insumoId, nombre: nombre.valor, confirmarFusion: entrada.confirmarFusion });
 }

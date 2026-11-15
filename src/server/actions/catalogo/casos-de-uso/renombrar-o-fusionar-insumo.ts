@@ -1,4 +1,5 @@
 import "server-only";
+import { nombreDeFichaSiCambio } from "@/core/datos/nombre-de-ficha";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoRenombrarOFusionarInsumo, ResultadoRenombrarOFusionarInsumo } from "@/core/features/catalogo/insumos.schema";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
@@ -55,9 +56,14 @@ export async function renombrarOFusionarInsumoCasoDeUso(
   const actual = await actor.db.insumo.findUnique({ where: { id: insumoId } });
   if (!actual) return fracaso("INSUMO_NO_ENCONTRADO", "No se encontró el insumo.");
 
+  // La regla estricta de Pedernal se aplica SOLO si el nombre cambia respecto del guardado (el guard de la edición no la miró). Si el pedido es el nombre de OTRO insumo ya cargado (una
+  // fusión), ese nombre ya existe en la base y se acepta tal cual: la regla nueva no impide fusionar con un insumo cargado antes.
+  const pedido = nombreDeFichaSiCambio(nuevo, actual.nombre, "PRODUCTO", "El nombre nuevo no puede estar vacío.", "El nombre del insumo");
   const existente = await actor.db.insumo.findFirst({
-    where: { nombre: { equals: nuevo, mode: "insensitive" }, id: { not: insumoId } },
+    where: { nombre: { equals: pedido.ok ? pedido.valor : nuevo, mode: "insensitive" }, id: { not: insumoId } },
   });
+  if (!pedido.ok && !existente) return fracaso("DATO_INVALIDO", pedido.mensaje);
+  const nombreNuevo = pedido.ok ? pedido.valor : nuevo;
 
   if (existente) {
     // P2 (RLS por sucursal): las unidades de stock de los productos disponibles del insumo origen se miran en toda la empresa (base de VERIFICACIÓN); devuelve solo un mensaje.
@@ -91,16 +97,16 @@ export async function renombrarOFusionarInsumoCasoDeUso(
 
   // D-9: el renombre y su rastro, en UNA transacción (antes era una sola escritura con la base del contexto, sin auditoría).
   await actor.transaccion(async (tx) => {
-    await renombrarInsumo(tx, { id: insumoId, nombre: nuevo });
+    await renombrarInsumo(tx, { id: insumoId, nombre: nombreNuevo });
     await registrarCambioAuditado(tx, {
       entidad: "Insumo",
       entidadId: insumoId,
       campo: "nombre",
       descripcion: `Insumo "${actual.nombre}": nombre`,
       valorAnterior: actual.nombre,
-      valorNuevo: nuevo,
+      valorNuevo: nombreNuevo,
       actorId: actor.usuarioId,
     });
   });
-  return exito(`Insumo renombrado a "${nuevo}".`, null);
+  return exito(`Insumo renombrado a "${nombreNuevo}".`, null);
 }

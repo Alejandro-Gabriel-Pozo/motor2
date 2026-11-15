@@ -1,6 +1,6 @@
 import { validarPorcentajeDescuento } from "@/core/datos/porcentaje-descuento";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
-import { nombreDeCatalogo } from "@/core/features/catalogo/nombre-de-catalogo";
+import { nombreDeFicha, nombreMinimoDeFicha } from "@/core/datos/nombre-de-ficha";
 import type { ComandoAltaCliente, DatosActualizarCliente } from "./clientes.schema";
 
 /**
@@ -12,9 +12,17 @@ import type { ComandoAltaCliente, DatosActualizarCliente } from "./clientes.sche
  * el cliente (un cliente inexistente gana sobre un dato inválido). La activación solo recibe un id y un booleano: no tiene guard (`SIN_GUARD`).
  */
 
-/** El nombre de un cliente: recortado, no vacío, charset y largo de catálogo, con los textos de siempre. Lo comparten los guards del alta y de la edición. */
+const VACIO_DEL_CLIENTE = "El nombre del cliente no puede estar vacío.";
+const ETIQUETA_DEL_CLIENTE = "El nombre del cliente";
+
+/** El nombre de un cliente EN EL ALTA: la regla de nombre o razón social de Pedernal (200, con letra), con los textos de siempre. */
 function nombreDeCliente(nombre: unknown): ResultadoDato<string> {
-  return nombreDeCatalogo(nombre, "El nombre del cliente no puede estar vacío.", "El nombre del cliente");
+  return nombreDeFicha(nombre, "RAZON_SOCIAL", VACIO_DEL_CLIENTE, ETIQUETA_DEL_CLIENTE);
+}
+
+/** El nombre de un cliente EN LA EDICIÓN (el guard no conoce el guardado): recortado, no vacío y dentro del tope. La regla estricta la aplica el caso de uso SOLO si el nombre cambió. */
+function nombreMinimoDeCliente(nombre: unknown): ResultadoDato<string> {
+  return nombreMinimoDeFicha(nombre, "RAZON_SOCIAL", VACIO_DEL_CLIENTE, ETIQUETA_DEL_CLIENTE);
 }
 
 /**
@@ -36,7 +44,7 @@ export function guardComandoAltaCliente(entrada: { nombre: unknown; descuentoPor
  * devuelve ahí: lo aplica el caso de uso DESPUÉS de leer el cliente (un cliente inexistente gana sobre un dato inválido; no cambia ningún mensaje ni el orden observable).
  */
 export function guardComandoActualizarCliente(entrada: { nombre: unknown; descuentoPorcentaje: unknown }): ResultadoDato<DatosActualizarCliente> {
-  const nombre = nombreDeCliente(entrada.nombre);
+  const nombre = nombreMinimoDeCliente(entrada.nombre);
   if (!nombre.ok) return rechazar(nombre.codigo, nombre.mensaje);
   const pct = validarPorcentajeDescuento(entrada.descuentoPorcentaje);
   if (!pct.ok) return rechazar(pct.codigo, pct.mensaje);
