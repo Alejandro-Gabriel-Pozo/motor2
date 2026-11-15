@@ -380,6 +380,9 @@ model Producto {
 
   observaciones String?
 
+  /// Cómo nombra la COCINA este producto de venta en la comanda (2026-11-15; docs/diseno-nombre-de-cocina-como-pedernal-2026-11-15.md). NULL = no tiene: la comanda usa `nombre`. Solo un PV; CHECK `Producto_nombre_de_cocina_chk` (1 a 80, sin saltos de línea ni espacios en los bordes) que agrega la migración a mano (Prisma no declara CHECK).
+  nombreDeCocina String?
+
   /// Solo tiene sentido si tipo=MP (Catalogo.js:951, 1723-1726) — un PV no
   /// se compra, no tiene Insumo. Se valida en la capa de aplicación, con el
   /// mismo criterio no-bloqueante que hoy (avisa, no impide el alta).
@@ -2520,6 +2523,8 @@ model CuentaItem {
   precioCartaUnitario Decimal?     @db.Decimal(14, 2)
   /// El nombre con que el TICKET DEL CLIENTE nombra el producto de esta línea, CONGELADO al agregarla (el «Nombre en la carta» de la sucursal de la cuenta, si lo tenía; 2026-11-04). NULL = el ticket usa el nombre del producto, como siempre. Solo lo lee el ticket del cliente: la comanda, el stock y los reportes no.
   nombreEnTicket      String?
+  /// El nombre con que la COMANDA DE COCINA nombra el producto de esta línea, CONGELADO al agregarla (el «Nombre de cocina» del producto, si lo tenía; 2026-11-15). NULL = la comanda usa el nombre del producto, como siempre. CHECK `CuentaItem_nombre_de_cocina_chk`. Solo lo lee la comanda (y su reimpresión y el aviso de anulación): el ticket, el stock y los reportes no.
+  nombreDeCocina      String?
 
   /// GO-1 (el «elemento configurable»): la HUELLA de las opciones que van DENTRO del precio de esta línea (SHA-256 hexadecimal de 64 caracteres, CHECK; `huellaDeOpciones`, `src/core/opciones/huella-de-opciones.ts`). NULL = una línea sin opciones (todas las
   /// de hoy) y toda línea ADICIONAL (un adicional no lleva huella). Inmutable una vez escrita (disparador `CuentaItem_opciones_chk`). Dos líneas del mismo producto con distinta huella son líneas distintas.
