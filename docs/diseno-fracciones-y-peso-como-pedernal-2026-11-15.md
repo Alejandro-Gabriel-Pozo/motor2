@@ -10,7 +10,8 @@ Marcas de evidencia: **(V)** verificado leyendo el código de `main` de Motor2 (
 - **Lo que pidió el dueño:** vender un producto por mitad, cuarto u octavo (solo 2, 4 y 8) y por peso, con la perilla apagada por defecto; y que Motor2 sea «igual a Pedernal en todo» (resultado y forma), salvo lo que imponga Prisma.
 - **Lo que Motor2 ya tiene con otro nombre:** una forma *parcial*. Existe un **paso de venta libre** por producto (`Producto.pasoVenta`) que ya permite vender ½ pizza (V). Falta: elegir *cuáles* fracciones se ofrecen, derivar el paso de ellas, la perilla, congelar el paso en la línea vendida, la cantidad escrita «1/2» en el papel, y una forma «peso» explícita.
 - **Etapas, de la más barata a la más cara:** E0 sin migración (reglas puras + oráculo + tests) → E1 una columna en el producto (las fracciones ofrecidas) con su caso de uso y su pantalla → E2 la perilla → E3 congelar el paso en la línea → E4 podar el paso libre. Las migraciones son aditivas y con `down.sql` previsto; ninguna se aplica a una base real desde acá.
-- **Preguntas de negocio abiertas (3):** qué pasa con los pasos libres que ya existen (Q1), si la perilla frena también lo que ya se puede hacer hoy (Q2) y si un producto por peso se vende siempre en la unidad en que se guarda su stock (Q3).
+- **Pasos libres que ya existen (Q1, respondida el 2026-11-15):** el dueño pidió «Convertirlos a la fracción más cercana». Como reescribe un dato, queda sujeta a autorización expresa por base, con ensayo, y se diseña **reversible** (etapa E1b, §8): se conserva el paso original, hay un mapa de conversión con regla de empate y una consulta de solo lectura que lista qué cambiaría. Lo que no cae exacto en ½, ¼ o ⅛ **no se redondea en silencio**: queda «pendiente de completar» con su propuesta.
+- **Preguntas de negocio abiertas (2):** si la perilla frena también lo que ya se puede hacer hoy (Q2) y si un producto por peso se vende siempre en la unidad en que se guarda su stock (Q3).
 - **Dividir la cuenta (0052) no es parte de esta pieza;** su relación con esta está en §7.
 
 ## 1. Propósito y alcance (nivel 1)
@@ -83,7 +84,7 @@ Contexto: una empresa por instalación; el servidor valida empresa y permiso en 
 - **Porción:** en cuántas partes se divide el entero: 2 → ½, 4 → ¼, 8 → ⅛.
 - **Fracciones ofrecidas:** el conjunto de porciones que el producto ofrece. Solo siete conjuntos posibles: {2}, {4}, {8}, {2,4}, {2,8}, {4,8}, {2,4,8} (ordenados, sin repetir).
 - **Paso mínimo:** la menor cantidad vendible. Con fracciones **se deriva** de la porción más fina: 1 ÷ la mayor (2 y 8 → ⅛ = 0,125). Así ⅛ + ⅛ = ¼ vale aunque ¼ no tenga botón. Con peso se carga a mano.
-- **Forma de venta** (concepto derivado, no es una columna): **UNIDAD** (sin paso, o paso 1), **FRACCIONES** (hay fracciones ofrecidas), **PESO** (unidad de masa con paso explícito), **HEREDADA** (lo que hoy ya existe y no encaja en las anteriores: paso libre que no sale de 2, 4 y 8, o unidad de masa sin paso). HEREDADA no se puede elegir de nuevo; se muestra tal cual y se puede cambiar a una de las otras.
+- **Forma de venta** (concepto derivado, no es una columna): **UNIDAD** (sin paso, o paso 1), **FRACCIONES** (hay fracciones ofrecidas), **PESO** (unidad de masa con paso explícito), **HEREDADA** (lo que hoy ya existe y no encaja en las anteriores: paso libre que no sale de 2, 4 y 8, o unidad de masa sin paso). HEREDADA no se puede elegir de nuevo; se muestra tal cual, se puede cambiar a una de las otras y, para el paso libre, se convierte a fracciones según E1b (§8). Después de la conversión, HEREDADA queda solo para lo que está «pendiente de completar».
 
 Ciclo de vida de la forma de un producto:
 
@@ -114,6 +115,7 @@ Una línea ya vendida **conserva** lo que se vendió; cambiar la forma después 
 | I12 | Todo cambio de forma deja registro: quién, cuándo, forma anterior y nueva | V (`registrarCambioAuditado`) |
 | I13 | Una fracción o un peso **no** entra en un renglón de promo/combo (la cantidad de un componente es entera) | PROPUESTA (la opción más barata: se rechaza; no hay pedido que lo habilite) |
 | I14 | Peso con una opción que consume insumo («qué consume cada opción»): se rechaza, como Pedernal (`OPCION_CON_CONSUMO_EN_VENTA_POR_PESO`, P) | PROPUESTA; NO VERIFICADO cómo escala hoy el consumo de una opción en Motor2 |
+| I16 | Convertir un paso libre a fracciones **no pierde el dato**: el paso original se conserva en una columna propia y la conversión se revierte; nada se redondea en silencio: lo que no cae exacto en ½, ¼ o ⅛ queda «pendiente de completar» hasta que una persona con permiso lo confirme | CONFIRMADA la dirección (dueño, 2026-11-15, relatado por el orquestador: «Convertirlos a la fracción más cercana»); el diseño reversible es PROPUESTA |
 | I15 | Todo nace cerrado: un producto nace «por unidad»; la perilla nace apagada; una validación nueva declara lo permitido | CONFIRMADA (regla del dueño 2026-11-11) |
 
 ## 7. Dividir la cuenta: ¿comparte tablas con esta pieza?
@@ -132,6 +134,7 @@ Una línea ya vendida **conserva** lo que se vendió; cambiar la forma después 
 |---|---|---|---|
 | **E0** | Reglas puras (conjuntos, paso derivado, múltiplo exacto con enteros), texto de papel «1/2», **oráculo de combinaciones** y su test. Nada se guarda | ninguna | chico |
 | **E1** | Columna con las fracciones ofrecidas + caso de uso «cambiar la forma de venta» + pantalla «Cómo se vende» (sin botones de venta) | 1, aditiva | mediano |
+| **E1b** | Convertir los pasos libres ya cargados a fracciones (Q1), reversible | 1 aditiva (columna del paso original) + un **paso de datos** con autorización expresa por base y ensayo | mediano |
 | **E2** | Perilla | 1, aditiva (o ninguna, ver Q2) | chico |
 | **E3** | Congelar el paso en la línea vendida | 1, aditiva | chico |
 | **E4** | Podar el campo «Paso de venta» libre (interruptor reversible primero, borrado después, con aviso) | ninguna | chico |
@@ -158,6 +161,37 @@ ALTER TABLE "Producto" DROP COLUMN "porcionesOfrecidas";
 ```
 
 Por qué es compatible hacia atrás: columna con valor por defecto (`'{}'` = sin fracciones, como todo producto de hoy); el CHECK lo cumplen todas las filas existentes (lista vacía); sin relleno; el código anterior no la lee ni la escribe. **Diferencia con Pedernal, con motivo:** Pedernal también exige en el CHECK que la unidad de venta sea la de stock y de conteo; en Motor2 la magnitud vive en la tabla `Unidad` y un CHECK no puede mirar otra tabla, por lo que esa parte se valida en el servidor y (PROPUESTA, etapa posterior) con un disparador. Los privilegios y las políticas por empresa de `Producto` cubren la columna nueva: NO VERIFICADO, se comprueba al implementar.
+
+**E1b — conversión reversible de los pasos libres (Q1).** Pedido del dueño: convertirlos «a la fracción más cercana». Reescribe un dato existente: **no entra en la autorización permanente**; exige autorización expresa por base, con respaldo y ensayo en una rama. Se diseña así:
+
+1. *Columna aditiva* (`down.sql` la quita; frena si tiene datos): `Producto."pasoLibreOriginal" DECIMAL(14,4) NULL` — el paso que tenía el producto antes de convertirlo (nulo = nunca se convirtió).
+2. *Mapa de conversión* (puro, con test; sobre enteros de 4 decimales, sin coma flotante). Fracciones destino: ½ = 0,5 · ¼ = 0,25 · ⅛ = 0,125.
+
+| Paso libre actual | Qué se hace | Cambia el comportamiento de venta |
+|---|---|---|
+| Nulo o 1 | nada: ya es «Unidad» | no |
+| **Exactamente** 0,5 / 0,25 / 0,125 | **automático:** se llena `porcionesOfrecidas` con esa única fracción ({2}, {4}, {8}) y se guarda `pasoLibreOriginal`; el paso no cambia | **no** (el paso es el mismo; solo se completa el dato nuevo) |
+| Otro valor entre 0,125 y 0,5 que no es de esos (por ejemplo 0,2) o menor que 0,125 y válido para la regla vigente (por ejemplo 0,1) | **propuesta, no automática:** se calcula la fracción más cercana por distancia absoluta (0,2 → ¼; 0,1 → ⅛). **Empate → la más fina.** Queda «pendiente de completar» con la propuesta a la vista; la convierte una persona con permiso (`producto_editar`), un producto por vez, y ahí se guarda `pasoLibreOriginal` | sí, y se avisa antes de confirmar (por ejemplo «hoy se vende de a 0,2; pasaría a ¼») |
+| Un valor que la regla vigente no admite (por ejemplo 0,3, o mayor que 0,5 y menor que 1, o nulo con unidad de masa) | **no se propone una conversión silenciosa:** queda «pendiente de completar», sin propuesta automática; la persona elige Unidad, Fracciones o Peso | sí, solo cuando la persona elige |
+
+La razón de no convertir en bloque lo que no cae exacto: hacerlo cambiaría qué cantidades se aceptan (las múltiplos de 0,2 dejan de valer) sin que nadie lo haya visto; el dueño pidió «la más cercana», y «la más cercana» se aplica con confirmación de una persona sobre una propuesta visible, nunca como un redondeo escondido.
+3. *Consulta de solo lectura por base* (se corre antes con un rol que no escribe, una empresa por vez; no cambia nada; el resultado se revisa y se archiva con la autorización):
+
+```sql
+SELECT p."id", p."nombre", p."pasoVenta" AS paso_actual,
+       CASE WHEN p."pasoVenta" IN (0.5, 0.25, 0.125) THEN 'EXACTO: se completa solo'
+            ELSE 'PENDIENTE: la confirma una persona' END AS situacion,
+       f.porcion AS fraccion_propuesta, f.paso AS paso_resultante
+  FROM "Producto" p
+  LEFT JOIN LATERAL (
+        SELECT v.porcion, v.paso FROM (VALUES (2, 0.5), (4, 0.25), (8, 0.125)) AS v(porcion, paso)
+         ORDER BY abs(p."pasoVenta" - v.paso), v.paso ASC LIMIT 1) f ON true
+ WHERE p."pasoVenta" IS NOT NULL AND p."pasoVenta" <> 1
+ ORDER BY p."nombre";
+```
+4. *Reversa:* donde `pasoLibreOriginal` no es nulo, `pasoVenta := pasoLibreOriginal`, `porcionesOfrecidas := '{}'`, `pasoLibreOriginal := NULL`. Es segura porque el original nunca se pierde; se corre solo con autorización, producto por producto o por empresa.
+5. *Atomicidad e idempotencia:* una transacción por empresa; re-ejecutarla no cambia nada (lo ya convertido tiene fracciones, lo exacto ya está completo); un producto cuya versión cambió entre la consulta y la confirmación se rechaza como desactualizado.
+6. **Dependencia de orden:** antes de convertir, tiene que estar la corrección T2 (anular parte valida contra la escala de lo vendido): si no, pasar 0,2 a ¼ dejaría trabado anular 0,2 de un ítem ya vendido (hallazgo 2).
 
 **E2 — la perilla** (según Q2): `Empresa."vendeConFraccionesYPeso" BOOLEAN NOT NULL DEFAULT false`, que solo cambia la plataforma (mismo guardián que `permisosEditables`); `down.sql` la quita. El nombre exacto queda para el momento de construir.
 
@@ -226,21 +260,27 @@ forma (UNIDAD / FRACCIONES × 7 conjuntos / PESO / HEREDADA) × cantidad pedida 
 | O17 | fracciones en un producto cuya unidad de stock no es de conteo, o que no es PV | rechazada |
 | O18 | repetir el mismo cambio de forma (aunque las fracciones lleguen en otro orden) | «sin cambios»: no escribe, no sube versión |
 | O19 | anular ⅛ de un ítem vendido con paso 0,125 después de pasar el producto a {2} | permitida (valida contra lo congelado, no contra lo vigente) |
+| O21 | conversión: paso 0,5 / 0,25 / 0,125 | se completa {2} / {4} / {8}; el paso no cambia; `pasoLibreOriginal` guarda el original |
+| O22 | conversión: paso 0,2 | propuesta ¼ (distancia 0,05 contra 0,075 de ⅛); **no** se aplica sola: «pendiente de completar» hasta que una persona la confirme |
+| O23 | conversión: paso 0,1 / paso menor que 0,125 | propuesta ⅛; ídem |
+| O24 | conversión: paso 0,3 (no admitido por la regla vigente) o mayor que 0,5 y menor que 1 | sin propuesta automática; «pendiente de completar» |
+| O25 | conversión: empate de distancia entre dos fracciones | la más fina |
+| O26 | conversión ejecutada dos veces | la segunda no cambia nada |
+| O27 | conversión y después reversa | `pasoVenta` vuelve al original, `porcionesOfrecidas` vacío, `pasoLibreOriginal` nulo |
 | O20 | papel: 0,5 en FRACCIONES / 0,35 en PESO kg / 1,5 en FRACCIONES | «1/2» / «0,35 kg» / «1 1/2» |
 
 **Pruebas obligatorias (preferencias del dueño):** unitarias de las reglas puras; **concurrencia** (dos cambios de forma simultáneos sobre la misma versión: uno gana, el otro recibe conflicto; dos anulaciones simultáneas sobre un mismo ítem: no superan lo vigente); **idempotencia** (mismo cambio dos veces; mismo agregado dos veces); permisos (sin `producto_editar`); aislamiento (otra empresa no ve ni cambia); la base impone los CHECK aunque el código se olvide; migración arriba y abajo con datos reales de prueba (el `down.sql` frena si hay datos). Gate completo antes de cerrar cada etapa: `npx tsc --noEmit`, `npm run lint`, `npm run arquitectura`, `npm run analizar:muerto`, `npm test`, `npm run build`, `npm run plataforma:build`, `npm run test:e2e`.
 
-**Migración y operación:** migraciones aditivas, reversibles, con `down.sql`; aplicar en una base real sigue congelado hasta orden del dueño (checklist de deploy). **Aviso previo a cualquier cambio destructivo:** ninguna de las etapas lo es; la única que lo sería (pasar pasos libres a fracciones, Q1 opción B) reescribe datos y **no** entra en la autorización permanente.
+**Migración y operación:** migraciones aditivas, reversibles, con `down.sql`; aplicar en una base real sigue congelado hasta orden del dueño (checklist de deploy). **Aviso previo a cualquier cambio destructivo:** ninguna de las etapas lo es; la única que reescribe datos es la conversión de pasos libres (E1b, Q1 respondida): **no** entra en la autorización permanente; pide autorización expresa por base, respaldo y ensayo, y es reversible porque conserva el paso original.
 
 **Qué ve el dueño sin leer código (para después de construir):** (1) en un producto de pizza, tildar ½ y ⅛ y guardar; la venta acepta 0,125 y 0,5 y rechaza 0,3; (2) apretar «Guardar» dos veces seguidas: la segunda dice que no hubo cambios; (3) abrir el mismo producto en dos pestañas y guardar distinto en cada una: una guarda, la otra avisa que cambió; (4) vender media pizza, enviarla a cocina, cambiar las fracciones del producto y anular la media: se puede.
 
 ## 13. Preguntas de NEGOCIO abiertas (solo las que cambian modelo de datos, dinero o permisos)
 
-**Q1 — Los pasos libres que ya existen.** Si algún producto de una base real tiene hoy un paso de venta que no sale de 2, 4 u 8 (por ejemplo 0,2 o 0,1), o es de unidad de masa sin paso: ¿qué pasa con él?
-- **A (recomendada):** queda como está, marcado «Heredada»; no se puede volver a elegir; se puede cambiar a Unidad, Fracciones o Peso cuando se quiera. No reescribe datos.
-- B: se pasa a la fracción más parecida. Reescribe datos: no entra en la autorización permanente; pide ensayo y orden expresa por base.
-- C: los pasos libres siguen pudiendo cargarse (no es «igual a Pedernal»).
-- *Si no se responde:* A. (Antes, el dueño o la plataforma pueden mirar en solo lectura cuántos productos tienen paso: NO VERIFICADO, hoy lo ignoro.)
+**Q1 — Los pasos libres que ya existen. RESPONDIDA (2026-11-15, chat del dueño con el orquestador, relatada): «Convertirlos a la fracción más cercana».** La dirección es CONFIRMADA y no era la recomendación A de este diseño (dejarlos «heredados»); se diseña como pidió el dueño, en E1b (§8). Hecho verificado por el orquestador en solo lectura sobre una copia del 12/11: los casos con paso libre que hay en esa copia equivalen exactamente a ½ (no hay casos que no caigan exacto; otras bases: NO VERIFICADO).
+- Qué queda **sujeto a autorización expresa por base, con ensayo:** la conversión, porque reescribe un dato.
+- Qué no cambia la dirección: lo que no cae exacto en ½, ¼ o ⅛ **no se redondea en silencio**; queda «pendiente de completar» con su propuesta (E1b).
+- *Si más adelante el dueño quiere convertir en bloque también lo que no cae exacto, lo dice; hoy no está pedido.*
 
 **Q2 — La perilla frena lo que ya se puede hacer hoy?** Pedernal tiene la perilla apagada por defecto. Motor2 hoy ya permite cargar un paso libre sin perilla.
 - **A (recomendada):** la perilla (`Empresa`, solo la plataforma) rige únicamente la forma nueva (Fracciones y Peso); el paso libre que existe sigue funcionando hasta que E4 lo retire, para no romper a nadie.
@@ -264,6 +304,7 @@ forma (UNIDAD / FRACCIONES × 7 conjuntos / PESO / HEREDADA) × cantidad pedida 
 | T5 | Los textos del papel «1/2» van en una función pura con denominadores 2, 4, 8 | resultado igual al de Pedernal (D: decisión 181) |
 | T6 | La magnitud de la unidad (conteo) se valida en el servidor y luego con un disparador | un CHECK no puede mirar otra tabla (Prisma/estructura) |
 | T7 | Tope por ítem 999: se revisa para peso en gramos; no se cambia sin pedido | «lo que el dueño no pidió no entra» |
+| T9 | El mapa de conversión (E1b) es una función pura sobre enteros de 4 decimales, con su test del oráculo (O21 a O27); la consulta de solo lectura y el paso de datos usan la misma regla, y un test compara las dos | un solo criterio; sin coma flotante |
 | T8 | La columna nueva `porcionesOfrecidas` se declara en el oráculo de columnas de «Duplicar producto» (`COLUMNAS_DEL_DUPLICADO`, `src/core/catalogo/duplicar-producto.ts`) como `SE_COPIA`, **junto con** `pasoVenta` (que ya se copia): el CHECK exige que el paso salga de las fracciones | el guardián existente (`test/catalogo/duplicar-producto-columnas.test.ts`) falla si una columna de `Producto` no está declarada |
 
 ## 15. Diferencias con Pedernal, declaradas
