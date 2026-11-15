@@ -1,5 +1,5 @@
 import "server-only";
-import { ocultoPor } from "@/core/catalogo/ocultar-producto";
+import { ocultoPor } from "@/core/catalogo/public";
 import type { Db } from "@/lib/db-tipos";
 
 /**
