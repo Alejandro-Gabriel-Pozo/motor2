@@ -205,4 +205,21 @@ Sin cambio respecto del 11-12 §4.2 y §8.1 (oráculo A–E contra la base real 
 
 Ninguna pregunta de negocio abierta (P-1 quedó CONFIRMADA, opción 1). La autorización de la migración de P1 se pide aparte, cuando quiera construirse.
 
+---
+
+## 11. Estado de implementación — P1, etapa (a) (2026-11-15)
+
+Migración `20261115120000_parte_ficha_unica_p1` (aditiva, con `down.sql` y `verificacion-previa.sql`; **sin aplicar en ninguna base real**): funciones `cuit_valido` y `texto_de_ficha_valido`, tabla `Parte`, `Proveedor.parteId` y relleno sin pérdida; pruebas de migración (subir–bajar–subir, relleno, idempotencia), reglas contra la base, concurrencia e idempotencia del alta y paridad SQL ↔ código. Faltan (b) casos de uso, permisos y auditoría y (c) pantallas.
+
+Diferencias con Pedernal y con el diseño del 11-12, cada una con su motivo (regla de paridad):
+- Sin tabla de roles (`parte_rol`, `rol_de_parte`): el rol es tener la ficha del rol (D18, CONFIRMADA). Sin `tipo_de_vinculo` ni vínculos (P2).
+- Sin estado `ANONIMIZADA` ni `es_atajo` (supuestos S1 y S3, CONFIRMADOS). Estados `ACTIVA` e `INACTIVA`.
+- `naturaleza` admite NULL solo en una ficha migrada de un proveedor sin CUIT válido o de prefijo desconocido (R-1, D16); `Parte_naturaleza_o_migrada_chk`.
+- Nombre con la lista de permitidos de Motor2 (razón social, sin `¿ ¡ ? ! % $`; D4). Apellido, alias y calle usan la misma lista (no hay decisión distinta). Correo: exactamente una `@` con texto a los dos lados (más cerrado que Pedernal, que acepta `ana@@`). Nota: sin caracteres de control ni invisibles (R-2, D17); la lista de permitidos completa la aplica el código en la etapa (b).
+- `Parte.id` y `idempotenciaAlta` uuid que manda la aplicación (A-1, E5); `Proveedor.parteId` uuid (el resto de las tablas sigue con id texto). Fechas `timestamptz`.
+- `cuit_valido` sin lista de prefijos (como Pedernal y `cuit-estricto.ts`); el prefijo solo se usa en el relleno para deducir la naturaleza (S4).
+- RLS `aislamiento_empresa` SIN `FORCE` (T-5: Motor2 no usa `FORCE` hoy y los scripts de operación leen con el rol dueño); Pedernal la fuerza. Decisión pendiente del dueño si se quiere igualar.
+- Versión y fecha de cambio las fija un disparador (`Parte_proteger`) y la identidad es inmutable; la app solo condiciona su UPDATE por la versión que leyó. Pedernal hace lo mismo con `fijar_version_y_fecha`.
+- «Cliente» no se toca en P1 (su ficha es la etapa P3, D9 y D12).
+
 Autoría: este documento lo escribió **Sonnet** (sesión de diseño en papel). No hay código.
