@@ -33,8 +33,8 @@ export async function validarDatosDeProducto(db: Db, datos: EntradaProducto, pro
   // factor; el precio de venta; la consignación; el paso de venta; el nombre libre; el insumo.
   if (!puerta.antesDeLaUnidad.ok) return { error: puerta.antesDeLaUnidad.mensaje };
   const pedido = nombreVigente === undefined
-    ? nombreDeFicha(datos.nombre, "PRODUCTO", "El nombre no puede estar vacío.", "El nombre")
-    : nombreDeFichaSiCambio(datos.nombre, nombreVigente, "PRODUCTO", "El nombre no puede estar vacío.", "El nombre");
+    ? nombreDeFicha(datos.nombre, "PRODUCTO", "El nombre no puede estar vacío.")
+    : nombreDeFichaSiCambio(datos.nombre, nombreVigente, "PRODUCTO", "El nombre no puede estar vacío.");
   if (!pedido.ok) return { error: pedido.mensaje };
   const nombre = pedido.valor;
   // Unidad de stock, una sola vez: `factorConversion` son "unidades de stock por unidad de compra" (Catalogo.js:1083/1095,

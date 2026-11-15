@@ -58,7 +58,7 @@ export async function renombrarOFusionarInsumoCasoDeUso(
 
   // La regla estricta de Pedernal se aplica SOLO si el nombre cambia respecto del guardado (el guard de la edición no la miró). Si el pedido es el nombre de OTRO insumo ya cargado (una
   // fusión), ese nombre ya existe en la base y se acepta tal cual: la regla nueva no impide fusionar con un insumo cargado antes.
-  const pedido = nombreDeFichaSiCambio(nuevo, actual.nombre, "PRODUCTO", "El nombre nuevo no puede estar vacío.", "El nombre del insumo");
+  const pedido = nombreDeFichaSiCambio(nuevo, actual.nombre, "PRODUCTO", "El nombre nuevo no puede estar vacío.");
   const existente = await actor.db.insumo.findFirst({
     where: { nombre: { equals: pedido.ok ? pedido.valor : nuevo, mode: "insensitive" }, id: { not: insumoId } },
   });

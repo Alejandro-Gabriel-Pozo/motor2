@@ -13,16 +13,15 @@ import type { ComandoAltaCliente, DatosActualizarCliente } from "./clientes.sche
  */
 
 const VACIO_DEL_CLIENTE = "El nombre del cliente no puede estar vacío.";
-const ETIQUETA_DEL_CLIENTE = "El nombre del cliente";
 
 /** El nombre de un cliente EN EL ALTA: la regla de nombre o razón social de Pedernal (200, con letra), con los textos de siempre. */
 function nombreDeCliente(nombre: unknown): ResultadoDato<string> {
-  return nombreDeFicha(nombre, "RAZON_SOCIAL", VACIO_DEL_CLIENTE, ETIQUETA_DEL_CLIENTE);
+  return nombreDeFicha(nombre, "RAZON_SOCIAL", VACIO_DEL_CLIENTE);
 }
 
 /** El nombre de un cliente EN LA EDICIÓN (el guard no conoce el guardado): recortado, no vacío y dentro del tope. La regla estricta la aplica el caso de uso SOLO si el nombre cambió. */
 function nombreMinimoDeCliente(nombre: unknown): ResultadoDato<string> {
-  return nombreMinimoDeFicha(nombre, "RAZON_SOCIAL", VACIO_DEL_CLIENTE, ETIQUETA_DEL_CLIENTE);
+  return nombreMinimoDeFicha(nombre, "RAZON_SOCIAL", VACIO_DEL_CLIENTE);
 }
 
 /**

@@ -50,7 +50,7 @@ export async function actualizarProveedorCasoDeUso(actor: Pick<ContextoDeAccion,
       let nombre = proveedor.nombre;
       if (comando.nombre !== undefined) {
         // Regla de nombre de Pedernal (E1): solo si el nombre CAMBIA respecto del guardado (leído por el servidor); un proveedor con un nombre cargado antes que no cumple se sigue editando.
-        const pedido = nombreDeFichaSiCambio(comando.nombre, proveedor.nombre, "RAZON_SOCIAL", "El nombre no puede estar vacío.", "El nombre");
+        const pedido = nombreDeFichaSiCambio(comando.nombre, proveedor.nombre, "RAZON_SOCIAL", "El nombre no puede estar vacío.");
         if (!pedido.ok) return fracaso("DATO_INVALIDO", pedido.mensaje);
         if (pedido.valor !== proveedor.nombre) {
           if (comando.nombreEsperado === undefined) return fracaso("DATO_INVALIDO", "Falta el nombre que tenía el proveedor al abrir la pantalla: recargala y volvé a intentar.");

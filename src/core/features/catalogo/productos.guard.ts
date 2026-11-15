@@ -42,7 +42,7 @@ export const MENSAJE_PRESENTACION_NO_ENCONTRADA = "No se encontró la presentaci
  * la unidad de stock. Que el nombre esté libre lo resuelve el caso de uso.
  */
 export function guardComandoDarDeAltaProductoRapido(entrada: { nombre: unknown; unidadStockId: string }): ResultadoDato<ComandoDarDeAltaProductoRapido> {
-  const nombre = nombreDeFicha(entrada.nombre, "PRODUCTO", "El nombre no puede estar vacío.", "El nombre");
+  const nombre = nombreDeFicha(entrada.nombre, "PRODUCTO", "El nombre no puede estar vacío.");
   if (!nombre.ok) return rechazar(nombre.codigo, nombre.mensaje);
   if (!entrada.unidadStockId) return rechazar("vacio", "La unidad de stock es obligatoria.");
   return aceptar({ nombre: nombre.valor, unidadStockId: entrada.unidadStockId });
@@ -98,8 +98,8 @@ export function guardComandoDatosDeProducto(entrada: { datos: unknown; modo?: "A
     // Regla de nombre de Pedernal (E1): en el ALTA, la estricta; en la EDICIÓN el guard no conoce el nombre guardado, así que solo mira el mínimo (recortado, no vacío, tope) y
     // `validarDatosDeProducto` aplica la estricta SOLO si el nombre cambió respecto del guardado.
     const nombre = entrada.modo === "EDICION"
-      ? nombreMinimoDeFicha(d.nombre, "PRODUCTO", "El nombre no puede estar vacío.", "El nombre")
-      : nombreDeFicha(d.nombre, "PRODUCTO", "El nombre no puede estar vacío.", "El nombre");
+      ? nombreMinimoDeFicha(d.nombre, "PRODUCTO", "El nombre no puede estar vacío.")
+      : nombreDeFicha(d.nombre, "PRODUCTO", "El nombre no puede estar vacío.");
     if (!nombre.ok) return rechazar(nombre.codigo === "vacio" ? "vacio" : "formato", nombre.mensaje);
     const observaciones = validarTextoLibre(d.observaciones, "Las observaciones", LARGO_MAXIMO_NOTAS);
     if (!observaciones.ok) return rechazar("largo", observaciones.mensaje);

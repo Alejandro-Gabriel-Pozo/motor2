@@ -44,7 +44,7 @@ export async function editarGrupoDeOpcionesCasoDeUso(
       const grupo = await cargarGrupoEnTx(tx, comando.grupoId);
       if (!grupo) return fracaso("GRUPO_NO_ENCONTRADO", MENSAJE_GRUPO_NO_ENCONTRADO);
       // Regla de nombre de Pedernal (E1): el guard de la edición solo recortó el nombre; la estricta se aplica ACÁ y solo si CAMBIA respecto del guardado (leído dentro de la transacción).
-      const pedido = nombreDeFichaSiCambio(comando.nombre, grupo.nombre, "ELECCION", "El nombre del grupo no puede estar vacío.", "El nombre del grupo");
+      const pedido = nombreDeFichaSiCambio(comando.nombre, grupo.nombre, "ELECCION", "El nombre del grupo no puede estar vacío.");
       if (!pedido.ok) return fracaso("DATO_INVALIDO", pedido.mensaje);
       const nombre = pedido.valor;
       const regla = validarGrupo({ tipo: grupo.tipo, cantidadMinima: comando.cantidadMinima, cantidadMaxima: comando.cantidadMaxima });

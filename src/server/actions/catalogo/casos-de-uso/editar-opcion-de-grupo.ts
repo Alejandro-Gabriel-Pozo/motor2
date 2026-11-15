@@ -33,7 +33,7 @@ export async function editarOpcionDeGrupoCasoDeUso(
       const opcion = await cargarOpcionEnTx(tx, comando.opcionId);
       if (!opcion) return fracaso("OPCION_NO_ENCONTRADA", MENSAJE_OPCION_NO_ENCONTRADA);
       // Regla de nombre de Pedernal (E1): el guard de la edición solo recortó el nombre; la estricta se aplica ACÁ y solo si CAMBIA respecto del guardado (leído dentro de la transacción).
-      const pedido = nombreDeFichaSiCambio(comando.nombre, opcion.nombre, "ELECCION", "El nombre de la opción no puede estar vacío.", "El nombre de la opción");
+      const pedido = nombreDeFichaSiCambio(comando.nombre, opcion.nombre, "ELECCION", "El nombre de la opción no puede estar vacío.");
       if (!pedido.ok) return fracaso("DATO_INVALIDO", pedido.mensaje);
       const nombre = pedido.valor;
       // Carta «B», E3: ausente = la descripción queda como está; `null` = se vacía (el mismo patrón que `prefijoEnCarta` del grupo).

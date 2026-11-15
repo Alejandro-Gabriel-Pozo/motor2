@@ -74,7 +74,7 @@ describe("validarCuit", () => {
 
   it("E1: NO limpia lo de adentro (espacios, puntos, guiones sueltos) y NO filtra prefijos", () => {
     for (const malo of ["33 69345023 9", "33.69345023.9", "3369345023-9", "33-693450239"]) {
-      expect(validarCuit(malo), malo).toMatchObject({ ok: false, codigo: "formato", mensaje: "El CUIT no tiene un formato válido: son 11 dígitos, por ejemplo 30-12345678-1." });
+      expect(validarCuit(malo), malo).toMatchObject({ ok: false, codigo: "formato", mensaje: "El CUIT no tiene un formato válido. Escribilo con 11 números." });
     }
     // Prefijos fuera de la lista vieja (20 23 24 27 30 33 34) con su dígito verificador correcto: ahora pasan.
     expect(validarCuit("10123456780")).toEqual({ ok: true, valor: "10123456780" });
@@ -83,7 +83,7 @@ describe("validarCuit", () => {
 
   it("verificador mal → código «verificador»", () => {
     const r = validarCuit("20-12345678-9");
-    expect(r).toEqual({ ok: false, codigo: "verificador", mensaje: "El CUIT no es válido: el dígito verificador no coincide." });
+    expect(r).toEqual({ ok: false, codigo: "verificador", mensaje: "El CUIT no es válido. Revisá los números." });
   });
 
   it("formato: letras, 10 u 12 dígitos", () => {

@@ -16,7 +16,7 @@ import { nombreDeFicha } from "@/core/datos/nombre-de-ficha";
 export const MENSAJE_CATEGORIA_NO_ENCONTRADA = "No se encontró la categoría.";
 
 export function guardComandoCrearCategoriaProducto(entrada: { nombre: unknown }): ResultadoDato<ComandoCrearCategoriaProducto> {
-  const nombre = nombreDeFicha(entrada.nombre, "ELECCION", "El nombre de la categoría no puede estar vacío.", "El nombre de la categoría");
+  const nombre = nombreDeFicha(entrada.nombre, "ELECCION", "El nombre de la categoría no puede estar vacío.");
   if (!nombre.ok) return rechazar(nombre.codigo, nombre.mensaje);
   return aceptar({ nombre: nombre.valor });
 }

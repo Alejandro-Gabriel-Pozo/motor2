@@ -26,8 +26,8 @@ export function esCuitValido(digitos: string): boolean {
 /**
  * CUIT opcional: vacío → `null`; válido → los 11 dígitos (lo que se guarda). Desde la etapa E1 (paridad con Pedernal, 2026-11-15) la regla es la ESTRICTA de Pedernal (`cuit-estricto.ts`):
  * 11 dígitos, o `XX-XXXXXXXX-X` con los guiones exactos, y el dígito verificador; SIN lista de prefijos y SIN limpiar espacios, puntos ni guiones sueltos de adentro (solo se recortan los
- * extremos, como todo texto de un formulario). Los mensajes siguen siendo los de Motor2 de siempre (siguen siendo verdad con la regla estricta); los de Pedernal (`apps/plataforma/logica/errores-de-plataforma.ts`: «no tiene un
- * formato válido. Escribilo con 11 números.» y «no es válido. Revisá los números.») están en la tabla del PR para que el dueño decida si se cambian. `normalizarCuit` y `esCuitValido` siguen siendo del diagnóstico de la consola de plataforma, que lee datos viejos con separadores.
+ * extremos, como todo texto de un formulario). Los mensajes son los de Pedernal (`apps/plataforma/logica/errores-de-plataforma.ts:84-88` de ZuluHub-ERP: «El CUIT no tiene un formato válido. Escribilo con 11 números.» y «El CUIT no es
+ * válido. Revisá los números.»), con la etiqueta del campo: decisión del dueño, 2026-11-15, «Como Pedernal (Recomendada)» (chat con el orquestador, relatado). `normalizarCuit` y `esCuitValido` siguen siendo del diagnóstico de la consola de plataforma, que lee datos viejos con separadores.
  */
 export function validarCuit(valor: unknown, etiqueta = "El CUIT"): ResultadoDato<string | null> {
   const v = texto(valor);
@@ -35,8 +35,8 @@ export function validarCuit(valor: unknown, etiqueta = "El CUIT"): ResultadoDato
   if (v.length > LARGO_MAXIMO_CUIT) return rechazar("largo", `${etiqueta} no puede superar los ${LARGO_MAXIMO_CUIT} caracteres.`);
   const r = cuitDesdeTexto(v);
   if (r.ok) return aceptar(r.valor);
-  if (r.error === "CUIT_DIGITO_VERIFICADOR_INVALIDO") return rechazar("verificador", `${etiqueta} no es válido: el dígito verificador no coincide.`);
-  return rechazar("formato", `${etiqueta} no tiene un formato válido: son 11 dígitos, por ejemplo 30-12345678-1.`);
+  if (r.error === "CUIT_DIGITO_VERIFICADOR_INVALIDO") return rechazar("verificador", `${etiqueta} no es válido. Revisá los números.`);
+  return rechazar("formato", `${etiqueta} no tiene un formato válido. Escribilo con 11 números.`);
 }
 
 /** `XX-XXXXXXXX-X` si son 11 dígitos; cualquier otra cosa se devuelve tal cual, para no esconder datos viejos. */
