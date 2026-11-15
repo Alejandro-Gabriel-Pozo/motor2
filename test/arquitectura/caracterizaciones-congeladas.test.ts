@@ -702,6 +702,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Nombre público de la empresa en la carta, PR 1 (decisión del dueño 2026-11-14: «Configurable por empresa, como Pedernal (Recomendada)»; construir: «Sí, construí el nombre público»): el catálogo del portal suma la clave `portal_nombre_publico` (nace vacía) y la lectura de la carta pública la trae en `valores` del portal. Cambia SOLO eso: UNA línea con `\"\"` en el portal resuelto; ningún conteo de consultas ni ningún otro valor. Sin nombre cargado el portal se ve exactamente igual (lo prueba test/carta/marca-sin-cambio.test.ts con el portal real).",
       },
+      {
+        blob: "e8b8144ebe118f09528ef023316dcf8b459a9d17",
+        // El commit PADRE de este (22837e5) es el último antes de la regeneración; el cambio es la columna nueva del nombre de cocina (migración 20261115100000_nombre_de_cocina, 2026-11-15).
+        commit: "22837e5",
+        motivo:
+          "Nombre de cocina (ADITIVO; migración 20261115100000_nombre_de_cocina): la fila PRODUCTO de la lectura del estado de la receta propia suma `nombreDeCocina: null` (nadie tiene nombre de cocina en este mundo). Una sola línea agregada, a mano sobre el golden anterior: ningún otro campo ni conteo de consultas cambia.",
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {
