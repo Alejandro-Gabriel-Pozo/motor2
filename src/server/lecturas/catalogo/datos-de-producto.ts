@@ -91,6 +91,6 @@ export function datosParaGuardar(datos: EntradaProducto, numeros: NumerosValidad
     proveedorConsignacionId: datos.proveedorConsignacionId || null,
     precioConsignacion: numeros.precioConsignacion,
     // Sin el campo, Prisma no lo toca (strictUndefinedChecks no admite `undefined`).
-    ...(datos.observaciones !== undefined && { observaciones: datos.observaciones }),
+    ...(datos.observaciones !== undefined && { observaciones: datos.observaciones || null }),
   };
 }

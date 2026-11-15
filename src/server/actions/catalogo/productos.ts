@@ -10,7 +10,7 @@ import { puedeBuscarPorReferenciaDelProveedor, whereDeLosProductos } from "@/ser
 import { buscarProductosPorPalabras } from "@/server/lecturas/catalogo/busqueda-de-producto";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
 import { combinarTramosDeProductos, esCoincidenciaExactaDeCodigo, leerFiltrosDeProductos, necesitaLaEmpresaEntera, MENSAJE_PRESENTACIONES_APAGADAS, PRESENTACIONES_VISIBLES, type EntradaDeFiltrosDeProductos, whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
-import type { CampoSensibleDelProducto, EntradaEdicionProducto, EntradaProducto } from "@/core/features/catalogo/productos.schema";
+import type { CampoAusenteEnLaEdicion, CampoSensibleDelProducto, EntradaEdicionProducto, EntradaProducto } from "@/core/features/catalogo/productos.schema";
 import type { ModoDeVenta } from "@/core/opciones/public";
 import { guardComandoAgregarPresentacionAlternativa, guardComandoDarDeAltaProductoRapido, guardComandoDatosDeProducto, guardComandoSincronizarPrecioGrupoCarta } from "@/core/features/catalogo/productos.guard";
 import { GENERO_E_ITEM_AGRUPADO_VISIBLE, MENSAJE_GENERO_E_ITEM_AGRUPADO_APAGADO, ofrecerSincronizarPrecio } from "@/core/carta/public";
@@ -298,7 +298,7 @@ export interface DatosProducto extends Pick<EntradaProducto, "alicuotaIvaVenta" 
   unidadCompraId?: string | null;
   unidadStockId: string;
   factorConversion: number;
-  observaciones?: string;
+  observaciones?: string | null;
   insumoId?: string | null;
   precioVenta?: number;
   /**
@@ -323,10 +323,10 @@ export interface DatosProducto extends Pick<EntradaProducto, "alicuotaIvaVenta" 
 /**
  * Lo que recibe la EDICIÓN (M.2-A4): como `DatosProducto`, pero el precio de venta, el factor de conversión y las dos unidades son opcionales. Ausentes (`undefined`) quedan como estaban —tenga o no la clave
  * `producto_campos_sensibles` quien edita—: el formulario abierto sin la clave no los manda, y la clave puede llegar mientras edita. `null` en la unidad de compra sigue siendo «sin unidad de compra». El alta
- * (`darDeAltaProducto`) los sigue pidiendo.
+ * (`darDeAltaProducto`) los sigue pidiendo. Edición parcial (decisión 0356 de Pedernal): TODOS los campos son opcionales en la edición —el nombre y el tipo también—: ausente (`undefined`) = no se toca; `null` o vacío enviado a propósito = se borra.
  */
-export type DatosProductoEdicion = Omit<DatosProducto, CampoSensibleDelProducto> &
-  Partial<Pick<DatosProducto, CampoSensibleDelProducto>> & Pick<EntradaEdicionProducto, "alicuotaVista"> & {
+export type DatosProductoEdicion = Omit<DatosProducto, CampoSensibleDelProducto | CampoAusenteEnLaEdicion> &
+  Partial<Pick<DatosProducto, CampoSensibleDelProducto | CampoAusenteEnLaEdicion>> & Pick<EntradaEdicionProducto, "alicuotaVista"> & {
     /**
      * El precio de venta que mostraba el formulario al abrirse (ola «precio y carta», Fase 2, paso A4): si el precio cambia y este ya no es el guardado (otra persona lo cambió mientras se editaba), no
      * se guarda nada y el mensaje pide recargar. Si no viene y el precio cambia, también (falla cerrado).
