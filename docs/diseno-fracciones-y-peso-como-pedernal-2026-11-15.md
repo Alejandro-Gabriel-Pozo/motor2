@@ -11,7 +11,7 @@ Marcas de evidencia: **(V)** verificado leyendo el código de `main` de Motor2 (
 - **Lo que Motor2 ya tiene con otro nombre:** una forma *parcial*. Existe un **paso de venta libre** por producto (`Producto.pasoVenta`) que ya permite vender ½ pizza (V). Falta: elegir *cuáles* fracciones se ofrecen, derivar el paso de ellas, la perilla, congelar el paso en la línea vendida, la cantidad escrita «1/2» en el papel, y una forma «peso» explícita.
 - **Etapas, de la más barata a la más cara:** E0 sin migración (reglas puras + oráculo + tests) → E1 una columna en el producto (las fracciones ofrecidas) con su caso de uso y su pantalla → E2 la perilla → E3 congelar el paso en la línea → E4 podar el paso libre. Las migraciones son aditivas y con `down.sql` previsto; ninguna se aplica a una base real desde acá.
 - **Pasos libres que ya existen (Q1, respondida el 2026-11-15):** el dueño pidió «Convertirlos a la fracción más cercana». Como reescribe un dato, queda sujeta a autorización expresa por base, con ensayo, y se diseña **reversible** (etapa E1b, §8): se conserva el paso original, hay un mapa de conversión con regla de empate y una consulta de solo lectura que lista qué cambiaría. Lo que no cae exacto en ½, ¼ o ⅛ **no se redondea en silencio**: queda «pendiente de completar» con su propuesta.
-- **Preguntas de negocio abiertas (2):** si la perilla frena también lo que ya se puede hacer hoy (Q2) y si un producto por peso se vende siempre en la unidad en que se guarda su stock (Q3).
+- **Preguntas de negocio:** las tres de este diseño están **respondidas** (Q1, Q2 y Q3 del 2026-11-15; ver §13). No quedan preguntas de negocio abiertas; sí queda pendiente la **ratificación de la etapa** y la autorización expresa por base de la conversión y del encendido de la perilla.
 - **Dividir la cuenta (0052) no es parte de esta pieza;** su relación con esta está en §7.
 
 ## 1. Propósito y alcance (nivel 1)
@@ -76,7 +76,7 @@ Contexto: una empresa por instalación; el servidor valida empresa y permiso en 
 | CU4 | Vender una fracción o un peso: en una cuenta de mesa y en el mostrador | existe en parte (V) |
 | CU5 | Anular parte de lo vendido (media pizza ya enviada a cocina) | existe en parte (V); riesgo 2 |
 | CU6 | Ver la cantidad en la comanda y el ticket («1/2», «350 g») | PROPUESTA |
-| CU7 | Encender o apagar la perilla de una empresa | PROPUESTA (Q2) |
+| CU7 | Encender o apagar la perilla de una empresa | PROPUESTA (CONFIRMADA la dirección, Q2) |
 | CU8 | Descontar el stock de lo que se consumió (receta × cantidad) | existe (V) |
 
 ## 5. Conceptos y ciclo de vida (nivel 4)
@@ -107,7 +107,7 @@ Una línea ya vendida **conserva** lo que se vendió; cambiar la forma después 
 | I4 | Fracciones y peso son solo de un producto que se vende (tipo PV) | V (hoy `pasoVenta` solo en PV); Pedernal: clase vendible o reventa |
 | I5 | Una cantidad es válida si es múltiplo exacto del paso; una entera siempre es válida; **nunca** se redondea en silencio una cantidad que no es múltiplo | V para productos con paso; PROPUESTA para PESO (hoy sin paso redondea) |
 | I6 | Peso: paso mayor que cero, hasta 4 decimales; en Motor2 se conserva además «1 ÷ paso es entero» | PROPUESTA; diferencia declarada (§15) |
-| I7 | **Cargar** una forma distinta de «por unidad» exige la perilla encendida; **vender** lo ya cargado **no** la exige (una baja no corta la venta de lo que existe) | CONFIRMADA en Pedernal (2026-11-14); en Motor2 sujeta a Q2 |
+| I7 | **Cargar** una forma nueva (Fracciones o Peso) exige la perilla encendida. **Vender** lo ya cargado con la forma nueva **no** la exige (una baja no corta la venta de lo que existe). **El paso libre heredado SÍ la exige:** con la perilla apagada, un producto con paso libre y sin fracciones se vende solo en cantidades enteras; la venta fraccionada vuelve al convertirlo (E1b) o al encender la perilla | CONFIRMADA: dueño, 2026-11-15, Q2: «Sí, también frena el paso libre» (chat con el orquestador, relatada); la primera mitad CONFIRMADA en Pedernal (2026-11-14) |
 | I8 | Dinero: importe de la línea = cantidad × precio unitario, un solo redondeo a centavos (mitad hacia afuera del cero), moneda explícita (pesos). Nunca coma flotante binaria para el importe | V (`importeDeLinea`) |
 | I9 | Stock: el consumo de la receta es cantidad × consumo por unidad; el total consumido en el tiempo coincide con el exacto (arrastre de redondeo) | V (Task #27) |
 | I10 | Lo ya vendido no cambia: precio, cantidad y (E3) el paso quedan congelados en la línea | PROPUESTA (hoy el paso se lee vivo: riesgo 2) |
@@ -126,7 +126,7 @@ Una línea ya vendida **conserva** lo que se vendió; cambiar la forma después 
 
 ## 8. Esquema PROPUESTO (nivel 6) — «no se migra hasta confirmar niveles 1 a 5»
 
-> Este esquema no se aplica ni se escribe como migración hasta que el dueño ratifique la etapa y responda Q1 a Q3. Toda migración será **aditiva** y con `down.sql`, y aplicarla en una base real sigue congelado.
+> Este esquema no se aplica ni se escribe como migración hasta que el dueño ratifique la etapa (Q1 a Q3 ya están respondidas). Toda migración será **aditiva** y con `down.sql`, y aplicarla en una base real sigue congelado.
 
 **Etapas, de la más barata a la más cara (primero la opción más barata):**
 
@@ -135,7 +135,7 @@ Una línea ya vendida **conserva** lo que se vendió; cambiar la forma después 
 | **E0** | Reglas puras (conjuntos, paso derivado, múltiplo exacto con enteros), texto de papel «1/2», **oráculo de combinaciones** y su test. Nada se guarda | ninguna | chico |
 | **E1** | Columna con las fracciones ofrecidas + caso de uso «cambiar la forma de venta» + pantalla «Cómo se vende» (sin botones de venta) | 1, aditiva | mediano |
 | **E1b** | Convertir los pasos libres ya cargados a fracciones (Q1), reversible | 1 aditiva (columna del paso original) + un **paso de datos** con autorización expresa por base y ensayo | mediano |
-| **E2** | Perilla | 1, aditiva (o ninguna, ver Q2) | chico |
+| **E2** | Perilla y freno del paso libre (Q2), **después** de E1b | 1, aditiva | chico |
 | **E3** | Congelar el paso en la línea vendida | 1, aditiva | chico |
 | **E4** | Podar el campo «Paso de venta» libre (interruptor reversible primero, borrado después, con aviso) | ninguna | chico |
 
@@ -193,7 +193,15 @@ SELECT p."id", p."nombre", p."pasoVenta" AS paso_actual,
 5. *Atomicidad e idempotencia:* una transacción por empresa; re-ejecutarla no cambia nada (lo ya convertido tiene fracciones, lo exacto ya está completo); un producto cuya versión cambió entre la consulta y la confirmación se rechaza como desactualizado.
 6. **Dependencia de orden:** antes de convertir, tiene que estar la corrección T2 (anular parte valida contra la escala de lo vendido): si no, pasar 0,2 a ¼ dejaría trabado anular 0,2 de un ítem ya vendido (hallazgo 2).
 
-**E2 — la perilla** (según Q2): `Empresa."vendeConFraccionesYPeso" BOOLEAN NOT NULL DEFAULT false`, que solo cambia la plataforma (mismo guardián que `permisosEditables`); `down.sql` la quita. El nombre exacto queda para el momento de construir.
+**E2 — la perilla y el freno del paso libre** (Q2 respondida): `Empresa."vendeConFraccionesYPeso" BOOLEAN NOT NULL DEFAULT false`, que solo cambia la plataforma (mismo guardián que `permisosEditables`); `down.sql` la quita. El nombre exacto queda para el momento de construir. **Efecto, igual a Pedernal:** con la perilla apagada, una cantidad fraccionaria de un producto sin fracciones cargadas (paso libre heredado) se rechaza («solo enteras»); la entera siempre vale. No cambia ningún dato.
+
+**Orden obligatorio de puesta en marcha** (cada paso con autorización expresa por base, respaldo y ensayo; ninguno se aplica desde una sesión de diseño):
+1. T2 (anular parte contra la escala vendida) y E1 (columna de fracciones).
+2. E1b: **convertir** los pasos libres exactos (se completan solos) y dejar los demás «pendientes de completar» con su propuesta; correr antes la consulta de solo lectura y archivarla.
+3. Recién entonces, **E2: activar el freno** del paso libre (perilla apagada por defecto). Si se activara antes de convertir, los productos con paso libre pasarían de golpe a vender solo enteros: falla cerrada, pero visible para el salón.
+4. E4: ocultar el campo «Paso de venta» libre.
+
+Efecto por tipo de producto al activar el freno: *convertido* (tiene fracciones): sigue vendiendo fracciones, con la perilla apagada o encendida; *pendiente de completar* (paso libre no exacto, sin confirmar): solo enteros hasta que una persona lo confirme; *por unidad*: sin cambio; *de masa sin paso* (peso heredado): **sin cambio** (el freno rige el «paso libre»; no se pidió frenar el peso heredado: supuesto declarado).
 
 **E3 — paso congelado en la línea:** `CuentaItem."pasoDeCantidad" DECIMAL(14,4) NULL` con `CHECK (… IS NULL OR … > 0)`; nulo = línea anterior (se usa el paso vigente, como hoy). El espejo de anulación lo repite del original, como ya hace con `nombreEnTicket` (`escribir-espejo-de-item.ts`). `down.sql` es destructivo si hay líneas con paso: aborta si encuentra alguna. La unidad no se congela porque no hay unidad de venta aparte (Q3).
 
@@ -275,23 +283,16 @@ forma (UNIDAD / FRACCIONES × 7 conjuntos / PESO / HEREDADA) × cantidad pedida 
 
 **Qué ve el dueño sin leer código (para después de construir):** (1) en un producto de pizza, tildar ½ y ⅛ y guardar; la venta acepta 0,125 y 0,5 y rechaza 0,3; (2) apretar «Guardar» dos veces seguidas: la segunda dice que no hubo cambios; (3) abrir el mismo producto en dos pestañas y guardar distinto en cada una: una guarda, la otra avisa que cambió; (4) vender media pizza, enviarla a cocina, cambiar las fracciones del producto y anular la media: se puede.
 
-## 13. Preguntas de NEGOCIO abiertas (solo las que cambian modelo de datos, dinero o permisos)
+## 13. Preguntas de NEGOCIO (solo las que cambian modelo de datos, dinero o permisos): las tres, respondidas
 
 **Q1 — Los pasos libres que ya existen. RESPONDIDA (2026-11-15, chat del dueño con el orquestador, relatada): «Convertirlos a la fracción más cercana».** La dirección es CONFIRMADA y no era la recomendación A de este diseño (dejarlos «heredados»); se diseña como pidió el dueño, en E1b (§8). Hecho verificado por el orquestador en solo lectura sobre una copia del 12/11: los casos con paso libre que hay en esa copia equivalen exactamente a ½ (no hay casos que no caigan exacto; otras bases: NO VERIFICADO).
 - Qué queda **sujeto a autorización expresa por base, con ensayo:** la conversión, porque reescribe un dato.
 - Qué no cambia la dirección: lo que no cae exacto en ½, ¼ o ⅛ **no se redondea en silencio**; queda «pendiente de completar» con su propuesta (E1b).
 - *Si más adelante el dueño quiere convertir en bloque también lo que no cae exacto, lo dice; hoy no está pedido.*
 
-**Q2 — La perilla frena lo que ya se puede hacer hoy?** Pedernal tiene la perilla apagada por defecto. Motor2 hoy ya permite cargar un paso libre sin perilla.
-- **A (recomendada):** la perilla (`Empresa`, solo la plataforma) rige únicamente la forma nueva (Fracciones y Peso); el paso libre que existe sigue funcionando hasta que E4 lo retire, para no romper a nadie.
-- B: la perilla rige también el paso libre (cortaría lo que hoy se puede hacer).
-- C: sin perilla: siempre habilitado (no es «apagada por defecto» como pidió el dueño; se declararía con el motivo «Motor2 no tiene planes»).
-- *Si no se responde:* A, con la perilla apagada.
+**Q2 — ¿La perilla frena también el paso libre que ya existe? RESPONDIDA (2026-11-15, chat del dueño con el orquestador, relatada): «Sí, también frena el paso libre».** La dirección es CONFIRMADA y no era la recomendación A de este diseño; queda como pidió el dueño, igual a Pedernal: con la perilla apagada el paso libre actual deja de permitir venta fraccionada (se venden solo enteros). Efecto y orden de puesta en marcha con la conversión de pasos libres: §8 (E2). Sujeto a autorización expresa por base, con ensayo.
 
-**Q3 — Un producto por peso, ¿se vende siempre en la unidad en que se guarda su stock?** En Pedernal el producto puede venderse en una unidad distinta de la base (kilo vs gramo) y el sistema convierte los precios.
-- **A (recomendada, la más barata):** sí: unidad de venta = unidad de stock; el precio es «por esa unidad»; no hay conversión de precios (no se crea ninguna columna de unidad de venta).
-- B: no: se agrega unidad de venta aparte (columna en el producto y en cada precio, conversión exacta y «precio abierto» cuando no convierte). Es una etapa grande, ligada a las 14 unidades fijas (E2 del plan de paridad).
-- *Si no se responde:* A.
+**Q3 — Un producto por peso, ¿se vende siempre en la unidad en que se guarda su stock? RESPONDIDA (2026-11-15, chat del dueño con el orquestador, relatada): «Sí, siempre en la unidad de stock (Recomendada)».** CONFIRMADA: unidad de venta = unidad de stock; el precio es «por esa unidad»; no hay conversión de precios ni columna de unidad de venta. Si algún día se quiere vender en otra unidad (kilo vs gramo), es una etapa grande aparte ligada a las 14 unidades fijas (E2 del plan de paridad) y requiere una pregunta nueva.
 
 ## 14. Decisiones técnicas (del ingeniero; el dueño no necesita decidirlas)
 
@@ -314,8 +315,8 @@ forma (UNIDAD / FRACCIONES × 7 conjuntos / PESO / HEREDADA) × cantidad pedida 
 | Motor2 conserva «1 ÷ paso es entero» en el peso | Es la regla vigente desde 2026-09-26 (plan de venta fraccionada); no se endurece ni afloja sin pedido. Pedernal no la tiene (P) | PROPUESTA; el dueño la corrige |
 | El stock de una receta fraccionada usa arrastre de redondeo | Ya construido (Task #27) y probado; su resultado total coincide con el exacto | PROPUESTA |
 | El CHECK no exige unidad de conteo | La unidad vive en otra tabla (T6) | impuesta por estructura |
-| Sin unidad de venta aparte | Q3 (recomendación A) y «Motor2 no tiene planes, es solo 1 empresa» | PENDIENTE (Q3) |
-| La perilla es una columna de empresa, no de plan | No hay planes en Motor2 (dueño, 2026-11-14, relatado) | PENDIENTE (Q2) |
+| Sin unidad de venta aparte | Q3 respondida: «Sí, siempre en la unidad de stock» (dueño, 2026-11-15, relatada) y «Motor2 no tiene planes, es solo 1 empresa» | CONFIRMADA |
+| La perilla es una columna de empresa, no de plan; y frena también el paso libre | No hay planes en Motor2 (dueño, 2026-11-14, relatado); Q2: «Sí, también frena el paso libre» (dueño, 2026-11-15, relatada) | CONFIRMADA la dirección |
 | Sin botones de fracción en el punto de venta | No pedido para Motor2 | PROPUESTA |
 
 ## 16. Límites honestos

@@ -11,7 +11,7 @@ Marcas de evidencia: **(V)** verificado leyendo el código de `main` de Motor2 (
 - **En Motor2 hoy:** **no existe** ni el campo ni el concepto (V: ninguna aparición en `src` ni en `prisma`; solo se lo nombra en documentos). La comanda usa el nombre **interno vivo** del producto (`producto.nombre`), sin congelar: renombrar un producto cambia retroactivamente lo que dicen las reimpresiones y los avisos de anulación.
 - **Qué entra:** un campo opcional «Nombre de cocina» en el producto de venta; congelarlo en la línea al venderla (como ya se hace con el nombre del ticket); la comanda, la reimpresión y el aviso de anulación lo usan; sin él, el nombre interno como hoy.
 - **Etapas:** E1 columna en el producto + campo + comanda (lectura viva, la más barata) → E2 congelar en la línea (lo recomendado, en el mismo envío de trabajo) → E3 inmutabilidad en la base.
-- **Pregunta de negocio abierta (1):** si el nombre de cocina también va en cada opción y componente (Q1).
+- **Pregunta de negocio (1), respondida el 2026-11-15:** el nombre de cocina va **solo del producto**, como Pedernal (Q1, §13). No quedan preguntas de negocio abiertas.
 - **Dividir la cuenta (0052):** no comparte tablas; ver §7.
 
 ## 1. Propósito y alcance (nivel 1)
@@ -99,7 +99,7 @@ producto.nombreDeCocina (editable) ──al agregar la línea──► línea.no
 | I1 | El nombre de cocina es nulo o un texto de 1 a 80, de una línea, con solo lo permitido (letras, números, puntuación y símbolos; sin saltos de línea ni caracteres invisibles) y con al menos una letra | CONFIRMADA en Pedernal (`nombre-de-cocina.ts`); el tope de 80 está marcado **supuesto sin cita del dueño** en Pedernal (DEC-0043) → PROPUESTA para Motor2 |
 | I2 | Solo un producto que se vende (tipo PV) puede tener nombre de cocina | CONFIRMADA en Pedernal (INV-PROD-3: lo que no se vende no lleva nombre de cocina); PROPUESTA para Motor2 |
 | I3 | En la comanda gana el nombre de cocina; si no hay, el nombre comercial | **CONFIRMADA** (dueño, 2026-11-08 y 2026-11-14: DEC-0420) |
-| I4 | «Nombre comercial» en Motor2 = el **nombre interno** del producto (el que la comanda usa hoy), **no** el nombre de la carta de la sucursal | PROPUESTA (supuesto declarado, §14 T1) |
+| I4 | «Nombre comercial» en Motor2 = el **nombre interno** del producto (el que la comanda usa hoy), **no** el nombre de la carta de la sucursal | **CONFIRMADA** (dueño, 2026-11-15, relatada: «Sí, es el nombre interno del producto (Recomendada)») |
 | I5 | El nombre se **congela** al agregar la línea y no cambia después (ni al renombrar el producto, ni al cambiar o borrar su nombre de cocina) | CONFIRMADA en Pedernal (0055); PROPUESTA para Motor2 |
 | I6 | El nombre de cocina no entra al precio, al stock, a la receta, al ticket del cliente ni a los reportes: es solo presentación en el papel de cocina | PROPUESTA; coincide con Pedernal («solo lo lee la comanda») |
 | I7 | La comanda no lleva precios | V (existe) |
@@ -117,7 +117,7 @@ producto.nombreDeCocina (editable) ──al agregar la línea──► línea.no
 
 ## 8. Esquema PROPUESTO (nivel 6) — «no se migra hasta confirmar niveles 1 a 5»
 
-> No se aplica ni se escribe como migración hasta que el dueño ratifique la etapa y responda Q1. Toda migración es **aditiva** y con `down.sql`; aplicarla en una base real sigue congelado.
+> No se aplica ni se escribe como migración hasta que el dueño ratifique la etapa (Q1 ya está respondida). Toda migración es **aditiva** y con `down.sql`; aplicarla en una base real sigue congelado.
 
 **Etapas (la más barata primero):**
 
@@ -235,18 +235,15 @@ Las líneas que ya existen quedan en nulo: la comanda usa entonces el nombre int
 
 **Qué ve el dueño sin leer código (para después de construir):** (1) cargar «Medallón de bife de chorizo» como nombre de cocina del bife y pedirlo en una mesa: la comanda dice el de cocina y la pantalla del mozo, el nombre de siempre; (2) renombrar el producto y reimprimir la comanda: sale igual; (3) un producto sin nombre de cocina sale en la comanda con su nombre de siempre; (4) anular parte de un ítem ya enviado: el aviso dice el mismo nombre con el que salió.
 
-## 13. Preguntas de NEGOCIO abiertas (solo las que cambian modelo de datos, dinero o permisos)
+## 13. Preguntas de NEGOCIO (solo las que cambian modelo de datos, dinero o permisos): la única, respondida
 
-**Q1 — ¿El nombre de cocina también va en cada opción y en cada componente?** El dueño dijo el 2026-11-08 (decisión 72 de Pedernal) que la comanda se arma «desde la composición», con el nombre de cocina de cada componente y de cada opción (por ejemplo el corte). Pedernal, en su primera versión, solo usa el nombre de cocina **del producto** más el nombre normal de la variante y de las opciones (D: especificación del salón, criterio D175 del 10/11, corregible); la propia documentación de Pedernal lo deja como contradicción sin resolver. Las dos cosas cambian el modelo de datos:
-- **A (recomendada, la más barata):** solo el nombre de cocina del producto, igual que Pedernal hoy. Las opciones y los componentes salen en la comanda con su nombre de siempre. No agrega columnas fuera de las de §8.
-- B: también un nombre de cocina en cada opción (y en los componentes de un combo). Agrega una columna en la versión de cada opción, su campo en la pantalla de opciones y su congelado en la foto de lo elegido; es una etapa grande y Pedernal no la tiene todavía.
-- *Si no se responde:* A.
+**Q1 — ¿El nombre de cocina también va en cada opción y en cada componente? RESPONDIDA (2026-11-15, chat del dueño con el orquestador, relatada): «Solo del producto, como Pedernal (Recomendada)».** CONFIRMADA: solo el nombre de cocina del producto; las opciones y los componentes salen en la comanda con su nombre de siempre. Sin columnas fuera de las de §8. (Contexto: el dueño había dicho el 2026-11-08, decisión 72 de Pedernal, que la comanda se arma «desde la composición»; hoy queda acotada a lo respondido. Si más adelante quiere el nombre de cocina por opción, es una etapa grande y una pregunta nueva.)
 
 ## 14. Decisiones técnicas (del ingeniero; el dueño no necesita decidirlas)
 
 | # | Decisión | Motivo |
 |---|---|---|
-| T1 | «Nombre comercial» (de la regla «si no hay, el comercial») = el **nombre interno** del producto, no el de la carta de la sucursal | Es lo que la comanda dice hoy; el 2026-11-04 se declaró que comanda, ticket y reportes siguen con el nombre interno (`docs/diseno-nombre-en-carta-2026-11-04.md` §1); en Pedernal es `descripcion`, el nombre del producto. **Supuesto declarado: el dueño lo corrige** |
+| T1 | «Nombre comercial» (de la regla «si no hay, el comercial») = el **nombre interno** del producto, no el de la carta de la sucursal | Es lo que la comanda dice hoy; el 2026-11-04 se declaró que comanda, ticket y reportes siguen con el nombre interno (`docs/diseno-nombre-en-carta-2026-11-04.md` §1); en Pedernal es `descripcion`, el nombre del producto. **CONFIRMADA por el dueño el 2026-11-15 (relatada): «Sí, es el nombre interno del producto (Recomendada)»** |
 | T2 | El nombre de cocina es una **ficha de texto nueva** (1 a 80, exige una letra, sin los signos de catálogo `¿ ¡ ? ! % $`) declarada en `fichas-de-texto.ts` y en su oráculo | Igual que `nombre-de-cocina.ts` de Pedernal (P: `exigirUnaLetra`, sin signos de catálogo); el guardián de textos lo exige. Observación: la base de Pedernal valida con la función de catálogo (que sí admite esos signos): diferencia interna de Pedernal, NO VERIFICADO cuál prevalece |
 | T3 | El control de concurrencia de la edición del producto es el mismo que ya usa `actualizarProducto` | no se agrega un patrón nuevo |
 | T4 | La comanda suma un campo propio (`nombreParaLaCocina`) y no reutiliza `nombreDeLinea` | ese campo es también lo que ve el mozo (hallazgo de §2) |
