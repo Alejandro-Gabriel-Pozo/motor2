@@ -254,8 +254,8 @@ const CONGELADAS: Record<string, Congelada> = {
       },
       {
         blob: "2980410872d06ad79fb48a8e54e15ec259570742",
-        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `7320b3f2` («E1: mensaje genérico de Pedernal para nombres que no cumplen y mensajes del CUIT de Pedernal»).
-        commit: "7320b3f2",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `a428877` («E1: mensaje genérico de Pedernal para nombres que no cumplen y mensajes del CUIT de Pedernal»).
+        commit: "a428877",
         motivo:
           "E1 (paridad con Pedernal; CAMBIA COMPORTAMIENTO, decisión del dueño, 2026-11-15, chat con el orquestador, relatada: «Como Pedernal (Recomendada)» para los mensajes del CUIT): validarCuit usa los textos de Pedernal (apps/plataforma/logica/errores-de-plataforma.ts:84-88 de ZuluHub-ERP). Cambian SOLO la línea de mensaje de CUIT (formato); el resto de la huella queda idéntico.",
       },
@@ -269,8 +269,8 @@ const CONGELADAS: Record<string, Congelada> = {
     regeneraciones: [
       {
         blob: "2d7ee80ddf36acc817cdc417274efd2ea3ee2ebf",
-        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `7320b3f2` («E1: mensaje genérico de Pedernal para nombres que no cumplen y mensajes del CUIT de Pedernal»).
-        commit: "7320b3f2",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `a428877` («E1: mensaje genérico de Pedernal para nombres que no cumplen y mensajes del CUIT de Pedernal»).
+        commit: "a428877",
         motivo:
           "E1 (paridad con Pedernal; CAMBIA COMPORTAMIENTO, decisión del dueño, 2026-11-15, chat con el orquestador, relatada: «Como Pedernal (Recomendada)» para los mensajes del CUIT): validarCuit usa los textos de Pedernal (apps/plataforma/logica/errores-de-plataforma.ts:84-88 de ZuluHub-ERP). Cambian SOLO las dos líneas de mensaje de CUIT (formato y dígito verificador); el resto de la huella queda idéntico.",
       },
