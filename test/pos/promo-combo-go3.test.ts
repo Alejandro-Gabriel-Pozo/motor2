@@ -12,9 +12,9 @@ import {
 } from "../../src/core/pos/promo-combo";
 
 /**
- * GO-3 (ADR-032), paso D1: los cupos de ENTRADAS (LISTA y DEL_DIA) en el núcleo puro de las promos: el completado de los componentes fijos por el servidor, el rechazo de lo que el cliente no
+ * GO-3 (ADR-032), paso D1: los cupos de ENTRADAS (LISTA) en el núcleo puro de las promos: el completado de los componentes fijos por el servidor, el rechazo de lo que el cliente no
  * puede elegir, el menú del día sin cargar (falla cerrado), la clave estable de una configuración y los dos ejemplos del diseño exactos al centavo.
- * Mutaciones demostradas: sacar el completado de fijos (caen «el fijo se completa solo» y los ejemplos) y sacar el chequeo del DEL_DIA vacío (cae «sin plato de hoy»).
+ * Mutaciones demostradas: sacar el completado de fijos (caen «el fijo se completa solo» y los ejemplos).
  */
 
 const entrada = (entradaId: string, productoId: string, claveComponente = productoId): [string, EntradaElegibleDeCupo] => [entradaId, { entradaId, productoId, claveComponente }];
@@ -30,7 +30,6 @@ describe("los componentes fijos", () => {
     expect(esCupoFijo(lista({ entradas: new Map([entrada("a", "a"), entrada("b", "b")]) }))).toBe(false);
     expect(esCupoFijo(lista({ entradas: new Map([entrada("a", "a")]), cantidadMaximaCupo: 2 }))).toBe(false);
     expect(esCupoFijo(lista({ entradas: new Map([entrada("a", "a")]), cantidadMinima: 0, cantidadMaximaCupo: 0 }))).toBe(false);
-    expect(esCupoFijo({ ...flan, tipo: "DEL_DIA" })).toBe(false);
     expect(esCupoFijo({ seccionCartaId: "s", nombreSeccion: "S", cantidadMinima: 1, cantidadMaximaCupo: 1, elegibles: new Set(["x"]) })).toBe(false);
   });
 
@@ -53,23 +52,23 @@ describe("los componentes fijos", () => {
   });
 });
 
-describe("las entradas elegibles y el menú del día", () => {
+describe("las entradas elegibles de hoy", () => {
   const entradas = lista({ entradas: new Map([entrada("e-sopa", "sopa"), entrada("e-ensalada", "ensalada")]) });
   const delDia = (platos: [string, EntradaElegibleDeCupo][], cantidadMinima = 1): CupoDeEntradasDefinicion => ({
     cupoId: "cupo-dia",
-    tipo: "DEL_DIA",
-    nombre: "Plato del día",
+    tipo: "LISTA",
+    nombre: "Plato",
     cantidadMinima,
     cantidadMaximaCupo: 1,
     entradas: new Map(platos),
   });
 
-  it("una entrada que no está entre las elegibles de hoy se rechaza (se desactivó, se quitó del día o ya no tiene origen de stock)", () => {
+  it("una entrada que no está entre las elegibles de hoy se rechaza (se desactivó o ya no tiene origen de stock)", () => {
     expect(validarYAplanarEleccionPromo([entradas], [{ cupoId: "cupo-lista", elegidos: [{ entradaId: "e-guiso", cantidad: 1 }] }])).toMatchObject({ ok: false, codigo: "ENTRADA_NO_DISPONIBLE" });
   });
 
-  it("un DEL_DIA sin ningún plato para hoy y con mínimo > 0 no se arma (falla cerrado, nunca el plato de ayer); con mínimo 0, el lugar queda vacío", () => {
-    expect(validarYAplanarEleccionPromo([delDia([])], [])).toEqual({ ok: false, codigo: "MENU_DEL_DIA_SIN_CARGAR", mensaje: "«Plato del día»: todavía no se cargó el plato de hoy." });
+  it("un lugar sin ninguna entrada elegible hoy y con mínimo > 0 no se arma (falla por el mínimo, sin código propio); con mínimo 0, el lugar queda vacío", () => {
+    expect(validarYAplanarEleccionPromo([delDia([])], [])).toMatchObject({ ok: false });
     expect(validarYAplanarEleccionPromo([delDia([], 0)], [])).toEqual({ ok: true, componentes: [] });
     expect(validarYAplanarEleccionPromo([delDia([entrada("d-mila", "milanesa")])], [{ cupoId: "cupo-dia", elegidos: [{ entradaId: "d-mila", cantidad: 1 }] }])).toEqual({
       ok: true,
@@ -110,7 +109,7 @@ describe("los dos ejemplos del diseño, exactos al centavo", () => {
   it("Menú del día $ 9.500 (sopa $ 3.000, milanesa $ 8.000, agua $ 1.500 y flan fijo $ 2.500): 1.900,00 + 5.066,67 + 950,00 + 1.583,33 = 9.500 exactos", () => {
     const cupos: CupoDePromo[] = [
       lista({ entradas: new Map([entrada("e-sopa", "sopa"), entrada("e-ensalada", "ensalada")]) }),
-      { cupoId: "cupo-dia", tipo: "DEL_DIA", nombre: "Plato del día", cantidadMinima: 1, cantidadMaximaCupo: 1, entradas: new Map([entrada("d-mila", "milanesa"), entrada("d-guiso", "guiso")]) },
+      { cupoId: "cupo-dia", tipo: "LISTA", nombre: "Plato", cantidadMinima: 1, cantidadMaximaCupo: 1, entradas: new Map([entrada("d-mila", "milanesa"), entrada("d-guiso", "guiso")]) },
       { seccionCartaId: "sec-bebidas", nombreSeccion: "Bebidas sin alcohol", cantidadMinima: 1, cantidadMaximaCupo: 1, elegibles: new Set(["agua", "gaseosa"]) },
       lista({ cupoId: "cupo-postre", nombre: "Postre", entradas: new Map([entrada("e-flan", "flan")]) }),
     ];

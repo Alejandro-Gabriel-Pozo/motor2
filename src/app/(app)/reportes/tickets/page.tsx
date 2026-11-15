@@ -69,7 +69,7 @@ export default async function TicketsEmitidosPage({
         <CampoFecha etiqueta="Hasta (hora de la empresa)" name="hasta" defaultValue={hasta} />
         {mesaId && <input type="hidden" name="mesaId" value={mesaId} />}
         <BotonDeServidor type="submit">Filtrar</BotonDeServidor>
-        <Enlace href="/reportes/tickets" className="self-center">
+        <Enlace href="/reportes/tickets" variante="suelto" className="self-center">
           Limpiar
         </Enlace>
       </form>

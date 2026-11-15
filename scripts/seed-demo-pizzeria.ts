@@ -6,7 +6,7 @@
  *
  * Requiere que ya haya corrido el seed base (`npm run db:seed`: roles,
  * acciones, sucursal "Central", unidades base) y que exista un User con
- * email alepogabriel@gmail.com y membresía admin en "Central" — se usa
+ * email de MOTOR2_DEMO_ADMIN_EMAIL (por defecto admin-demo@ejemplo.test) y membresía admin en "Central" — se usa
  * para dar de alta la sucursal nueva ("La Cuadra") y queda como su primer
  * admin ahí también.
  *
@@ -27,6 +27,7 @@ import { vi, describe, it, expect } from "vitest";
 vi.mock("../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { prisma } from "./demo-seed/cliente";
+import { emailAdminDeLaDemo } from "./demo-seed/admin-de-la-demo";
 import { __setCookieDeTestParaSucursal } from "../test/setup/next-headers-stub";
 import { getUsuarioActual } from "../src/server/sesion/session";
 import { crearSucursalConAdmin } from "../src/server/actions/auth/sucursales";
@@ -44,7 +45,7 @@ import { calcularRendimientoRecetasSimples, calcularRendimientoRecetasCompartida
 import { PROVEEDORES, PRODUCTOS, PRECIOS_REFERENCIA, RECETAS } from "./seed-demo-pizzeria-data";
 import { PROVEEDOR_DE_DEMO_CODIGO, PROVEEDOR_DE_DEMO_NOMBRE, crearNumeradorDeFacturas } from "./demo-seed/guion";
 
-const EMAIL_ADMIN = "alepogabriel@gmail.com";
+const EMAIL_ADMIN = emailAdminDeLaDemo(process.env);
 const NOMBRE_SUCURSAL = "La Cuadra";
 
 /** Códigos del sheet -> Unidad.nombre real de motor2 (kg/g/l/ml/unidad ya existen del seed base; el resto de unidades de compra se crea acá). */

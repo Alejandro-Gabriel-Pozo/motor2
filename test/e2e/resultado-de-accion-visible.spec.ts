@@ -11,7 +11,7 @@ import { prisma } from "./fixtures/db";
  */
 
 test("categorías: un nombre con caracteres no permitidos muestra el error y no crea nada", async ({ paginaAutenticada: page }) => {
-  const nombre = `E2E Categoría Inválida ${Date.now()} #!`;
+  const nombre = `E2E Categoría Inválida ${Date.now()} @@`;
 
   await page.goto("/catalogo/categorias");
   await expect(page.getByRole("heading", { name: /Categorías/ })).toBeVisible();
@@ -20,7 +20,7 @@ test("categorías: un nombre con caracteres no permitidos muestra el error y no 
   await page.getByRole("button", { name: "Crear", exact: true }).click();
 
   // Filtrado por texto: Next ya tiene un role="alert" propio y vacío (el anunciador de rutas), así que `getByRole("alert")` a secas matchea dos.
-  await expect(page.getByRole("alert").filter({ hasText: "tiene caracteres no permitidos" })).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "Esta acción no está permitida" })).toBeVisible();
   expect(await prisma.categoriaProducto.count({ where: { nombre } }), "no tenía que crearse nada").toBe(0);
 });
 
@@ -55,7 +55,7 @@ test("insumos: un nombre con caracteres no permitidos muestra el error y no crea
   await page.getByPlaceholder("nombre del insumo").fill(nombre);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
 
-  await expect(page.getByText(/tiene caracteres no permitidos/)).toBeVisible();
+  await expect(page.getByText(/Esta acción no está permitida/)).toBeVisible();
   expect(await prisma.insumo.count({ where: { nombre } }), "no tenía que crearse nada").toBe(0);
 });
 
@@ -149,7 +149,7 @@ test("unidades: un campo de decimales vacío no se guarda como 0", async ({ pagi
 });
 
 test("categorías: tras un error el texto tipeado se conserva; tras un éxito el campo se limpia", async ({ paginaAutenticada: page }) => {
-  const invalido = `E2E Conserva ${Date.now()} #!`;
+  const invalido = `E2E Conserva ${Date.now()} @@`;
   const valido = `E2E Conserva ${Date.now()}`;
 
   try {
@@ -159,7 +159,7 @@ test("categorías: tras un error el texto tipeado se conserva; tras un éxito el
 
     await campo.fill(invalido);
     await page.getByRole("button", { name: "Crear", exact: true }).click();
-    await expect(page.getByRole("alert").filter({ hasText: "tiene caracteres no permitidos" })).toBeVisible();
+    await expect(page.getByRole("alert").filter({ hasText: "Esta acción no está permitida" })).toBeVisible();
     // React 19 resetea los campos de un <form action> tras CADA envío: la persona tenía que volver a escribirlo todo para corregir una letra.
     await expect(campo, "el texto tipeado tiene que seguir ahí para corregirlo").toHaveValue(invalido);
 

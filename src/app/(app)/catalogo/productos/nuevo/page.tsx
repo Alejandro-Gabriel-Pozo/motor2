@@ -32,7 +32,7 @@ export default async function NuevoProductoPage() {
 
   return (
     <div className="max-w-xl">
-      <EnlaceInterno href="/catalogo/productos" className="mb-3 inline-block text-sm underline">
+      <EnlaceInterno href="/catalogo/productos" className="mb-3 inline-flex min-h-11 items-center text-sm underline">
         ← Productos
       </EnlaceInterno>
       <h1 className="mb-4 text-xl font-semibold">Nuevo producto</h1>

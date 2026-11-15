@@ -1,10 +1,10 @@
 {
   "regla": "pantallas-con-estructura",
   "meta": "bajar a 0 al terminar la etapa E-H: toda pantalla de (app) y (pos) usa las piezas de src/ui/componentes/estructura",
-  "total": 88,
-  "entradas": 88,
+  "total": 87,
+  "entradas": 87,
   "porTipo": {
-    "sin-estructura": 88
+    "sin-estructura": 87
   },
   "cuentas": {
     "src/app/(app)/administracion/auditoria/page.tsx": {
@@ -125,9 +125,6 @@
       "sin-estructura": 1
     },
     "src/app/(app)/movimientos/destinos-consumo/page.tsx": {
-      "sin-estructura": 1
-    },
-    "src/app/(app)/movimientos/menu-del-dia/page.tsx": {
       "sin-estructura": 1
     },
     "src/app/(app)/movimientos/motivos-merma/page.tsx": {

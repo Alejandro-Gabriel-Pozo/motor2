@@ -44,7 +44,7 @@ export default async function PaginaDeEmpresas({ params, searchParams }: { param
           <tbody>
             {empresas.map((e) => (
               <tr key={e.id}>
-                <td>
+                <td data-etiqueta="Empresa">
                   {e.nombre}
                   <br />
                   <span className="ayuda">{e.slug}</span>
@@ -55,9 +55,9 @@ export default async function PaginaDeEmpresas({ params, searchParams }: { param
                     </>
                   )}
                 </td>
-                <td>{ESTADO_DE_EMPRESA[e.estado]}</td>
-                <td>{e.cuit ? formatearCuit(e.cuit) : e.invitacion?.cuitDeclarado ? `${formatearCuit(e.invitacion.cuitDeclarado)} (declarado)` : "—"}</td>
-                <td>
+                <td data-etiqueta="Estado">{ESTADO_DE_EMPRESA[e.estado]}</td>
+                <td data-etiqueta="CUIT">{e.cuit ? formatearCuit(e.cuit) : e.invitacion?.cuitDeclarado ? `${formatearCuit(e.invitacion.cuitDeclarado)} (declarado)` : "—"}</td>
+                <td data-etiqueta="Invitación">
                   {e.invitacion ? (
                     <>
                       {ESTADO_DE_INVITACION[e.invitacion.estado]} · {e.invitacion.email}

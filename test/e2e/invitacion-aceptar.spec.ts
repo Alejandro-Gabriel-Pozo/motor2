@@ -64,7 +64,7 @@ test("con la sesión del invitado: valida el CUIT, acepta una sola vez y la empr
   await page.getByLabel("CUIT de la empresa").fill("30-71234567-4");
   await page.getByRole("button", { name: "Revisar el CUIT" }).click();
   // El mensaje lo dibuja `Campo` (role="alert", atado al campo con aria-describedby) con un id propio: se lo busca por su rol y su texto.
-  await expect(page.getByRole("alert").filter({ hasText: /dígito verificador/ })).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: /Revisá los números/ })).toBeVisible();
   await expect(page.getByLabel("CUIT de la empresa")).toHaveAttribute("aria-invalid", "true");
   expect((await leerInvitacion(inv.token)).estado).toBe("PENDIENTE");
 

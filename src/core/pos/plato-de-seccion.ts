@@ -86,7 +86,7 @@ export function armarComponenteDeSeccion(plato: PlatoDeSeccionLeido, opciones: r
 /**
  * A cada cupo de SECCIÓN de una promo le pone `conOpciones`: sus elegibles que `clasificarPlatoDeSeccion` da como `CON_OPCIONES` (los que el mozo arma eligiendo opciones). Es la UNA regla de qué se ofrece con opciones, la
  * misma para el selector y para el servidor (I5): `gruposDelProducto` es lo que admite cada producto en la sucursal (`cargarOpcionesParaVender`); un producto que no está en el mapa se trata como sin grupos (y no se
- * elige con opciones). Devuelve cupos NUEVOS (no muta los recibidos); los de entradas (LISTA y DEL_DIA) pasan tal cual. Un plato que NO se ofrece (`NO_SE_OFRECE`) no entra a `conOpciones`: sigue como hoy, sin opciones,
+ * elige con opciones). Devuelve cupos NUEVOS (no muta los recibidos); los de entradas (LISTA) pasan tal cual. Un plato que NO se ofrece (`NO_SE_OFRECE`) no entra a `conOpciones`: sigue como hoy, sin opciones,
  * y quien arma la promo lo rechaza (`PROMO_CON_OPCIONES`: «pedilo suelto»).
  */
 export function conOpcionesDeLasSecciones(cupos: readonly CupoDePromo[], gruposDelProducto: ReadonlyMap<string, readonly GrupoParaVender[]>): CupoDePromo[] {

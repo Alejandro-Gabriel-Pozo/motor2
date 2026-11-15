@@ -46,7 +46,7 @@ Estados: CONFIRMADA (dicha por el dueño) / PROPUESTA / PENDIENTE / NO VERIFICAD
 - `motor2-docs/_planes/preguntas-abiertas-grupos-de-opciones-cafe-2026-10-09.md`, pregunta 8 (reportes por combinación: qué pantalla, qué permiso): seguía abierta.
 - `docs/mapa-cobertura-de-combinaciones-2026-10-28.md` NO está en `main` (solo en `alegp/carril-imp`). No existe guardián de «dimensión nueva sin declarar» para precio y stock; el molde es `test/core/features/traspasos/traspaso-guard.test.ts`.
 
-**NO VERIFICADO:** los 207 productos del dueño; si en producción hay adicionales cuya opción no tiene consumo; si una receta propia de sucursal puede quedar habilitada y sin ingredientes; cómo se comporta «Rendimiento real de recetas» con una base sin receta.
+**NO VERIFICADO:** los N productos del dueño; si en producción hay adicionales cuya opción no tiene consumo; si una receta propia de sucursal puede quedar habilitada y sin ingredientes; cómo se comporta «Rendimiento real de recetas» con una base sin receta.
 
 ## B. Punto 1 — Arreglo de ventas: origen de stock de una línea con opciones
 

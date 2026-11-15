@@ -1,7 +1,7 @@
 # ADR-016: Los roles se identifican por su clave técnica; el nombre es una etiqueta que se puede renombrar
 
 > Redactado el 2026-10-03 (cierre del bloque G, pasos G1–G3). **Decidido. Estado (2026-10-03): implementado** (G1 y G2 desplegados en zuluhub y
-> stockhneuquen; G3 con la migración `20261007120000_accion_renombrar_rol` aplicada en ambas bases y el código listo para desplegar). Completa
+> empresab; G3 con la migración `20261007120000_accion_renombrar_rol` aplicada en ambas bases y el código listo para desplegar). Completa
 > ADR-008 (RBAC acción + contexto) y ADR-010 (dos paneles): ninguno de los dos dice cómo se reconoce al rol administrador, y el código lo hacía
 > comparando el nombre `"admin"`. Las decisiones de G3 son del dueño de producto, del 2026-10-03.
 

@@ -9,13 +9,13 @@ describe("leerFiltrosDeProductos", () => {
   });
 
   it("lee cada filtro de su lista cerrada", () => {
-    const f = leerFiltrosDeProductos({ q: "  pizza ", tipo: "venta", modo: "por-opcion", disponible: "en-ninguna", falta: "sin-receta" });
-    expect(f).toEqual({ q: "pizza", tipo: "venta", modo: "por-opcion", disponible: "en-ninguna", falta: "sin-receta" });
+    const f = leerFiltrosDeProductos({ q: "  pizza ", tipo: "venta", estado: "falta-completar", modo: "por-opcion", disponible: "en-ninguna", falta: "sin-receta" });
+    expect(f).toEqual({ q: "pizza", tipo: "venta", estado: "falta-completar", modo: "por-opcion", disponible: "en-ninguna", falta: "sin-receta" });
     expect(hayFiltrosDeProductos(f)).toBe(true);
   });
 
   it("ignora lo que no es de la lista, o no es un texto, sin romper", () => {
-    expect(leerFiltrosDeProductos({ tipo: "Venta", modo: ["directo"], disponible: 1, falta: {}, q: 5 })).toEqual(SIN_FILTROS);
+    expect(leerFiltrosDeProductos({ tipo: "Venta", estado: "ACTIVO", modo: ["directo"], disponible: 1, falta: {}, q: 5 })).toEqual(SIN_FILTROS);
     expect(leerFiltrosDeProductos({ tipo: "constructor", falta: "toString" })).toEqual(SIN_FILTROS);
   });
 
@@ -32,7 +32,7 @@ describe("consultaDeLosFiltros", () => {
   });
 
   it("lo que escribe se vuelve a leer igual", () => {
-    const f = leerFiltrosDeProductos({ q: "café", tipo: "materia-prima", modo: "directo", disponible: "no-aca", falta: "fuera-de-la-carta" });
+    const f = leerFiltrosDeProductos({ q: "café", tipo: "materia-prima", estado: "activo", modo: "directo", disponible: "no-aca", falta: "fuera-de-la-carta" });
     const params = Object.fromEntries(new URLSearchParams(consultaDeLosFiltros(f)));
     expect(leerFiltrosDeProductos(params)).toEqual(f);
   });

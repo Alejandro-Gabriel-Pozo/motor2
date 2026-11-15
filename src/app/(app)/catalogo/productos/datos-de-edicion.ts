@@ -9,6 +9,7 @@ import type { ComponentProps } from "react";
 import type { ProductoExistente, ProductoForm } from "./producto-form";
 import { cargarOpcionesFormularioProducto, conLasUnidadesDelProducto } from "./opciones-formulario";
 import { modoDeVentaDe } from "@/core/opciones/public";
+import { alicuotaIvaDelProducto } from "@/core/features/catalogo/productos.guard";
 
 /** Los props del formulario de edición de un producto: todo menos la `key` (la pone quien lo dibuja). */
 export type PropsDeEdicionDelProducto = ComponentProps<typeof ProductoForm>;
@@ -23,6 +24,7 @@ export type PropsDeEdicionDelProducto = ComponentProps<typeof ProductoForm>;
  *   campos: «no viene» es «no cambia» en el servidor, que rechaza igual un valor distinto del guardado (`actualizarProducto`).
  * - M.2-A4 (D): las unidades que el producto usa hoy van en las opciones aunque se hayan desactivado (`listarUnidadesActivas` trae solo las activas): sin esto el formulario las mostraba como «sin unidad» y, con la
  *   clave, las borraba al guardar.
+ * - Paso 13: la alícuota de IVA del producto (la de venta de un PV, la de compra de una MP; `null` = «sin declarar») viaja al formulario, que la muestra editable con la clave fina y en solo lectura sin ella.
  * - Fase 4 (ADR-035): «¿Cómo se vende?» (solo un PV): el modo guardado y el grupo donde está el precio final de cada opción, si lo tiene.
  */
 export async function cargarEdicionDelProducto(
@@ -53,6 +55,9 @@ export async function cargarEdicionDelProducto(
     esConsignacion: p.esConsignacion,
     proveedorConsignacionId: p.proveedorConsignacionId,
     precioConsignacion: p.precioConsignacion ? Number(p.precioConsignacion) : 0,
+    // Una alícuota guardada que no es de la lista (no debería existir: lo impide el CHECK de la base) se ve como «sin declarar», nunca se supone una.
+    alicuotaIvaVenta: alicuotaIvaDelProducto(p.alicuotaIvaVenta),
+    alicuotaIvaCompra: alicuotaIvaDelProducto(p.alicuotaIvaCompra),
     observaciones: p.observaciones ?? undefined,
   };
   const presentaciones: PresentacionOpcion[] = PRESENTACIONES_VISIBLES && p.tipo === "MP" ? await listarPresentaciones(p.id) : [];

@@ -30,7 +30,7 @@ export function hrefDeCartaPublica(empresaSlug: string, sucursalSlug?: string): 
   return urlCartaPublicaConEmpresaUnica(process.env.CARTA_DOMINIO_BASE, process.env.CARTA_EMPRESA_UNICA_COMPILADO, empresaSlug, sucursalSlug);
 }
 
-/** `Metadata` de Next para una página pública: título, descripción, dirección canónica, indexable, y las vistas previas de Open Graph y Twitter. La imagen solo si el comercio cargó una. */
+/** `Metadata` de Next para una página pública: título, descripción, dirección canónica, indexable, y las vistas previas de Open Graph y Twitter. La imagen solo si el comercio cargó una; `og:site_name` solo si la empresa tiene nombre público (F1). */
 export function metadataDeCartaPublica(m: MetadatosPublicos): Metadata {
   const imagenes = m.imagen ? [m.imagen] : undefined;
   return {
@@ -42,7 +42,7 @@ export function metadataDeCartaPublica(m: MetadatosPublicos): Metadata {
     openGraph: {
       type: "website",
       locale: "es_AR",
-      siteName: m.nombreSitio,
+      ...(m.nombreSitio ? { siteName: m.nombreSitio } : {}),
       title: m.titulo,
       description: m.descripcion,
       ...(m.url ? { url: m.url } : {}),

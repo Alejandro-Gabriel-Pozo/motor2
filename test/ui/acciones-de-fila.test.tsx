@@ -45,12 +45,12 @@ function clasesDeLosBotones(html: string): string[][] {
 }
 
 function esEnFila(clases: string[]): boolean {
-  return clases.includes("min-h-11") && clases.includes("md:min-h-0") && !clases.some((c) => /^md:min-h-(?!0$)/.test(c)) && !clases.some((c) => /^px-/.test(c));
+  return clases.includes("min-h-11") && clases.includes("md:min-h-0") && !clases.some((c) => /^md:min-h-(?!0$)/.test(c)) && clases.includes("md:px-0") && !clases.some((c) => /^md:p[xylrtb]?-(?!0$)/.test(c));
 }
 
 describe("BotonActivarDesactivar: acciones de la altura del texto en escritorio", () => {
   for (const activo of [true, false]) {
-    it(`${activo ? "«Desactivar»" : "«Activar»"}: tamano en-fila (min-h-11, md:min-h-0, sin px)`, () => {
+    it(`${activo ? "«Desactivar»" : "«Activar»"}: tamano en-fila (min-h-11, md:min-h-0, sin px desde md)`, () => {
       const html = renderToStaticMarkup(<BotonActivarDesactivar activo={activo} ocupado={false} aviso="Saca el acceso." onCambiar={() => undefined} />);
       const botones = clasesDeLosBotones(html);
       expect(botones).toHaveLength(1);
@@ -66,7 +66,7 @@ describe("BotonActivarDesactivar: acciones de la altura del texto en escritorio"
 });
 
 describe("BotonConConfirmacion: acciones de la altura del texto en escritorio", () => {
-  it("el disparador usa tamano en-fila (min-h-11, md:min-h-0, sin px) y conserva la ubicacion que le pasa la pantalla", () => {
+  it("el disparador usa tamano en-fila (min-h-11, md:min-h-0, sin px desde md) y conserva la ubicacion que le pasa la pantalla", () => {
     const html = renderToStaticMarkup(
       <BotonConConfirmacion etiqueta="Cancelar solicitud" aviso="No se puede deshacer." etiquetaConfirmar="Sí, cancelar" etiquetaEnCurso="Cancelando…" accion={async () => ({ ok: true, mensaje: "listo" })} />
     );
@@ -84,7 +84,7 @@ describe("BotonConConfirmacion: acciones de la altura del texto en escritorio", 
 });
 
 describe("Modal: el disparador es de la altura del texto en escritorio", () => {
-  it("«+ Nuevo …», «Registrar pago»…: el botón que abre el modal usa tamano en-fila (min-h-11, md:min-h-0, sin px)", () => {
+  it("«+ Nuevo …», «Registrar pago»…: el botón que abre el modal usa tamano en-fila (min-h-11, md:min-h-0, sin px desde md)", () => {
     const html = renderToStaticMarkup(
       <Modal triggerLabel="Registrar pago" title="Pago">
         {() => <p>contenido</p>}

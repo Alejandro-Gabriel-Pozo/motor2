@@ -1,11 +1,10 @@
 import type { AccionClave } from "@/core/permisos/acciones";
 import type { PanelNav } from "@/core/navegacion/panel";
-import { MENU_DEL_DIA_VISIBLE } from "./menu-del-dia";
 import type { ClavesDeVer } from "@/core/navegacion/claves-de-ver";
 
 /**
  * Fuente del módulo Carta en el menú y de sus filas de pestañas (Fase 7, DEC-24 del dueño; diseño en `docs/diseno-modulo-carta-2026-10-28.md` §8): TRES entradas, «Carta» (pestañas Hoy · Secciones y
- * géneros · Ítems agrupados), «Promociones» (con el menú del día, solo con su interruptor prendido) y «Apariencia y publicación» (Tema · Portal). Mismo molde que `core/stock/ui-config.ts`: las URL de
+ * géneros · Ítems agrupados), «Promociones» y «Apariencia y publicación» (Tema · Portal). Mismo molde que `core/stock/ui-config.ts`: las URL de
  * las pantallas NO cambian (se mudan las entradas, no las pantallas); `estructura.ts` arma con esto el grupo del menú y las rutas de una entrada.
  *
  * Una pestaña puede reunir VARIAS pantallas (por ejemplo «Hoy»: los platos de `/carta` y las opciones agotadas de `/movimientos/opciones-agotadas`): la pestaña lleva a la PRIMERA que el rol puede abrir y
@@ -54,15 +53,9 @@ export const PESTANAS_DE_CARTA: readonly PestanaDeCarta[] = [
   { texto: "Ítems agrupados", pantallas: [{ href: "/carta/agrupados", texto: "Ítems agrupados", accion: "carta_items_agrupados", panel: "sucursal" }] },
 ];
 
-const PESTANA_MENU_DEL_DIA: PestanaDeCarta = {
-  texto: "Menú del día",
-  pantallas: [{ href: "/movimientos/menu-del-dia", texto: "Menú del día", accion: "promo_menu_del_dia", panel: "sucursal" }],
-};
-
-/** Las pestañas de «Promociones». «Menú del día» solo existe con el interruptor prendido (`MENU_DEL_DIA_VISIBLE`; apagado, su página responde 404). */
+/** Las pestañas de «Promociones»: una sola (el menú del día se retiró por decisión del dueño, poda 2026-11-13). */
 export const PESTANAS_DE_PROMOCIONES: readonly PestanaDeCarta[] = [
   { texto: "Promociones", pantallas: [{ href: RUTA_PROMOCIONES, texto: "Promociones", accion: "carta_ver", panel: "ambos" }] },
-  ...(MENU_DEL_DIA_VISIBLE ? [PESTANA_MENU_DEL_DIA] : []),
 ];
 
 /** Las pestañas de «Apariencia y publicación»: el tema es de la sucursal y el portal, de la empresa. */
@@ -81,7 +74,7 @@ export type ItemNavDeCarta = { href: string; label: string; panel: PanelNav } & 
 
 /**
  * El grupo Carta del menú (DEC-24). «Carta» se ve si el rol puede abrir alguna de sus pestañas (el operario que solo agota opciones la sigue encontrando); «Promociones» con `carta_ver` (la guarda de su
- * página; el menú del día, cuando se prenda, sigue la decisión de su rediseño); «Apariencia y publicación» si ve el tema o el portal (los dos contextos: es de los dos paneles).
+ * página); «Apariencia y publicación» si ve el tema o el portal (los dos contextos: es de los dos paneles).
  */
 export const NAV_CARTA: ItemNavDeCarta[] = [
   { href: RUTA_CARTA, label: "Carta", algunaDe: clavesDe(PESTANAS_DE_CARTA), panel: "sucursal" },

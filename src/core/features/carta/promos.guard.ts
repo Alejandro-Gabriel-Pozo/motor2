@@ -99,8 +99,7 @@ export function guardPrecioVistoDePromo(precioVisto: unknown): ResultadoDato<num
  * ser un arreglo de a lo sumo `MAXIMO_CUPOS_POR_PROMO` cupos y cada cupo un objeto con la sección como texto (un cupo `null` o con la sección numérica daba un error crudo). Lo
  * que dependa de la base (que las secciones existan, el piso del precio) lo decide el caso de uso. Lo calcula la acción; su rechazo lo aplica el caso de uso DESPUÉS de leer la promo.
  *
- * GO-3b (ADR-032, D3): un cupo puede ser de un TIPO nuevo (`tipo`: SECCION por defecto, como todo lo de antes; LISTA o DEL_DIA). Fuera de SECCION no lleva sección sino un `nombre` («Entrada»,
- * «Plato del día»): obligatorio, con algún carácter visible y hasta `LARGO_MAXIMO_NOMBRE_DE_CUPO`, sin repetirse en la misma promo sin importar mayúsculas (el índice único de la base).
+ * GO-3b (ADR-032, D3): un cupo puede ser de un TIPO nuevo (`tipo`: SECCION por defecto, como todo lo de antes; o LISTA: poda 2026-11-13, el plato del día se retiró). Fuera de SECCION no lleva sección sino un `nombre` («Entrada»): obligatorio, con algún carácter visible y hasta `LARGO_MAXIMO_NOMBRE_DE_CUPO`, sin repetirse en la misma promo sin importar mayúsculas (el índice único de la base).
  * Un cupo SECCION que trae un nombre, o uno de entradas que trae una sección, es una forma rota.
  */
 export function guardComandoGuardarCuposPromoCarta(entrada: { cupos: unknown }): ResultadoDato<readonly CupoValidadoPromoCarta[]> {
@@ -114,7 +113,7 @@ export function guardComandoGuardarCuposPromoCarta(entrada: { cupos: unknown }):
   for (const [i, c] of (cupos as unknown[]).entries()) {
     const cupo = (typeof c === "object" && c !== null ? c : {}) as { tipo?: unknown; seccionCartaId?: unknown; nombre?: unknown; cantidadMinima?: unknown; cantidadMaxima?: unknown };
     const tipo = cupo.tipo === undefined || cupo.tipo === null ? "SECCION" : cupo.tipo;
-    if (typeof tipo !== "string" || !(TIPOS_DE_CUPO as readonly string[]).includes(tipo)) return rechazar("formato", "El tipo de un cupo de la promo no es válido.");
+    if (tipo !== "SECCION" && tipo !== "LISTA") return rechazar("formato", "El tipo de un cupo de la promo no es válido.");
     let seccionCartaId: string | null = null;
     let nombre: string | null = null;
     if (tipo === "SECCION") {
@@ -124,9 +123,9 @@ export function guardComandoGuardarCuposPromoCarta(entrada: { cupos: unknown }):
       seccionIds.add(cupo.seccionCartaId);
       seccionCartaId = cupo.seccionCartaId;
     } else {
-      if (cupo.seccionCartaId !== undefined && cupo.seccionCartaId !== null) return rechazar("formato", "Un lugar con su propia lista o con el plato del día no elige de una sección de la carta.");
+      if (cupo.seccionCartaId !== undefined && cupo.seccionCartaId !== null) return rechazar("formato", "Un lugar con su propia lista no elige de una sección de la carta.");
       const n = typeof cupo.nombre === "string" ? cupo.nombre.trim() : "";
-      if (!n) return rechazar("vacio", "Poné un nombre a cada lugar de la promo («Entrada», «Plato del día»…).");
+      if (!n) return rechazar("vacio", "Poné un nombre a cada lugar de la promo («Entrada»…).");
       if (n.length > LARGO_MAXIMO_NOMBRE_DE_CUPO) return rechazar("largo", `El nombre de un lugar de la promo puede tener hasta ${LARGO_MAXIMO_NOMBRE_DE_CUPO} caracteres.`);
       const clave = n.toLowerCase();
       if (nombres.has(clave)) return rechazar("formato", `No se puede repetir el nombre «${n}» en dos lugares de la misma promo.`);

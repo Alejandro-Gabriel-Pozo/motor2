@@ -51,7 +51,7 @@ export default async function FichaDeCocinaPage({ params }: { params: Promise<{ 
     return (
       <div className="flex flex-col gap-2">
         <p>&quot;{producto.nombre}&quot; todavía no tiene receta: la ficha de cocina está pendiente de completar.</p>
-        <Link href={volver} className="text-sm underline">
+        <Link href={volver} className="inline-flex min-h-11 items-center text-sm underline">
           ← Volver a la receta
         </Link>
       </div>
@@ -63,7 +63,7 @@ export default async function FichaDeCocinaPage({ params }: { params: Promise<{ 
   return (
     <div className="flex flex-col gap-4">
       <div data-ficha-solo-pantalla="true" className="flex flex-wrap items-center gap-3">
-        <Link href={volver} className="text-sm underline">
+        <Link href={volver} className="inline-flex min-h-11 items-center text-sm underline">
           ← Volver a la receta
         </Link>
         <BotonImprimirFicha />

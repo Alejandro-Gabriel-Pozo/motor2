@@ -82,7 +82,7 @@ const texto = (maximo: number) => ({ tipo: "texto", maximo }) as const;
 const ALIAS_SI_NO: Readonly<Record<string, string>> = { "sí": "si", true: "si", "1": "si", yes: "si", false: "no", "0": "no" };
 
 /**
- * Las 64 claves por tenant (63 de la carta original más `carta_fuente_familia`). El orden es el del formulario: por zona, y dentro de cada zona como se leen en la carta.
+ * Las 65 claves por tenant (63 de la carta original más `carta_fuente_familia` y el marcador `marca_derivada`). El orden es el del formulario: por zona, y dentro de cada zona como se leen en la carta.
  */
 export const CLAVES_TEMA_V1 = [
   // Portada e identidad (más la posición del bloque y del CTA en la portada mobile)
@@ -97,6 +97,9 @@ export const CLAVES_TEMA_V1 = [
 
   // Colores generales
   { clave: "color_marca", zona: "Colores generales", etiqueta: "Color de marca (acento)", defaultCarta: "", ...COLOR },
+  // Marcador del modelo de marca (paso 9, `docs/diseno-marca-por-sucursal-y-empresa-2026-11-12.md`): SIN él la carta se lee con sus colores sueltos como siempre; CON «si» se lee solo desde `color_marca` y el sistema deriva el resto.
+  // Lo escribe un botón explícito del editor (no es un campo del formulario de colores).
+  { clave: "marca_derivada", zona: "Colores generales", etiqueta: "Usar solo el color de marca", defaultCarta: "", tipo: "enum", opciones: ["si"] },
   { clave: "color_fondo_dia", zona: "Colores generales", etiqueta: "Color de fondo de la carta", defaultCarta: "", ...COLOR },
   { clave: "hero_color_fondo", zona: "Colores generales", etiqueta: "Fondo de la portada (hex #rrggbb)", defaultCarta: "", tipo: "colorHex" },
   { clave: "hero_ink", zona: "Colores generales", etiqueta: "Texto de la portada (claro, oscuro o un color)", defaultCarta: "", tipo: "colorHeroInk" },

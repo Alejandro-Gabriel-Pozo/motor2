@@ -1,21 +1,20 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { MENU_DEL_DIA_VISIBLE, SUMAR_LUGAR_DE_LISTA_VISIBLE, type LugarDeCombo } from "../../src/core/carta/public";
+import { SUMAR_LUGAR_DE_LISTA_VISIBLE, type LugarDeCombo } from "../../src/core/carta/public";
 import { CamposLugares } from "../../src/app/(app)/carta/parametrizacion/formularios";
 
 /**
  * Interruptor de «Sumar un lugar» de lista (`SUMAR_LUGAR_DE_LISTA_VISIBLE`, `src/core/carta/cupos-de-promo.ts`). Apagado el 2026-10-28 («es algo obsoleto»); PRENDIDO el 2026-11-11 por decisión del dueño
  * (pedido del «Menú ejecutivo»: el mozo elige el plato con tamaño dentro de un lugar de lista). Solo cambia la PANTALLA (el servidor y lo guardado no se tocan). Fija los DOS estados:
  *  - ENCENDIDO (hoy): el formulario de cupos ofrece «Sumar un lugar» con «Lista de productos», su nombre y sus cantidades; un lugar existente se sigue mostrando con su casilla y sus cantidades.
- *  - APAGADO (reversibilidad: cargando el módulo con el interruptor en `false`): no se ofrece sumar un lugar nuevo (con el menú del día también apagado, no hay tipo que ofrecer).
+ *  - APAGADO (reversibilidad: cargando el módulo con el interruptor en `false`): no se ofrece sumar un lugar nuevo.
  */
 const LUGARES: LugarDeCombo[] = [{ id: "l1", tipo: "LISTA", nombre: "Bebida", cantidadMinima: 1, cantidadMaxima: 1, orden: 1, entradas: [] }];
 const dibujar = (Campos: typeof CamposLugares) => renderToStaticMarkup(<Campos lugares={LUGARES} />);
 
 describe("«Sumar un lugar» ENCENDIDO (decisión del dueño 2026-11-11)", () => {
-  it("el interruptor está encendido (y el del menú del día sigue apagado)", () => {
+  it("el interruptor está encendido", () => {
     expect(SUMAR_LUGAR_DE_LISTA_VISIBLE).toBe(true);
-    expect(MENU_DEL_DIA_VISIBLE).toBe(false);
   });
 
   it("el formulario ofrece sumar un lugar de lista (solo ese tipo) y el lugar que ya existía se sigue mostrando y editando", () => {

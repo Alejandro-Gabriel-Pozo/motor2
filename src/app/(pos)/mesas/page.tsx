@@ -159,7 +159,7 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
           </Link>
         </div>
       ) : (
-        <ul aria-label="Mesas" className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4">
+        <ul aria-label="Mesas" className="grid grid-cols-2 gap-3.5 max-sm:has-[>li:only-child]:grid-cols-1 sm:grid-cols-3 lg:grid-cols-4">
           {visibles.map((m) => (
             <li key={m.id} data-mesa={m.numero} className="grid">
               <MesaCard

@@ -59,7 +59,7 @@ const COMBINACIONES: Combinacion[] = DIMENSIONES.origen.flatMap((origen) =>
 );
 
 function imprimir(c: Combinacion): string {
-  const ficha = armarFichaDeCocina({ productoNombre: "Milanesa con papas fritas", sucursalNombre: "Varvarco", origen: c.origen, receta: receta(c), ahora: AHORA });
+  const ficha = armarFichaDeCocina({ productoNombre: "Milanesa con papas fritas", sucursalNombre: "Norte", origen: c.origen, receta: receta(c), ahora: AHORA });
   return renderToStaticMarkup(<FichaDeCocinaVista ficha={ficha} />);
 }
 

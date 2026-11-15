@@ -3,9 +3,9 @@ import { cantidadElegida, eleccionParaAgregar, estadoInicialArmarPromo, puedeCon
 import type { EntradaPromoSelectorCarta, ProductoPedible } from "../../src/core/pos/selector-carta";
 
 /**
- * GO-3b (ADR-032, F6 paso U5): el reductor de «Armar promo» con cupos de ENTRADAS (sin DOM). El menú del día: un cupo de sección (las entradas de la carta), un DEL_DIA (el plato de hoy), un
+ * GO-3b (ADR-032, F6 paso U5): el reductor de «Armar promo» con cupos de ENTRADAS (sin DOM). El menú del día: un cupo de sección (las entradas de la carta), un LISTA («Plato»: el plato de hoy), un
  * LISTA FIJO (el postre, que completa el servidor) y un LISTA de dos cafés configurados. Fija: el fijo arranca completo y no se toca ni viaja; los cupos de entradas se eligen por entrada y viajan
- * por `cupoId`; un DEL_DIA sin plato no deja confirmar; el orden de los cupos es el de la promo.
+ * por `cupoId`; un lugar sin plato no deja confirmar; el orden de los cupos es el de la promo.
  *
  * Mutaciones demostradas (rojo y revertidas): no ignorar las acciones sobre un fijo (rojo: «fijo»); mandar el fijo en la elección (rojo: «no viaja»); sumar una entrada que el cupo no ofrece
  * (rojo: «sin cargar»).
@@ -19,7 +19,7 @@ const menu = (platos: { entradaId: string; productoId: string; nombre: string; p
   precio: 10000,
   cupos: [
     { seccionCartaId: "s-entradas", nombreSeccion: "Entradas", cantidadMinima: 0, cantidadMaximaCupo: 1, elegibles: [pedible("empanada")] },
-    { cupoId: "c-plato", tipo: "DEL_DIA", nombre: "Plato del día", cantidadMinima: 1, cantidadMaximaCupo: 1, fijo: false, entradas: platos },
+    { cupoId: "c-plato", tipo: "LISTA", nombre: "Plato", cantidadMinima: 1, cantidadMaximaCupo: 1, fijo: false, entradas: platos },
     { cupoId: "c-postre", tipo: "LISTA", nombre: "Postre", cantidadMinima: 1, cantidadMaximaCupo: 1, fijo: true, entradas: [{ entradaId: "e-flan", productoId: "flan", nombre: "Flan", precioLista: 3000 }] },
     {
       cupoId: "c-cafe",
@@ -67,7 +67,7 @@ describe("Armar promo con cupos de entradas (GO-3b, U5)", () => {
     ]);
   });
 
-  it("un plato del día sin cargar no deja confirmar", () => {
+  it("un lugar sin entradas elegibles no deja confirmar", () => {
     let estado = estadoInicialArmarPromo(menu([]));
     estado = reducirArmarPromo(estado, { tipo: "incrementar", seccionCartaId: "c-cafe", productoId: "e-chico" });
     expect(puedeConfirmarArmarPromo(estado)).toBe(false);

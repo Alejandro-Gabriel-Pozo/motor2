@@ -3,7 +3,6 @@ import type { Locator } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { SUMAR_LUGAR_DE_LISTA_VISIBLE } from "../../src/core/carta/cupos-de-promo";
-import { MENU_DEL_DIA_VISIBLE } from "../../src/core/carta/menu-del-dia";
 import { prismaAdmin } from "../setup/cliente-duenio";
 import { borrarRecetasDeReventa, darRecetaDeReventa } from "../setup/receta-de-venta";
 import { abrirTodosLosDetails, capturar, expectObjetivosTactiles, expectSinDesborde, fijarCelular } from "./fixtures/movil";
@@ -34,7 +33,6 @@ async function sembrar(sucursalId: string) {
   for (const [i, s] of secciones.slice(0, 3).entries()) await prisma.promoCartaCupo.create({ data: { promoCartaId: promo.id, seccionCartaId: s.id, cantidadMinima: i, cantidadMaxima: i + 1, orden: i } });
   const lista = await prisma.promoCartaCupo.create({ data: { promoCartaId: promo.id, tipo: "LISTA", nombre: "Bebida", cantidadMinima: 1, cantidadMaxima: 1, orden: 10 } });
   await prisma.entradaDeCupo.create({ data: { cupoId: lista.id, productoId: gaseosa.id } });
-  await prisma.promoCartaCupo.create({ data: { promoCartaId: promo.id, tipo: "DEL_DIA", nombre: "Plato del día", cantidadMinima: 1, cantidadMaxima: 1, orden: 11 } });
   return {
     titulo,
     nombresDeSecciones,
@@ -85,10 +83,9 @@ test("administración de la carta en celular (375 px): formularios de promo sin 
 
     // Los cupos: cada fila (sección o lugar) con su nombre arriba y mín./máx. debajo, sin cortarse.
     const filas = promo.locator("[data-cupo-seccion], [data-cupo-lugar]");
-    // Mis siete filas están (mis 5 secciones + «Bebida» + «Plato del día»); el formulario de cupos lista TODAS las secciones de carta, y la base puede traer otras: no se cuenta el total.
+    // Mis seis filas están (mis 5 secciones + «Bebida»); el formulario de cupos lista TODAS las secciones de carta, y la base puede traer otras: no se cuenta el total.
     for (const nombreDeSeccion of d.nombresDeSecciones) await expect(promo.locator(`[data-cupo-seccion="${nombreDeSeccion}"]`)).toHaveCount(1);
     await expect(promo.locator('[data-cupo-lugar="Bebida"]')).toHaveCount(1);
-    await expect(promo.locator('[data-cupo-lugar="Plato del día"]')).toHaveCount(1);
     for (const fila of await filas.all()) {
       const cajaFila = (await fila.boundingBox())!;
       for (const input of await fila.locator('input[inputmode="decimal"]').all()) {
@@ -99,7 +96,7 @@ test("administración de la carta en celular (375 px): formularios de promo sin 
     }
     await capturar(page, "carta-cupos");
     const sumar = promo.locator("fieldset", { hasText: "Sumar un lugar" });
-    if (SUMAR_LUGAR_DE_LISTA_VISIBLE || MENU_DEL_DIA_VISIBLE) {
+    if (SUMAR_LUGAR_DE_LISTA_VISIBLE) {
       const [tipo, nombre, min, max] = await Promise.all(["nuevo_lugar_tipo", "nuevo_lugar_nombre", "nuevo_lugar_min", "nuevo_lugar_max"].map(async (n) => (await porNombre(sumar, n).boundingBox())!));
       expect.soft(nombre.y, "«Nombre» del lugar nuevo debajo de «Tipo»").toBeGreaterThan(tipo.y + tipo.height - 1);
       expect.soft(Math.abs(min.y - max.y), "mín. y máx. del lugar nuevo, en el mismo renglón").toBeLessThan(2);

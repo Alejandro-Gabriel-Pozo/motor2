@@ -3,7 +3,7 @@
 -- (privilegio mínimo: ya tiene UPDATE sobre "Empresa" y SELECT/INSERT sobre "AuditoriaPlataforma"), con la URL de PLATAFORMA_DATABASE_URL.
 --
 -- Variables (todas obligatorias):
---   slug         el slug de la empresa (ej. stockhneuquen).
+--   slug         el slug de la empresa (ej. empresab).
 --   condicion    RESPONSABLE_INSCRIPTO, MONOTRIBUTO o EXENTO. Cualquier otro valor se frena con un mensaje explícito (la lista sale del CHECK "Empresa_condicionIva_check" de la base, no se repite acá),
 --                y si algo lo dejara pasar, el CHECK mismo lo rechaza (23514); en ambos casos no queda nada escrito.
 --   admin_email  el email de un AdminPlataforma ACTIVO: es el autor que queda en la auditoría (no hay un administrador anónimo).

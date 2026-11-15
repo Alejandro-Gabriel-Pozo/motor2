@@ -10,13 +10,14 @@ import type { ValoresTema } from "@/core/carta/public";
  */
 
 /**
- * Guarda los valores del tema de una sucursal (reemplaza TODO lo guardado): `upsert` por `(empresaId, sucursalId)`. Guardar = aplicar: crea o edita la fila con `aplicarEnCarta: true`.
+ * Guarda los valores del tema de una sucursal (reemplaza TODO lo guardado): `upsert` por `(empresaId, sucursalId)`. El `create` lleva los MISMOS `empresaId` y `sucursalId` del `where` a propósito: así Prisma lo
+ * manda como un solo `INSERT … ON CONFLICT DO UPDATE` (atómico); con el `empresaId` por default del servidor hacía leer-y-después-escribir y dos primeros guardados a la vez chocaban con la restricción única. Guardar = aplicar: crea o edita la fila con `aplicarEnCarta: true`.
  */
 export async function guardarValoresDelTema(db: Prisma.TransactionClient, args: { empresaId: string; sucursalId: string; valores: ValoresTema }): Promise<void> {
   const json = args.valores as Prisma.InputJsonObject;
   await db.temaCartaSucursal.upsert({
     where: { empresaId_sucursalId: { empresaId: args.empresaId, sucursalId: args.sucursalId } },
-    create: { sucursalId: args.sucursalId, valores: json, aplicarEnCarta: true },
+    create: { empresaId: args.empresaId, sucursalId: args.sucursalId, valores: json, aplicarEnCarta: true },
     update: { valores: json, aplicarEnCarta: true },
   });
 }

@@ -115,20 +115,7 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
     ata: "SUCURSAL_ACTIVA",
     motivo: "`entrada.sucursalId` es la sucursal que vio la pantalla: el guard la compara con la activa (`sucursalActivaId: ctx.sucursalId`) y rechaza otra; la grilla se escribe SOLO en `ctx.sucursalId` (y la RLS por sucursal, por debajo)",
   },
-  // GO-3b (ADR-032, D5): el menú del día de la sucursal, con el mismo eco que las opciones por sucursal.
-  "carta/menu-del-dia.ts|agregarPlatoDelDia": {
-    ata: "SUCURSAL_ACTIVA",
-    motivo: "`entrada.sucursalId` es la sucursal que vio la pantalla: el guard la compara con la activa (`sucursalActivaId: ctx.sucursalId`) y rechaza otra; el plato del día se escribe SOLO en `ctx.sucursalId` (y la RLS por sucursal, por debajo)",
-  },
-  "carta/menu-del-dia.ts|quitarPlatoDelDia": {
-    ata: "SUCURSAL_ACTIVA",
-    motivo: "`entrada.sucursalId` es la sucursal que vio la pantalla: el guard la compara con la activa y rechaza otra; el plato se busca con `ctx.sucursalId` (uno de otra sucursal no se encuentra) y la RLS por sucursal, por debajo",
-  },
-  "carta/menu-del-dia.ts|copiarMenuDelDiaAnterior": {
-    ata: "SUCURSAL_ACTIVA",
-    motivo: "`entrada.sucursalId` es la sucursal que vio la pantalla: el guard la compara con la activa y rechaza otra; la copia lee y escribe SOLO los platos de `ctx.sucursalId` (y la RLS por sucursal, por debajo)",
-  },
-  // CARTA-MANT: «Agregar a la carta» un producto fuera de carta, con el mismo eco que el menú del día.
+  // CARTA-MANT: «Agregar a la carta» un producto fuera de carta, con el mismo eco que las opciones por sucursal.
   "carta/mantenimiento.ts|agregarProductoALaCarta": {
     ata: "SUCURSAL_ACTIVA",
     motivo: "`entrada.sucursalId` es la sucursal que vio la pantalla: el guard la compara con la activa (`sucursalActivaId: ctx.sucursalId`) y rechaza otra; el contenido se crea SOLO en `ctx.sucursalId` (y la RLS por sucursal, por debajo)",

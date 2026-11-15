@@ -1,3 +1,4 @@
+import { PRESENTACIONES_VISIBLES } from "../../src/core/catalogo/public";
 import { describe, expect, it } from "vitest";
 import {
   PASOS_DEL_ESPACIO,
@@ -16,7 +17,7 @@ import {
  * de pasos por tipo (UN solo espacio: el paso 1 es `datos` para todos) y la tabla de acceso (sin permiso: sin enlace y sin dato; sin módulo: no aparece).
  */
 
-const TODO: AccesoAlEspacio = { datos: true, opciones: true, receta: "si", carta: "si" };
+const TODO: AccesoAlEspacio = { datos: true, ver: true, opciones: true, receta: "si", carta: "si" };
 
 const PIZZAS: HechosDelProducto = {
   tipo: "PV",
@@ -42,6 +43,7 @@ describe("rutaDelPaso", () => {
   it.each([
     ["portada", "/catalogo/productos/p1"],
     ["datos", "/catalogo/productos/p1/datos"],
+    ["precios", "/catalogo/productos/p1/precios"],
     ["opciones", "/catalogo/productos/p1/opciones"],
     ["receta", "/catalogo/recetas/p1"],
     ["en-la-carta", "/catalogo/productos/p1/en-la-carta"],
@@ -53,30 +55,39 @@ describe("rutaDelPaso", () => {
     expect(rutaDelPaso("a/b?c#d", "datos")).toBe("/catalogo/productos/a%2Fb%3Fc%23d/datos");
   });
 
-  it("los pasos son cuatro, en orden, y el primero es «datos» para todos los tipos", () => {
-    expect(PASOS_DEL_ESPACIO).toEqual(["datos", "opciones", "receta", "en-la-carta"]);
+  it("los pasos son seis, en orden, y el primero es «datos» para todos los tipos", () => {
+    expect(PASOS_DEL_ESPACIO).toEqual(["datos", "precios", "opciones", "compra", "receta", "en-la-carta"]);
   });
 });
 
+/** «Cómo se compra» solo existe mientras las presentaciones estén visibles (el interruptor): los tests valen con el interruptor en cualquiera de sus dos estados. */
+const COMPRA_SI_ESTA_VISIBLE = PRESENTACIONES_VISIBLES ? [{ paso: "compra", titulo: "Cómo se compra", href: "/catalogo/productos/p1/compra" }] : [];
+
 describe("la tabla de pasos por tipo de producto", () => {
-  it("un producto de venta: Qué se vende · Opciones y precio · Receta · En la carta", () => {
+  it("un producto de venta: Datos · Precios · Opciones · Receta · En la carta (las tres primeras son pestañas; Receta y En la carta no se muestran en la ficha pero siguen siendo pasos para «Qué falta»)", () => {
     for (const pv of [PIZZAS, MILANESAS, CAFE]) {
       expect(pasos(pv).map((p) => [p.paso, p.titulo, p.href])).toEqual([
-        ["datos", "Qué se vende", "/catalogo/productos/p1/datos"],
-        ["opciones", "Opciones y precio", "/catalogo/productos/p1/opciones"],
+        ["datos", "Datos", "/catalogo/productos/p1/datos"],
+        ["precios", "Precios", "/catalogo/productos/p1/precios"],
+        ["opciones", "Opciones", "/catalogo/productos/p1/opciones"],
         ["receta", "Receta", "/catalogo/recetas/p1"],
         ["en-la-carta", "En la carta", "/catalogo/productos/p1/en-la-carta"],
       ]);
     }
   });
 
-  it("una materia prima que no se produce: solo Datos (ni opciones ni receta ni carta, aunque el usuario pueda abrirlas)", () => {
-    expect(pasos(HARINA).map((p) => [p.paso, p.titulo])).toEqual([["datos", "Datos"]]);
+  it("una materia prima que no se produce: Datos y, con las presentaciones visibles, «Cómo se compra» (ni opciones ni receta ni carta, aunque el usuario pueda abrirlas)", () => {
+    expect(pasos(HARINA).map((p) => [p.paso, p.titulo])).toEqual([["datos", "Datos"], ...COMPRA_SI_ESTA_VISIBLE.map((c) => [c.paso, c.titulo])]);
   });
 
-  it("una materia prima que se produce: Datos y Receta", () => {
+  it("«Cómo se compra» es solo de una materia prima: un producto de venta no la tiene", () => {
+    expect(nombres(PIZZAS)).not.toContain("compra");
+  });
+
+  it("una materia prima que se produce: Datos, «Cómo se compra» (si está visible) y Receta", () => {
     expect(pasos(MASA_MADRE).map((p) => [p.paso, p.titulo, p.href])).toEqual([
       ["datos", "Datos", "/catalogo/productos/p1/datos"],
+      ...COMPRA_SI_ESTA_VISIBLE.map((c) => [c.paso, c.titulo, c.href]),
       ["receta", "Receta", "/catalogo/recetas/p1"],
     ]);
   });
@@ -94,8 +105,10 @@ describe("la tabla de pasos por tipo de producto", () => {
 describe("pendientesDelProducto", () => {
   it("Pizzas (se vende por opción) y Café (agrupado en la carta) están al día", () => {
     expect(pendientesDelProducto(PIZZAS)).toEqual({
-      datos: { tipo: "listo", texto: "Se vende por opción" },
+      datos: { tipo: "listo", texto: "Datos al día" },
+      precios: { tipo: "listo", texto: "Se vende por opción" },
       opciones: { tipo: "listo", texto: "El precio sale de las opciones" },
+      compra: { tipo: "sin-dato" },
       receta: { tipo: "listo", texto: "Tiene receta" },
       "en-la-carta": { tipo: "listo", texto: "Se ve en la carta" },
     });
@@ -108,13 +121,14 @@ describe("pendientesDelProducto", () => {
     expect(e.datos.tipo).toBe("listo");
   });
 
-  it("Milanesas: un producto directo con precio 0 deja pendiente el paso 1 (no «falta declarar el modo»: el modo siempre está declarado)", () => {
-    expect(pendientesDelProducto({ ...MILANESAS, precioDeVenta: 0 }).datos).toEqual({ tipo: "pendiente", texto: "Falta el precio de venta" });
-    expect(pendientesDelProducto(MILANESAS).datos).toEqual({ tipo: "listo", texto: "Se vende directo" });
+  it("Milanesas: un producto directo con precio 0 deja pendiente el paso Precios (no «falta declarar el modo»: el modo siempre está declarado) y Datos queda listo", () => {
+    expect(pendientesDelProducto({ ...MILANESAS, precioDeVenta: 0 }).precios).toEqual({ tipo: "pendiente", texto: "Falta el precio de venta" });
+    expect(pendientesDelProducto({ ...MILANESAS, precioDeVenta: 0 }).datos.tipo).toBe("listo");
+    expect(pendientesDelProducto(MILANESAS).precios).toEqual({ tipo: "listo", texto: "Se vende directo" });
   });
 
   it("una base con el precio guardado en 0 NO está pendiente: ese precio no se cobra", () => {
-    expect(pendientesDelProducto({ ...PIZZAS, precioDeVenta: 0 }).datos.tipo).toBe("listo");
+    expect(pendientesDelProducto({ ...PIZZAS, precioDeVenta: 0 }).precios.tipo).toBe("listo");
   });
 
   it("sin receta no se vende: el pendiente lleva el mensaje de la regla", () => {
@@ -152,19 +166,21 @@ describe("la tabla de acceso: sin permiso no hay enlace ni dato; sin módulo no 
   /** Estados con TODO pendiente: si el acceso falla, ninguno de estos textos puede llegar a la portada. */
   const TODO_PENDIENTE: Record<PasoDelEspacio, EstadoDelPaso> = {
     datos: { tipo: "pendiente", texto: "secreto datos" },
+    precios: { tipo: "pendiente", texto: "secreto precios" },
     opciones: { tipo: "pendiente", texto: "secreto opciones" },
+    compra: { tipo: "pendiente", texto: "secreto compra" },
     receta: { tipo: "pendiente", texto: "secreto receta" },
     "en-la-carta": { tipo: "pendiente", texto: "secreto carta" },
   };
 
   it("quien no puede editar los datos ve el paso 1 sin enlace y sin dato", () => {
     const p = pasosDelEspacio("p1", forma(PIZZAS), { ...TODO, datos: false }, TODO_PENDIENTE).find((x) => x.paso === "datos");
-    expect(p).toEqual({ paso: "datos", titulo: "Qué se vende", href: null, estado: { tipo: "sin-dato" } });
+    expect(p).toEqual({ paso: "datos", titulo: "Datos", href: null, estado: { tipo: "sin-dato" } });
   });
 
   it("quien no puede abrir las opciones las ve sin enlace y sin dato", () => {
     const p = pasosDelEspacio("p1", forma(PIZZAS), { ...TODO, opciones: false }, TODO_PENDIENTE).find((x) => x.paso === "opciones");
-    expect(p).toEqual({ paso: "opciones", titulo: "Opciones y precio", href: null, estado: { tipo: "sin-dato" } });
+    expect(p).toEqual({ paso: "opciones", titulo: "Opciones", href: null, estado: { tipo: "sin-dato" } });
   });
 
   it.each(["receta", "carta"] as const)("%s sin permiso: el paso se ve sin enlace y sin dato", (cual) => {
@@ -178,24 +194,33 @@ describe("la tabla de acceso: sin permiso no hay enlace ni dato; sin módulo no 
     const paso: PasoDelEspacio = cual === "carta" ? "en-la-carta" : "receta";
     const lista = pasosDelEspacio("p1", forma(PIZZAS), { ...TODO, [cual]: "sin-modulo" }, TODO_PENDIENTE);
     expect(lista.map((x) => x.paso)).not.toContain(paso);
-    expect(lista).toHaveLength(3);
+    expect(lista).toHaveLength(4);
   });
 
   it("un usuario que solo ve: ningún paso tiene enlace y ningún texto de pendiente se filtra", () => {
-    const soloVe: AccesoAlEspacio = { datos: false, opciones: false, receta: "sin-permiso", carta: "sin-permiso" };
+    const soloVe: AccesoAlEspacio = { datos: false, ver: false, opciones: false, receta: "sin-permiso", carta: "sin-permiso" };
     const lista = pasosDelEspacio("p1", forma(PIZZAS), soloVe, TODO_PENDIENTE);
-    expect(lista.map((x) => x.paso)).toEqual(["datos", "opciones", "receta", "en-la-carta"]);
+    expect(lista.map((x) => x.paso)).toEqual(["datos", "precios", "opciones", "receta", "en-la-carta"]);
     expect(lista.every((x) => x.href === null && x.estado.tipo === "sin-dato")).toBe(true);
     expect(JSON.stringify(lista)).not.toContain("secreto");
   });
 
+  it("quien no ve el catálogo ve Precios sin enlace y sin dato; quien lo ve, con enlace aunque no pueda editar los datos", () => {
+    const sinVer = pasosDelEspacio("p1", forma(PIZZAS), { ...TODO, ver: false }, TODO_PENDIENTE).find((x) => x.paso === "precios");
+    expect(sinVer).toEqual({ paso: "precios", titulo: "Precios", href: null, estado: { tipo: "sin-dato" } });
+    const soloVer = pasosDelEspacio("p1", forma(PIZZAS), { ...TODO, datos: false }, TODO_PENDIENTE).find((x) => x.paso === "precios");
+    expect(soloVer?.href).toBe("/catalogo/productos/p1/precios");
+  });
+
   it("con acceso a todo cada paso lleva su ruta y su estado", () => {
     const lista = pasosDelEspacio("p1", forma(PIZZAS), TODO, TODO_PENDIENTE);
-    expect(lista.map((x) => x.href)).toEqual(PASOS_DEL_ESPACIO.map((p) => rutaDelPaso("p1", p)));
-    expect(lista.map((x) => x.estado)).toEqual(PASOS_DEL_ESPACIO.map((p) => TODO_PENDIENTE[p]));
+    // «Cómo se compra» es de la materia prima: un producto de venta tiene los otros cinco.
+    const deVenta = PASOS_DEL_ESPACIO.filter((p) => p !== "compra");
+    expect(lista.map((x) => x.href)).toEqual(deVenta.map((p) => rutaDelPaso("p1", p)));
+    expect(lista.map((x) => x.estado)).toEqual(deVenta.map((p) => TODO_PENDIENTE[p]));
   });
 
   it("el módulo apagado de un paso que no corresponde al tipo no cambia nada (ya no aparecía)", () => {
-    expect(nombres(HARINA, { ...TODO, carta: "sin-modulo", receta: "sin-modulo" })).toEqual(["datos"]);
+    expect(nombres(HARINA, { ...TODO, carta: "sin-modulo", receta: "sin-modulo" })).toEqual(["datos", ...COMPRA_SI_ESTA_VISIBLE.map((c) => c.paso)]);
   });
 });

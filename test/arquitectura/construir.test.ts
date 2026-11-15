@@ -21,7 +21,7 @@ describe("modoDeMigracionEnBuild — el build nunca aplica migraciones sin aprob
     expect(modoDeMigracionEnBuild({ VERCEL: "1", VERCEL_ENV: "production", MOTOR2_MIGRAR_EN_BUILD: "1" })).toBe("aplicar");
   });
 
-  // S-31: el Preview de `stockhneuquen` comparte la base de PRODUCCIÓN (ADR-007). Un entorno menos confiable (Preview) nunca ejecuta con el privilegio de uno más confiable
+  // S-31: el Preview de `empresab` comparte la base de PRODUCCIÓN (ADR-007). Un entorno menos confiable (Preview) nunca ejecuta con el privilegio de uno más confiable
   // (Producción): la variable en un Preview no migra producción, hace FALLAR el build (no se la ignora en silencio: alguien la puso creyendo que servía).
   it.each(["preview", "development", undefined, ""])("S-31: MOTOR2_MIGRAR_EN_BUILD=1 en Vercel con VERCEL_ENV=%s NO aplica: el build se rechaza", (entorno) => {
     expect(modoDeMigracionEnBuild({ VERCEL: "1", VERCEL_ENV: entorno, MOTOR2_MIGRAR_EN_BUILD: "1" })).toBe("rechazar");

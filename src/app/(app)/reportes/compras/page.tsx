@@ -102,7 +102,7 @@ export default async function ComprasRegistradasPage({
         </Selector>
         <Campo etiqueta="N.º de factura" name="factura" defaultValue={sp.factura ?? ""} placeholder="contiene…" />
         <BotonDeServidor type="submit">Filtrar</BotonDeServidor>
-        <Enlace href="/reportes/compras" className="self-center">
+        <Enlace href="/reportes/compras" variante="suelto" className="self-center">
           Limpiar
         </Enlace>
       </form>

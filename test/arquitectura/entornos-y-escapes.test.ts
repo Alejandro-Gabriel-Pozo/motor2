@@ -8,7 +8,7 @@ import { modoDeMigracionEnBuild } from "../../scripts/construir";
 
 /**
  * GT-19 y GT-22 (S-31, S-32): los escapes de desarrollo no tienen efecto en un despliegue de Vercel que no sea Producción, y el build y los escapes se deciden por el ENTORNO y la BASE, nunca por
- * la sola variable. Un entorno menos confiable (Preview) nunca ejecuta con el privilegio de uno más confiable (Producción): el Preview de `stockhneuquen` comparte la base de producción (ADR-007).
+ * la sola variable. Un entorno menos confiable (Preview) nunca ejecuta con el privilegio de uno más confiable (Producción): el Preview de `empresab` comparte la base de producción (ADR-007).
  * Se prueba por producto cartesiano de entornos, no por casos sueltos: una combinación nueva que se escape es un rojo.
  */
 const RAIZ = join(__dirname, "../..");

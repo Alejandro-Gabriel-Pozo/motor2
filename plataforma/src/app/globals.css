@@ -27,8 +27,21 @@ body {
 main {
   min-height: 100vh;
   display: grid;
+  /* `minmax(0, 1fr)`: sin esto la columna de la grilla crece hasta el ancho de su contenido y una tabla ancha empuja la tarjeta fuera de la pantalla (375 px: 86 px de desborde). */
+  grid-template-columns: minmax(0, 1fr);
   place-items: center;
   padding: 24px 16px;
+}
+
+/* Los enlaces llevan el color de la app (no el azul del navegador) y un área de toque de 44 px de alto. */
+a {
+  color: var(--acento);
+}
+
+a:where(:not(.boton)) {
+  display: inline-block;
+  padding-block: 10px;
+  min-height: 44px;
 }
 
 .tarjeta {
@@ -142,6 +155,53 @@ a.boton {
   overflow-x: auto;
 }
 
+/* Celular: cada fila de la tabla de empresas es una tarjeta (el encabezado se lee de `data-etiqueta` de cada celda), así nada se aprieta ni hay scroll horizontal. */
+@media (max-width: 640px) {
+  .tarjeta {
+    padding: 16px;
+  }
+
+  .tabla-envoltorio thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .tabla-envoltorio caption {
+    display: block;
+    text-align: left;
+  }
+
+  .tabla-envoltorio table,
+  .tabla-envoltorio tbody,
+  .tabla-envoltorio tr,
+  .tabla-envoltorio td {
+    display: block;
+  }
+
+  .tabla-envoltorio tr {
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    padding: 4px 12px;
+    margin-bottom: 12px;
+  }
+
+  .tabla-envoltorio td {
+    border-bottom: 0;
+    padding: 6px 0;
+    overflow-wrap: anywhere;
+  }
+
+  .tabla-envoltorio td[data-etiqueta]::before {
+    content: attr(data-etiqueta);
+    display: block;
+    font-weight: 600;
+    color: var(--texto-suave);
+  }
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -193,7 +253,9 @@ dd {
 }
 
 .filtros a {
-  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
   border: 1px solid var(--borde);
   border-radius: 8px;
   color: var(--texto);

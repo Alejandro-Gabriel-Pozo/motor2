@@ -243,7 +243,7 @@ test("un formulario de edición abierto ANTES de que le quiten la clave: el rech
     await escribirNumero(page, "Precio de venta", "999");
     await page.getByRole("button", { name: "Guardar cambios" }).click();
     await expect(page.getByText(MENSAJE_SIN_PERMISO)).toBeVisible();
-    await expect(page).toHaveURL(new RegExp(`/catalogo/productos/${pv.id}/datos$`));
+    await expect(page).toHaveURL(new RegExp(`/catalogo/productos/${pv.id}$`));
     expect(Number((await prisma.producto.findUniqueOrThrow({ where: { id: pv.id } })).precioVenta)).toBe(100);
   } finally {
     await limpiar();

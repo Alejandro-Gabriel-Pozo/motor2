@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { esPathPermitidoEnHostCarta, urlCartaPublica } from "@/core/carta/host";
 import { esHostDeEmpresaUnica, reglasRedirectEmpresaUnica, reglasRewriteEmpresaUnica, urlCartaPublicaConEmpresaUnica } from "@/core/carta/carta-empresa-unica";
 
-const BASE = "carta.hotelesdelneuquen.com.ar";
-const SLUG = "hoteles-neuquen";
+const BASE = "carta.empresab.com.ar";
+const SLUG = "empresa-b";
 
 /** Cómo evalúa Next un `has` de host: valor en minúsculas y sin puerto, regex anclada. */
 const coincideHost = (valor: string, host: string) => new RegExp(`^${valor}$`).test(host.split(":", 1)[0].toLowerCase());
@@ -38,7 +38,7 @@ describe("reglasRewriteEmpresaUnica", () => {
       expect(coincideHost(valor, BASE)).toBe(true);
       expect(coincideHost(valor, BASE.toUpperCase())).toBe(true);
       expect(coincideHost(valor, `${BASE}:3000`)).toBe(true);
-      for (const otro of [`x.${BASE}`, `${BASE}.evil.com`, `${BASE}x`, `x${BASE}`, `${BASE}.`, "hotelesdelneuquen.com.ar", "cartaXhotelesdelneuquen.com.ar", "app.hotelesdelneuquen.com.ar"]) {
+      for (const otro of [`x.${BASE}`, `${BASE}.evil.com`, `${BASE}x`, `x${BASE}`, `${BASE}.`, "empresab.com.ar", "cartaXempresab.com.ar", "app.empresab.com.ar"]) {
         expect(coincideHost(valor, otro), otro).toBe(false);
       }
     }
@@ -70,7 +70,7 @@ describe("reglasRewriteEmpresaUnica", () => {
 
   it("el dominio base se normaliza (mayúsculas y espacios) y sus puntos se escapan", () => {
     const r = reglasRewriteEmpresaUnica(` ${BASE.toUpperCase()} `, SLUG);
-    expect(r[0].has[0].value).toBe("carta\\.hotelesdelneuquen\\.com\\.ar");
+    expect(r[0].has[0].value).toBe("carta\\.empresab\\.com\\.ar");
   });
 });
 
@@ -92,7 +92,7 @@ describe("reglasRedirectEmpresaUnica", () => {
     for (const r of desdeApp) {
       const valor = r.missing[0].value;
       for (const zona of [BASE, `x.${BASE}`, "localhost", "127.0.0.1", `x.${BASE}:3000`]) expect(coincideHost(valor, zona), zona).toBe(true);
-      for (const app of ["app.hotelesdelneuquen.com.ar", "hotelesdelneuquen.com.ar", "stockhneuquen.vercel.app"]) expect(coincideHost(valor, app), app).toBe(false);
+      for (const app of ["app.empresab.com.ar", "empresab.com.ar", "empresab.vercel.app"]) expect(coincideHost(valor, app), app).toBe(false);
     }
   });
 
@@ -109,7 +109,7 @@ describe("esHostDeEmpresaUnica", () => {
   });
 
   it("no es el de <x>.<base>, ni <base>.evil, ni <base>X, ni el punto final, ni otro dominio", () => {
-    for (const otro of [`x.${BASE}`, `${BASE}.evil.com`, `${BASE}x`, `${BASE}.`, "hotelesdelneuquen.com.ar", null, undefined, ""]) {
+    for (const otro of [`x.${BASE}`, `${BASE}.evil.com`, `${BASE}x`, `${BASE}.`, "empresab.com.ar", null, undefined, ""]) {
       expect(esHostDeEmpresaUnica(otro, BASE, SLUG), String(otro)).toBe(false);
     }
   });

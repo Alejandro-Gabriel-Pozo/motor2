@@ -1,6 +1,6 @@
 /**
  * INTERRUPTOR de las PRESENTACIONES de compra (decisión del dueño, 2026-11-06: «falta ocultar las presentaciones»; el envase de compra pasa a vivir en el vínculo proveedor × materia prima,
- * Q3 opción C confirmada el 2026-11-03, `docs/diseno-envase-de-compra-en-el-vinculo-2026-11-03.md` §1.3 y etapa E2). Una sola constante, el mismo patrón que `MENU_DEL_DIA_VISIBLE`.
+ * Q3 opción C confirmada el 2026-11-03, `docs/diseno-envase-de-compra-en-el-vinculo-2026-11-03.md` §1.3 y etapa E2). Una sola constante, el mismo patrón que `DESCUENTO_POR_PRODUCTO_VISIBLE`.
  * Con `false`:
  *  - el formulario de edición del producto no ofrece la gestión de presentaciones y la ficha del producto no lista las «Presentaciones de compra»;
  *  - la pantalla de Compra no ofrece elegir una presentación (ni la Compra por pasos, ni la precarga del proveedor): `listarPresentaciones`, `obtenerDatosDeCompraDelProducto` y la carga

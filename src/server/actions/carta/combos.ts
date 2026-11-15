@@ -1,12 +1,11 @@
 "use server";
 
-import { guardComandoActivarEntradaDeCupo, guardComandoAgregarEntradaDeCupo, guardComandoGuardarVigenciaPromoCarta } from "@/core/features/carta/combos.guard";
+import { guardComandoActivarEntradaDeCupo, guardComandoAgregarEntradaDeCupo } from "@/core/features/carta/combos.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { error, type ResultadoAccion } from "../tipos";
 import { actualizarActivaEntradaDeCupoCasoDeUso } from "./casos-de-uso/actualizar-activa-entrada-de-cupo";
 import { agregarEntradaDeCupoCasoDeUso } from "./casos-de-uso/agregar-entrada-de-cupo";
-import { guardarVigenciaPromoCartaCasoDeUso } from "./casos-de-uso/guardar-vigencia-promo-carta";
 import { revalidarCartasPublicas } from "./revalidar";
 
 /**
@@ -38,19 +37,3 @@ export async function actualizarActivaEntradaDeCupo(entrada: { entradaId: unknow
   });
 }
 
-/** La vigencia de una promo (fechas y días de la semana), con la versión que vio la pantalla. */
-export async function guardarVigenciaPromoCarta(entrada: {
-  promoCartaId: unknown;
-  versionEsperada: unknown;
-  vigenteDesde?: unknown;
-  vigenteHasta?: unknown;
-  diasDeSemana?: unknown;
-}): Promise<ResultadoAccion> {
-  return conPermisoDeEmpresa("carta_promo_definir", async (ctx) => {
-    const comando = guardComandoGuardarVigenciaPromoCarta(entrada);
-    if (!comando.ok) return error(comando.mensaje);
-    const resultado = await guardarVigenciaPromoCartaCasoDeUso(ctx, comando.valor);
-    if (resultado.ok && resultado.datos.huboCambio) revalidarCartasPublicas(ctx.empresaSlug);
-    return aResultadoAccion(resultado);
-  });
-}

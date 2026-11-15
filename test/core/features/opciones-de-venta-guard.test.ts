@@ -64,10 +64,10 @@ describe("guardComandoCrearGrupoDeOpciones y guardComandoEditarGrupoDeOpciones",
     expect(guardComandoCrearGrupoDeOpciones(alta)).toEqual({ ok: true, valor: { nombre: "Tamaño", tipo: "MEDIDA", cantidadMinima: 1, cantidadMaxima: 1, prefijoEnCarta: null } });
   });
 
-  it("nombre vacío, de más de 80 o sin letras; tipo desconocido; cantidades fuera de rango o no enteras", () => {
+  it("nombre vacío o de más de 80 (y «...» sí entra: la ficha de elección no exige letra); tipo desconocido; cantidades fuera de rango o no enteras", () => {
     expect(rechazo(guardComandoCrearGrupoDeOpciones({ ...alta, nombre: "   " }))).toMatch(/vacío/);
-    expect(rechazo(guardComandoCrearGrupoDeOpciones({ ...alta, nombre: "x".repeat(81) }))).toMatch(/80/);
-    expect(rechazo(guardComandoCrearGrupoDeOpciones({ ...alta, nombre: "..." }))).toMatch(/letra o un número/);
+    expect(rechazo(guardComandoCrearGrupoDeOpciones({ ...alta, nombre: "x".repeat(81) }))).toBe("Esta acción no está permitida");
+    expect(guardComandoCrearGrupoDeOpciones({ ...alta, nombre: "..." }).ok).toBe(true);
     expect(rechazo(guardComandoCrearGrupoDeOpciones({ ...alta, tipo: "TAMANIO" }))).toMatch(/tipo de grupo/);
     expect(rechazo(guardComandoCrearGrupoDeOpciones({ ...alta, cantidadMinima: -1 }))).toMatch(/entre 0 y 10/);
     expect(rechazo(guardComandoCrearGrupoDeOpciones({ ...alta, cantidadMaxima: 11 }))).toMatch(/entre 1 y 10/);

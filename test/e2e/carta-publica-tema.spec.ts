@@ -387,7 +387,7 @@ test.describe("carta pública: navegación y layout (C1–C4)", () => {
           return { pt: c.paddingTop, pb: c.paddingBottom, stop: c.scrollSnapStop };
         });
         expect(estilo.stop).toBe("always");
-        expect(estilo.pt).toBe("40px");
+        expect(estilo.pt).toBe("45px");
         expect(Math.abs(parseFloat(estilo.pb) - altoNav)).toBeLessThan(1);
         // Ir a la primera sección: la banda queda POR DEBAJO del topbar y el último ítem POR ENCIMA de la nav.
         await page.locator("[data-ir-a]").first().click();

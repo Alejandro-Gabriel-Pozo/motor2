@@ -1,9 +1,8 @@
-import type { VigenciaDePromo } from "@/core/carta/public";
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**
- * Tipos de la feature «combos y menú del día» (GO-3b, ADR-032): las ENTRADAS de un lugar LISTA (un producto de venta, aunque no esté en la carta, con una configuración fija opcional de
- * opciones), la VIGENCIA de una promo (fechas y días de la semana, con control optimista) y los PLATOS DEL DÍA de un lugar DEL_DIA en la sucursal activa. Los comandos llegan ya validados
+ * Tipos de la feature «combos» (GO-3b, ADR-032): las ENTRADAS de un lugar LISTA (un producto de venta, aunque no esté en la carta, con una configuración fija opcional de
+ * opciones). Los comandos llegan ya validados
  * de forma por su guard (`combos.guard.ts`); lo que depende de la base lo decide el caso de uso.
  */
 
@@ -45,11 +44,3 @@ export interface ComandoActivarEntradaDeCupo {
 
 export type ResultadoActivarEntradaDeCupo = ResultadoCaso<{ huboCambio: boolean }, "ENTRADA_NO_ENCONTRADA" | "CUPO_INVALIDO" | CodigoDeComponente>;
 
-/** La vigencia nueva de una promo, con la versión que vio la pantalla (control optimista: `PromoCarta.version`). */
-export interface ComandoGuardarVigenciaPromoCarta {
-  promoCartaId: string;
-  versionEsperada: number;
-  vigencia: VigenciaDePromo;
-}
-
-export type ResultadoGuardarVigenciaPromoCarta = ResultadoCaso<{ huboCambio: boolean }, "PROMO_NO_ENCONTRADA" | "VERSION_DESACTUALIZADA">;

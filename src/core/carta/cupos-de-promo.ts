@@ -1,7 +1,7 @@
 /**
  * Los TIPOS de cupo de una promo armable y la lectura TOLERANTE del primer despliegue de GO-3 (ADR-032, «expandir y contraer»). Puro: sin Prisma.
  *
- * Desde GO-3d un `PromoCartaCupo` tiene `tipo` (SECCION, el de siempre; LISTA; DEL_DIA) y `activo` (la baja lógica), y `seccionCartaId` es NULL fuera de SECCION. El código de este
+ * Desde GO-3d un `PromoCartaCupo` tiene `tipo` (SECCION, el de siempre; LISTA; DEL_DIA, retirado por la poda del 2026-11-13: el código ya no lo crea ni lo arma, la tabla y el CHECK lo conservan hasta el tiempo 2 de la poda) y `activo` (la baja lógica), y `seccionCartaId` es NULL fuera de SECCION. El código de este
  * despliegue SOLO sabe armar cupos de sección: todos sus lectores leen los de sección activos, y una promo que tiene algún cupo ACTIVO de un tipo nuevo NO se ofrece (falla cerrado:
  * nunca se arma un combo a medias, cobrando su precio entero sin el lugar que este código no conoce). Los cupos dados de baja no cuentan para nada.
  * Lo que crea los tipos nuevos llega en el segundo despliegue (GO-3 F3); volver de él a este código es seguro.
@@ -12,7 +12,7 @@ export const TIPOS_DE_CUPO = ["SECCION", "LISTA", "DEL_DIA"] as const;
 export type TipoDeCupo = (typeof TIPOS_DE_CUPO)[number];
 
 /**
- * INTERRUPTOR de «Sumar un lugar» de lista en el formulario de cupos de una promo. Mismo patrón que `MENU_DEL_DIA_VISIBLE` (`menu-del-dia.ts`): una sola constante. Historia: el 2026-10-28 el dueño lo
+ * INTERRUPTOR de «Sumar un lugar» de lista en el formulario de cupos de una promo. Una sola constante. Historia: el 2026-10-28 el dueño lo
  * apagó («es algo obsoleto: es más fácil agregar la sección del otro lado y tildarla»; en producción había 0 lugares de lista y 0 del día). El 2026-11-11 el dueño REVISÓ esa decisión, solo para este caso:
  * quiere armar el «Menú ejecutivo» con un lugar de lista cuyas entradas las elige el mozo con tamaño (etapa N1 de la promo «a elegir»), y un cupo de SECCIÓN nunca lleva entradas. Con `true` la pantalla
  * ofrece «Sumar un lugar» (lista de productos); el servidor no cambió (siempre aceptó el tipo LISTA) y los cupos de sección siguen igual. Para volver a apagarlo: poner `false`. Lo comprueba
@@ -52,8 +52,8 @@ export function tieneCupoActivoDeTipoNuevo(cupos: readonly CupoLeido[]): boolean
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // GO-3b (ADR-032, paso D3): la administración de los cupos deja de BORRAR. Cada cupo tiene una CLAVE NATURAL estable dentro de su promo —la sección en un cupo SECCION, el nombre sin
-// mayúsculas en un LISTA o DEL_DIA (el índice único `PromoCartaCupo_nombre_lower_key`)— y guardar la lista de cupos es llevar las filas al estado pedido: lo que sigue se cambia en el
-// lugar, lo que vuelve se reactiva, lo que no vino se da de baja (`activo = false`) y lo nuevo se crea. Así las entradas de una lista y los platos del día de un cupo nunca quedan colgando
+// mayúsculas en un LISTA (el índice único `PromoCartaCupo_nombre_lower_key`)— y guardar la lista de cupos es llevar las filas al estado pedido: lo que sigue se cambia en el
+// lugar, lo que vuelve se reactiva, lo que no vino se da de baja (`activo = false`) y lo nuevo se crea. Así las entradas de una lista de un cupo nunca quedan colgando
 // de una fila borrada, y la auditoría del cupo de sección sigue con su `entidadId` de siempre (`${promoCartaId}:${seccionCartaId}`). Puro: sin Prisma.
 // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -76,7 +76,7 @@ export interface CupoExistente extends CupoPedido {
   activo: boolean;
 }
 
-/** La clave natural de un cupo dentro de su promo: la sección en un SECCION; el nombre en minúsculas (sin los espacios de las puntas) en un LISTA o DEL_DIA. */
+/** La clave natural de un cupo dentro de su promo: la sección en un SECCION; el nombre en minúsculas (sin los espacios de las puntas) en un LISTA. */
 export function claveNaturalDeCupo(c: Pick<CupoPedido, "tipo" | "seccionCartaId" | "nombre">): string {
   return c.tipo === "SECCION" ? `S:${c.seccionCartaId ?? ""}` : `N:${(c.nombre ?? "").trim().toLowerCase()}`;
 }

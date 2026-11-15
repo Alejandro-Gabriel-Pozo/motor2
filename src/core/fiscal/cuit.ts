@@ -1,6 +1,7 @@
 import { texto } from "@/core/texto";
 import { LARGO_MAXIMO_CUIT } from "@/core/datos/limites";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
+import { cuitDesdeTexto } from "./cuit-estricto";
 
 /** Prefijos que ARCA asigna: personas (20/23/24/27) y empresas (30/33/34). */
 const PREFIJOS_VALIDOS = new Set(["20", "23", "24", "27", "30", "33", "34"]);
@@ -22,15 +23,20 @@ export function esCuitValido(digitos: string): boolean {
   return esperado === Number(digitos[10]);
 }
 
-/** CUIT opcional: vacío → `null`; válido → los 11 dígitos (lo que se guarda). */
+/**
+ * CUIT opcional: vacío → `null`; válido → los 11 dígitos (lo que se guarda). Desde la etapa E1 (paridad con Pedernal, 2026-11-15) la regla es la ESTRICTA de Pedernal (`cuit-estricto.ts`):
+ * 11 dígitos, o `XX-XXXXXXXX-X` con los guiones exactos, y el dígito verificador; SIN lista de prefijos y SIN limpiar espacios, puntos ni guiones sueltos de adentro (solo se recortan los
+ * extremos, como todo texto de un formulario). Los mensajes son los de Pedernal (`apps/plataforma/logica/errores-de-plataforma.ts:84-88` de ZuluHub-ERP: «El CUIT no tiene un formato válido. Escribilo con 11 números.» y «El CUIT no es
+ * válido. Revisá los números.»), con la etiqueta del campo: decisión del dueño, 2026-11-15, «Como Pedernal (Recomendada)» (chat con el orquestador, relatado). `normalizarCuit` y `esCuitValido` siguen siendo del diagnóstico de la consola de plataforma, que lee datos viejos con separadores.
+ */
 export function validarCuit(valor: unknown, etiqueta = "El CUIT"): ResultadoDato<string | null> {
   const v = texto(valor);
   if (!v) return aceptar(null);
   if (v.length > LARGO_MAXIMO_CUIT) return rechazar("largo", `${etiqueta} no puede superar los ${LARGO_MAXIMO_CUIT} caracteres.`);
-  const digitos = normalizarCuit(v);
-  if (!digitos || !PREFIJOS_VALIDOS.has(digitos.slice(0, 2))) return rechazar("formato", `${etiqueta} no tiene un formato válido: son 11 dígitos, por ejemplo 30-12345678-1.`);
-  if (!esCuitValido(digitos)) return rechazar("verificador", `${etiqueta} no es válido: el dígito verificador no coincide.`);
-  return aceptar(digitos);
+  const r = cuitDesdeTexto(v);
+  if (r.ok) return aceptar(r.valor);
+  if (r.error === "CUIT_DIGITO_VERIFICADOR_INVALIDO") return rechazar("verificador", `${etiqueta} no es válido. Revisá los números.`);
+  return rechazar("formato", `${etiqueta} no tiene un formato válido. Escribilo con 11 números.`);
 }
 
 /** `XX-XXXXXXXX-X` si son 11 dígitos; cualquier otra cosa se devuelve tal cual, para no esconder datos viejos. */

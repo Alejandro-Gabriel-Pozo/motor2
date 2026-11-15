@@ -84,6 +84,14 @@ const CERCO_COLORES: Cerco = {
       motivo: "Tema de la carta del cliente: copia literal del saneador de colores de la carta (`sanitizeCssColor`, `resolveHeroInk`); sus `oklch(…)` son la tinta clara/oscura que resuelve el contraste sobre el color que eligió el cliente.",
     },
     {
+      ruta: "src/core/carta/marca-derivada.ts",
+      motivo: "Marca de la carta del cliente: las dos tintas fijas del sistema (`oklch(…)`) son las mismas literales que `inkFromLuminance` de `color-css.ts` (una prueba fija la paridad); sobre ellas se mide el contraste de la marca que eligió el cliente.",
+    },
+    {
+      ruta: "src/components/carta/editor-marca.tsx",
+      motivo: "Selector del color de marca: `<input type=\"color\">` exige un valor `#rrggbb`; el `#808080` es solo el gris con el que arranca el selector cuando todavía no se eligió nada (mismo criterio que `campo-color.tsx`), no un color de la interfaz.",
+    },
+    {
       ruta: "src/core/carta/tema.ts",
       motivo: "Tema de la carta del cliente: catálogo de claves y validación de los colores que carga el cliente; el literal es el ejemplo del mensaje de error («ej. #8b4513, rgb(…)»), no un color de la interfaz.",
     },

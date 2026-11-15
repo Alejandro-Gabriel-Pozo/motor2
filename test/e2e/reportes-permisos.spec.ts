@@ -82,7 +82,7 @@ test("al entrar, el admin y el operador llegan al panel /inicio (con sus módulo
 test("un operador no ve en el menú las pantallas de administración que no puede abrir", async ({ browser, baseURL, sucursalId }) => {
   const operador = await paginaComoOperador(browser, baseURL, sucursalId);
   await operador.goto("/catalogo/productos");
-  await expect(operador.locator('a[href="/catalogo/productos"]')).toHaveCount(1);
+  await expect(operador.locator('aside a[href="/catalogo/productos"]')).toHaveCount(1);
   // Administración no se despliega en esta página; se comprueba que el enlace a Usuarios no aparece en ningún lado del menú.
   await expect(operador.locator('a[href="/administracion/usuarios"]')).toHaveCount(0);
   await operador.goto("/administracion/usuarios");

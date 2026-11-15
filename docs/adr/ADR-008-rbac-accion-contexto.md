@@ -93,7 +93,7 @@ El gerente es `UsuarioEmpresa.rolEmpresa = "gerente"` y hay uno por empresa. Se 
   ninguna sucursal activa (sin ninguna no tendría contexto y la gerencia quedaría huérfana): traspasa antes.
 - El bootstrap de un usuario nuevo no crea un segundo gerente.
 - **Migración de datos** `20261001120000_gerente_unico_por_empresa`: por empresa, si hay varios gerentes queda el más antiguo; si no hay
-  ninguno, el admin activo más antiguo (el creador de la empresa; en dev, `alepogabriel@gmail.com`). Idempotente y probada con dos empresas.
+  ninguno, el admin activo más antiguo (el creador de la empresa; en dev, `<correo-del-dueño>`). Idempotente y probada con dos empresas.
 
 ### 4. Cuenta, techo del admin y auditoría
 
@@ -154,7 +154,7 @@ Es la consecuencia operativa de «una clave por acción». Se hace con **expand/
 
 ## Riesgos y pendientes abiertos
 
-- ~~**Índice único del gerente en la base**~~ — HECHO (migración `20261001240000_gerente_unico_indice`, aplicada también en stockhneuquen).
+- ~~**Índice único del gerente en la base**~~ — HECHO (migración `20261001240000_gerente_unico_indice`, aplicada también en empresab).
 - ~~**UI del traspaso de gerencia**~~ — HECHO (2026-10-02, Tanda 3): `/administracion/gerencia`, clave propia `traspasar_gerencia` (contexto empresa, piso
   gerente), confirmación escribiendo el email del destino (se compara sin espacios ni mayúsculas) y auditoría con emails.
 - **Gerente cuyo rol de sucursal no es `admin`**: no alcanza las acciones de piso administrador (el piso sale del rol de la sucursal). Hoy

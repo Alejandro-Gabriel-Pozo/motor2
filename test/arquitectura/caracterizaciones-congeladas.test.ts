@@ -252,6 +252,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Pagos X0 (ADITIVO; clave nueva): `ACCIONES 129 a 130` y las dos filas `PERMISO` de `declarar_pago_compra` (admin ver=true editar=true; operador sin Ver ni Editar). Revisado con `git diff`: solo se suman esas tres líneas; ningún otro permiso ni rol cambia.",
       },
+      {
+        blob: "2980410872d06ad79fb48a8e54e15ec259570742",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `a428877` («E1: mensaje genérico de Pedernal para nombres que no cumplen y mensajes del CUIT de Pedernal»).
+        commit: "a428877",
+        motivo:
+          "E1 (paridad con Pedernal; CAMBIA COMPORTAMIENTO, decisión del dueño, 2026-11-15, chat con el orquestador, relatada: «Como Pedernal (Recomendada)» para los mensajes del CUIT): validarCuit usa los textos de Pedernal (apps/plataforma/logica/errores-de-plataforma.ts:84-88 de ZuluHub-ERP). Cambian SOLO la línea de mensaje de CUIT (formato); el resto de la huella queda idéntico.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-aceptacion.golden.txt": {
@@ -259,7 +266,15 @@ const CONGELADAS: Record<string, Congelada> = {
     desde: "94011900",
     motivo:
       "Huella de aceptación (B3-1, O.34): aceptar gerente y aceptar usuario con todos sus rechazos (texto y orden), éxito y segundo uso. Red de B3: mudar las dos aceptaciones a casos de uso no cambia nada.",
-    regeneraciones: [],
+    regeneraciones: [
+      {
+        blob: "2d7ee80ddf36acc817cdc417274efd2ea3ee2ebf",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `a428877` («E1: mensaje genérico de Pedernal para nombres que no cumplen y mensajes del CUIT de Pedernal»).
+        commit: "a428877",
+        motivo:
+          "E1 (paridad con Pedernal; CAMBIA COMPORTAMIENTO, decisión del dueño, 2026-11-15, chat con el orquestador, relatada: «Como Pedernal (Recomendada)» para los mensajes del CUIT): validarCuit usa los textos de Pedernal (apps/plataforma/logica/errores-de-plataforma.ts:84-88 de ZuluHub-ERP). Cambian SOLO las dos líneas de mensaje de CUIT (formato y dígito verificador); el resto de la huella queda idéntico.",
+      },
+    ],
   },
   "test/movimientos/caracterizacion/venta-matriz.golden.txt": {
     blob: "5166de7e5b4db922c884b99e381dbfd52b3021b0",
@@ -660,6 +675,25 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "e9912e2b",
         motivo:
           "E1 de la corrección por ajuste (PR2, «quitar unidades de una línea»): `pos.obtenerTicketsRecientes` lee, en una consulta más (`operacion.findMany`), las versiones de las ventas anuladas de la mesa para saber si otra venta las reemplaza (la cadena A → B). Solo cambia el RECUENTO de consultas de sus dos casos, de «1: cuenta.findMany×1» a «2: cuenta.findMany×1, operacion.findMany×1» (2 líneas); el resultado no cambia (ninguna venta del mundo de la caracterización fue reemplazada) y sin ventas anuladas la consulta extra no se hace.",
+      },
+      {
+        blob: "b779dd7f781331df96c83a1da28af298b4a4c1fd",
+        commit: "52fa5a3e",
+        motivo:
+          "Marca de la carta, PR B (paso 9; decisión del dueño 2026-11-13, «Botón explícito (Recomendada)»): el catálogo del tema suma la llave `marca_derivada` (el marcador del modo marca, nace vacío) y la lectura de la carta pública la trae en `valores`. Cambia SOLO eso: dos líneas `\"marca_derivada\": \"\"` (una por cada carta resuelta); ningún conteo de consultas ni ningún otro valor. Sin el marcador la carta se ve exactamente igual (lo prueba test/carta/marca-sin-cambio.test.ts con las cinco cartas reales).",
+      },
+      {
+        blob: "64daff3599dea16145c2c2fa590bd300d0fc8031",
+        commit: "489a412a",
+        motivo:
+          "Marca del portal, PR de lectura (paso 9; decisiones del dueño 2026-11-13: «Queda neutro; la marca solo en bordes y flechas (Recomendada)», «Siguen transparentes (Recomendada)»): el catálogo del portal suma `portal_color_marca` y el marcador `portal_marca_derivada` (nacen vacíos) y la lectura de la carta pública los trae en `valores` del portal. Cambia SOLO eso: dos líneas con `\"\"` en el portal resuelto; ningún conteo de consultas ni ningún otro valor. Sin el marcador el portal se ve exactamente igual (lo prueba test/carta/marca-sin-cambio.test.ts con el portal real).",
+      },
+      {
+        blob: "a5abd7ca14257c85a6ed2eddfc74c6786605ff1e",
+        // El commit PADRE de este (609b09fc, «Nombre público de la empresa en la carta, PR 1») es el último antes de la regeneración; el cambio es del mismo PR 1.
+        commit: "609b09fc",
+        motivo:
+          "Nombre público de la empresa en la carta, PR 1 (decisión del dueño 2026-11-14: «Configurable por empresa, como Pedernal (Recomendada)»; construir: «Sí, construí el nombre público»): el catálogo del portal suma la clave `portal_nombre_publico` (nace vacía) y la lectura de la carta pública la trae en `valores` del portal. Cambia SOLO eso: UNA línea con `\"\"` en el portal resuelto; ningún conteo de consultas ni ningún otro valor. Sin nombre cargado el portal se ve exactamente igual (lo prueba test/carta/marca-sin-cambio.test.ts con el portal real).",
       },
     ],
   },
@@ -1130,6 +1164,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "ed7fd6c4",
         motivo:
           "Decisión del dueño (2026-11-10, «el ,00 solo si hay decimales que mostrar»; SOLO FORMATO de la CARTA PÚBLICA, no cambia ningún valor, forma ni orden): los precios de la carta pública pasan de «$ 18.000,00» / «+$ 2.000,00» a «$ 18.000» / «+$ 2.000» (importe entero sin decimales; con centavos saldrían 2: «$ 1.234,50»). Cambian solo las líneas con precios de la carta (58). Regenerado a partir del golden anterior a #223 (con «$18.000») aplicando el formato nuevo (el texto visible se normaliza con espacios comunes), no corrido contra el navegador.",
+      },
+      {
+        blob: "3cdc2a7f288695111c7ac2f406d5237ba8f46c0a",
+        // El commit PADRE de este (b41faafa) es el último antes de la regeneración; el texto lo cambió 7d5558d3 (Productos P2: la ficha del producto pasa a pestañas).
+        commit: "b41faafa",
+        motivo:
+          "Productos P2 (cambio de texto de ADMINISTRACIÓN, no de la carta pública; dueño, 2026-11-13: «Sí, así provisorio (Recomendada)», ficha de tres pestañas): la ficha del producto pasa de «Resumen / Qué se vende / Opciones y precio / Receta / En la carta» a «Datos / Precios / Opciones», y la pantalla de opciones suma la línea «El precio del producto está en la pestaña Precios». Regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra la base e2e local y revisado: solo cambian las pestañas de la ficha y el título y la ayuda de la pantalla de opciones (10 líneas agregadas, 16 quitadas), ninguna línea de la carta pública.",
       },
     ],
   },

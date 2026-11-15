@@ -181,22 +181,23 @@ describe("el espacio del producto: hechos y marco", () => {
     const pasosDe = async (usuarioId: string, producto: ProductoDelEspacio) => (await cargarMarcoDelEspacio(ctxDe(usuarioId), producto)).pasos;
     const resumen = (pasos: Awaited<ReturnType<typeof pasosDe>>) => pasos.map((p) => `${p.titulo}${p.href === null ? " (sin enlace)" : ""}`);
 
-    it("el administrador abre los cuatro pasos de un producto de venta, con los pendientes de cada uno", async () => {
+    it("el administrador abre los cinco pasos de un producto de venta, con los pendientes de cada uno", async () => {
       const pasos = await pasosDe(usuarios.admin, sinReceta);
-      expect(resumen(pasos)).toEqual(["Qué se vende", "Opciones y precio", "Receta", "En la carta"]);
-      expect(pasos.map((p) => p.href)).toEqual([`/catalogo/productos/${ids.milanesas}/datos`, `/catalogo/productos/${ids.milanesas}/opciones`, `/catalogo/recetas/${ids.milanesas}`, `/catalogo/productos/${ids.milanesas}/en-la-carta`]);
-      expect(pasos.map((p) => p.estado.tipo)).toEqual(["listo", "listo", "pendiente", "pendiente"]);
+      expect(resumen(pasos)).toEqual(["Datos", "Precios", "Opciones", "Receta", "En la carta"]);
+      expect(pasos.map((p) => p.href)).toEqual([`/catalogo/productos/${ids.milanesas}/datos`, `/catalogo/productos/${ids.milanesas}/precios`, `/catalogo/productos/${ids.milanesas}/opciones`, `/catalogo/recetas/${ids.milanesas}`, `/catalogo/productos/${ids.milanesas}/en-la-carta`]);
+      expect(pasos.map((p) => p.estado.tipo)).toEqual(["listo", "listo", "listo", "pendiente", "pendiente"]);
     });
 
     it("quien ve la receta y la carta pero NO edita el producto: los pasos 1 y 2 (piden Editar) salen como texto sin enlace y sin dato; la receta y la carta (piden Ver) sí tienen enlace y dato", async () => {
       // La receta y la carta son de piso administrador: el caso se arma con el rol administrador al que se le quita el Editar de los pasos 1 y 2.
       await prisma.permisoRol.updateMany({ where: { rolId: rolAdminId, accionClave: { in: ["producto_editar", "producto_opciones_admitidas"] } }, data: { puedeEditar: false } });
       const pasos = await pasosDe(usuarios.admin, sinReceta);
-      expect(resumen(pasos)).toEqual(["Qué se vende (sin enlace)", "Opciones y precio (sin enlace)", "Receta", "En la carta"]);
+      expect(resumen(pasos)).toEqual(["Datos (sin enlace)", "Precios", "Opciones (sin enlace)", "Receta", "En la carta"]);
       expect(pasos[0].estado).toEqual({ tipo: "sin-dato" });
-      expect(pasos[1].estado).toEqual({ tipo: "sin-dato" });
-      expect(pasos[2].estado.tipo).toBe("pendiente");
+      expect(pasos[1].estado.tipo).toBe("listo"); // Precios lo abre quien ve el catálogo, aunque no edite
+      expect(pasos[2].estado).toEqual({ tipo: "sin-dato" });
       expect(pasos[3].estado.tipo).toBe("pendiente");
+      expect(pasos[4].estado.tipo).toBe("pendiente");
       // El paso 2 no se calculó (no se leyeron las opciones): la privacidad no es solo de dibujo. Contraespejo: la receta y la carta sí.
       expect(cargarOpcionesDelProducto).not.toHaveBeenCalled();
       expect(cargarOrigenDeStockParaVender).toHaveBeenCalledTimes(1);
@@ -208,8 +209,8 @@ describe("el espacio del producto: hechos y marco", () => {
       for (const accionClave of ["alta_producto", "producto_ver_catalogo"]) await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave, puedeVer: true, puedeEditar: false } });
       const usuario = await crearUsuarioConMembresia({ email: "catalogo@test.com", sucursalId, rolId: rol.id });
       const pasos = await pasosDe(usuario.id, sinReceta);
-      expect(resumen(pasos)).toEqual(["Qué se vende (sin enlace)", "Opciones y precio (sin enlace)", "Receta (sin enlace)", "En la carta (sin enlace)"]);
-      expect(pasos.every((p) => p.estado.tipo === "sin-dato")).toBe(true);
+      expect(resumen(pasos)).toEqual(["Datos (sin enlace)", "Precios", "Opciones (sin enlace)", "Receta (sin enlace)", "En la carta (sin enlace)"]);
+      expect(pasos.filter((p) => p.paso !== "precios").every((p) => p.estado.tipo === "sin-dato")).toBe(true);
       expect(cargarOrigenDeStockParaVender).not.toHaveBeenCalled();
       expect(estadoDelProductoEnLaCarta).not.toHaveBeenCalled();
       expect(cargarOpcionesDelProducto).not.toHaveBeenCalled();
@@ -217,11 +218,11 @@ describe("el espacio del producto: hechos y marco", () => {
 
     it("sin el módulo Recetas el paso no aparece (ni se lee); sin el módulo Carta, tampoco el suyo", async () => {
       await fijarModulosActivos(EMPRESA_POR_DEFECTO_ID, ["stock", "carta"]);
-      expect(resumen(await pasosDe(usuarios.admin, sinReceta))).toEqual(["Qué se vende", "Opciones y precio", "En la carta"]);
+      expect(resumen(await pasosDe(usuarios.admin, sinReceta))).toEqual(["Datos", "Precios", "Opciones", "En la carta"]);
       expect(cargarOrigenDeStockParaVender).not.toHaveBeenCalled();
       await fijarModulosActivos(EMPRESA_POR_DEFECTO_ID, ["stock", "recetas"]);
       vi.clearAllMocks();
-      expect(resumen(await pasosDe(usuarios.admin, sinReceta))).toEqual(["Qué se vende", "Opciones y precio", "Receta"]);
+      expect(resumen(await pasosDe(usuarios.admin, sinReceta))).toEqual(["Datos", "Precios", "Opciones", "Receta"]);
       expect(estadoDelProductoEnLaCarta).not.toHaveBeenCalled();
     });
 
@@ -230,7 +231,7 @@ describe("el espacio del producto: hechos y marco", () => {
       const masa = await pasosDe(usuarios.admin, masaSinReceta);
       expect(resumen(masa)).toEqual(["Datos", "Receta"]);
       expect(masa[1]).toMatchObject({ href: `/catalogo/recetas/${ids.masa}`, estado: { tipo: "pendiente" } });
-      expect(resumen(await pasosDe(usuarios.admin, respaldo))).toEqual(["Qué se vende"]);
+      expect(resumen(await pasosDe(usuarios.admin, respaldo))).toEqual(["Datos"]);
     });
 
     it("la disponibilidad acá se lee una vez, o se toma de lo que la pantalla ya leyó", async () => {

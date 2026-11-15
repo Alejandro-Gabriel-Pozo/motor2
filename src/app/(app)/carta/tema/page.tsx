@@ -25,8 +25,20 @@ const refrescarSiOk = (r: ResultadoAccion) => {
   return r;
 };
 
-/** Las 66 claves del catálogo, como texto (un campo vacío llega como ""; guardarTemaCarta lo omite). */
-const valoresDelFormulario = (fd: FormData) => Object.fromEntries(CLAVES_TEMA_V1.map((d) => [d.clave, String(fd.get(d.clave) ?? "")]));
+/** Las 65 claves del catálogo, como texto (un campo vacío llega como ""; guardarTemaCarta lo omite). */
+const clavesDelFormulario = (fd: FormData) => Object.fromEntries(CLAVES_TEMA_V1.map((d) => [d.clave, String(fd.get(d.clave) ?? "")]));
+
+/**
+ * Los valores del formulario, con la INTENCIÓN de los botones del color de marca (decisión del dueño, 2026-11-13: «Botón explícito»): «pasar» fija la marca elegida y el marcador `marca_derivada = «si»`;
+ * «volver» quita solo el marcador (los colores sueltos no se tocan); sin intención («Guardar tema») es el guardado de siempre. El servidor revalida todo (M1, M2 y M3) en el guard.
+ */
+function valoresDelFormulario(fd: FormData): Record<string, string> {
+  const valores = clavesDelFormulario(fd);
+  const intencion = String(fd.get("intencion") ?? "");
+  if (intencion === "pasar") return { ...valores, color_marca: String(fd.get("marca_elegida") ?? ""), marca_derivada: "si" };
+  if (intencion === "volver") return { ...valores, marca_derivada: "" };
+  return valores;
+}
 
 function estadoDelTema(d: TemaAdmin): string {
   const portal = !d.publica ? "no está en el portal" : `/carta/${d.publica.slug}${d.publica.publicada ? "" : " (sin publicar)"}`;

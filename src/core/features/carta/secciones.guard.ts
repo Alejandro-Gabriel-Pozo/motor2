@@ -1,9 +1,9 @@
+import { nombreDeFicha, nombreMinimoDeFicha } from "@/core/datos/nombre-de-ficha";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import {
   LARGO_MAXIMO_DESCRIPCION_CARTA,
   LARGO_MAXIMO_TITULO_CARTA,
   validarImagenUrlCarta,
-  validarNombreSeccionCarta,
   validarOrdenCarta,
   validarTextoLibreCarta,
 } from "@/core/carta/public";
@@ -34,7 +34,10 @@ interface EntradaSeccionCarta {
  * textos y en el MISMO orden: el nombre, el título, la descripción, la imagen y el orden. El `id` pasa tal cual (lo resuelve el caso de uso).
  */
 export function guardComandoGuardarSeccionCarta(datos: EntradaSeccionCarta): ResultadoDato<ComandoGuardarSeccionCarta> {
-  const nombre = validarNombreSeccionCarta(datos.nombre);
+  // Regla de nombre de Pedernal (E1): en el ALTA (sin `id`) la estricta; en la EDICIÓN el guard no conoce el nombre guardado, así que solo el mínimo y el caso de uso aplica la estricta SOLO si el nombre cambió.
+  const nombre = datos.id
+    ? nombreMinimoDeFicha(datos.nombre, "ELECCION", "El nombre de la sección de carta no puede estar vacío.")
+    : nombreDeFicha(datos.nombre, "ELECCION", "El nombre de la sección de carta no puede estar vacío.");
   if (!nombre.ok) return rechazar("formato", nombre.mensaje);
   const titulo = validarTextoLibreCarta(datos.titulo, "El título", LARGO_MAXIMO_TITULO_CARTA);
   if (!titulo.ok) return rechazar("largo", titulo.mensaje);

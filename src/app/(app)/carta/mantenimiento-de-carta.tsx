@@ -240,7 +240,7 @@ export function MantenimientoDeCarta({
       <>
         <p className={s.ayuda}>
           Lo que se acabó hoy. Tocá una sección para ver sus productos, o apagá la sección entera de una vez. Las opciones (guarniciones, tamaños) se agotan en{" "}
-          <EnlaceInterno href="/movimientos/opciones-agotadas">Opciones agotadas</EnlaceInterno>
+          <EnlaceInterno href="/movimientos/opciones-agotadas" className="inline-block min-h-11 py-3">Opciones agotadas</EnlaceInterno>
           .
         </p>
         <div className={`${s.tarjeta} ${s.contadores}`}>

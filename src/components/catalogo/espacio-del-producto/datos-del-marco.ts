@@ -11,8 +11,9 @@ import type { OpcionesDelProductoDelPanel } from "@/server/consultas/catalogo/op
  * Lo que el marco del espacio del producto necesita del servidor (Fase 6, 6.12): los pasos del producto con su enlace (o sin él) y su estado, y si el producto está disponible en la sucursal activa.
  *
  * Quién puede abrir cada paso se calcula acá, en el servidor, con el permiso de la pantalla de ese paso (no con `EnlaceInterno`, que solo conoce los «Ver» y no entiende las rutas con id):
- *  - paso 1, los datos: «Editar» de `producto_editar` (la pantalla lo exige);
- *  - paso 2, opciones y precio: «Editar» de `producto_opciones_admitidas` (idem);
+ *  - paso 1, los datos: «Editar» de `producto_editar` (la pantalla lo exige; la pestaña Datos del marco abre la ficha, que pide solo `producto_ver_catalogo`);
+ *  - precios: «Ver» de `producto_ver_catalogo` (la pantalla de Precios lo pide; editar el precio de la sucursal lo decide la pantalla con `precio_local`);
+ *  - paso 2, opciones: «Editar» de `producto_opciones_admitidas` (idem);
  *  - paso 3, la receta: «Ver» de `guardar_receta` (la pantalla de la receta pide Ver); sin el módulo Recetas el paso NO aparece;
  *  - paso 4, en la carta: «Ver» de `carta_ver` (de la sucursal activa); sin el módulo Carta el paso NO aparece.
  * De un paso que no puede abrir NO se lee nada (`hechosDelProducto` solo lee lo permitido), y `pasosDelEspacio` lo marca sin enlace y sin dato. Es cortesía de la interfaz: cada pantalla vuelve a exigir su permiso.
@@ -37,8 +38,9 @@ export interface PrecargadoDelMarco {
 }
 
 export async function cargarMarcoDelEspacio(ctx: ContextoDelMarco, producto: ProductoDelEspacio, precargado: PrecargadoDelMarco = {}): Promise<MarcoCargado> {
-  const [datos, opciones, receta, carta, sinRecetas, sinCarta, disponibleAca] = await Promise.all([
+  const [datos, ver, opciones, receta, carta, sinRecetas, sinCarta, disponibleAca] = await Promise.all([
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_editar", ctx.db),
+    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_ver_catalogo", ctx.db),
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_opciones_admitidas", ctx.db),
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "guardar_receta", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_ver", ctx.db),
@@ -48,6 +50,7 @@ export async function cargarMarcoDelEspacio(ctx: ContextoDelMarco, producto: Pro
   ]);
   const acceso: AccesoAlEspacio = {
     datos: datos.editar,
+    ver: ver.ver,
     opciones: opciones.editar,
     receta: sinRecetas ? "sin-modulo" : receta.ver ? "si" : "sin-permiso",
     carta: sinCarta ? "sin-modulo" : carta.ver ? "si" : "sin-permiso",

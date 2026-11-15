@@ -18,7 +18,7 @@ async function sembrar() {
 
 const sinDesborde = (page: import("@playwright/test").Page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
 
-test("escritorio 1366×768: Productos en apartado, filtros en banda aparte, encabezado de tabla en banda y acciones al final", async ({ paginaAutenticada: page }) => {
+test("escritorio 1366×768: Productos en apartado, filtros en banda aparte y la lista con sus acciones en la fila", async ({ paginaAutenticada: page }) => {
   const { nombre } = await sembrar();
   await page.setViewportSize({ width: 1366, height: 768 });
   await page.goto(`/catalogo/productos?q=${encodeURIComponent(nombre)}`);
@@ -26,24 +26,16 @@ test("escritorio 1366×768: Productos en apartado, filtros en banda aparte, enca
   const apartado = page.getByRole("region", { name: "Lista de productos" });
   await expect(apartado).toBeVisible();
   const banda = apartado.locator("[data-barra-de-filtros]");
-  const tabla = page.getByRole("table", { name: "Productos" });
+  const lista = page.getByRole("list", { name: "Productos" });
   await expect(banda).toBeVisible();
-  await expect(tabla).toBeVisible();
-  // Los filtros están ENCIMA de la tabla y no la tocan (hay aire entre la banda y la tabla).
+  await expect(lista).toBeVisible();
+  // Los filtros están ENCIMA de la lista y no la tocan (la lista de Productos ya no es una tabla: es la lista de filas de la maqueta de Pedernal).
   const cajaBanda = (await banda.boundingBox())!;
-  const cajaTabla = (await tabla.boundingBox())!;
-  expect(cajaBanda.y + cajaBanda.height).toBeLessThan(cajaTabla.y);
+  const cajaLista = (await lista.boundingBox())!;
+  expect(cajaBanda.y + cajaBanda.height).toBeLessThan(cajaLista.y);
 
-  const encabezados = tabla.getByRole("columnheader");
-  await expect(encabezados.last()).toHaveText("Acciones");
-  const fondo = await encabezados.first().evaluate((th) => getComputedStyle(th.parentElement!).backgroundColor);
-  expect(fondo, "banda de encabezado con fondo propio").not.toBe("rgba(0, 0, 0, 0)");
-  const fila = tabla.getByRole("row").filter({ hasText: nombre });
-  await expect(fila.getByRole("link", { name: "Editar" })).toBeVisible();
-  // La columna de acciones es la última: su celda queda a la derecha del nombre.
-  const xNombre = (await fila.getByRole("link", { name: nombre }).boundingBox())!.x;
-  const xEditar = (await fila.getByRole("link", { name: "Editar" }).boundingBox())!.x;
-  expect(xEditar).toBeGreaterThan(xNombre);
+  const fila = lista.getByRole("listitem").filter({ hasText: nombre });
+  await expect(fila.getByRole("link", { name: nombre })).toBeVisible();
   expect(await sinDesborde(page)).toBe(true);
 });
 
@@ -58,14 +50,14 @@ test("escritorio 1366×768: Biblioteca de opciones con apartados y la tabla con 
   expect(await sinDesborde(page)).toBe(true);
 });
 
-test("celular 390×844: Productos en tarjetas con la acción a la vista (44 px) y sin desborde horizontal", async ({ paginaAutenticada: page }) => {
+test("celular 390×844: Productos en tarjetas con el enlace a la ficha a la vista (44 px) y sin desborde horizontal", async ({ paginaAutenticada: page }) => {
   const { nombre } = await sembrar();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/catalogo/productos?q=${encodeURIComponent(nombre)}`);
   await expect(page.getByRole("table", { name: "Productos" })).toHaveCount(0); // la tabla está oculta (display:none) y sale del árbol de accesibilidad
   const tarjeta = page.getByRole("list", { name: "Productos" }).getByRole("listitem").filter({ hasText: nombre });
   await expect(tarjeta).toBeVisible();
-  const editar = tarjeta.getByRole("link", { name: "Editar" });
+  const editar = tarjeta.getByRole("link", { name: nombre });
   await expect(editar).toBeVisible();
   expect((await editar.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   expect(await sinDesborde(page)).toBe(true);

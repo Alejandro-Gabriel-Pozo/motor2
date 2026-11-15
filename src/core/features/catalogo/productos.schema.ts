@@ -1,5 +1,6 @@
 import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
 import type { ResultadoDato } from "@/core/datos/resultado";
+import type { AlicuotaIva } from "@/core/fiscal/public";
 import type { ModoDeVenta } from "@/core/opciones/public";
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
@@ -31,6 +32,12 @@ export interface EntradaProducto {
   esConsignacion?: boolean;
   proveedorConsignacionId?: string | null;
   precioConsignacion?: number;
+  /**
+   * Alícuota de IVA del producto (paso 13 de la auditoría 2026-11-12, `docs/diseno-alicuota-iva-del-producto-2026-11-12.md`): la de VENTA solo en un PV, la de COMPRA solo en una MP. `undefined` = no viene (en la
+   * edición, «queda como estaba»); `null` = «sin declarar» a propósito. Cambiarla es de quien tiene `producto_campos_sensibles`. Valor de `ALICUOTAS_IVA` o nada: lo valida `guardAlicuotaIvaDelProducto`.
+   */
+  alicuotaIvaVenta?: AlicuotaIva | null;
+  alicuotaIvaCompra?: AlicuotaIva | null;
   activoEnTodasLasSucursales?: boolean;
 }
 
@@ -54,6 +61,11 @@ export type EntradaEdicionProducto = Omit<EntradaProducto, CampoSensibleDelProdu
      * BASE_CONFIGURABLE exige la regla de la base (`rechazoDeBaseConfigurable`); volver a DIRECTO se puede siempre.
      */
     modoDeVenta?: ModoDeVenta;
+    /**
+     * La alícuota de IVA que mostraba el formulario al abrirse (la de venta en un PV, la de compra en una MP; `null` = «sin declarar»). Mismo patrón que `precioVentaVisto`: si la alícuota que se guardaría es
+     * distinta de la guardada, esta tiene que ser la guardada, y si no (otra persona la cambió mientras se editaba, o no vino: falla cerrado), `ALICUOTA_DESACTUALIZADA` y no se guarda nada. Si no cambia, no se mira.
+     */
+    alicuotaVista?: AlicuotaIva | null;
   };
 
 /**
@@ -87,7 +99,7 @@ export interface DatosProductoCreado {
  *  - `YA_EXISTE`: ya hay un producto DISPONIBLE (en alguna sucursal) con ese nombre;
  *  - `CODIGO_REPETIDO`: el código (manual, o el autogenerado agotados los reintentos) ya es de otro producto;
  *  - `SIN_PERMISO_COSTO`: el alta trae un costo de consignación (es consignación, proveedor o precio) y quien la pide no tiene `pagar_consignante` (S-12, D8);
- *  - `SIN_PERMISO_CAMPOS_SENSIBLES`: el alta trae un precio de venta distinto de 0, un factor de conversión distinto de 1 o una unidad de compra y quien la pide no tiene `producto_campos_sensibles` (M.2, D-2: fallo cerrado; la unidad de stock queda libre);
+ *  - `SIN_PERMISO_CAMPOS_SENSIBLES`: el alta trae un precio de venta distinto de 0, un factor de conversión distinto de 1, una unidad de compra o una alícuota de IVA y quien la pide no tiene `producto_campos_sensibles` (M.2, D-2: fallo cerrado; la unidad de stock queda libre);
  *  - `REFERENCIA_NO_ENCONTRADA`: un id del formulario (categoría, insumo, unidad de compra o de stock, proveedor de consignación) no es de esta empresa o no existe: la clave foránea compuesta de la base lo rechazó y se traduce a «No se encontró …» (O.175).
  */
 export type ResultadoDarDeAltaProducto = ResultadoCaso<
@@ -133,7 +145,9 @@ export interface DatosActualizarProducto {
  *  - `PRECIO_DESACTUALIZADO`: el formulario cambia el precio de venta y el que mostraba (`precioVentaVisto`) ya no es el guardado (otra persona lo cambió mientras editaba, o no vino): no se guarda nada;
  *  - `BASE_INVALIDA` (Fase 4, ADR-035): el producto queda «se vende por opción» sin cumplir la regla de la base (pasar a base sin grupo de precio final, con porcentajes, de consignación, en un ítem
  *    agrupado…; o, siendo base, tildar «se produce» o «es consignación»), o el modo pedido no es uno de la lista;
- *  - `PRECIO_BLOQUEADO_EN_BASE` (Fase 4): el producto se vende por opción y el formulario trae otro precio de venta: el precio guardado se conserva y no se cambia (volviendo a directo en el mismo envío, sí).
+ *  - `PRECIO_BLOQUEADO_EN_BASE` (Fase 4): el producto se vende por opción y el formulario trae otro precio de venta: el precio guardado se conserva y no se cambia (volviendo a directo en el mismo envío, sí);
+ *  - `ALICUOTA_DESACTUALIZADA` (paso 13): el formulario cambia la alícuota de IVA y la que mostraba (`alicuotaVista`) ya no es la guardada (otra persona la cambió mientras editaba, o no vino): no se guarda nada.
+ *    Cambiarla sin `producto_campos_sensibles` es `SIN_PERMISO_CAMPOS_SENSIBLES`; un valor fuera de la lista o en el tipo equivocado (venta en una MP, compra en un PV) es `DATOS_INVALIDOS`.
  */
 export type ResultadoActualizarProducto = ResultadoCaso<
   DatosActualizarProducto,
@@ -148,6 +162,7 @@ export type ResultadoActualizarProducto = ResultadoCaso<
   | "PRECIO_DESACTUALIZADO"
   | "BASE_INVALIDA"
   | "PRECIO_BLOQUEADO_EN_BASE"
+  | "ALICUOTA_DESACTUALIZADA"
 >;
 
 /**

@@ -11,6 +11,7 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 - La cita del dueño tiene la forma «texto literal» — AAAA-MM-DD — fuente. La transcribe el orquestador; ningún agente acepta en nombre del dueño.
 - Si el dueño corrige, el cambio va en un PR propio. Si revoca, el código deja de nombrar la decisión en ese mismo PR (el guardián falla mientras la nombre).
 - Cada PR repite las pendientes en su apartado «Decisiones mías que esperan tu OK», la más vieja primero y las de más de 14 días arriba de todo.
+- **No existe DEC-0010:** el número quedó sin usar (no se reasigna); después de DEC-0009 sigue DEC-0011.
 - Las decisiones de negocio del dueño con número de dos cifras (`DEC-02`, `DEC-16` en `docs/decisiones-cerradas-ola-precio-y-carta-2026-10-19.md`) son otra cosa: no pertenecen a este registro.
 
 ## Decisiones
@@ -32,7 +33,8 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 - **Por qué:** un `.md` dentro de `.github/` hace fallar la clasificación de rutas (`test/arquitectura/contratos/gobernanza/clasificacion.test.ts`, la regla `ci` solo admite `.yml`); moverlo exige tocar `clasificacion.ts` y registrar una aprobación del dueño en `aprobaciones.ts`. GitHub también lee la plantilla desde `docs/`.
 - **Costo de revertir:** mover un archivo a `.github/`, cambiar su ruta en `AGENTS.md` y, para que el guardián de clasificación pase, ampliar esa regla en `clasificacion.ts` con la aprobación del dueño en `aprobaciones.ts`.
 - **Dónde:** `docs/pull_request_template.md`
-- **Estado:** PENDIENTE_DE_OK
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Aceptar: queda en docs/ (Recomendada)» — 2026-11-13 — chat del dueño con el orquestador (preguntas con opciones)
 
 ### DEC-0003
 - **Fecha:** 2026-11-12
@@ -41,7 +43,8 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 - **Por qué:** la función entera exigiría además precio de referencia de $0,01 o más y producto de venta al plato sin opciones, y eso cambiaría en silencio lo que hoy se acepta sin que el dueño lo haya pedido.
 - **Costo de revertir:** ninguno para lo de hoy; adoptar la función para todos los platos es cambiar una condición del bucle de componentes de sección (un cambio chico y su prueba).
 - **Dónde:** `src/server/actions/pos/casos-de-uso/agregar-items.ts`, `src/server/actions/pos/casos-de-uso/promo-seccion-con-opciones.ts`
-- **Estado:** PENDIENTE_DE_OK
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Aceptar: no cambia lo de hoy (Recomendada)» — 2026-11-13 — chat del dueño con el orquestador (preguntas con opciones)
 
 ### DEC-0004
 - **Fecha:** 2026-11-12
@@ -50,7 +53,8 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 - **Por qué:** `test/pos/agregar-items-consultas.test.ts` fija la cantidad de consultas y no se edita; la misma función pura (`conOpcionesDeLasSecciones`) es la que usará el selector en la etapa de pantalla.
 - **Costo de revertir:** bajo: mover el cálculo a `cargarPromoCartaParaAgregar`, lo que obliga a cambiar el conteo congelado de consultas.
 - **Dónde:** `src/server/actions/pos/casos-de-uso/agregar-items.ts`, `src/core/pos/plato-de-seccion.ts`
-- **Estado:** PENDIENTE_DE_OK
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Aceptar (Recomendada)» — 2026-11-13 — chat del dueño con el orquestador (preguntas con opciones)
 
 ### DEC-0005
 - **Fecha:** 2026-11-12
@@ -59,7 +63,8 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 - **Por qué:** el diseño dice que ese plato no se ofrece y que `PROMO_CON_OPCIONES` queda solo para lo no armable; no fija el código de rechazo cuando igual llegan opciones.
 - **Costo de revertir:** bajo: cambiar el código o el mensaje de ese rechazo y su prueba.
 - **Dónde:** `src/core/pos/promo-combo.ts`, `test/pos/promo-seccion-con-opciones.test.ts`
-- **Estado:** PENDIENTE_DE_OK
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Aceptar (Recomendada)» — 2026-11-13 — chat del dueño con el orquestador (preguntas con opciones)
 
 ### DEC-0006
 - **Fecha:** 2026-11-12
@@ -68,7 +73,8 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 - **Por qué:** se reutiliza `armarConfiguracionDeEntradaAElegir`, que ya devuelve ese código; la pantalla ya lo entiende para las listas.
 - **Costo de revertir:** bajo: mapear ese código a `PRODUCTO_SIN_RECETA` en el armado de los platos de sección y ajustar su prueba.
 - **Dónde:** `src/core/pos/plato-de-seccion.ts`, `src/server/actions/pos/casos-de-uso/promo-seccion-con-opciones.ts`
-- **Estado:** PENDIENTE_DE_OK
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Aceptar (Recomendada)» — 2026-11-13 — chat del dueño con el orquestador (preguntas con opciones)
 
 ### DEC-0007
 - **Fecha:** 2026-11-12
@@ -77,7 +83,8 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 - **Por qué:** sigue la regla M.2-A4 del alta (DEC-0001) con el tilde por defecto, y evita sumar una opción que el dueño no pidió; sin la clave el producto nacería a $0 y a la venta.
 - **Costo de revertir:** bajo: agregar al diálogo el tilde del alta y pasarlo al caso de uso, con su prueba; no hay migración ni datos que corregir.
 - **Dónde:** `src/server/actions/catalogo/casos-de-uso/duplicar-producto.ts:208`
-- **Estado:** PENDIENTE_DE_OK
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Aceptar como está (Recomendada)» — 2026-11-13 — chat del dueño con el orquestador (preguntas con opciones)
 
 ### DEC-0008
 - **Fecha:** 2026-11-12
@@ -86,7 +93,8 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 - **Por qué:** en un producto por opción el precio guardado no se cobra (rige el de cada opción), y el control del precio de lista de cada grupo se hace contra ese precio guardado: copiarlo juzgaría las opciones contra un número que nunca se cobra.
 - **Costo de revertir:** bajo: copiar el precio guardado del original y ajustar su prueba; no hay migración.
 - **Dónde:** `src/server/actions/catalogo/casos-de-uso/duplicar-producto.ts:178`
-- **Estado:** PENDIENTE_DE_OK
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Aceptar: nace en $0 (Recomendada)» — 2026-11-13 — chat del dueño con el orquestador (preguntas con opciones)
 
 ### DEC-0009
 - **Fecha:** 2026-11-12
@@ -95,4 +103,25 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 - **Por qué:** el dueño dijo que la central funciona como una sucursal más y que se elige de cuál copiar; no dijo cuál va por defecto, y elegir una sucursal pide además el permiso `receta_sucursal_copiar` allí (S-07), que no todos tienen.
 - **Costo de revertir:** muy bajo: cambiar el valor por defecto del selector y su prueba e2e.
 - **Dónde:** `src/components/catalogo/duplicar-producto.tsx:43`
-- **Estado:** PENDIENTE_DE_OK
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Central (Recomendada)» — 2026-11-13 — chat del dueño con el orquestador (preguntas con opciones)
+
+### DEC-0011
+- **Fecha:** 2026-11-12
+- **Quién:** la sesión Sonnet de la auditoría de primitivas que armó el paso 5 (PR #249).
+- **Qué decidió:** la clave de Resend (`CORREO_AVISOS_RESEND_API_KEY` y `CORREO_OPERATIVO_RESEND_API_KEY`) admite `re_` más letras, números y guion bajo; con otros caracteres (por ejemplo un punto) la aplicación ya no arranca. Antes admitía `re_` más cualquier cosa sin espacios.
+- **Por qué:** la validación declara lo permitido y no lo prohibido (regla «Todo nace cerrado», 2026-11-11); esa es la forma documentada de las claves de Resend.
+- **Costo de revertir:** una línea (la expresión regular de `claveDeResend`). Antes de desplegar hay que verificar que la variable de producción cumpla la forma: ver `docs/checklist-previo-al-deploy-2026-11-13.md`, sección 2.
+- **Dónde:** `src/env.ts:32`
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Aceptar y verificar la clave antes de desplegar (Recomendada)» — 2026-11-13 — chat del dueño con el orquestador (preguntas con opciones)
+
+### DEC-0012
+- **Fecha:** 2026-11-12
+- **Quién:** la sesión Sonnet de la auditoría de primitivas que armó el paso 5 (PR #249).
+- **Qué decidió:** los espacios Unicode distintos del común y del de no separación no entran en el asunto de un correo ni en su clave de idempotencia; entran letras, acentos, números, puntuación, símbolos (emoji incluidos) y espacio. Siguen sin entrar saltos de línea, tabulaciones, NUL, dirección de texto y ancho cero.
+- **Por qué:** la validación declara lo permitido (conjunto, largo, forma) y esos espacios raros permiten disfrazar un asunto; el código del sistema no arma asuntos con ellos.
+- **Costo de revertir:** una línea (la expresión `UNA_LINEA` de `enviar.ts`) y su prueba.
+- **Dónde:** `src/core/correo/enviar.ts:38`
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Aceptar (Recomendada)» — 2026-11-13 — chat del dueño con el orquestador (preguntas con opciones)

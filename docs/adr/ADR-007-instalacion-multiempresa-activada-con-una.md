@@ -228,11 +228,11 @@ Mutaciones corridas el mismo día sobre `motor2_dev` (rojo → restaurar → ver
 `Proveedor` de `motor2_e2e`).
 
 **A8 ejecutado en las dos bases reales (2026-09-30)**: demo (`motor2-demo`) y
-`stockhneuquen`, con backup previo de cada rama de Neon, rol `motor2_app` creado por
+`empresab`, con backup previo de cada rama de Neon, rol `motor2_app` creado por
 SQL en la consola (por la API, Neon lo hace `neon_superuser`/BYPASSRLS), `DATABASE_URL`
 = `motor2_app` (pooled) y `DIRECT_URL` = dueño, deploy de producción desde la rama
 (sin merge a `main`), `rolEmpresa = 'gerente'` para el primer admin. Empresa de
-`stockhneuquen`: nombre «Pozo SRL», slug `pozo-srl` (ejemplo: la razón social real de
+`empresab`: nombre «Pozo SRL», slug `pozo-srl` (ejemplo: la razón social real de
 cada empresa se carga en su configuración, que es posterior). La demo conserva
 `principal` porque su carta pública (`/carta-publica/principal/…`) ya está publicada.
 
@@ -378,8 +378,8 @@ publicada; incluye carta ADR-006 y N1–N3, no solo A0–A6). El dueño autoriz�
 («Si y confirmo»), pero la ejecución en producción quedó frenada por permisos
 de la herramienta y se pidió primero el pre-flight de lectura.
 
-Hallazgos del pre-flight (Neon `inventario-api` `morning-field-10188884`,
-branch `main` `br-steep-wind-af8iop63`, PG 17.11):
+Hallazgos del pre-flight (Neon `inventario-api` `<proyecto-neon-A>`,
+branch `main` `<rama-neon-K>`, PG 17.11):
 - `_prisma_migrations`: 57 aplicadas, ninguna fallida; el repo tiene 60. Faltan
   exactamente `20260929100000_multiempresa_estructura`,
   `20260929110000_indice_compras_por_producto` y
@@ -402,13 +402,13 @@ branch `main` `br-steep-wind-af8iop63`, PG 17.11):
   impacto nulo con producción vacía y sin carta.
 - Vercel (proyecto `motor2-demo`, scope `alepozod`) devolvió 403: no se leyeron
   variables, `CARTA_EMPRESA_SLUG`, formato de `DATABASE_URL` ni último deploy.
-- Admin candidato a gerente: el ADMIN más antiguo (`alepogabriel@gmail.com`,
+- Admin candidato a gerente: el ADMIN más antiguo (`<correo-del-dueño>`,
   2026-09-15); el dueño debe confirmarlo por email concreto.
 
 Previews de Vercel (verificado 2026-09-29 con `gh api .../deployments` y
 `vercel env ls`, solo lectura): el repo `Alejandro-Gabriel-Pozo/motor2` es
-PÚBLICO y lo despliegan DOS proyectos Vercel (`motor2-demo` y `stockhneuquen`),
-con más de 400 previews históricos por push de rama. En `stockhneuquen`,
+PÚBLICO y lo despliegan DOS proyectos Vercel (`motor2-demo` y `empresab`),
+con más de 400 previews históricos por push de rama. En `empresab`,
 `DATABASE_URL` y `DIRECT_URL` están definidas para «Production, Preview» (la
 MISMA base): publicar una rama en `origin` dispararía `npm run build` →
 `prisma migrate deploy` contra su base de producción. En `motor2-demo`,
@@ -502,7 +502,7 @@ en validar A8 en infraestructura real con dos empresas:
 - probar pooler, DNS wildcard y carta pública;
 - ejecutar login, POS, carta y crons con dos empresas reales.
 
-(Nota de conciliación: el registro de arriba dice que A8 ya se ejecutó el 2026-09-30 en `motor2-demo` y `stockhneuquen` con UNA empresa cada
+(Nota de conciliación: el registro de arriba dice que A8 ya se ejecutó el 2026-09-30 en `motor2-demo` y `empresab` con UNA empresa cada
 una, y que `npm test` corrió como `motor2_app` en el gate de V. Lo que sigue sin probarse es el recorrido completo con DOS empresas reales,
 el wildcard DNS de la carta y los crons; esa es la validación que falta.)
 

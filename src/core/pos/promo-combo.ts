@@ -1,6 +1,5 @@
 import { esNumeroFinito } from "@/core/numero";
 import { IMPORTE_MINIMO, importeDeLinea, redondearMoneda, repartirImporte } from "@/core/moneda";
-import type { TipoDeCupo } from "@/core/carta/public";
 import { IMPORTE_MINIMO_TEXTO, formatearMonto } from "@/core/formato-de-numero";
 
 /**
@@ -57,7 +56,7 @@ export interface EleccionDeCupo {
 
 /**
  * Una entrada que se puede elegir HOY en un cupo LISTA (una `EntradaDeCupo` activa, disponible en la sucursal, con precio de referencia y origen de stock: lo resuelve la lectura)
- * o DEL_DIA (una `EntradaDelDiaDeCupo` activa de la fecha de hoy en la sucursal). `claveComponente` es la clave por la que el prorrateo agrupa las unidades en filas: el `productoId`
+ `claveComponente` es la clave por la que el prorrateo agrupa las unidades en filas: el `productoId`
  * cuando la entrada no tiene configuración fija; con configuración, otra distinta por configuración (`claveDeComponenteConfigurado`), así dos configuraciones del mismo producto
  * con el mismo precio no se mezclan en una sola línea.
  */
@@ -72,11 +71,11 @@ export interface EntradaElegibleDeCupo {
   aElegir?: boolean;
 }
 
-/** Un cupo LISTA o DEL_DIA: se identifica por su id (no tiene sección) y sus elegibles son entradas. Un LISTA con UNA sola entrada y mínimo = máximo es un COMPONENTE FIJO. */
+/** Un cupo LISTA: se identifica por su id (no tiene sección) y sus elegibles son entradas. Un LISTA con UNA sola entrada y mínimo = máximo es un COMPONENTE FIJO. */
 export interface CupoDeEntradasDefinicion {
   cupoId: string;
-  tipo: Exclude<TipoDeCupo, "SECCION">;
-  /** El nombre del lugar («Entrada», «Plato del día»), para los mensajes. */
+  tipo: "LISTA";
+  /** El nombre del lugar («Entrada»), para los mensajes. */
   nombre: string;
   cantidadMinima: number;
   cantidadMaximaCupo: number;
@@ -115,7 +114,7 @@ export interface ComponenteValidado extends ProductoElegidoEnCupo {
 }
 
 /** Los códigos de los rechazos de GO-3 que quien llama necesita distinguir (los de siempre no llevan código: solo el mensaje). */
-export type CodigoDeEleccionDePromo = "MENU_DEL_DIA_SIN_CARGAR" | "ENTRADA_NO_DISPONIBLE" | "COMPONENTE_FIJO";
+export type CodigoDeEleccionDePromo = "ENTRADA_NO_DISPONIBLE" | "COMPONENTE_FIJO";
 
 function esCupoDeEntradas(cupo: CupoDePromo): cupo is CupoDeEntradasDefinicion {
   return "cupoId" in cupo && typeof cupo.cupoId === "string" && "entradas" in cupo;
@@ -202,12 +201,11 @@ export function validarEleccionPromo(cupos: readonly CupoDePromo[], elecciones: 
  * validada (en el orden de los cupos): es lo que tiene que recibir `prorratearPrecioPromo`. Armar los componentes con `componentesDeEleccion` sobre la
  * entrada cruda del cliente es justo el hueco que S-01 cerró (ver arriba).
  *
- * GO-3: además acepta cupos de ENTRADAS (LISTA y DEL_DIA, por `cupoId`) y elecciones por cupo (`{ cupoId, elegidos: [{ entradaId, cantidad }] }`). Una elección se lee por cupo solo
+ * GO-3: además acepta cupos de ENTRADAS (LISTA, por `cupoId`) y elecciones por cupo (`{ cupoId, elegidos: [{ entradaId, cantidad }] }`). Una elección se lee por cupo solo
  * si NO trae `seccionCartaId` (así una elección de hoy se lee siempre como la de hoy). En un cupo de entradas:
  *  - un COMPONENTE FIJO (`esCupoFijo`) lo completa el servidor: sin elección se agrega solo con su única entrada y su cantidad; si el cliente mandó algo distinto, se rechaza
  *    (`COMPONENTE_FIJO`) — nunca se cobra otra cosa que lo que el dueño fijó;
- *  - una entrada que no está entre las elegibles de hoy se rechaza (`ENTRADA_NO_DISPONIBLE`: se desactivó, se quitó del día o ya no tiene origen de stock);
- *  - un DEL_DIA sin ninguna entrada para hoy y con mínimo mayor que 0 se rechaza (`MENU_DEL_DIA_SIN_CARGAR`): falla cerrado, nunca el plato de ayer;
+ *  - una entrada que no está entre las elegibles de hoy se rechaza (`ENTRADA_NO_DISPONIBLE`: se desactivó o ya no tiene origen de stock);
  *  - lo demás (cantidad entera y positiva, sin repetidos, mínimo y máximo) igual que en un cupo de sección.
  * Los componentes de un cupo de entradas llevan `entradaId` y `claveComponente`; los de sección, exactamente lo de siempre.
  */
@@ -317,9 +315,6 @@ export function validarYAplanarEleccionPromo(cupos: readonly CupoDePromo[], elec
 
 /** GO-3: valida y aplana UN cupo de entradas (ver `validarYAplanarEleccionPromo`). */
 function aplanarCupoDeEntradas(cupo: CupoDeEntradasDefinicion, eleccion: EleccionDeCupoPorId | undefined): ResultadoEleccionValidada {
-  if (cupo.tipo === "DEL_DIA" && cupo.entradas.size === 0 && cupo.cantidadMinima > 0) {
-    return { ok: false, codigo: "MENU_DEL_DIA_SIN_CARGAR", mensaje: `«${cupo.nombre}»: todavía no se cargó el plato de hoy.` };
-  }
   let elegidos = eleccion?.elegidos ?? [];
   if (esCupoFijo(cupo)) {
     const [unica] = [...cupo.entradas.keys()];

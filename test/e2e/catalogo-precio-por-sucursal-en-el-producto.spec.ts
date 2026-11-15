@@ -37,7 +37,7 @@ for (const { ancho, alto } of [
 
     test("un cambio chico se guarda directo: «antes → después», el precio local queda habilitado y se puede volver al global", async ({ paginaAutenticada: page, sucursalId }) => {
       const p = await productoDirecto(marca(), sucursalId);
-      await page.goto(`/catalogo/productos/${p.id}/opciones`);
+      await page.goto(`/catalogo/productos/${p.id}/precios`);
       const editor = page.locator("[data-precio-editable-de-la-sucursal]");
       await expect(editor).toBeVisible();
       const campo = editor.getByRole("textbox", { name: /^Precio en «/ });
@@ -64,7 +64,7 @@ for (const { ancho, alto } of [
 
     test("un cambio de MÁS de 30 % pide confirmar: «Volver» no escribe, «Sí, guardar el precio» sí", async ({ paginaAutenticada: page, sucursalId }) => {
       const p = await productoDirecto(marca(), sucursalId);
-      await page.goto(`/catalogo/productos/${p.id}/opciones`);
+      await page.goto(`/catalogo/productos/${p.id}/precios`);
       const editor = page.locator("[data-precio-editable-de-la-sucursal]");
       // Justo 30 % (18.000 → 23.400) NO pide confirmación: es el botón de siempre.
       await editor.getByRole("textbox", { name: /^Precio en «/ }).fill("23400");
@@ -88,7 +88,7 @@ for (const { ancho, alto } of [
 
     test("un importe que no se entiende no se guarda y se dice junto al campo", async ({ paginaAutenticada: page, sucursalId }) => {
       const p = await productoDirecto(marca(), sucursalId);
-      await page.goto(`/catalogo/productos/${p.id}/opciones`);
+      await page.goto(`/catalogo/productos/${p.id}/precios`);
       const editor = page.locator("[data-precio-editable-de-la-sucursal]");
       await editor.getByRole("textbox", { name: /^Precio en «/ }).fill("21,000");
       await expect(editor.getByText(/máximo 2 decimales/)).toBeVisible();
@@ -101,7 +101,7 @@ for (const { ancho, alto } of [
 test("el valor visto frena al segundo: si otra persona cambió el precio local, no se pisa y se pide recargar", async ({ paginaAutenticada: page, sucursalId }) => {
   const p = await productoDirecto(marca(), sucursalId);
   await prisma.precioLocalProducto.create({ data: { sucursalId, productoId: p.id, precio: 19000, habilitado: true } });
-  await page.goto(`/catalogo/productos/${p.id}/opciones`);
+  await page.goto(`/catalogo/productos/${p.id}/precios`);
   const editor = page.locator("[data-precio-editable-de-la-sucursal]");
   await expect(editor.getByRole("textbox", { name: /^Precio en «/ })).toHaveValue(/19\.000/);
   // Otra persona lo cambia mientras esta pantalla sigue abierta.
@@ -118,18 +118,18 @@ test("quién lo ve: sin Editar de `precio_local` no hay campo (queda el enlace a
   const base = await productoDirecto(`${m}b`, sucursalId, "BASE_CONFIGURABLE");
   const admin = await ajustarCeldasDelAdmin({ precio_local: { puedeVer: true, puedeEditar: false } });
   try {
-    await page.goto(`/catalogo/productos/${directo.id}/opciones`);
-    await expect(page.getByRole("heading", { level: 2, name: "Opciones y precio" })).toBeVisible();
+    await page.goto(`/catalogo/productos/${directo.id}/precios`);
+    await expect(page.getByRole("heading", { level: 2, name: "Así se cobra" })).toBeVisible();
     await expect(page.locator("[data-precio-editable-de-la-sucursal]")).toHaveCount(0);
     await expect(page.locator("[data-precio-de-la-sucursal]")).toContainText("El precio de cada sucursal se cambia en Precio local");
 
     // Contraespejo: con el Editar de vuelta, el campo está.
     await admin.cambiar({ precio_local: { puedeVer: true, puedeEditar: true } });
-    await page.goto(`/catalogo/productos/${directo.id}/opciones`);
+    await page.goto(`/catalogo/productos/${directo.id}/precios`);
     await expect(page.locator("[data-precio-editable-de-la-sucursal]")).toBeVisible();
 
     // Un producto que se vende por opción no tiene precio propio que cobrar: su precio es el de cada opción.
-    await page.goto(`/catalogo/productos/${base.id}/opciones`);
+    await page.goto(`/catalogo/productos/${base.id}/precios`);
     await expect(page.locator("[data-precio-de-la-sucursal]")).toContainText("Se vende por opción");
     await expect(page.locator("[data-precio-editable-de-la-sucursal]")).toHaveCount(0);
   } finally {

@@ -9,7 +9,7 @@ import type { CupoDePromoSelectorCarta, EntradaDeCupoSelectorCarta, EntradaPromo
  * click — nunca se puede pasar del máximo tocando +, y el botón "Agregar promo" (`puedeConfirmarArmarPromo`) queda
  * deshabilitado hasta que TODOS los cupos cumplan su mínimo.
  *
- * GO-3b (ADR-032): también los cupos de ENTRADAS (LISTA y DEL_DIA). Cada cupo y cada elegible se nombran por su CLAVE (`claveDeCupo`, `claveDeElegible`): en un cupo de sección, la sección y el
+ * GO-3b (ADR-032): también los cupos de ENTRADAS (LISTA). Cada cupo y cada elegible se nombran por su CLAVE (`claveDeCupo`, `claveDeElegible`): en un cupo de sección, la sección y el
  * producto (lo de siempre: las acciones siguen llamando a esos campos `seccionCartaId` y `productoId`); en uno de entradas, el id del cupo y el de la entrada. Un cupo FIJO arranca completo y no se
  * toca (lo completa el servidor: no viaja en la elección).
  *
@@ -120,7 +120,7 @@ export function reducirArmarPromo(estado: EstadoArmarPromo, accion: AccionArmarP
     };
   }
 
-  // GO-3b: solo se suma algo que el cupo ofrece (una entrada que se quitó del día, o un producto que ya no es elegible, no entra a la elección).
+  // GO-3b: solo se suma algo que el cupo ofrece (una entrada que se desactivó, o un producto que ya no es elegible, no entra a la elección).
   const ofrece = "cupoId" in cupo ? cupo.entradas.some((e) => e.entradaId === accion.productoId) : cupo.elegibles.some((p) => p.productoId === accion.productoId);
   if (accion.tipo === "incrementar" && !ofrece) return estado;
   const aElegir = entradaDe(cupo, accion.productoId)?.grupos !== undefined;

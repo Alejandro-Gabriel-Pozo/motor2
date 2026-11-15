@@ -23,8 +23,8 @@ const COLUMNAS_AUDITADAS: { archivo: string; entidad: (typeof ENTIDADES_AUDITABL
   {
     archivo: "src/server/actions/catalogo/casos-de-uso/actualizar-producto.ts",
     entidad: "Producto",
-    // Fase 4 de la ola «precio y carta» (ADR-035): `modoDeVenta` («¿Cómo se vende?»: directo o por opción).
-    campos: ["precioVenta", "precioConsignacion", "pasoVenta", "modoDeVenta", "factorConversion", "unidadStockId", "unidadCompraId", "seProduce", "esConsignacion", "proveedorConsignacionId"],
+    // Fase 4 de la ola «precio y carta» (ADR-035): `modoDeVenta` («¿Cómo se vende?»: directo o por opción). Paso 13 (2026-11-12): las alícuotas de IVA de venta y de compra del producto.
+    campos: ["precioVenta", "precioConsignacion", "pasoVenta", "modoDeVenta", "alicuotaIvaVenta", "alicuotaIvaCompra", "factorConversion", "unidadStockId", "unidadCompraId", "seProduce", "esConsignacion", "proveedorConsignacionId"],
   },
   // Proveedores (2026-11-04): corregir un proveedor deja una fila por columna que cambia entre el nombre y las dos marcas de qué le compramos (productos / servicios).
   { archivo: "src/server/actions/catalogo/casos-de-uso/actualizar-proveedor.ts", entidad: "Proveedor", campos: ["nombre", "ofreceProductos", "ofreceServicios"] },

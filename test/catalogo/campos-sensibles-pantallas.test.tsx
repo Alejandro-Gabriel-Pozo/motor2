@@ -29,7 +29,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { puedeEditarCamposSensiblesDelProducto } from "../../src/server/acceso/campos-sensibles-de-producto";
 import { ProductoForm, type ProductoExistente } from "../../src/app/(app)/catalogo/productos/producto-form";
 import NuevoProductoPage from "../../src/app/(app)/catalogo/productos/nuevo/page";
-import DatosDelProductoPage from "../../src/app/(app)/catalogo/productos/[id]/datos/page";
+import FichaProductoPage from "../../src/app/(app)/catalogo/productos/[id]/page";
 import { conLasUnidadesDelProducto } from "../../src/app/(app)/catalogo/productos/opciones-formulario";
 import { GestionPresentaciones } from "../../src/components/catalogo/gestion-presentaciones";
 
@@ -102,7 +102,7 @@ describe("(2) las páginas de alta y de edición le pasan al formulario el permi
 
   const como = (id: string, email: string) => mockearUsuarioActual({ id, email, nombre: null });
   const alta = async () => propsDe(await NuevoProductoPage(), ProductoForm)[0]!;
-  const edicion = async () => propsDe(await DatosDelProductoPage({ params: Promise.resolve({ id: productoId }) }), ProductoForm)[0]!;
+  const edicion = async () => propsDe(await FichaProductoPage({ params: Promise.resolve({ id: productoId }), searchParams: Promise.resolve({}) }), ProductoForm)[0]!;
 
   beforeEach(async () => {
     await limpiarBaseDeTest();

@@ -2,7 +2,7 @@
 
 Método: escalera de diseño de 10 niveles (AGENTS.md). Estados: **CONFIRMADA** (lo dijo el dueño), **PROPUESTA** (supuesto declarado, el dueño lo corrige), **PENDIENTE**, **NO VERIFICADA**.
 
-**Necesidad (poda):** pedida por el dueño el 2026-11-09 (punto A4 de una auditoría: «¿dónde se carga qué consume cada opción (pollo, carne, factor del tamaño)?»). Hoy el consumo de una opción solo se carga en la Biblioteca de opciones (`/catalogo/opciones/[grupoId]`); la ficha del producto admite grupos y opciones pero no muestra ni carga qué descuenta cada una. Estado: CONFIRMADA. Decisión asociada del dueño (misma fecha): el consumo se carga desde el producto; los grupos casi siempre son de un solo producto (producción: 25 grupos, 24 usados por UN producto y «Guarniciones» por 3; 0 consumos cargados); cuando un grupo se comparte se COPIA (esa salida se resolvió en otro proyecto y **no se construye acá**).
+**Necesidad (poda):** pedida por el dueño el 2026-11-09 (punto A4 de una auditoría: «¿dónde se carga qué consume cada opción (pollo, carne, factor del tamaño)?»). Hoy el consumo de una opción solo se carga en la Biblioteca de opciones (`/catalogo/opciones/[grupoId]`); la ficha del producto admite grupos y opciones pero no muestra ni carga qué descuenta cada una. Estado: CONFIRMADA. Decisión asociada del dueño (misma fecha): el consumo se carga desde el producto; los grupos casi siempre son de un solo producto (producción: N grupos, 24 usados por UN producto y «Guarniciones» por 3; 0 consumos cargados); cuando un grupo se comparte se COPIA (esa salida se resolvió en otro proyecto y **no se construye acá**).
 
 ## Inventario de lo que ya existe (verificado en el código, no en documentos)
 

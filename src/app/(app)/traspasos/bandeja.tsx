@@ -16,6 +16,7 @@ import { Boton } from "@/ui/primitivas/boton";
 import { Campo } from "@/ui/primitivas/campo";
 import { Enlace } from "@/ui/primitivas/enlace";
 import { Selector } from "@/ui/primitivas/selector";
+import { TablaDeDatos, type ColumnaDeTabla } from "@/ui/componentes/datos/tabla-de-datos";
 
 export interface FilaBandeja {
   id: string;
@@ -272,6 +273,32 @@ function FilaEsperando({ fila, permisos }: { fila: FilaBandeja; permisos: Permis
   );
 }
 
+/** Las columnas del historial: en celular cada traspaso es una tarjeta (la fecha de título, el resto «etiqueta: valor»); desde `sm:` es la tabla de siempre. */
+const COLUMNAS_DEL_HISTORIAL: readonly ColumnaDeTabla<FilaBandeja>[] = [
+  { id: "fecha", encabezado: "Fecha", titulo: true, celda: (f) => f.fecha },
+  { id: "producto", encabezado: "Producto", celda: (f) => `${f.productoCodigo} — ${f.productoNombre}` },
+  { id: "cantidad", encabezado: "Cantidad", celda: (f) => `${f.cantidad} ${f.unidadNombre}` },
+  { id: "otra", encabezado: "Otra sucursal", celda: (f) => f.otraSucursalNombre },
+  { id: "estado", encabezado: "Estado", celda: (f) => f.estado },
+  {
+    id: "detalle",
+    encabezado: "Detalle",
+    celda: (f) => (
+      <div className="text-xs text-tinta-tenue">
+        {f.detalle && <p>{f.detalle}</p>}
+        {f.motivoRechazoOrigen && <p>Rechazo (origen): {f.motivoRechazoOrigen}</p>}
+        {f.motivoRechazoDestino && <p>Rechazo (destino): {f.motivoRechazoDestino}</p>}
+        {(f.seccionOrigenNombre || f.seccionDestinoNombre) && (
+          <p>
+            Sección: {f.seccionOrigenNombre ?? "—"} → {f.seccionDestinoNombre ?? "—"}
+          </p>
+        )}
+        <p>Creado por: {f.creadoPorEmail}</p>
+      </div>
+    ),
+  },
+];
+
 export function Bandeja({
   paraAprobar,
   paraAceptar,
@@ -335,51 +362,13 @@ export function Bandeja({
 
       <div>
         <h2 className="mb-2 text-sm font-medium">Historial</h2>
-        <div role="group" aria-label="Historial de traspasos" tabIndex={0} className="overflow-x-auto"><table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-tinta-tenue">
-              <th className="py-1">Fecha</th>
-              <th>Producto</th>
-              <th>Cantidad</th>
-              <th>Otra sucursal</th>
-              <th>Estado</th>
-              <th>Detalle</th>
-            </tr>
-          </thead>
-          <tbody>
-            {historial.map((f) => (
-              <tr key={f.id} data-traspaso={f.id} className="border-b">
-                <td className="py-1 align-top">{f.fecha}</td>
-                <td className="align-top">
-                  {f.productoCodigo} — {f.productoNombre}
-                </td>
-                <td className="align-top">
-                  {f.cantidad} {f.unidadNombre}
-                </td>
-                <td className="align-top">{f.otraSucursalNombre}</td>
-                <td className="align-top">{f.estado}</td>
-                <td className="max-w-xs align-top text-xs text-tinta-tenue">
-                  {f.detalle && <p>{f.detalle}</p>}
-                  {f.motivoRechazoOrigen && <p>Rechazo (origen): {f.motivoRechazoOrigen}</p>}
-                  {f.motivoRechazoDestino && <p>Rechazo (destino): {f.motivoRechazoDestino}</p>}
-                  {(f.seccionOrigenNombre || f.seccionDestinoNombre) && (
-                    <p>
-                      Sección: {f.seccionOrigenNombre ?? "—"} → {f.seccionDestinoNombre ?? "—"}
-                    </p>
-                  )}
-                  <p>Creado por: {f.creadoPorEmail}</p>
-                </td>
-              </tr>
-            ))}
-            {!historial.length && (
-              <tr>
-                <td className="py-1 text-tinta-tenue" colSpan={6}>
-                  Sin traspasos cerrados todavía.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table></div>
+        <TablaDeDatos
+          titulo="Historial de traspasos"
+          columnas={COLUMNAS_DEL_HISTORIAL}
+          filas={historial}
+          claveDeFila={(f) => f.id}
+          vacio="Sin traspasos cerrados todavía."
+        />
         {nextCursorHistorial && (
           <p className="mt-2 text-sm">
             <Enlace href={`/traspasos?cursor=${nextCursorHistorial}`}>Página siguiente →</Enlace>

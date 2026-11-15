@@ -27,7 +27,7 @@ export function esperado(c: Combinacion): { presentes: string[]; ausentes: strin
   const presentes = [
     "Milanesa con papas fritas",
     `Versión ${VERSION_DE[c.origen]} · ${c.origen === "PROPIA" ? "receta propia de la sucursal" : "receta central"}`,
-    "Sucursal Varvarco · Impresa el 08/11/2026 12:10",
+    "Sucursal Norte · Impresa el 08/11/2026 12:10",
     "Bife de nalga",
     "0,22",
     "kg",

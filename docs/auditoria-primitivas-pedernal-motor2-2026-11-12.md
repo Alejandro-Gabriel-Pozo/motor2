@@ -72,7 +72,7 @@ Convenciones que valen para TODAS (verificadas, anexo A §cabecera): `empresaId`
 | Vínculos entre partes, convenios | **No existen** (solo en `docs/diseno-clientes-convenios-…-2026-10-26.md`) | — | — | — | — | grep sin resultados |
 | **Sucursal** | Local. Nombre, activa, `maxMesasAbiertas` (sin uso). **Sin datos fiscales, domicilio, teléfono, correo ni punto de venta** | Nombre | — | Casi todo | Se desactiva; se crea con su primer admin en transacción SERIALIZABLE | `schema:127` |
 | **Empresa** (tenant) | Nombre, slug, CUIT (lo confirma la plataforma al activar), zona horaria, moneda fija ARS, estado, `condicionIva` y `llevaIvaDeCompras` (ambos sin escritor en código). **Sin razón social, domicilio ni contacto** | Lo carga la plataforma | — | Todo | Alta por solicitud en la consola `plataforma/` | `schema:2492` |
-| **Marca / tema** | No son columnas: `TemaCartaSucursal.valores` (JSON, 64 claves) y `PortalCartaEmpresa.valores` (22 claves). `MARCA_PUBLICA = "Hoteles del Neuquén"` está escrita en el código | Colores, tipografías, tamaños | — | Carta pública | Borrador (`aplicarEnCarta=false`) o publicado | `src/core/carta/tema.ts` |
+| **Marca / tema** | No son columnas: `TemaCartaSucursal.valores` (JSON, 64 claves) y `PortalCartaEmpresa.valores` (22 claves). `MARCA_PUBLICA = "Empresa B"` está escrita en el código | Colores, tipografías, tamaños | — | Carta pública | Borrador (`aplicarEnCarta=false`) o publicado | `src/core/carta/tema.ts` |
 | **Medios de pago / caja / cobro** | **No existen como entidad.** Solo una lista fija de 5 medios usada para pagar facturas de proveedor. «Cerrar cuenta» vende y descuenta stock pero no cobra. La cabecera `Venta` está en el esquema y nadie la escribe | — | — | — | — | `MEDIOS_DE_PAGO` |
 | **Usuarios, roles, permisos** | Lo más maduro: membresía usuario-sucursal con rol por sucursal; matriz `PermisoRol` con 137 claves y pisos de nivel; decisión: membresía → módulo → capacidad de sucursal → rol; RLS por empresa y por sucursal; invitaciones con token hasheado (7 días); 6 invariantes de gobierno; login solo con Google | — | — | Todo | — | `src/core/permisos/*` |
 
@@ -525,7 +525,7 @@ Siguen esperando: **10 y 11** (autorización de migración), **13** (decisión f
 | R5 | **Fiscal** | Ninguna pantalla escribe la alícuota de IVA del producto | anexo A R5 |
 | R6 | Política | El cupo `SECCION` es una regla viva: un producto nuevo de la sección entra solo a la promo (choca con «todo nace cerrado») | anexo A R6 |
 | R7 | Idempotencia | Altas de cliente, proveedor y sucursal sin clave de reintento (el nombre arbitra); `PagoConsignante` no se puede anular ni lleva medio de pago | anexo B §6.2 |
-| R8 | Aislamiento | `MARCA_PUBLICA = "Hoteles del Neuquén"` está escrita en el código y sale en la carta pública de cualquier empresa | anexo B §6.3 |
+| R8 | Aislamiento | `MARCA_PUBLICA = "Empresa B"` está escrita en el código y sale en la carta pública de cualquier empresa | anexo B §6.3 |
 | R9 | Autorización | Notas de membresía sin tope; cambios de contacto y CUIT de proveedor y el alta de proveedor sin auditoría; el email invitado solo se recorta | anexo B §6.4 |
 | R10 | Dinero | `Cliente.descuentoPorcentaje` sin CHECK; `PagoConsignante` usa `Decimal(14,4)` y el resto `(14,2)`; columnas `medioPagoDeclarado` y `fechaPagoDeclarada` sin uso | anexo B §6.5 |
 | R11 | Integridad | Alta de producto sin transacción ni auditoría; alta de promo sin deduplicar; lecturas de validación fuera de la transacción | anexo A R8–R10 |

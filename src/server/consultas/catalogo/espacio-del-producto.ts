@@ -26,13 +26,15 @@ export interface ProductoDelEspacio {
   seProduce: boolean;
   /** El producto interno que respalda el stock de un adicional (ADR-030): no se maneja con los pasos de venta. */
   esAnclaDeAdicional: boolean;
+  /** La unidad de stock (la base en la que se expresan las presentaciones de compra). */
+  unidadStockNombre: string;
 }
 
 /** Lo básico de UN producto, o `null` si no existe o es de otra empresa (la RLS no lo deja ver). Una sola fila. */
 export async function leerProductoDelEspacio(db: Db, productoId: string): Promise<ProductoDelEspacio | null> {
   const p = await db.producto.findFirst({
     where: { id: productoId },
-    select: { id: true, nombre: true, codigo: true, tipo: true, modoDeVenta: true, precioVenta: true, seProduce: true, opcionQueRespalda: { select: { id: true } } },
+    select: { id: true, nombre: true, codigo: true, tipo: true, modoDeVenta: true, precioVenta: true, seProduce: true, unidadStock: { select: { nombre: true } }, opcionQueRespalda: { select: { id: true } } },
   });
   if (!p) return null;
   return {
@@ -44,6 +46,7 @@ export async function leerProductoDelEspacio(db: Db, productoId: string): Promis
     precioVenta: Number(p.precioVenta),
     seProduce: p.seProduce,
     esAnclaDeAdicional: p.opcionQueRespalda !== null,
+    unidadStockNombre: p.unidadStock.nombre,
   };
 }
 

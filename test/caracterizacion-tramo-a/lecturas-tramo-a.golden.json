@@ -1754,6 +1754,7 @@
         "--portal-card-alto-defecto": "6"
       },
       "valores": {
+        "portal_nombre_publico": "",
         "empresa_logo_url": "",
         "portal_header_bg": "#112233",
         "portal_header_color": "",
@@ -1761,6 +1762,8 @@
         "portal_etiqueta_color": "",
         "portal_titulo": "Nuestras sucursales",
         "portal_titulo_color": "",
+        "portal_color_marca": "",
+        "portal_marca_derivada": "",
         "portal_fondo_color": "",
         "portal_bg_image_url": "",
         "portal_bg_proporcion": "1080/1533",
@@ -1997,6 +2000,7 @@
           "color_fondo_dia": "",
           "hero_color_fondo": "",
           "hero_ink": "",
+          "marca_derivada": "",
           "color_portada_textos": "",
           "color_portada_cta": "",
           "color_indice_titulo": "",
@@ -2229,6 +2233,7 @@
           "color_fondo_dia": "",
           "hero_color_fondo": "",
           "hero_ink": "",
+          "marca_derivada": "",
           "color_portada_textos": "",
           "color_portada_cta": "",
           "color_indice_titulo": "",

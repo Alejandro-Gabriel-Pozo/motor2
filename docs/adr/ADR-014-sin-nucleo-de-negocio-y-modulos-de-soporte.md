@@ -128,7 +128,7 @@ Los ADR originales no se reescriben; cada uno lleva una línea de estado que apu
 
 - **El riesgo de despliegue sube.** Con el registro vacío, la empresa conserva solo Administración: si el código que lee el registro llega a una base
   donde la tabla todavía no existe o está sin backfill, **todas las funciones de negocio quedan bloqueadas**. La migración del registro debe estar aplicada
-  y con backfill en ambas bases (zuluhub y stockhneuquen) **antes** del código que la lee. Es una migración con autorización expresa propia.
+  y con backfill en ambas bases (zuluhub y empresab) **antes** del código que la lee. Es una migración con autorización expresa propia.
   Además, **la falla tiene que ser ruidosa, no silenciosa**: una empresa activa sin ninguna fila en el registro no debe apagarse en silencio.
   **PROPUESTA**: un script previo al deploy que cuente las empresas activas sin módulos (si hay alguna, el deploy no sigue) y, en la
   aplicación, una verificación a la vista cuando el registro de una empresa activa viene vacío. El detalle se define en el plan del 5A.

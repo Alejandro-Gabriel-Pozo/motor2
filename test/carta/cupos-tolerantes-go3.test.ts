@@ -1,4 +1,3 @@
-import { diaDeCalendario, ZONA_ARGENTINA } from "../../src/core/tiempo/zona-horaria";
 import { beforeEach, describe, expect, it } from "vitest";
 import { cargarPromoCartaParaAgregar } from "../../src/server/lecturas/pos/promo-para-agregar";
 import { cargarSelectorCartaPos } from "../../src/server/lecturas/pos/selector-carta";
@@ -42,9 +41,9 @@ describe("los lectores de cupos del primer despliegue de GO-3", () => {
     expect((await cargarPromoCartaParaAgregar(s.sucursalId, promoCartaId, prisma, AHORA_DE_LA_CORRIDA))?.cupos.map((c) => ("seccionCartaId" in c ? c.seccionCartaId : c.cupoId))).toEqual([seccionId]);
   });
 
-  // GO-3b (I2, el segundo despliegue): la lectura para AGREGAR ya arma los cupos LISTA y DEL_DIA (con sus entradas de hoy: `test/pos/agregar-combo-go3.test.ts`). El selector del POS los sigue sin
+  // GO-3b (I2, el segundo despliegue): la lectura para AGREGAR ya arma los cupos LISTA (con sus entradas de hoy: `test/pos/agregar-combo-go3.test.ts`). El selector del POS los sigue sin
   // ofrecer hasta su paso de pantalla (U5): nunca ofrece lo que no sabe mostrar.
-  it("con un cupo LISTA o DEL_DIA ACTIVO: el selector todavía no la ofrece; para agregar se arma con sus cupos (un DEL_DIA necesita el día); dado de baja, no cuenta", async () => {
+  it("con un cupo LISTA ACTIVO: el selector sin entradas no la ofrece; para agregar se arma con sus cupos; dado de baja, no cuenta; con un DEL_DIA activo (retirado el 2026-11-13) no se ofrece NUNCA (falla cerrado)", async () => {
     const lista = await prisma.promoCartaCupo.create({ data: { promoCartaId, tipo: "LISTA", nombre: "Entrada", cantidadMinima: 1, cantidadMaxima: 1, orden: 1 } });
     expect(await promosDelSelector()).toEqual([]);
     expect((await cargarPromoCartaParaAgregar(s.sucursalId, promoCartaId, prisma, AHORA_DE_LA_CORRIDA))?.cupos.map((c) => ("cupoId" in c ? c.cupoId : c.seccionCartaId))).toEqual([seccionId, lista.id]);
@@ -53,7 +52,9 @@ describe("los lectores de cupos del primer despliegue de GO-3", () => {
     expect((await cargarPromoCartaParaAgregar(s.sucursalId, promoCartaId, prisma, AHORA_DE_LA_CORRIDA))?.cupos).toHaveLength(1);
     await prisma.promoCartaCupo.create({ data: { promoCartaId, tipo: "DEL_DIA", nombre: "Plato del día", cantidadMinima: 1, cantidadMaxima: 1, orden: 2 } });
     expect(await cargarPromoCartaParaAgregar(s.sucursalId, promoCartaId, prisma, AHORA_DE_LA_CORRIDA)).toBeNull();
-    expect((await cargarPromoCartaParaAgregar(s.sucursalId, promoCartaId, prisma, AHORA_DE_LA_CORRIDA, undefined, diaDeCalendario(AHORA_DE_LA_CORRIDA, ZONA_ARGENTINA)))?.cupos).toHaveLength(2);
+    // Con las entradas (la pantalla de la mesa) tampoco: un lugar de un tipo que el POS ya no conoce hace que la promo entera no se ofrezca.
+    const conEntradas = (await cargarSelectorCartaPos(s.sucursalId, prisma, AHORA_DE_LA_CORRIDA, undefined, undefined, true)).seccionesCarta.flatMap((sec) => sec.entradas).filter((e) => e.tipo === "promo");
+    expect(conEntradas).toEqual([]);
   });
 
   it("un cupo de sección dado de baja no se lee: si era el único, la promo vuelve a ser informativa", async () => {

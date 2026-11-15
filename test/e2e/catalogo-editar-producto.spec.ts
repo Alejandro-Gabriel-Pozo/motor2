@@ -10,7 +10,7 @@ import { prisma } from "./fixtures/db";
  * edición tiene su propia ruta (`/catalogo/productos/[id]/datos`, el paso 1 del espacio del producto) esa clase de bug no puede ocurrir; la prueba se mantiene para asegurar que
  * la pantalla de edición cargue TODOS los datos. Ni tsc, ni eslint, ni vitest lo ven: solo un navegador real.
  */
-test("al tocar «Editar» en la lista, la pantalla de edición carga TODOS los datos del producto", async ({ paginaAutenticada: page }) => {
+test("al abrir un producto de la lista y tocar «Editar», la pantalla de edición carga TODOS los datos del producto", async ({ paginaAutenticada: page }) => {
   const sufijo = Date.now();
   const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E Categoría ${sufijo}` } });
@@ -29,13 +29,15 @@ test("al tocar «Editar» en la lista, la pantalla de edición carga TODOS los d
   });
 
   await page.goto(`/catalogo/productos?q=${encodeURIComponent(producto.nombre)}`);
-  await page.getByRole("row", { name: new RegExp(producto.codigo) }).getByRole("link", { name: "Editar", exact: true }).click();
-  await page.waitForURL(new RegExp(`/catalogo/productos/${producto.id}/datos$`));
-  await expect(page.getByText(`Editar "${producto.nombre}"`)).toBeVisible();
+  await page.locator("li[data-producto]", { hasText: producto.nombre }).getByRole("link", { name: producto.nombre }).click();
+  await page.waitForURL(new RegExp(`/catalogo/productos/${producto.id}$`));
+  // La pestaña Datos ES el formulario de los datos (como en Pedernal): no hay un paso aparte para editar.
+  await expect(page.getByRole("heading", { level: 1, name: producto.nombre })).toBeVisible();
 
   // Todos los campos tienen que reflejar el producto, no solo los que siguen a `defaultValue`.
   await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
-  await expect(page.locator('textarea[name="observaciones"]')).toHaveValue("Observación E2E");
+  // «Observaciones» está oculto con el interruptor (dueño, 2026-11-13): el campo no se dibuja, el dato sigue en la base.
+  await expect(page.locator('textarea[name="observaciones"]')).toHaveCount(0);
   await expect(page.locator("select").first().locator("option:checked")).toHaveText(categoria.nombre);
   await expect(page.locator("select[required] option:checked")).toHaveText("unidad");
   await expect(page.locator('input[name="precioVenta"]')).toHaveValue("3200");

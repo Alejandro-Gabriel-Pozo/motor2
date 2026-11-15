@@ -47,8 +47,8 @@ export interface IdempotenciaDeAnulacion {
  * vienen anidados en la misma consulta; completas, solo si hay), que entran también en el control de lo posterior y dejan su reversión y su auditoría.
  *
  * @contract Anula una venta y, si es parte de una promo, TODAS sus hermanas juntas — nunca un componente suelto (GO-2b: ni un adicional sin su producto).
- * @idempotency No aplica (nunca la tuvo) — el aislamiento SERIALIZABLE arbitra el doble clic; el segundo intento ve "ya anulada" (chequeo de estado, no I3).
- * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
+ * @idempotency No aplica (nunca la tuvo) — el aislamiento SERIALIZABLE arbitra el doble clic y el índice único del contra-asiento es el árbitro final (su choque se repite: `tambienChoqueDeUnico`); el segundo intento ve "ya anulada" (chequeo de estado, no I3).
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento, también ante el choque del índice único del contra-asiento).
  * @sideEffects registrarCambioAuditado (uno por cada Operación anulada, incluidas las hermanas de promo y, GO-2b, las hijas de sus adicionales).
  * @ficha permiso=anular_venta transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
@@ -56,7 +56,10 @@ export async function anularVentaCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "transaccion" | "ahora">,
   comando: ComandoAnularVenta
 ): Promise<ResultadoAnularVenta> {
-  return conTransaccionSerializable(actor.transaccion, (tx) => anularVentaEnTx(tx, actor, comando));
+  // `true` (quinto argumento; el tercero y el cuarto quedan en su default): «leo el estado, valido y recién después inserto una clave única». Dos anulaciones a la vez de la MISMA venta chocan en el índice
+  // único del contra-asiento (`Operacion_empresaId_revierteAOperacionId_key`, P2002) en vez de en un conflicto de escritura (P2034): la que pierde repite, ve la venta ya anulada y responde `YA_ANULADA`
+  // (idempotente por estado). Sin esto la segunda anulación reventaba con el error de la base en vez de responder el resultado limpio (flake de `anular-venta-concurrencia.test.ts`, 2026-11-13).
+  return conTransaccionSerializable(actor.transaccion, (tx) => anularVentaEnTx(tx, actor, comando), undefined, undefined, true);
 }
 
 /**

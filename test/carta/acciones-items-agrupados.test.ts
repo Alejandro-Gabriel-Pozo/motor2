@@ -19,7 +19,7 @@ import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 /**
  * Server Actions de los ítems agrupados de la carta (docs/plan-agrupacion-items-carta-2026-09-24.md, M5): exigen `carta`,
  * validan lo que termina en la carta pública, solo escriben en ItemAgrupadoCarta / OpcionItemAgrupadoCarta, y BLOQUEAN
- * agrupar productos de distinto precio (D5, decisión del dueño; caso «Los Miches»). Desde
+ * agrupar productos de distinto precio (D5, decisión del dueño; caso «Sucursal Oeste»). Desde
  * docs/plan-carta-seccion-directa-2026-09-25.md el ítem agrupado elige su sección de carta directo y no tiene imagen.
  */
 describe("Server Actions de ítems agrupados", () => {
@@ -146,7 +146,7 @@ describe("Server Actions de ítems agrupados", () => {
       expect(await prisma.opcionItemAgrupadoCarta.count()).toBe(1);
     });
 
-    it("precio (D5, «Los Miches»): Coca y Sprite a $5000 entran; Fanta a $5500 se RECHAZA sin escribir; bajada a $5000 en Catálogo, entra", async () => {
+    it("precio (D5, «Sucursal Oeste»): Coca y Sprite a $5000 entran; Fanta a $5500 se RECHAZA sin escribir; bajada a $5000 en Catálogo, entra", async () => {
       const agId = await crearGaseosa();
       // El primer producto de un ítem nuevo no tiene con qué comparar: entra siempre (acá, incluso uno de otro precio).
       const otroId = await crearGaseosa("Grupo nuevo");

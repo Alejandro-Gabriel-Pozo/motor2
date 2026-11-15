@@ -1,4 +1,4 @@
-import { validarValoresTema } from "@/core/carta/public";
+import { validarMarcaParaGuardar, validarValoresTema } from "@/core/carta/public";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import type { ComandoGuardarTemaCarta } from "./tema.schema";
 
@@ -18,5 +18,10 @@ export function guardComandoGuardarTemaCarta(entrada: { sucursalId: string; valo
   if (entrada.sucursalId !== entrada.sucursalActivaId) return rechazar("formato", SUCURSAL_NO_ENCONTRADA);
   const validados = validarValoresTema(entrada.valores);
   if (!validados.ok) return rechazar("formato", validados.mensaje);
+  // Modo marca (paso 9): con el marcador `marca_derivada = "si"` el color de marca tiene que cumplir M1, M2 y M3; si no, se rechaza SIN escribir y el mensaje dice qué hacer. Sin marcador, nada cambia.
+  if (validados.valor.marca_derivada === "si") {
+    const marca = validarMarcaParaGuardar(validados.valor.color_marca);
+    if (!marca.ok) return rechazar("formato", `Color de marca: ${marca.mensaje}`);
+  }
   return aceptar({ sucursalId: entrada.sucursalId, valores: validados.valor });
 }

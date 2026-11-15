@@ -24,8 +24,8 @@ const BASE = {
 };
 const CON_ADICIONAL = {
   ...BASE,
-  PLATAFORMA_INSTALACIONES_ADICIONALES: JSON.stringify([{ id: "stockhneuquen", nombre: "Stock Neuquén", urlApp: "https://stock.ejemplo.test" }]),
-  PLATAFORMA_DATABASE_URL_STOCKHNEUQUEN: url("ep-stock.c-2.us-west-2.aws.neon.tech", ROL_DE_PLATAFORMA, "clave-secreta-dos"),
+  PLATAFORMA_INSTALACIONES_ADICIONALES: JSON.stringify([{ id: "empresab", nombre: "Empresa B", urlApp: "https://stock.ejemplo.test" }]),
+  PLATAFORMA_DATABASE_URL_EMPRESAB: url("ep-stock.c-2.us-west-2.aws.neon.tech", ROL_DE_PLATAFORMA, "clave-secreta-dos"),
 };
 
 /** En los tests con la base real del contexto, la prueba del actor (M-32) se prueba aparte, con TOTP reales, en `test/plataforma/probar-actor-de-plataforma.test.ts`. */
@@ -83,11 +83,11 @@ describe("abrirContextoDePlataforma: lo que se resuelve antes de la operación",
 
   it("con --instalacion de una adicional: el administrador se verifica en la base de IDENTIDAD (la principal), no en la que se opera, y las dos conexiones se comprueban del rol", async () => {
     const { dependencias, llamadas } = falsas();
-    const contexto = await abrirContextoDePlataforma(CON_ADICIONAL, { instalacion: "stockhneuquen", actor: "dueno@plataforma.test" }, dependencias);
+    const contexto = await abrirContextoDePlataforma(CON_ADICIONAL, { instalacion: "empresab", actor: "dueno@plataforma.test" }, dependencias);
 
     // Mutación: verificar al administrador con el cliente de la base que se opera (`db`) en vez del de identidad pone este test en rojo (`admin:stock`).
     expect(llamadas).toEqual(["codigo", "crear:principal", "crear:stock", "rol:principal", "rol:stock", "admin:principal", "prueba:principal"]);
-    expect(contexto.autor).toMatchObject({ instalacionId: "stockhneuquen", instalacionNombre: "Stock Neuquén" });
+    expect(contexto.autor).toMatchObject({ instalacionId: "empresab", instalacionNombre: "Empresa B" });
     expect((contexto.db as unknown as ClienteFalso).url).toContain("stock");
   });
 
@@ -121,7 +121,7 @@ describe("abrirContextoDePlataforma: lo que se resuelve antes de la operación",
         throw new ActorDePlataformaError("No se pudo comprobar que sos ese administrador");
       },
     });
-    await expect(abrirContextoDePlataforma(CON_ADICIONAL, { instalacion: "stockhneuquen", actor: "dueno@plataforma.test" }, dependencias)).rejects.toThrow(/No se pudo comprobar/);
+    await expect(abrirContextoDePlataforma(CON_ADICIONAL, { instalacion: "empresab", actor: "dueno@plataforma.test" }, dependencias)).rejects.toThrow(/No se pudo comprobar/);
     expect(clientes).toHaveLength(2);
     expect(clientes.every((c) => c.$disconnect.mock.calls.length === 1)).toBe(true);
   });
@@ -132,7 +132,7 @@ describe("abrirContextoDePlataforma: lo que se resuelve antes de la operación",
         throw new ActorDePlataformaError(`"${email}" no es un administrador de plataforma activo`);
       },
     });
-    await expect(abrirContextoDePlataforma(CON_ADICIONAL, { instalacion: "stockhneuquen", actor: "empleado@empresa.test" }, dependencias)).rejects.toThrow(ActorDePlataformaError);
+    await expect(abrirContextoDePlataforma(CON_ADICIONAL, { instalacion: "empresab", actor: "empleado@empresa.test" }, dependencias)).rejects.toThrow(ActorDePlataformaError);
     expect(clientes).toHaveLength(2);
     expect(clientes.every((c) => c.$disconnect.mock.calls.length === 1)).toBe(true);
   });

@@ -16,7 +16,7 @@ import type { ButtonHTMLAttributes, MouseEvent } from "react";
  *   (44 px en cualquier ancho) y, si hace falta un ancho mínimo para que los dos textos midan lo mismo, `min-w-*` en `className`. Deshabilitado (el rol solo mira): `cursor-not-allowed` y 70 % de opacidad.
  * - `variante="seleccion"`: el botón que ELIGE entre varios y dice cuál está elegido con `aria-pressed` (una fila de una lista que se reordena, el criterio de una limpieza). Sin elegir se ve como el secundario; elegido, fondo `tinta`, texto `superficie` y letra
  *   seminegrita. A diferencia del interruptor no es de dos estados «buenos/malos»: la opción sin elegir no es un error, así que no lleva el tono `error`. Va con `tamano="tactil"`; si el contenido es una fila (número, nombre, marca), se arma dentro de un `<span className="flex w-full …">`.
- * - `tamano="en-fila"`: la acción de texto de una fila de lista o tabla («Desactivar», «Sí, desactivar», «Cancelar»…) y la de la cabecera («Salir»). 44 px de alto en celular y, desde `md:`, la
+ * - `tamano="en-fila"`: la acción de texto de una fila de lista o tabla («Desactivar», «Sí, desactivar», «Cancelar»…) y la de la cabecera («Salir»). 44 px de alto y de ancho en celular (`min-w-11`, relleno de 8 px: «Salir», «Editar» miden 44 × 44) y, desde `md:`, la
  *   altura del texto (sin mínimo y sin relleno horizontal): así la fila de escritorio mide lo que medía cuando eran enlaces de texto y el relleno de la celda no se suma a uno de 32 px.
  */
 export type VarianteDeBoton = "primario" | "acento" | "secundario" | "peligro" | "enlace" | "enlace-peligro" | "sobre-tinta" | "interruptor" | "seleccion";
@@ -87,7 +87,7 @@ const TAMANOS: Record<TamanoDeBoton, string> = {
   // 44 px SIEMPRE, también en escritorio: para lo que debe cumplir la zona táctil en cualquier ancho (el aviso flotante con «Deshacer»).
   tactil: "min-h-11 px-3 text-sm",
   // La acción de texto de una fila: 44 px en celular y, desde `md:`, la altura del texto (`md:min-h-0`), sin relleno horizontal (el espacio entre acciones lo da el contenedor).
-  "en-fila": "min-h-11 text-sm md:min-h-0",
+  "en-fila": "min-h-11 min-w-11 px-2 text-sm md:min-h-0 md:min-w-0 md:px-0",
 };
 
 export function claseDeBoton(variante: VarianteDeBoton = "primario", tamano: TamanoDeBoton = "normal"): string {

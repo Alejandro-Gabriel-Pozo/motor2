@@ -100,7 +100,7 @@ export interface CupoSelectorCarta {
   elegibles: ProductoPedible[];
 }
 
-/** GO-3b (ADR-032): una entrada que se puede elegir HOY en un cupo LISTA o DEL_DIA (la arma la lectura de la venta: activa, disponible, con receta y su configuración armada hoy). */
+/** GO-3b (ADR-032): una entrada que se puede elegir HOY en un cupo LISTA (la arma la lectura de la venta: activa, disponible, con receta y su configuración armada hoy). */
 export interface EntradaDeCupoSelectorCarta {
   entradaId: string;
   productoId: string;
@@ -115,16 +115,16 @@ export interface EntradaDeCupoSelectorCarta {
   grupos?: readonly GrupoParaVender[];
 }
 
-/** GO-3b (ADR-032): un cupo LISTA («Entrada»: una lista de productos, con o sin configuración) o DEL_DIA («Plato del día»: lo que el encargado cargó hoy en la sucursal). */
+/** GO-3b (ADR-032): un cupo LISTA («Entrada»: una lista de productos, con o sin configuración). */
 export interface CupoDeEntradasSelectorCarta {
   cupoId: string;
-  tipo: "LISTA" | "DEL_DIA";
+  tipo: "LISTA";
   nombre: string;
   cantidadMinima: number;
   cantidadMaximaCupo: number;
   /** Un LISTA con una sola entrada y mínimo = máximo: viene FIJO (el servidor lo completa; el mozo no elige nada). */
   fijo: boolean;
-  /** Las elegibles de hoy, en su orden. Vacío en un DEL_DIA = todavía no se cargó el plato de hoy. */
+  /** Las elegibles de hoy, en su orden. */
   entradas: EntradaDeCupoSelectorCarta[];
 }
 

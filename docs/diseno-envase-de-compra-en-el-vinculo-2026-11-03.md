@@ -1,5 +1,8 @@
 # Diseño: el envase de compra vive en el vínculo proveedor × materia prima (opción C) — 2026-11-03
 
+> **REEMPLAZADO (2026-11-13).** El dueño revocó este diseño (envase por proveedor, opción C) y eligió el modelo de Pedernal: presentación por producto. Cita (chat con el orquestador, preguntas con opciones): «El de Pedernal: presentación por producto (Recomendada)». **Nunca se construyó** (no hay columna de factor en `ProveedorPorProducto`). Reemplazo: `docs/diseno-equivalentes-de-pedernal-para-campos-de-ficha-2026-11-13.md` §2. Lo que sigue queda como antecedente.
+
+
 Documento SOLO de diseño, en papel. No hay código ni migraciones en esta rama. Verificado contra `origin/main` (`bc9d1282`), la rama `origin/alegp/compras-etapa-1` (solo lectura) y la copia local de `motor2-docs` (último commit `2af58d6`, 2026-10-09).
 
 ## 0. Resumen para el dueño
@@ -25,7 +28,7 @@ Documento SOLO de diseño, en papel. No hay código ni migraciones en esta rama.
 - **Operario de compras** (`proceso_compra`, semilla admin + operador; `src/core/permisos/acciones.ts:107`): carga la factura. Es quien, con C, conoce el envase en el momento.
 - **Administrador** (`producto_campos_sensibles`, semilla SOLO admin; `acciones.ts:235`): hoy es el único que define un factor (de producto o de presentación: `agregar-presentacion-alternativa.ts`, M.2).
 - **Devolución a proveedor** (`proceso_devolucion_proveedor`, semilla admin + operador; `acciones.ts:117`): también convierte con factor (`aplicaFactorConversion: true`, `src/core/movimientos/transiciones.ts:87`).
-- Contexto de datos (producción, CONFIRMADO 2026-11-03): 0 MP, 0 insumos, 0 recetas, 0 presentaciones, 0 vínculos, 47 productos de venta. No hay nada que migrar, pero se diseña como si lo hubiera.
+- Contexto de datos (producción, CONFIRMADO 2026-11-03): 0 MP, 0 insumos, 0 recetas, 0 presentaciones, 0 vínculos, N productos de venta. No hay nada que migrar, pero se diseña como si lo hubiera.
 
 ## 3. Casos de uso
 

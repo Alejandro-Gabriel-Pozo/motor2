@@ -1,11 +1,10 @@
 import { esIdentificador } from "@/core/datos/identificador";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
-import { mascaraDeDias, TODOS_LOS_DIAS, validarVigenciaDePromo } from "@/core/carta/public";
-import type { ComandoActivarEntradaDeCupo, ComandoAgregarEntradaDeCupo, ComandoGuardarVigenciaPromoCarta, OpcionDeConfiguracionFija } from "./combos.schema";
+import type { ComandoActivarEntradaDeCupo, ComandoAgregarEntradaDeCupo, OpcionDeConfiguracionFija } from "./combos.schema";
 import { LARGO_MAXIMO_DE_ID } from "@/core/datos/limites";
 
 /**
- * Guard de la feature «combos y menú del día» (GO-3b, ADR-032). Formato del comando, ANTES de tocar la base; lo llama la Server Action DENTRO de su `conPermiso…(…)`, así el rechazo por permiso
+ * Guard de la feature «combos» (GO-3b, ADR-032). Formato del comando, ANTES de tocar la base; lo llama la Server Action DENTRO de su `conPermiso…(…)`, así el rechazo por permiso
  * sigue llegando antes que el de formato. Puro: sin Prisma ni permisos.
  */
 
@@ -52,43 +51,3 @@ export function guardComandoActivarEntradaDeCupo(entrada: { entradaId: unknown; 
   return aceptar({ entradaId: entradaId.valor, activa: entrada.activa });
 }
 
-/** Un día «AAAA-MM-DD», o vacío/`null` = sin límite por ese lado. */
-function dia(valor: unknown, etiqueta: string): ResultadoDato<string | null> {
-  if (valor === undefined || valor === null || valor === "") return aceptar(null);
-  return typeof valor === "string" ? aceptar(valor) : rechazar("formato", `La fecha «${etiqueta}» de la promo no es válida.`);
-}
-
-/**
- * La vigencia: «desde» y «hasta» (días «AAAA-MM-DD» o vacío) y los días de la semana como lista de 0 (lunes) a 6 (domingo). Ningún día elegido se rechaza (una promo que no vale ningún día se
- * apaga, no se guarda así); los siete juntos se guardan como «todos los días» (`null`). La validez del calendario y el orden de las fechas los mira `validarVigenciaDePromo` (core/carta).
- */
-export function guardComandoGuardarVigenciaPromoCarta(entrada: {
-  promoCartaId: unknown;
-  versionEsperada: unknown;
-  vigenteDesde?: unknown;
-  vigenteHasta?: unknown;
-  diasDeSemana?: unknown;
-}): ResultadoDato<ComandoGuardarVigenciaPromoCarta> {
-  const promoCartaId = id(entrada.promoCartaId, "No se encontró la promo.");
-  if (!promoCartaId.ok) return promoCartaId;
-  const v = entrada.versionEsperada;
-  if (typeof v !== "number" || !Number.isInteger(v) || v < 1) return rechazar("formato", "La versión de la promo que mostraba la pantalla no es válida: recargala.");
-  const desde = dia(entrada.vigenteDesde, "desde");
-  if (!desde.ok) return desde;
-  const hasta = dia(entrada.vigenteHasta, "hasta");
-  if (!hasta.ok) return hasta;
-  let diasDeSemana: number | null = null;
-  if (entrada.diasDeSemana !== undefined && entrada.diasDeSemana !== null) {
-    const dias = entrada.diasDeSemana;
-    if (!Array.isArray(dias) || dias.length > 7 || !dias.every((d) => typeof d === "number" && Number.isInteger(d) && d >= 0 && d <= 6)) {
-      return rechazar("formato", "Los días de la semana de la promo no son válidos.");
-    }
-    if (dias.length === 0) return rechazar("vacio", "Elegí al menos un día de la semana en que vale la promo.");
-    const mascara = mascaraDeDias(dias as number[]);
-    diasDeSemana = mascara === TODOS_LOS_DIAS ? null : mascara;
-  }
-  const vigencia = { vigenteDesde: desde.valor, vigenteHasta: hasta.valor, diasDeSemana };
-  const valida = validarVigenciaDePromo(vigencia);
-  if (!valida.ok) return rechazar("formato", valida.mensaje);
-  return aceptar({ promoCartaId: promoCartaId.valor, versionEsperada: v, vigencia });
-}

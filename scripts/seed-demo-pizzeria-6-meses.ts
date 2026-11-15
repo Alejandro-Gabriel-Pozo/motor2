@@ -28,6 +28,7 @@ vi.mock("../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 vi.mock("../src/server/actions/limitador-de-mutaciones", () => ({ limitadorMutaciones: { excedeLimite: () => false } }));
 
 import { prisma } from "./demo-seed/cliente";
+import { emailAdminDeLaDemo } from "./demo-seed/admin-de-la-demo";
 import { __setCookieDeTestParaSucursal } from "../test/setup/next-headers-stub";
 import { getUsuarioActual } from "../src/server/sesion/session";
 import { crearSucursalConAdmin } from "../src/server/actions/auth/sucursales";
@@ -51,7 +52,7 @@ import { EQUIVALENCIA_MOTIVO_MERMA_LEGACY } from "../src/core/movimientos/motivo
 import { verificarBaseVacia, pideRehacer } from "./demo-seed/guardas-destino";
 import { PROVEEDORES, PRODUCTOS, RECETAS } from "./seed-demo-pizzeria-data";
 
-const EMAIL_ADMIN = "alepogabriel@gmail.com";
+const EMAIL_ADMIN = emailAdminDeLaDemo(process.env);
 const NOMBRE_SUCURSAL = "La Cuadra";
 /** Fija para que el guion sea SIEMPRE el mismo (mismos precios, mismas cantidades, mismos escenarios) — reproducible entre corridas, y comparable con lo que ya se vio en un review. */
 const SEMILLA_GUION = 20260922;

@@ -5,7 +5,7 @@ negocio pendiente (D6) ya confirmada por el dueño: **bloqueo en seco** al llega
 excepción por permiso especial.
 
 > **NOTA DE RETIRO (2026-10-29, decisión del dueño): el §2 «Límite de mesas abiertas por sucursal» YA NO RIGE.** Era un control para que nadie abriera 200 mesas: código que mantener para un problema que
-> no existe (en producción, 0 de 6 sucursales tenían límite cargado). Se quitó del código: la Server Action `actualizarMaxMesasAbiertas` y su caso de uso, la pantalla de edición del mapa de mesas
+> no existe (en producción, 0 de N sucursales tenían límite cargado). Se quitó del código: la Server Action `actualizarMaxMesasAbiertas` y su caso de uso, la pantalla de edición del mapa de mesas
 > (`limite-mesas.tsx`), el chequeo dentro de `abrirCuenta` (y su código `LIMITE_DE_MESAS`), la lectura y la escritura de persistencia, la clave de permiso `pos_limite_mesas_abiertas` (sale de `ACCIONES`;
 > la base la conserva hasta una migración de retiro) y sus tests. **Sigue vigente** todo el §1 (comensales obligatorios 1..99, corrección con la cuenta abierta) y el §3 (reporte de rotación de mesas),
 > y `abrirCuenta` conserva su transacción SERIALIZABLE, su reintento y la idempotencia de reabrir la misma mesa. La columna `Sucursal.maxMesasAbiertas` queda en el esquema SIN USO y sin migración: su

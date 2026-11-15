@@ -110,7 +110,7 @@ describe("validarEntornoAlArrancar (S-20)", () => {
     expect(escapesProhibidosEnProduccion({ VERCEL_ENV: "production", MOTOR2_ROL_ESTRICTO: "0", MOTOR2_ENTORNO_ESTRICTO: "0" })).toHaveLength(2);
   });
 
-  // S-32: un escape de desarrollo no puede tener efecto en un despliegue de Vercel que no sea Producción. El Preview de `stockhneuquen` comparte la base de producción (ADR-007): con
+  // S-32: un escape de desarrollo no puede tener efecto en un despliegue de Vercel que no sea Producción. El Preview de `empresab` comparte la base de producción (ADR-007): con
   // `MOTOR2_ROL_ESTRICTO=0` operaría con un rol que salta el RLS sobre los datos reales. Antes el arranque solo miraba `VERCEL_ENV=production` y dejaba pasar el Preview.
   it.each([
     { VERCEL: "1", VERCEL_ENV: "preview" },
@@ -186,7 +186,7 @@ describe("validarDominioCartaAlArrancar (CARTA_DOMINIO_BASE: build vs arranque)"
 
 describe("CARTA_EMPRESA_UNICA (add-on de la empresa única)", () => {
   it("es opcional, pero si viene tiene que ser un slug (parseEnv la rechaza si no)", () => {
-    expect(() => parseEnv({ ...ENV_VALIDO, CARTA_DOMINIO_BASE: "carta.ejemplo.com", CARTA_EMPRESA_UNICA: "hoteles-neuquen" })).not.toThrow();
+    expect(() => parseEnv({ ...ENV_VALIDO, CARTA_DOMINIO_BASE: "carta.ejemplo.com", CARTA_EMPRESA_UNICA: "empresa-b" })).not.toThrow();
     for (const malo of ["X", "a--b", "a.b", "-x", "https://x", ""]) {
       expect(() => parseEnv({ ...ENV_VALIDO, CARTA_EMPRESA_UNICA: malo }), malo).toThrow(/CARTA_EMPRESA_UNICA/);
     }

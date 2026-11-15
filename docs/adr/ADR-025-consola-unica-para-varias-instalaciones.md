@@ -5,7 +5,7 @@
 
 ## Contexto
 
-Hay dos instalaciones en producción, cada una con su propia base de Neon y su propia app de empresas: `zuluhub` (multiempresa) y `stockhneuquen` (una empresa). La consola de E4 a E8 conocía una sola
+Hay dos instalaciones en producción, cada una con su propia base de Neon y su propia app de empresas: `zuluhub` (multiempresa) y `empresab` (una empresa). La consola de E4 a E8 conocía una sola
 conexión (`PLATAFORMA_DATABASE_URL`) y operaba la instalación a la que apuntaba. La idea del dueño, ya escrita en ADR-012 §4, es una sola consola para todas.
 
 El código real mostró un riesgo que el esbozo inicial (una cookie de «instalación actual») no cubría: **las dos bases de producción tienen una empresa con el mismo id**, `empresa_principal`, porque la crea
@@ -33,7 +33,7 @@ Cada acción además suma el `empresaId`, que se vuelve a leer dentro de la tran
 ### 3. Configuración: una variable de conexión por instalación, sin secretos en el JSON
 
 - La **principal** es la de siempre: `PLATAFORMA_DATABASE_URL` y `PLATAFORMA_URL_APP`, más dos opcionales, `PLATAFORMA_INSTALACION_ID` (por defecto `principal`) y `PLATAFORMA_INSTALACION_NOMBRE`.
-- Las **adicionales**: `PLATAFORMA_INSTALACIONES_ADICIONALES` = JSON **sin secretos** `[{"id":"stockhneuquen","nombre":"Stock Neuquén","urlApp":"https://…"}]` y, por cada una, su
+- Las **adicionales**: `PLATAFORMA_INSTALACIONES_ADICIONALES` = JSON **sin secretos** `[{"id":"empresab","nombre":"Empresa B","urlApp":"https://…"}]` y, por cada una, su
   `PLATAFORMA_DATABASE_URL_<ID EN MAYÚSCULAS>`. Rotar la clave de una base toca una sola variable; en Vercel una variable sensible no se puede releer, así que meter las claves en un JSON obligaría a reescribir
   las de todas las instalaciones, y un error de tipeo podría filtrarlas en un mensaje de error.
 - Validación (falla cerrada, con mensajes que **nombran la variable y nunca el valor**): ids `^[a-z][a-z0-9]{1,29}$` sin repetir; el JSON no admite campos de más (una clave pegada ahí se rechaza); cada adicional tiene su conexión y

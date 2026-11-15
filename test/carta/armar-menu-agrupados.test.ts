@@ -41,7 +41,7 @@ function entradaBase(extra: Partial<EntradaArmarMenu> = {}): EntradaArmarMenu {
   };
 }
 
-/** «Gaseosa 500 CC» de Los Miches (A.13): tres opciones a $5000. */
+/** «Gaseosa 500 CC» de Sucursal Oeste (A.13): tres opciones a $5000. */
 function gaseosa(extra: Partial<ItemAgrupadoEntrada> = {}): ItemAgrupadoEntrada {
   return {
     id: "ag1",
@@ -134,7 +134,7 @@ describe("armarMenuCarta — ítems agrupados", () => {
     expect(todos.filter((i) => i.nombre === "Sprite 500cc")).toEqual([]);
   });
 
-  describe("4. precio (caso «Los Miches»): red de seguridad ante un cambio de precio POSTERIOR (el alta ya bloquea)", () => {
+  describe("4. precio (caso «Sucursal Oeste»): red de seguridad ante un cambio de precio POSTERIOR (el alta ya bloquea)", () => {
     it("tres opciones a $5000 → $5000, sin diagnóstico", () => {
       const { carta, diagnostico } = armarMenuCarta(entradaBase({ agrupados: [gaseosa()] }));
       expect(carta.secciones[0].items.find((i) => i.productoId === "ag1")!.precio).toBe(5000);

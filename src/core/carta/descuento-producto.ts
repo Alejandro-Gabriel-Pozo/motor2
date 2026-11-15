@@ -15,7 +15,7 @@ export interface PrecioConDescuentoDeProducto {
 }
 
 /**
- * INTERRUPTOR del «descuento por producto» (decisión del dueño, 2026-10-29): hoy NO SE VE. Una sola constante (el mismo patrón que `MENU_DEL_DIA_VISIBLE`, `menu-del-dia.ts`). Motivo: con el precio
+ * INTERRUPTOR del «descuento por producto» (decisión del dueño, 2026-10-29): hoy NO SE VE. Una sola constante. Motivo: con el precio
  * local apagado el descuento nunca se aplica (`descuentosVigentes`), y en producción hay 0 filas en `DescuentoProductoSucursal`: no cambia ningún precio.
  * Con `false`:
  *  - la ficha del producto en la carta (`components/carta/contenido-del-producto.tsx`) no ofrece el campo «Descuento en esta sucursal» (ni el dato de solo lectura);

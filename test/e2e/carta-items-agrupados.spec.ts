@@ -8,7 +8,7 @@ test.skip(!GENERO_E_ITEM_AGRUPADO_VISIBLE, "género e ítem agrupado ocultos (GE
 
 /**
  * Ítems agrupados de la carta (/carta/agrupados, docs/plan-agrupacion-items-carta-2026-09-24.md, M7) de punta a punta,
- * caso «Los Miches» (A.13): se crea «Gaseosa 500 CC» desde la pantalla y se le agregan tres gaseosas a $5000; una cuarta a $5500
+ * caso «Sucursal Oeste» (A.13): se crea «Gaseosa 500 CC» desde la pantalla y se le agregan tres gaseosas a $5000; una cuarta a $5500
  * se RECHAZA (D5: solo se agrupan productos del mismo precio) y sigue suelta; la carta pública muestra un solo renglón a $5000
  * con las tres opciones. Después se quita una opción y se apaga el ítem (sus opciones no salen sueltas, D3). El ítem elige su
  * sección de carta directo, sin categoría ni imagen (docs/plan-carta-seccion-directa-2026-09-25.md).

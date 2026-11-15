@@ -1,4 +1,5 @@
 import "server-only";
+import { nombreDeFichaSiCambio } from "@/core/datos/nombre-de-ficha";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoGuardarSeccionCarta, ResultadoGuardarSeccionCarta } from "@/core/features/carta/secciones.schema";
 import { esChoqueDeIndiceUnico } from "@/core/movimientos/public-servidor";
@@ -33,6 +34,10 @@ export async function guardarSeccionCartaCasoDeUso(actor: Pick<ContextoUsuario, 
   if (comando.id) {
     const existente = await actor.db.seccionCarta.findUnique({ where: { id: comando.id } });
     if (!existente) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección de carta.");
+    // Regla de nombre de Pedernal (E1): el guard de la edición solo recortó el nombre; la estricta se aplica ACÁ y solo si CAMBIA respecto del guardado (leído por el servidor).
+    const nombre = nombreDeFichaSiCambio(comando.nombre, existente.nombre, "ELECCION", "El nombre de la sección de carta no puede estar vacío.");
+    if (!nombre.ok) return fracaso("DATO_INVALIDO", nombre.mensaje);
+    data.nombre = nombre.valor;
     // Carrera: el índice único sobre lower(nombre) deja pasar una sola escritura del mismo nombre; la que pierde se rechaza igual que el chequeo de arriba.
     try {
       const s = await cambiarDatosDeSeccionCarta(actor.db, { id: comando.id, ...data });

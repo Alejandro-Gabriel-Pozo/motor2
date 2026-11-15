@@ -1,11 +1,11 @@
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
-import { MARCA_PUBLICA } from "../../src/core/carta/marca";
+import { NOMBRE_VALIDO } from "../carta/oraculo-metadatos";
 
 /**
  * La parte pública de la carta vista por quien comparte el enlace y por un buscador, medida en el artefacto de producción (`next build` + `next start`):
  *  - ni «Motor2» ni «ERP» en el HTML público (título, descripción, Open Graph, Twitter), tampoco en el 404 de la parte pública;
- *  - título, descripción, canónica, robots, Open Graph y Twitter de cada página, con la marca fija y los datos de la sucursal;
+ *  - título, descripción, canónica, robots, Open Graph y Twitter de cada página, con el nombre público de la empresa (`portal_nombre_publico`; sin él, neutros y sin `og:site_name`) y los datos de la sucursal;
  *  - `robots.txt` y `sitemap.xml` en el host de la carta (portal y SOLO las sucursales públicas) y `Disallow: /` en el host de la aplicación, que además sale con `noindex`.
  * playwright.config.ts fija `CARTA_DOMINIO_BASE=carta.localhost` y `CARTA_EMPRESA_UNICA=e2e`: la dirección pública definitiva de la empresa `e2e` es el dominio base pelado
  * (`http://carta.localhost`, sin https por ser localhost). Los pedidos sin navegador van a loopback con otro header Host.
@@ -25,7 +25,7 @@ function meta(html: string, clave: string): string | undefined {
 const head = (html: string) => /<head>([\s\S]*?)<\/head>/.exec(html)?.[1] ?? "";
 const canonica = (html: string) => /<link[^>]+rel="canonical"[^>]+href="([^"]*)"/.exec(html)?.[1];
 
-test.describe("carta pública: marca, metadatos y buscadores", () => {
+test.describe("carta pública: nombre público, metadatos y buscadores", () => {
   let slug: string;
   let slugBorrador: string;
   test.beforeEach(async ({ sucursalId }) => {
@@ -37,24 +37,27 @@ test.describe("carta pública: marca, metadatos y buscadores", () => {
   });
   test.afterEach(async ({ sucursalId }) => {
     await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
+    await prisma.portalCartaEmpresa.deleteMany({});
   });
+  /** Carga el nombre público como lo deja `/carta/portal` (la carta de cada test usa un slug nuevo: su ISR arranca vacío). */
+  const cargarNombrePublico = (nombre: string) => prisma.portalCartaEmpresa.create({ data: { valores: { portal_nombre_publico: nombre } } });
 
-  test("la carta de una sucursal: título con la marca, descripción, canónica, robots, Open Graph y Twitter; sin el nombre de la aplicación", async ({ request, baseURL }) => {
+  test("la carta de una sucursal: título con el nombre público, descripción, canónica, robots, Open Graph y Twitter; sin el nombre de la aplicación", async ({ request, baseURL }) => {
+    await cargarNombrePublico(NOMBRE_VALIDO);
     const { url, host } = conHost(baseURL, "carta.localhost");
     const r = await request.get(`${url}/${slug}`, { headers: { host } });
     expect(r.status()).toBe(200);
     const html = await r.text();
     const cabeza = head(html);
-    expect(cabeza).toMatch(/<title>[^<]*· Carta · Hoteles del Neuquén<\/title>/);
-    expect(MARCA_PUBLICA).toBe("Hoteles del Neuquén");
-    expect(meta(html, "description")).toMatch(/^Carta de .+ — Hoteles del Neuquén\./);
+    expect(cabeza).toMatch(/<title>[^<]*· Carta · Empresa B<\/title>/);
+    expect(meta(html, "description")).toMatch(/^Carta de .+ — Empresa B\./);
     expect(canonica(html)).toBe(`http://carta.localhost/${slug}`);
     expect(meta(html, "robots")).toBe("index, follow");
     expect(meta(html, "og:title")).toBe(/<title>([^<]*)<\/title>/.exec(cabeza)?.[1]);
     expect(meta(html, "og:description")).toBe(meta(html, "description"));
     expect(meta(html, "og:type")).toBe("website");
     expect(meta(html, "og:locale")).toBe("es_AR");
-    expect(meta(html, "og:site_name")).toBe(MARCA_PUBLICA);
+    expect(meta(html, "og:site_name")).toBe("Empresa B");
     expect(meta(html, "og:url")).toBe(`http://carta.localhost/${slug}`);
     expect(meta(html, "og:image"), "sin imagen cargada por el comercio no se inventa ninguna").toBeUndefined();
     expect(meta(html, "twitter:card")).toBe("summary");
@@ -66,17 +69,31 @@ test.describe("carta pública: marca, metadatos y buscadores", () => {
     expect(meta(html, "description")!.length).toBeLessThanOrEqual(160);
   });
 
+  test("sin nombre público cargado la carta y el portal salen neutros: sin «· <nombre>», sin «de <nombre>» y sin `og:site_name`", async ({ request, baseURL }) => {
+    const { url, host } = conHost(baseURL, "carta.localhost");
+    const carta = await (await request.get(`${url}/${slug}`, { headers: { host } })).text();
+    expect(/<title>([^<]*)<\/title>/.exec(head(carta))?.[1]).toMatch(/^[^·]+ · Carta$/);
+    expect(meta(carta, "description")).toMatch(/^Carta de [^—]+\./);
+    expect(meta(carta, "og:site_name")).toBeUndefined();
+    const portal = await (await request.get(`${url}/`, { headers: { host } })).text();
+    expect(head(portal)).toContain("<title>Cartas</title>");
+    expect(meta(portal, "description")).toMatch(/^Cartas?: Sucursal SEO /);
+    expect(meta(portal, "og:site_name")).toBeUndefined();
+    expect(carta + portal).not.toMatch(/Hoteles|Neuqu/i);
+  });
+
   test("el portal: título, descripción con las sucursales, canónica en la raíz del host público; sin el nombre de la aplicación", async ({ request, baseURL }) => {
+    await cargarNombrePublico(NOMBRE_VALIDO);
     const { url, host } = conHost(baseURL, "carta.localhost");
     const r = await request.get(`${url}/`, { headers: { host } });
     expect(r.status()).toBe(200);
     const html = await r.text();
-    expect(head(html)).toContain(`<title>${MARCA_PUBLICA} · Cartas</title>`);
-    expect(meta(html, "description")).toMatch(/^Cartas? de Hoteles del Neuquén: Sucursal SEO /);
+    expect(head(html)).toContain("<title>Empresa B · Cartas</title>");
+    expect(meta(html, "description")).toMatch(/^Cartas? de Empresa B: Sucursal SEO /);
     expect(canonica(html)).toMatch(/^http:\/\/carta.localhost\/?$/);
     expect(meta(html, "robots")).toBe("index, follow");
     expect(meta(html, "og:url")).toMatch(/^http:\/\/carta.localhost\/?$/);
-    expect(meta(html, "og:site_name")).toBe(MARCA_PUBLICA);
+    expect(meta(html, "og:site_name")).toBe("Empresa B");
     expect(meta(html, "twitter:card")).toBe("summary");
     expect(head(html)).not.toMatch(SIN_NOMBRE_DE_LA_APP);
   });

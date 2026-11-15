@@ -61,8 +61,8 @@ describe("Server Actions del registro público", () => {
     const r = await guardarSucursalPublica(
       centralId,
       datos({
-        slug: " Varvarco ",
-        etiqueta: "Hostería Varvarco",
+        slug: " Norte ",
+        etiqueta: "Hostería Norte",
         subtituloPortal: "Frente al río",
         posX: "12,5",
         posY: "40",
@@ -75,8 +75,8 @@ describe("Server Actions del registro público", () => {
     expect(r).toEqual({ ok: true, mensaje: 'Portal: "Central" guardada y publicada.' });
     const fila = await prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId: centralId } });
     expect(fila).toMatchObject({
-      slug: "varvarco",
-      etiqueta: "Hostería Varvarco",
+      slug: "norte",
+      etiqueta: "Hostería Norte",
       subtituloPortal: "Frente al río",
       orden: 2,
       publicada: true,

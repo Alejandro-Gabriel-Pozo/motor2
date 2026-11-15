@@ -28,7 +28,7 @@ Planteo del dueño: el PLATO DEL DÍA es un producto con receta, temporal (fecha
 
 ### Decisión y concepto del dueño (2026-10-20, noche)
 - DECISIÓN: OCULTAR el «Menú del día» a la vista (entrada de menú y la opción «lugar del día» al armar promos) hasta que el rediseño esté definido; reversible con un interruptor (como `PRECIOS_EDITABLES`). Se hace después de la tanda A de la Fase 5, como paso chico aparte; los goldens de menú se regeneran declarándolo.
-- Producción (consulta de solo lectura del 2026-10-20): 2 promos (ambas activas), 0 lugares «del día», 0 lugares de lista, 0 platos del día cargados, 1 promo vendida → el menú del día NO se usa hoy; ocultarlo no rompe a nadie.
+- Producción (consulta de solo lectura del 2026-10-20): N promos (ambas activas), 0 lugares «del día», 0 lugares de lista, 0 platos del día cargados, N promo vendida → el menú del día NO se usa hoy; ocultarlo no rompe a nadie.
 - CONCEPTO del dueño para el rediseño: flexibilidad total. Se puede elegir lo que se quiera de la carta o NO, tanto por SECCIÓN como por PLATOS sueltos. Operativamente: las personas van AGREGANDO opciones al menú del día (un conjunto/«pozo» de opciones) y, al tomar el pedido, el mozo elige entre todas esas opciones; NO hay que cargar una opción nueva todos los días. Sin la limitante de componer partes fijas ni de fijar un precio rígido (precio a definir: fijo del menú / por opción).
 - Idea de diseño a evaluar (ingeniero): reutilizar el mecanismo «agotado hoy» (Opciones agotadas hoy) como control diario: todas las opciones del menú están disponibles por defecto y se apaga lo que hoy no hay, en vez de cargar el plato cada día.
 

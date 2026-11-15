@@ -199,14 +199,11 @@
   LB_PV_PIZZAS · Producto de venta (PV)
   Por opción
   Disponible en «LB Precio y carta»
-  [enlace: Resumen]
-  [enlace: Qué se vende]
-  [enlace: Opciones y precio]
-  [enlace: Receta]
-  [enlace: En la carta]
-  ## Opciones y precio
-  Qué se elige al venderlo y cómo cambia el precio. Los grupos y sus opciones se arman en la [enlace: Biblioteca de opciones].
-  Se vende por opción: el precio guardado ($ 18.000,00) no se cobra, rige el precio final de cada opción. El precio de cada sucursal se cambia en [enlace: Precio local].
+  [enlace: Datos]
+  [enlace: Precios]
+  [enlace: Opciones]
+  ## Opciones
+  Qué se elige al venderlo y cómo cambia el precio. El precio del producto está en la pestaña Precios. Los grupos y sus opciones se arman en la [enlace: Biblioteca de opciones].
   [botón: + Nuevo grupo]
   [botón: Agregar un grupo existente]
   ### Tipos de Pizza
@@ -307,14 +304,11 @@
   LB_PV_PIZZAS · Producto de venta (PV)
   Por opción
   Disponible en «LB Precio y carta»
-  [enlace: Resumen]
-  [enlace: Qué se vende]
-  [enlace: Opciones y precio]
-  [enlace: Receta]
-  [enlace: En la carta]
-  ## Opciones y precio
-  Qué se elige al venderlo y cómo cambia el precio. Los grupos y sus opciones se arman en la [enlace: Biblioteca de opciones].
-  Se vende por opción: el precio guardado ($ 18.000,00) no se cobra, rige el precio final de cada opción. El precio de cada sucursal se cambia en [enlace: Precio local].
+  [enlace: Datos]
+  [enlace: Precios]
+  [enlace: Opciones]
+  ## Opciones
+  Qué se elige al venderlo y cómo cambia el precio. El precio del producto está en la pestaña Precios. Los grupos y sus opciones se arman en la [enlace: Biblioteca de opciones].
   [botón: + Nuevo grupo]
   [botón: Agregar un grupo existente]
   ### Tipos de Pizza

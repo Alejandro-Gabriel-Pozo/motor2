@@ -1,6 +1,6 @@
 # Oráculo de combinaciones — poda de «género de carta» e «ítem agrupado» (2026-11-06)
 
-**Decisión del dueño (2026-11-06):** «ocultá género e ítem agrupado». **Necesidad:** `GeneroCarta` e `ItemAgrupadoCarta` resuelven el mismo problema que las **opciones de venta** (agrupar, ordenar y dar variantes de un producto en la carta; «las marcas se resuelven con opciones»). En producción hay 0 ítems agrupados y géneros sin productos (según el dueño: Agua, Agua saborizada, Huinganco): no hay datos que perder.
+**Decisión del dueño (2026-11-06):** «ocultá género e ítem agrupado». **Necesidad:** `GeneroCarta` e `ItemAgrupadoCarta` resuelven el mismo problema que las **opciones de venta** (agrupar, ordenar y dar variantes de un producto en la carta; «las marcas se resuelven con opciones»). En producción hay 0 ítems agrupados y géneros sin productos (según el dueño: Agua, Agua saborizada, Cordillera): no hay datos que perder.
 
 **Forma:** un interruptor reversible, `GENERO_E_ITEM_AGRUPADO_VISIBLE` (`src/core/carta/genero-e-item-agrupado.ts`), **apagado** en producción. Una sola constante para los dos conceptos porque comparten flujo (el ítem agrupado hereda el género, el POS los junta en la misma carpeta, el formulario del producto y la pantalla de agrupados ofrecen el género en el mismo lugar). **No se borra nada** (tablas, filas, claves de permiso); para volver: poner `true`.
 
@@ -33,15 +33,15 @@ El permiso sigue siendo lo primero (quien no lo tiene recibe el rechazo de siemp
 
 ## Carta sembrada (datos reales del dueño)
 
-Sección **Bebidas**: Café $4.000, Capuccino $8.000, Cerveza Patagonia $14.000 (los tres con contenido visible) y Cerveza Huinganco $14.000 (sin contenido). Sección **Postres**: Brownie $10.000.
-«Con datos»: género *Agua* en el Café; ítem agrupado *Cerveza* (las dos cervezas, mismo precio) con el género *Huinganco*; género *Agua saborizada* sin productos.
+Sección **Bebidas**: Café $4.000, Capuccino $8.000, Cerveza Patagonia $14.000 (los tres con contenido visible) y Cerveza Cordillera $14.000 (sin contenido). Sección **Postres**: Brownie $10.000.
+«Con datos»: género *Agua* en el Café; ítem agrupado *Cerveza* (las dos cervezas, mismo precio) con el género *Cordillera*; género *Agua saborizada* sin productos.
 
 | Interruptor · datos | Carta pública — Bebidas | POS — Bebidas | POS — fuera de carta |
 |---|---|---|---|
-| apagado · sin | Café, Capuccino, Cerveza Patagonia | Café, Capuccino, Cerveza Patagonia | Cerveza Huinganco |
-| apagado · con | Café, Capuccino, Cerveza Patagonia | Café, Capuccino, Cerveza Patagonia | Cerveza Huinganco |
-| encendido · sin | Café, Capuccino, Cerveza Patagonia | Café, Capuccino, Cerveza Patagonia | Cerveza Huinganco |
-| encendido · con | Café, Capuccino, **Cerveza** (opciones: Huinganco, Patagonia) | Capuccino, carpeta **Agua** {Café}, carpeta **Huinganco** {agrupado Cerveza [Huinganco, Patagonia]} | — |
+| apagado · sin | Café, Capuccino, Cerveza Patagonia | Café, Capuccino, Cerveza Patagonia | Cerveza Cordillera |
+| apagado · con | Café, Capuccino, Cerveza Patagonia | Café, Capuccino, Cerveza Patagonia | Cerveza Cordillera |
+| encendido · sin | Café, Capuccino, Cerveza Patagonia | Café, Capuccino, Cerveza Patagonia | Cerveza Cordillera |
+| encendido · con | Café, Capuccino, **Cerveza** (opciones: Cordillera, Patagonia) | Capuccino, carpeta **Agua** {Café}, carpeta **Cordillera** {agrupado Cerveza [Cordillera, Patagonia]} | — |
 
 Postres: Brownie en todos los casos.
 

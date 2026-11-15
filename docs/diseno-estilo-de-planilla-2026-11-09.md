@@ -87,7 +87,7 @@ Fuente: `grep -rl "<table" src` (33 archivos a mano + la propia `TablaDeDatos`; 
 | Decisión | Estado |
 |---|---|
 | Estilo dentro de `TablaDeDatos`, no tabla nueva | PROPUESTA |
-| Las dos pantallas: Productos (filtros + acciones por fila, 47 productos reales) y Biblioteca de opciones (25 grupos reales; ya usa `TablaDeDatos`, sin filtros ni acción por fila) | PROPUESTA. Motivo: hoy los listados con filtros que tienen datos en producción son solo Productos (proveedores: 1 fila; reportes y stock: 0 movimientos). Se declara la limitación |
+| Las dos pantallas: Productos (filtros + acciones por fila, N productos reales) y Biblioteca de opciones (N grupos reales; ya usa `TablaDeDatos`, sin filtros ni acción por fila) | PROPUESTA. Motivo: hoy los listados con filtros que tienen datos en producción son solo Productos (proveedores: 1 fila; reportes y stock: 0 movimientos). Se declara la limitación |
 | «Ver todo →» es una opción de `ApartadoDePlanilla` (la pide el dueño en su punto 1); ninguna de las dos pantallas lo usa (la lista ya es «todo»): se dibuja solo si se pasa `verTodo` | PROPUESTA |
 | Etapas de adopción del resto | PENDIENTE (el dueño las ordena) |
 

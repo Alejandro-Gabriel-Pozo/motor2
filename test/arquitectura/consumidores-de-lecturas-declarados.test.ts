@@ -108,7 +108,7 @@ const LECTURAS: Readonly<Record<string, LecturaDeclarada>> = {
   listarPresentaciones: {
     modulo: "server/actions/catalogo/productos",
     consumidores: {
-      "app/(app)/catalogo/productos/[id]/page.tsx": { claves: ["producto_ver_catalogo"] },
+      "app/(app)/catalogo/productos/[id]/compra/page.tsx": { claves: ["producto_ver_catalogo"] },
       "app/(app)/catalogo/productos/datos-de-edicion.ts": { claves: ["producto_ver_catalogo"], porque: "la edición de un producto (`catalogo/productos/[id]/datos`, producto_ver_catalogo y producto_editar): lee las presentaciones de una MP" },
       "app/(app)/movimientos/[proceso]/panel-movimiento-form.tsx": {
         claves: ["proceso_compra", "proceso_devolucion_proveedor"],

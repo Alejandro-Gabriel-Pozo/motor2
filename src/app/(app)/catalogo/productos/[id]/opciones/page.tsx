@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
-import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
+import { obtenerMiNivelPermisoDeEmpresa, requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { denegacionDeModuloDeAccion } from "@/server/acceso/modulos-de-empresa";
 import { agregarVersionDeOpcion, fijarAdmisionDeGrupoEnProducto, vincularGrupoEnProducto } from "@/server/actions/catalogo/opciones-de-venta";
 import { basesDeUnEjeEnLaCarta, nombreEnCartaDeUnProducto } from "@/server/consultas/carta/admin";
@@ -11,7 +11,6 @@ import { cargarVistaPreviaDeLaCarta } from "@/server/consultas/carta/vista-previ
 import { leerProductoDelEspacio } from "@/server/consultas/catalogo/espacio-del-producto";
 import { cargarOpcionesDelProducto } from "@/server/consultas/catalogo/opciones-de-venta";
 import { nombreDelTipoDeGrupo, referenciaDePrecioDeAdmisiones, PASO_DE_ORDEN } from "@/core/opciones/public";
-import { formatearMonto } from "@/core/pos/public";
 import { AvisoConDeshacer, BotonConDeshacer } from "@/components/aviso-con-deshacer";
 import { GrupoDeFormularios } from "@/components/grupo-de-formularios";
 import { AgregarGrupoExistente } from "@/components/catalogo/agregar-grupo-existente";
@@ -22,7 +21,6 @@ import { NuevoGrupoEnElProducto } from "@/components/catalogo/nuevo-grupo-en-el-
 import { ResumenDeOpciones } from "@/components/catalogo/resumen-de-opciones";
 import { cargarMarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/datos-del-marco";
 import { MarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/marco";
-import { PrecioDeLaSucursal } from "@/components/catalogo/espacio-del-producto/precio-de-la-sucursal";
 import { VistaPreviaDeLaCarta } from "@/components/catalogo/espacio-del-producto/vista-previa-de-la-carta";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { Aviso } from "@/ui/primitivas/aviso";
@@ -80,11 +78,9 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
     );
   }
   // El marco (la tira de pasos con su enlace y su estado). Las opciones ya están leídas: no se vuelven a leer. Y si el usuario además puede CREAR grupos (Editar de `opciones_definir`), se dibuja «+ Nuevo grupo».
-  // También se pregunta si quien mira puede Editar el precio de la sucursal (`precio_local`, piso administrador, en la sucursal activa): sin esa clave no se dibuja el campo del precio (la acción la vuelve a exigir).
-  const [marco, nivelOpcionesDefinir, puedeEditarElPrecio, sinRecetas] = await Promise.all([
+  const [marco, nivelOpcionesDefinir, sinRecetas] = await Promise.all([
     cargarMarcoDelEspacio(ctx, productoDelEspacio, { opciones: datos }),
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "opciones_definir", ctx.db),
-    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "precio_local", ctx.db).then((nivel) => nivel.editar),
     // Lo que consume una opción usa el módulo Recetas (D-3): sin él, el servidor rechaza consumos y la pantalla no ofrece el editor.
     denegacionDeModuloDeAccion("guardar_receta", ctx.empresaId, ctx.db),
   ]);
@@ -137,42 +133,20 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
       <GrupoDeFormularios className="flex flex-col gap-6 pb-24">
         <AvisoConDeshacer>
           <div className="flex flex-col gap-1">
-            <h2 className="text-lg font-medium">Opciones y precio</h2>
+            <h2 className="text-lg font-medium">Opciones</h2>
             <p className="text-sm text-tinta-suave">
-              Qué se elige al venderlo y cómo cambia el precio. Los grupos y sus opciones se arman en la{" "}
+              Qué se elige al venderlo y cómo cambia el precio. El precio del producto está en la pestaña Precios. Los grupos y sus opciones se arman en la{" "}
               <EnlaceInterno href="/catalogo/opciones" className="underline">
                 Biblioteca de opciones
               </EnlaceInterno>
               .
             </p>
-            <p className="text-sm text-tinta-suave" data-precio-de-la-sucursal="">
-              {producto.esBase
-                ? `Se vende por opción: el precio guardado (${formatearMonto(datos.precioBase)}) no se cobra, rige el precio final de cada opción.`
-                : `Precio de lista en «${ctx.sucursalNombre}»: ${formatearMonto(datos.precioBase)}.`}{" "}
-              {puedeEditarElPrecio && !producto.esBase ? "Las otras sucursales se comparan y se cambian en " : "El precio de cada sucursal se cambia en "}
-              <EnlaceInterno href="/movimientos/precio-local" className="underline">
-                Precio local
-              </EnlaceInterno>
-              .
-            </p>
           </div>
-
-          {puedeEditarElPrecio && !producto.esBase ? (
-            <PrecioDeLaSucursal
-              productoId={productoId}
-              sucursalId={ctx.sucursalId}
-              sucursalNombre={ctx.sucursalNombre}
-              precioVigente={datos.precioBase}
-              precioGlobal={datos.precioGlobal}
-              guardado={datos.precioLocal.guardado}
-              capacidadActiva={datos.precioLocal.capacidadActiva}
-            />
-          ) : null}
 
           {faltaMarcarloPorOpcion ? (
             <Aviso variante="advertencia" data-falta-por-opcion="">
               Para venderlo por opción, marcalo «Por opción» en{" "}
-              {puedeEditarDatos ? <Enlace href={`/catalogo/productos/${productoId}/datos`}>Qué se vende</Enlace> : <em>Qué se vende</em>}.
+              {puedeEditarDatos ? <Enlace href={`/catalogo/productos/${productoId}/datos`}>Datos</Enlace> : <em>Datos</em>}.
             </Aviso>
           ) : null}
 
