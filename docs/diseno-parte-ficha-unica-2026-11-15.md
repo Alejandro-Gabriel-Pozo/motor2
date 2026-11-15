@@ -16,7 +16,7 @@ Redacción genérica a propósito (el repositorio es público): sin nombres de s
 4. Pedernal no cambió lo que importa para la ficha (verificado en su código de ayer). Hay tres diferencias entre lo que dice su documento y lo que hace su código; las anoto abajo.
 5. El diseño del 11-12 se escribió **antes** de que ratificaras «lo nuevo nace con la forma de Pedernal» (2026-11-15). Propongo un ajuste chico del nivel 6 (identificador y clave de alta): lo explico en §4.
 6. Primer paso más barato: **P1 tal como está diseñada** (ficha del proveedor, con copia de los proveedores de hoy en la misma migración). Hay una alternativa (partirla en dos) con su costo; la dejo anotada como decisión técnica.
-7. **Una pregunta de negocio:** ¿a quien se le factura hace falta que exista como «Cliente» (perfil de descuento) o alcanza con su ficha? (§7).
+7. La pregunta de negocio (¿a quien se le factura hace falta que sea «Cliente» o alcanza con su ficha?) **quedó respondida el 2026-11-15: alcanza con la ficha** (§7).
 8. Sigue sin autorización de migración: se pide aparte cuando quieras construir P1.
 
 ---
@@ -34,6 +34,7 @@ Las del 11-12/13 están citadas, con su texto literal, en `diseno-parte-2026-11-
 | N-1 | 2026-11-14 | «Esperar a Parte (ficha única como Pedernal) (Recomendada)» (a «¿dónde va el CUIT del cliente?») | `motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, sección «CUIT del cliente, cobro y registro…» | **No se agregan columnas a `Cliente`**; la ficha Parte va **antes** de la factura externa | **CONFIRMADA** |
 | N-2 | 2026-11-15 | «Sí, copiar a Pedernal en esas cinco (Recomendada)» | mismo archivo, sección «Factura externa: campos, tipos, nota de crédito parcial y ratificación en bloque» | E5: lo nuevo nace con la forma de Pedernal (identificador que manda la aplicación, fecha con zona, solo inserción) | **CONFIRMADA en dirección**; ninguna migración autorizada |
 | N-3 | 2026-11-13 | «Necesitamos ser iguales en todo. Por la salvedad de que nosotros usamos Prisma… el resultado tiene que ser el mismo y sobre todo de las mismas formas» | `AGENTS.md`, «Paridad con Pedernal» | Toda diferencia con Pedernal lleva motivo | **CONFIRMADA** |
+| N-4 | 2026-11-15 | «Las recomendaciones on» (a las recomendaciones del diseño de la factura externa, entre ellas P-1: «a quien se le factura alcanza con su ficha») | chat del dueño con el orquestador (relatado; leído como «ok», confirmado por escrito por el orquestador) | A quien se le factura **alcanza con su ficha de Parte**; no hace falta que sea «Cliente» | **CONFIRMADA** |
 | — | — | Autorización de la migración de P1 a P4 | — | — | **PENDIENTE** (no existe) |
 
 ---
@@ -154,7 +155,7 @@ Los comandos de la ficha ya tienen su tabla en `diseno-parte-2026-11-12.md` §3.
 
 ## 7. Preguntas de NEGOCIO abiertas
 
-**P-1 (modelo de datos). ¿Hace falta que una persona o empresa exista como «Cliente» para poder facturarle, o alcanza con su ficha?**
+**P-1 (modelo de datos) — CONFIRMADA, opción 1 (dueño, 2026-11-15: «Las recomendaciones on»). ¿Hace falta que una persona o empresa exista como «Cliente» para poder facturarle, o alcanza con su ficha?**
 Hoy «Cliente» en Motor2 es un **perfil de descuento** del salón (D8 del 11-12). Una empresa que pide factura A y **no tiene descuento** no es ninguno de esos perfiles. Pedernal no obliga: una ficha puede no tener ningún rol.
 - **Opción 1 (recomendada):** alcanza con la ficha. El comprobante externo apunta a la ficha; «Cliente» sigue siendo solo el perfil de descuento. Lo más barato: no hay que crear un «cliente al 0 %» por cada empresa a la que se factura.
 - **Opción 2:** toda persona o empresa a la que se factura tiene también su fila de «Cliente» (con 0 % si no tiene descuento). Más cargas y dos lugares que mantener.
@@ -202,6 +203,6 @@ Sin cambio respecto del 11-12 §4.2 y §8.1 (oráculo A–E contra la base real 
 
 ## Decisiones a esperar del dueño (resumen)
 
-Una pregunta de negocio abierta (P-1). La autorización de la migración de P1 se pide aparte, cuando quiera construirse.
+Ninguna pregunta de negocio abierta (P-1 quedó CONFIRMADA, opción 1). La autorización de la migración de P1 se pide aparte, cuando quiera construirse.
 
 Autoría: este documento lo escribió **Sonnet** (sesión de diseño en papel). No hay código.

@@ -15,11 +15,11 @@ Fotos: Motor2 `origin/main` `a7077f52` (2026-11-15). Pedernal: código `ZuluHub-
 3. Lo bueno: **no hace falta inventar una identidad**. Motor2 ya tiene el «renglón corregible» (lo que hoy se corrige o anula de una cuenta cerrada). Ese renglón ya conserva su identidad cuando se corrige por unidades. Se reusa.
 4. Un combo o promo es **un solo renglón** (no se factura un componente suelto), como decidiste para Pedernal. Un renglón con adicionales también se propone entero (pregunta 2).
 5. **Solo salón y cuentas** (decisión tuya del 2026-11-15). El mostrador queda afuera.
-6. **Solo hacia adelante**: los tickets ya cerrados no se tocan. Una pregunta tuya: ¿entran igual a la conciliación? (pregunta 1).
+6. **Solo hacia adelante**: los tickets ya cerrados no se tocan y no entran a la conciliación (**confirmado el 2026-11-15**, pregunta 1).
 7. El camino de clasificación (departamento y categorías) **queda en el ítem vendido**, como en Pedernal; el renglón congelado no lo copia. Una sola decisión para las dos cosas.
 8. Costo: **una tabla nueva** (solo se agrega) y **una columna opcional** en el ejemplar del ticket. Ninguna autorizada todavía.
 9. Efecto en lo que ya existe: corregir o anular una línea de una cuenta cerrada tendrá que respetar lo ya facturado (cuando exista la factura externa). Hoy no hay nada facturado, así que **hoy no cambia nada de lo que ves**.
-10. Dos preguntas de negocio al final.
+10. Las dos preguntas de negocio del final **quedaron respondidas el 2026-11-15** con las recomendaciones.
 
 ---
 
@@ -33,6 +33,7 @@ Fotos: Motor2 `origin/main` `a7077f52` (2026-11-15). Pedernal: código `ZuluHub-
 | R-4 | 2026-11-13 | «Necesitamos ser iguales en todo. Por la salvedad de que nosotros usamos Prisma… el resultado tiene que ser el mismo y sobre todo de las mismas formas» | `AGENTS.md` | Paridad con Pedernal; toda diferencia lleva motivo | **CONFIRMADA** |
 | R-5 | 2026-11-15 | «Sí, copiar a Pedernal en esas cinco (Recomendada)» | mismo archivo de decisiones, sección «Factura externa: campos, tipos, nota de crédito parcial y ratificación en bloque» | E4 (árbol de 4 niveles) y E5 (lo nuevo nace con uuid, `timestamptz` y solo inserción) se copian de Pedernal | **CONFIRMADA en dirección**; ninguna migración autorizada |
 | R-6 | 2026-11-14 | «es un caso de uso y la app no lo debe determinar» (facturar por partes) — cita de Pedernal, fila 134 de `decisiones-del-dueno-2026-11.md` | `ZuluHub-docs` | En Pedernal la partición la decide quien factura, no una regla de la aplicación | **DOC** (decisión del dueño tomada para Pedernal; para Motor2 vale como referencia de la regla de paridad) |
+| R-7 | 2026-11-15 | «Las recomendaciones on» (a las recomendaciones Q-1 y Q-2 de este documento) | chat del dueño con el orquestador (relatado; leído como «ok», confirmado por escrito por el orquestador) | Q-1: los tickets ya cerrados **no** entran a la conciliación, solo hacia adelante (quedan «pendiente de completar»). Q-2: un renglón con adicionales se factura **entero** | **CONFIRMADA** |
 | — | — | Autorización de la migración de esta etapa | — | — | **PENDIENTE** (no existe) |
 
 ---
@@ -124,7 +125,7 @@ Alcance: la **sucursal** (el ticket es de la sucursal de su cuenta; RLS por sucu
 | DT1 | Identidad del renglón | (a) `CuentaItem.id`; (b) la Operación VENTA original; (c) renglón nuevo con id propio apuntando al ítem | **(b) con (c) como tabla del ejemplar.** Corrige la lectura del plan: la Operación **original** **no** cambia de id al corregir por unidades (la corrección crea una versión B que la reemplaza; los ítems siguen apuntando a la A). Un `CuentaItem` **no** es un renglón (varios ítems del mismo producto, precio, promo y huella forman **una** línea). Es la misma agrupación de `lineasCorregibles`, o sea la que el sistema ya corrige y anula |
 | DT2 | Combos y promos | (a) un renglón por componente; (b) uno por promo | **(b)**: la identidad es la `PromoCuenta`; cantidad 1; indivisible (decisión P7 del dueño para Pedernal) |
 | DT3 | Corregir un ticket ya facturado en partes | seguir P6 de Pedernal u otra | **Seguir P6** (decidida para Pedernal por el dueño el 2026-11-14): solo se baja lo todavía no facturado; lo ya facturado se acredita primero. Se traduce y no se vuelve a decidir. Hoy **no hay nada facturado**: la guarda se agrega con FE-N2 |
-| DT4 | Tickets ya cerrados | reconstruir o no | **No en la migración** (solo hacia adelante). Pero el plan decía que reconstruir tiene «riesgo de ambigüedad»: **verificado que se puede derivar** (el contenido de un ejemplar se calcula con `armarTicketImpresoEn(ítems, emitidoEn)`; los ítems conservan `operacionId`). Se deja como **paso aparte opcional** que solo escribe un ticket cuando la reconstrucción **cuadra al centavo** con lo registrado y deja «pendiente de completar» el resto. Lo decide el dueño: pregunta 1 |
+| DT4 | Tickets ya cerrados | reconstruir o no | **CONFIRMADA por el dueño (R-7): no entran, solo hacia adelante.** **No en la migración**. Pero el plan decía que reconstruir tiene «riesgo de ambigüedad»: **verificado que se puede derivar** (el contenido de un ejemplar se calcula con `armarTicketImpresoEn(ítems, emitidoEn)`; los ítems conservan `operacionId`). Se deja como **paso aparte opcional** que solo escribe un ticket cuando la reconstrucción **cuadra al centavo** con lo registrado y deja «pendiente de completar» el resto. Lo decide el dueño: pregunta 1 |
 | DT5 | Forma de lo nuevo (E5) | `cuid`/`TIMESTAMP(3)` o forma de Pedernal | **Forma de Pedernal** (R-5): `id` uuid que manda la aplicación, `creadoEn timestamptz`, solo inserción. Las columnas que apuntan a tablas existentes (`EjemplarTicket`, `Operacion`, `PromoCuenta`: ids de texto) **mantienen el tipo de texto**; un `uuid` nuevo convive con ellas sin problema (se guarda como texto en esas referencias) |
 | DT6 | Dónde se impone «facturado ≤ vendido» | CHECK con acumulado o SERIALIZABLE | **Acumulado con CHECK** (como el diseño de Pedernal), y SERIALIZABLE con reintento en el caso de uso. Es de FE-N2 (documento aparte); **este documento solo garantiza el «vendido»** |
 | DT7 | Un solo diseño del renglón vendido con E4 | por separado o juntos | **Juntos, así:** el **camino de clasificación vive en el ítem vendido** (`CuentaItem`, equivalente de `linea_cuenta` de Pedernal), escrito al agregar el ítem y solo al insertar; el **renglón congelado no lo copia** (igual que Pedernal: `ejemplar_linea` no tiene camino). Dato a declarar: una línea con ítems de caminos distintos (se reclasificó el producto entre dos pedidos de la misma cuenta) → los reportes por clasificación se arman **por ítem**, no por renglón; el oráculo lo cubre. **Ninguna tabla se persiste dos veces** |
@@ -245,12 +246,12 @@ Clasificación de tablas: `RenglonDeEjemplar` entra como POR_SUCURSAL en `test/s
 
 ## 9. Preguntas de NEGOCIO abiertas
 
-**Q-1 (qué ve el dueño). Los tickets que ya están cerrados antes de activar esto, ¿entran a la conciliación con facturas externas?**
+**Q-1 — CONFIRMADA, opción 1 (dueño, 2026-11-15: «Las recomendaciones on»). Los tickets que ya están cerrados antes de activar esto, ¿entran a la conciliación con facturas externas?**
 - **Opción 1 (recomendada):** no; solo los tickets emitidos desde la activación. Lo más barato y sin riesgo de datos: los viejos figuran «pendiente de completar».
 - **Opción 2:** sí; un paso aparte reconstruye los renglones de los viejos solo cuando la cuenta **cuadra al centavo** con lo registrado (el resto sigue «pendiente de completar»). Más trabajo, con ensayo en copia.
 - **Si no se responde:** se asume la opción 1 (declarado como supuesto); la opción 2 se puede agregar después sin deshacer nada.
 
-**Q-2 (dinero). Un renglón con adicionales (por ejemplo, un plato con un extra), ¿se factura entero o se puede facturar por cantidad?**
+**Q-2 — CONFIRMADA, opción 1 (dueño, 2026-11-15: «Las recomendaciones on»). Un renglón con adicionales (por ejemplo, un plato con un extra), ¿se factura entero o se puede facturar por cantidad?**
 - **Opción 1 (recomendada):** entero, como el combo (decisión tuya para Pedernal). Es lo que hoy ya hace Motor2 al corregir (esos renglones no se corrigen por unidades).
 - **Opción 2:** por cantidad, repartiendo también los adicionales. Más complejo y con reparto de centavos entre producto y adicional.
 - **Si no se responde:** opción 1 (todo nace cerrado); se puede abrir después sin perder datos.
