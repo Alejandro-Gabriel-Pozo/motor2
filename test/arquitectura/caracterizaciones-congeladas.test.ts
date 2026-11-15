@@ -131,6 +131,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Pagos X0 (ADITIVO; la clave es nueva y nadie la tenía): `declarar_pago_compra` (empresa, piso operario, clase O, semilla solo `admin`) aparece en las listas de claves de cada bloque y registro (112 líneas, todas del mismo tipo: se suma esa clave junto a `compra_repartir`). Revisado con `git diff --word-diff`: ninguna otra respuesta del guard cambia.",
       },
+      {
+        blob: "7cb6c767846288cb1d51918cd176bf1962565538",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `c0b4626` (la integración de Parte P1 (a) en `main`).
+        commit: "c0b4626",
+        motivo:
+          "Parte P1 (ADITIVO; claves nuevas, semilla solo `admin`, todo nace cerrado): `ACCIONES 130 a 133` y las filas `PERMISO` de `partes_ver`, `partes_editar` y `partes_desactivar` (admin ver=true editar=true; operador sin Ver ni Editar). Revisado con `git diff`: solo se suman esas claves a las listas de cada bloque; ningún otro permiso ni rol cambia.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
@@ -258,13 +265,6 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "a428877",
         motivo:
           "E1 (paridad con Pedernal; CAMBIA COMPORTAMIENTO, decisión del dueño, 2026-11-15, chat con el orquestador, relatada: «Como Pedernal (Recomendada)» para los mensajes del CUIT): validarCuit usa los textos de Pedernal (apps/plataforma/logica/errores-de-plataforma.ts:84-88 de ZuluHub-ERP). Cambian SOLO la línea de mensaje de CUIT (formato); el resto de la huella queda idéntico.",
-      },
-      {
-        blob: "7cb6c767846288cb1d51918cd176bf1962565538",
-        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `c0b4626` (la integración de Parte P1 (a) en `main`).
-        commit: "c0b4626",
-        motivo:
-          "Parte P1 (ADITIVO; claves nuevas, semilla solo `admin`, todo nace cerrado): `ACCIONES 130 a 133` y las filas `PERMISO` de `partes_ver`, `partes_editar` y `partes_desactivar` (admin ver=true editar=true; operador sin Ver ni Editar). Revisado con `git diff`: solo se suman esas claves a las listas de cada bloque; ningún otro permiso ni rol cambia.",
       },
     ],
   },
