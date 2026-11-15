@@ -25,6 +25,8 @@ export interface EntradaProducto {
   unidadStockId: string;
   factorConversion: number;
   observaciones?: string | null;
+  /** Cómo nombra la COCINA este producto en la comanda (2026-11-15; `docs/diseno-nombre-de-cocina-como-pedernal-2026-11-15.md`): solo un PV; vacío o `null` = «sin nombre de cocina» (la comanda usa el nombre interno). Lo valida la ficha NOMBRE_DE_COCINA. */
+  nombreDeCocina?: string | null;
   insumoId?: string | null;
   precioVenta?: number;
   pasoVenta?: number | null;

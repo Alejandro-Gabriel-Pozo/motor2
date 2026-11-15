@@ -170,6 +170,8 @@ export function ProductoForm({
             proveedorConsignacionId: esConsignacion ? proveedorConsignacionId || null : null,
             precioConsignacion: numeroDelCampo(String(form.get("precioConsignacion") ?? "")) ?? 0,
           }),
+          // Nombre de cocina: solo un PV lo muestra; vaciado a la vista = null explícito (borra); en el alta, vacío = no manda nada.
+          nombreDeCocina: tipo === "PV" ? texto(form.get("nombreDeCocina")) || (editando ? null : undefined) : undefined,
           observaciones: !OBSERVACIONES_VISIBLES ? undefined : texto(form.get("observaciones")) || (editando ? null : undefined), // edición parcial: oculto no se manda; vaciado a la vista = null explícito (borra)
           activoEnTodasLasSucursales: editando ? undefined : activoEnTodas,
         };
@@ -225,6 +227,8 @@ export function ProductoForm({
 
       {!editando && <Campo name="codigo" placeholder="Código (opcional, se autogenera)" aria-label="Código (opcional, se autogenera)" />}
       <Campo name="nombre" placeholder="Nombre" aria-label="Nombre" defaultValue={productoExistente?.nombre} required />
+      {/* Nombre de cocina (2026-11-15): opcional y solo en un producto de venta; vacío = sin nombre de cocina (la comanda usa el nombre de arriba). */}
+      {tipo === "PV" && <Campo name="nombreDeCocina" placeholder="Nombre de cocina" aria-label="Nombre de cocina" defaultValue={productoExistente?.nombreDeCocina ?? undefined} />}
 
       <div className="flex items-center gap-2">
         <div className="flex-1">
