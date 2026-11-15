@@ -266,6 +266,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "E1 (paridad con Pedernal; CAMBIA COMPORTAMIENTO, decisión del dueño, 2026-11-15, chat con el orquestador, relatada: «Como Pedernal (Recomendada)» para los mensajes del CUIT): validarCuit usa los textos de Pedernal (apps/plataforma/logica/errores-de-plataforma.ts:84-88 de ZuluHub-ERP). Cambian SOLO la línea de mensaje de CUIT (formato); el resto de la huella queda idéntico.",
       },
+      {
+        blob: "7d68d8c6c96b78d5be28867d2601fdf7822e32be",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `c0b4626` (la integración de Parte P1 (a) en `main`).
+        commit: "c0b4626",
+        motivo:
+          "Parte P1 (ADITIVO; claves nuevas, semilla solo `admin`, todo nace cerrado): `ACCIONES 130 a 133` (en las dos fotos) y las seis filas `PERMISO` por foto de `partes_ver`, `partes_editar` y `partes_desactivar` (admin ver=true editar=true; operador ver=false editar=false). Revisado con `git diff`: solo se suman esas líneas; ningún otro permiso ni rol cambia.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-aceptacion.golden.txt": {
