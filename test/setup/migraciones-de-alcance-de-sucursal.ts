@@ -58,6 +58,8 @@ export const MIGRACIONES_DE_POLITICAS_POSTERIORES: readonly { readonly migracion
   { migracion: "20261021111000_go3a_rls_sucursal_combinaciones", tablas: ["CombinacionEnLinea", "PrecioLocalDeCombinacion"] },
   // E3a-M (ADR-041): la propuesta de la parte de una sucursal destino y sus renglones (ENTRE_SUCURSALES).
   { migracion: "20261028101000_rls_sucursal_factura_proveedor_propuesta", tablas: ["FacturaProveedorPropuesta", "FacturaProveedorPropuestaRenglon"] },
+  // «Ocultar» como Pedernal (E3a): la marca de ocultar de un producto por sucursal o por toda la empresa (PROPIA_O_EMPRESA).
+  { migracion: "20261115121000_rls_sucursal_ocultamiento_de_producto", tablas: ["OcultamientoProducto"] },
 ];
 
 /** Las migraciones previas que la prueba de subir/bajar/subir baja DESPUÉS de B1 (en este orden: P3 y después M.2). Ambas reversas son destructivas. */

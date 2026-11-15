@@ -20,7 +20,7 @@ export type ClaseDeTabla = "POR_EMPRESA" | "DE_EMPRESA_ESCRITA_POR_LA_PLATAFORMA
 const POR_EMPRESA = [
   "AgregadoDeCuenta", "CapacidadSucursal", "CategoriaProducto", "CentroDeCostos", "Cliente", "CombinacionDeProducto", "CombinacionEnLinea", "ConceptoDeGasto", "ConsumoDeOpcion", "ContenidoCartaProducto", "ConteoFisico", "Cuenta", "CuentaItem", "DescuentoProductoSucursal", "DestinoConsumo", "DisponibilidadProducto", "DistribucionCostoLinea", "DistribucionCostoVersion",
   "AnulacionDeFacturaProveedor", "AnulacionDePagoDeFacturaProveedor", "EjemplarTicket", "EntradaDeCupo", "EntradaDelDiaDeCupo", "FacturaProveedor", "FacturaProveedorPropuesta", "FacturaProveedorPropuestaRenglon", "FacturaProveedorRenglon", "FacturaProveedorSucursal", "FacturaProveedorTributo", "FrecuenciaConteoProducto", "GeneroCarta", "Grupo", "GrupoDeOpciones", "GrupoDePrecio", "ImputacionDeGasto", "Insumo", "InvitacionSucursal", "ItemAgrupadoCarta", "MargenObjetivo", "Mesa", "MotivoMerma", "MovimientoStock",
-  "NotaCreditoProveedor", "NotaCreditoProveedorImputacion", "NotaCreditoProveedorLinea", "NotaCreditoProveedorTributo", "OpcionApagadaEnSucursal", "OpcionDeEntradaDeCupo", "OpcionDeGrupo", "OpcionElegidaEnLinea", "OpcionItemAgrupadoCarta", "Operacion", "PagoConsignante", "PagoDeFacturaProveedor", "PermisoRol", "PlanDeCostos", "PlanDeCostosSucursal", "PortalCartaEmpresa", "PrecioLocalDeCombinacion", "PrecioLocalDeOpcion", "PrecioLocalProducto", "Presentacion", "Producto", "ProductoAdmiteGrupo", "ProductoAdmiteOpcion", "PromoCarta", "PromoCartaCupo",
+  "NotaCreditoProveedor", "NotaCreditoProveedorImputacion", "NotaCreditoProveedorLinea", "NotaCreditoProveedorTributo", "OcultamientoProducto", "OpcionApagadaEnSucursal", "OpcionDeEntradaDeCupo", "OpcionDeGrupo", "OpcionElegidaEnLinea", "OpcionItemAgrupadoCarta", "Operacion", "PagoConsignante", "PagoDeFacturaProveedor", "Parte", "PermisoRol", "PlanDeCostos", "PlanDeCostosSucursal", "PortalCartaEmpresa", "PrecioLocalDeCombinacion", "PrecioLocalDeOpcion", "PrecioLocalProducto", "Presentacion", "Producto", "ProductoAdmiteGrupo", "ProductoAdmiteOpcion", "PromoCarta", "PromoCartaCupo",
   "PromoCartaSucursal", "PromoCuenta", "Proveedor", "ProveedorPorProducto", "PuntoDeVentaDeProveedor", "RecetaDeCombinacionIngrediente", "RecetaDeCombinacionVersion", "RecetaIngrediente", "RecetaPaso", "RecetaPasoIngrediente", "RecetaSucursal", "RecetaVersion", "ReclasificacionRenglon", "RegistroAuditoria",
   "RendimientoLocalIngrediente", "Rol", "Seccion", "SeccionCarta", "SeccionHabitualProducto", "StockMinimoProducto", "Sucursal", "SucursalPublica", "SustitutoRecetaIngrediente",
   "TemaCartaSucursal", "TraspasoSucursal", "Unidad", "UsuarioSucursal", "Venta", "VersionDeOpcion",
@@ -132,7 +132,7 @@ const ALCANCE_PROPIA = [
 ] as const;
 
 /** `sucursalId` NULLABLE: NULL = de la empresa entera. */
-const ALCANCE_PROPIA_O_EMPRESA = ["RecetaVersion", "RegistroAuditoria"] as const;
+const ALCANCE_PROPIA_O_EMPRESA = ["OcultamientoProducto", "RecetaVersion", "RegistroAuditoria"] as const;
 
 /** Sin `sucursalId`: la sucursal sale de la FK obligatoria `columna` hacia `padre`. */
 const ALCANCE_HEREDADA: Readonly<Record<string, { padre: string; columna: string }>> = {
@@ -170,7 +170,7 @@ const ALCANCE_GOBIERNO: Readonly<Record<string, string>> = {
 
 const ALCANCE_DE_EMPRESA = [
   "AnulacionDeFacturaProveedor", "AnulacionDePagoDeFacturaProveedor", "CategoriaProducto", "CentroDeCostos", "Cliente", "CombinacionDeProducto", "ConceptoDeGasto", "ConsumoDeOpcion", "DestinoConsumo", "EntradaDeCupo", "FacturaProveedor", "FacturaProveedorRenglon", "FacturaProveedorTributo", "Grupo", "GrupoDeOpciones", "GrupoDePrecio", "Insumo", "Invitacion", "MargenObjetivo", "ModuloEmpresa", "MotivoMerma", "NotaCreditoProveedor", "NotaCreditoProveedorLinea", "NotaCreditoProveedorTributo", "OpcionDeEntradaDeCupo", "OpcionDeGrupo", "PagoDeFacturaProveedor", "PermisoRol", "PlanDeCostos", "PortalCartaEmpresa", "Presentacion", "Producto", "ProductoAdmiteGrupo", "ProductoAdmiteOpcion",
-  "PromoCarta", "PromoCartaCupo", "Proveedor", "ProveedorPorProducto", "PuntoDeVentaDeProveedor", "RecetaDeCombinacionIngrediente", "RecetaDeCombinacionVersion", "ReclasificacionRenglon", "Rol", "SeccionCarta", "Unidad", "UsuarioEmpresa", "VersionDeOpcion",
+  "PromoCarta", "PromoCartaCupo", "Parte", "Proveedor", "ProveedorPorProducto", "PuntoDeVentaDeProveedor", "RecetaDeCombinacionIngrediente", "RecetaDeCombinacionVersion", "ReclasificacionRenglon", "Rol", "SeccionCarta", "Unidad", "UsuarioEmpresa", "VersionDeOpcion",
 ] as const;
 
 /** Declarada a mano (no derivada de `GLOBALES`/`CONSOLA`) a propósito: el guard cruza las dos listas y se pone en rojo si no coinciden. */

@@ -43,3 +43,23 @@ export const PAGINAS_PUBLICAS_DECLARADAS: readonly string[] = [
 
 /** Las superficies de Open Graph que la carta emite (otra superficie nueva falla el guardián hasta declararla acá). */
 export const CLAVES_DE_OPEN_GRAPH_DECLARADAS: readonly string[] = ["type", "locale", "siteName", "title", "description", "url", "images"];
+
+/**
+ * La descripción propia que el comercio carga en el tema (`restaurante_descripcion`): se usa solo si tiene al menos una letra o un dígito; vacía o solo adornos cae a la descripción neutra (caso real: «✦» como descripción).
+ * `esperada`: `null` = se usa la neutra de la carta; texto = el que sale.
+ */
+export const DESCRIPCIONES_PROPIAS: readonly { propia: string | null | undefined; esperada: string | null }[] = [
+  { propia: "Cocina de campo desde 1990", esperada: "Cocina de campo desde 1990" },
+  { propia: "  Abierto   todos los días  ", esperada: "Abierto todos los días" },
+  { propia: "Desde 1990 ✦", esperada: "Desde 1990 ✦" },
+  { propia: "24 hs", esperada: "24 hs" },
+  { propia: "✦", esperada: null },
+  { propia: "✦ ✦ ✦", esperada: null },
+  { propia: "———", esperada: null },
+  { propia: "***", esperada: null },
+  { propia: "🍽️", esperada: null },
+  { propia: "   ", esperada: null },
+  { propia: "", esperada: null },
+  { propia: null, esperada: null },
+  { propia: undefined, esperada: null },
+];

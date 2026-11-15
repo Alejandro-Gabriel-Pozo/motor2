@@ -29,7 +29,7 @@ interface CamposDeProducto {
   esConsignacion?: boolean;
   proveedorConsignacionId?: string | null;
   precioConsignacion?: number;
-  observaciones?: string;
+  observaciones?: string | null;
   /** Paso 13 (alícuota de IVA del producto): una de `ALICUOTAS_IVA` o `null` («sin declarar»; CHECK de la base). La de venta solo en un PV, la de compra solo en una MP (lo decide el caso de uso). Ausente = no se escribe. */
   alicuotaIvaVenta?: string | null;
   alicuotaIvaCompra?: string | null;

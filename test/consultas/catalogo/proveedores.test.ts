@@ -17,7 +17,8 @@ import { listarProductosQueLeCompran, obtenerFichaProveedor, obtenerProveedorPor
  * esta lista, GT-3a): lo que dibujan la ficha y el formulario de edición (S-15). `ofreceProductos` y `ofreceServicios` (M1) ya se muestran y se editan desde el 2026-11-04: entran al `select`.
  */
 // M3e (C36) suma `condicionIva` (la condición del proveedor frente al IVA) por el mismo motivo: ninguna pantalla la edita todavía (Etapa C).
-const CLASIFICACION_AUN_FUERA_DE_LA_FICHA = ["condicionIva"];
+// Parte P1 (a) suma `parteId` (la ficha única de la persona o empresa): la ficha y el formulario del proveedor todavía no la leen (la pantalla es la etapa (c)); el día que una pantalla la use se AGREGA al `select` y se saca de esta lista (todo nace cerrado: lo que nadie lee no sale).
+const CLASIFICACION_AUN_FUERA_DE_LA_FICHA = ["condicionIva", "parteId"];
 const DATOS_DE_PROVEEDOR = Object.keys(Prisma.ProveedorScalarFieldEnum)
   .filter((k) => k !== "empresaId" && !CLASIFICACION_AUN_FUERA_DE_LA_FICHA.includes(k))
   .sort();
