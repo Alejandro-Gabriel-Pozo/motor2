@@ -49,7 +49,7 @@ describe("darDeAltaProductoRapido", () => {
 
   it("rechaza el nombre (vacío, caracteres) antes que la unidad de stock, sin crear nada", async () => {
     expect(await darDeAltaProductoRapido("   ", "")).toEqual({ ok: false, mensaje: "El nombre no puede estar vacío." });
-    expect(await darDeAltaProductoRapido("-Harina", "")).toEqual({ ok: false, mensaje: 'El nombre no puede empezar con "-".' });
+    expect(await darDeAltaProductoRapido("-Harina", "")).toEqual({ ok: false, mensaje: "Esta acción no está permitida" });
     expect(await darDeAltaProductoRapido("Harina", "")).toEqual({ ok: false, mensaje: "La unidad de stock es obligatoria." });
     expect(await prismaAdmin.producto.count()).toBe(0);
   });

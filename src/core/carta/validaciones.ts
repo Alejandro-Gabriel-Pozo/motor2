@@ -78,15 +78,6 @@ export function validarTextoLibreCarta(valor: unknown, etiqueta: string, maximo:
   return { ok: true, valor: v };
 }
 
-/** Nombre obligatorio de una sección de carta: mismo charset y largo que el resto de los nombres del catálogo. */
-export function validarNombreSeccionCarta(valor: unknown): Resultado<string> {
-  const v = texto(valor);
-  if (!v) return { ok: false, mensaje: "El nombre de la sección de carta no puede estar vacío." };
-  const invalido = validarTextoCatalogo(v, "El nombre de la sección de carta");
-  if (invalido) return { ok: false, mensaje: invalido };
-  return { ok: true, valor: v };
-}
-
 /** Nombre obligatorio de un ítem agrupado de la carta ("Gaseosa 500 CC"; docs/plan-agrupacion-items-carta-2026-09-24.md, M5). */
 export function validarNombreItemAgrupadoCarta(valor: unknown): Resultado<string> {
   const v = texto(valor);

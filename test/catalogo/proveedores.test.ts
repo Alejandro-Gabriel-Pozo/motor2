@@ -31,7 +31,7 @@ describe("Proveedores", () => {
   it("el alta rechaza un CUIT con el dígito verificador mal y no crea el proveedor", async () => {
     const resultado = await altaProveedor({ nombre: "CUIT inválido", cuit: "20-12345678-9" });
     expect(resultado.ok).toBe(false);
-    expect(resultado.mensaje).toContain("dígito verificador");
+    expect(resultado.mensaje).toBe("El CUIT no es válido. Revisá los números.");
     expect(await prisma.proveedor.count({ where: { nombre: "CUIT inválido" } })).toBe(0);
   });
 

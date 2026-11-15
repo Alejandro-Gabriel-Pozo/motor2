@@ -7,10 +7,10 @@ import { invalido, valido, type ResultadoDeRegla } from "@/core/datos/resultado-
  * guiones mal puestos, ni dígitos de otro alfabeto, ni un salto de línea al final.
  *
  * NO se valida el prefijo (20, 23, 27, 30, 33…): se es permisivo como ARCA y la lista de prefijos vigentes no está verificada (ADR-008 de Pedernal).
- * Esto SACA la lista de prefijos que hoy tiene `cuit.ts` de este mismo directorio. Diferencias con el CUIT de hoy (`normalizarCuit`, que limpia espacios, puntos y
- * guiones sueltos): esta regla no limpia nada, rechaza. Quien la conecte tiene que decidir dónde se recorta lo que escribe una persona.
+ * Esto SACA la lista de prefijos que tenía `cuit.ts` de este mismo directorio. Diferencia con el CUIT de antes (`normalizarCuit`, que limpiaba espacios, puntos y
+ * guiones sueltos): esta regla no limpia nada, rechaza; `validarCuit` solo recorta los extremos.
  *
- * NO está conectada todavía (etapa E1): `cuit.ts` sigue siendo el que usan las pantallas. Puro: sin reloj ni azar.
+ * Desde la conexión de E1, `validarCuit` (`cuit.ts`), el que usan las pantallas, delega en esta regla. Puro: sin reloj ni azar.
  */
 export type ErrorDeCuit = "CUIT_FORMATO_INVALIDO" | "CUIT_DIGITO_VERIFICADOR_INVALIDO";
 

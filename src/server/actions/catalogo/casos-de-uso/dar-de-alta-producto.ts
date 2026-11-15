@@ -103,7 +103,7 @@ export async function darDeAltaProductoCasoDeUso(
           tipo: datos.tipo,
           // La alícuota solo si viene con valor y es la del tipo (ya validado arriba); sin ella el producto nace «sin declarar».
           campos: {
-            ...datosParaGuardar(datos, validado.numeros),
+            ...datosParaGuardar(datos, validado.numeros, validado.nombre),
             ...(datos.tipo === "PV" && datos.alicuotaIvaVenta ? { alicuotaIvaVenta: datos.alicuotaIvaVenta } : {}),
             ...(datos.tipo === "MP" && datos.alicuotaIvaCompra ? { alicuotaIvaCompra: datos.alicuotaIvaCompra } : {}),
           },

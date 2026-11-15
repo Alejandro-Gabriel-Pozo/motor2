@@ -1,6 +1,6 @@
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import type { ComandoCrearCategoriaProducto } from "./categorias-producto.schema";
-import { nombreDeCatalogo } from "./nombre-de-catalogo";
+import { nombreDeFicha } from "@/core/datos/nombre-de-ficha";
 
 /**
  * Guard de la feature «categorías de producto» (convención «guard por feature», 2026-09-25; Hito 4, bloque 4.3, paso H4C-7). Formato del comando, ANTES de tocar la
@@ -16,7 +16,7 @@ import { nombreDeCatalogo } from "./nombre-de-catalogo";
 export const MENSAJE_CATEGORIA_NO_ENCONTRADA = "No se encontró la categoría.";
 
 export function guardComandoCrearCategoriaProducto(entrada: { nombre: unknown }): ResultadoDato<ComandoCrearCategoriaProducto> {
-  const nombre = nombreDeCatalogo(entrada.nombre, "El nombre de la categoría no puede estar vacío.", "El nombre de la categoría");
+  const nombre = nombreDeFicha(entrada.nombre, "ELECCION", "El nombre de la categoría no puede estar vacío.");
   if (!nombre.ok) return rechazar(nombre.codigo, nombre.mensaje);
   return aceptar({ nombre: nombre.valor });
 }

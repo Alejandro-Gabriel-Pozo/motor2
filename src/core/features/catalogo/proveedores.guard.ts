@@ -1,6 +1,6 @@
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { validarContactoDeProveedor } from "./contacto-de-proveedor";
-import { nombreDeCatalogo } from "./nombre-de-catalogo";
+import { nombreDeFicha } from "@/core/datos/nombre-de-ficha";
 import { validarOferta } from "./oferta-de-proveedor";
 import type { ComandoAltaProveedor, EntradaContactoDeProveedor } from "./proveedores.schema";
 
@@ -21,7 +21,7 @@ export const MENSAJE_PROVEEDOR_NO_ENCONTRADO = "No se encontró ese proveedor.";
  * nombre y el CUIT estén libres lo resuelve el caso de uso.
  */
 export function guardComandoAltaProveedor(entrada: { nombre: unknown; ofreceProductos?: unknown; ofreceServicios?: unknown } & EntradaContactoDeProveedor): ResultadoDato<ComandoAltaProveedor> {
-  const nombre = nombreDeCatalogo(entrada.nombre, "El nombre no puede estar vacío.", "El nombre");
+  const nombre = nombreDeFicha(entrada.nombre, "RAZON_SOCIAL", "El nombre no puede estar vacío.");
   if (!nombre.ok) return rechazar(nombre.codigo, nombre.mensaje);
   const valores = validarContactoDeProveedor(entrada);
   if (!valores.ok) return rechazar(valores.codigo, valores.mensaje);

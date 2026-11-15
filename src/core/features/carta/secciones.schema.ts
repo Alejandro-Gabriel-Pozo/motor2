@@ -30,7 +30,7 @@ export interface DatosSeccionCartaGuardada {
  *  - `NOMBRE_REPETIDO`: OTRA sección de la empresa ya tiene ese nombre (sin distinguir mayúsculas); gana sobre `SECCION_NO_ENCONTRADA`;
  *  - `SECCION_NO_ENCONTRADA`: la sección a editar no existe.
  */
-export type ResultadoGuardarSeccionCarta = ResultadoCaso<DatosSeccionCartaGuardada, "NOMBRE_REPETIDO" | "SECCION_NO_ENCONTRADA">;
+export type ResultadoGuardarSeccionCarta = ResultadoCaso<DatosSeccionCartaGuardada, "NOMBRE_REPETIDO" | "SECCION_NO_ENCONTRADA" | "DATO_INVALIDO">;
 
 /** Comando «apagar o prender una sección de carta»: solo un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso). */
 export interface ComandoActualizarActivaSeccionCarta {

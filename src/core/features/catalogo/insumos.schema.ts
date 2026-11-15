@@ -48,7 +48,7 @@ export interface ComandoRenombrarOFusionarInsumo {
  *  - `UNIDAD_MEZCLADA`: la fusión dejaría bajo el mismo insumo productos con distinta unidad de stock (`validarFusionInsumos`);
  *  - `FALTA_CONFIRMAR`: el nombre ya es de otro insumo y no vino la confirmación explícita de la fusión.
  */
-export type ResultadoRenombrarOFusionarInsumo = ResultadoCaso<null, "INSUMO_NO_ENCONTRADO" | "UNIDAD_MEZCLADA" | "FALTA_CONFIRMAR">;
+export type ResultadoRenombrarOFusionarInsumo = ResultadoCaso<null, "INSUMO_NO_ENCONTRADO" | "UNIDAD_MEZCLADA" | "FALTA_CONFIRMAR" | "DATO_INVALIDO">;
 
 /** Comando «crear un grupo, o cambiarle el padre si ya existe uno con ese nombre»: el nombre YA validado por `guardComandoCrearOActualizarGrupo`; el padre tal cual. */
 export interface ComandoCrearOActualizarGrupo {
