@@ -1,4 +1,4 @@
--- Verificación de 20261115100000_nombre_de_cocina (solo lectura). Correr ANTES y DESPUÉS de aplicar, en cada base, y guardar la salida.
+-- Verificación de 20261115170000_nombre_de_cocina (solo lectura). Correr ANTES y DESPUÉS de aplicar, en cada base, y guardar la salida.
 -- ANTES: las dos columnas no existen (resultado vacío). DESPUÉS: las dos existen, son TEXT y aceptan NULL; ningún producto ni línea tiene nombre de cocina (la migración no rellena nada) y los dos CHECK están.
 SELECT table_name::text AS tabla, column_name::text AS columna_nueva, data_type, is_nullable
   FROM information_schema.columns WHERE table_schema = 'public' AND table_name IN ('Producto', 'CuentaItem') AND column_name = 'nombreDeCocina' ORDER BY 1;

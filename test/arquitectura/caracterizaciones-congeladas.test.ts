@@ -495,10 +495,10 @@ const CONGELADAS: Record<string, Congelada> = {
       },
       {
         blob: "60e8ae96ac36510c91f6c8846139cf4c7fcf0b59",
-        // El commit PADRE de este (c17744e) es el último antes de la regeneración; el cambio es la columna nueva del nombre de cocina (migración 20261115100000_nombre_de_cocina, 2026-11-15).
+        // El commit PADRE de este (c17744e) es el último antes de la regeneración; el cambio es la columna nueva del nombre de cocina (migración 20261115170000_nombre_de_cocina, 2026-11-15).
         commit: "c17744e",
         motivo:
-          "Nombre de cocina (ADITIVO; migración 20261115100000_nombre_de_cocina; regenerado con REGENERAR_CARACTERIZACION_DE_VENTA_AMPLIADA=1): las líneas CUENTA_ITEM suman `nombreDeCocina=null` (nadie tiene nombre de cocina en este mundo). Verificado por programa: sin esa columna el contenido es IDÉNTICO al blob anterior.",
+          "Nombre de cocina (ADITIVO; migración 20261115170000_nombre_de_cocina; regenerado con REGENERAR_CARACTERIZACION_DE_VENTA_AMPLIADA=1): las líneas CUENTA_ITEM suman `nombreDeCocina=null` (nadie tiene nombre de cocina en este mundo). Verificado por programa: sin esa columna el contenido es IDÉNTICO al blob anterior.",
       },
     ],
   },
@@ -704,10 +704,10 @@ const CONGELADAS: Record<string, Congelada> = {
       },
       {
         blob: "e8b8144ebe118f09528ef023316dcf8b459a9d17",
-        // El commit PADRE de este (22837e5) es el último antes de la regeneración; el cambio es la columna nueva del nombre de cocina (migración 20261115100000_nombre_de_cocina, 2026-11-15).
+        // El commit PADRE de este (22837e5) es el último antes de la regeneración; el cambio es la columna nueva del nombre de cocina (migración 20261115170000_nombre_de_cocina, 2026-11-15).
         commit: "22837e5",
         motivo:
-          "Nombre de cocina (ADITIVO; migración 20261115100000_nombre_de_cocina): la fila PRODUCTO de la lectura del estado de la receta propia suma `nombreDeCocina: null` (nadie tiene nombre de cocina en este mundo). Una sola línea agregada, a mano sobre el golden anterior: ningún otro campo ni conteo de consultas cambia.",
+          "Nombre de cocina (ADITIVO; migración 20261115170000_nombre_de_cocina): la fila PRODUCTO de la lectura del estado de la receta propia suma `nombreDeCocina: null` (nadie tiene nombre de cocina en este mundo). Una sola línea agregada, a mano sobre el golden anterior: ningún otro campo ni conteo de consultas cambia.",
       },
     ],
   },
@@ -747,10 +747,10 @@ const CONGELADAS: Record<string, Congelada> = {
       },
       {
         blob: "74d74f9295ebe2f5e203b72a21f632a825a25d92",
-        // El commit PADRE de este (c17744e) es el último antes de la regeneración; el cambio es la columna nueva del nombre de cocina (migración 20261115100000_nombre_de_cocina, 2026-11-15).
+        // El commit PADRE de este (c17744e) es el último antes de la regeneración; el cambio es la columna nueva del nombre de cocina (migración 20261115170000_nombre_de_cocina, 2026-11-15).
         commit: "c17744e",
         motivo:
-          "Nombre de cocina (ADITIVO; migración 20261115100000_nombre_de_cocina; regenerado con REGENERAR_HUELLA_DEL_POS=1): las filas PRODUCTO y las líneas ITEM suman `nombreDeCocina=null` (nadie tiene nombre de cocina en este mundo). Verificado por programa: sin esa columna el contenido es IDÉNTICO al blob anterior.",
+          "Nombre de cocina (ADITIVO; migración 20261115170000_nombre_de_cocina; regenerado con REGENERAR_HUELLA_DEL_POS=1): las filas PRODUCTO y las líneas ITEM suman `nombreDeCocina=null` (nadie tiene nombre de cocina en este mundo). Verificado por programa: sin esa columna el contenido es IDÉNTICO al blob anterior.",
       },
     ],
   },
@@ -791,10 +791,10 @@ const CONGELADAS: Record<string, Congelada> = {
       },
       {
         blob: "c092855ee81d6334fe774d4dd97ea68c32155d4e",
-        // El commit PADRE de este (c17744e) es el último antes de la regeneración; el cambio es la columna nueva del nombre de cocina (migración 20261115100000_nombre_de_cocina, 2026-11-15).
+        // El commit PADRE de este (c17744e) es el último antes de la regeneración; el cambio es la columna nueva del nombre de cocina (migración 20261115170000_nombre_de_cocina, 2026-11-15).
         commit: "c17744e",
         motivo:
-          "Nombre de cocina (ADITIVO; migración 20261115100000_nombre_de_cocina; regenerado con REGENERAR_VENTA_CON_OPCIONES=1): las filas PRODUCTO y las líneas ITEM suman `nombreDeCocina=null` (nadie tiene nombre de cocina en este mundo). Verificado por programa: sin esa columna el contenido es IDÉNTICO al blob anterior.",
+          "Nombre de cocina (ADITIVO; migración 20261115170000_nombre_de_cocina; regenerado con REGENERAR_VENTA_CON_OPCIONES=1): las filas PRODUCTO y las líneas ITEM suman `nombreDeCocina=null` (nadie tiene nombre de cocina en este mundo). Verificado por programa: sin esa columna el contenido es IDÉNTICO al blob anterior.",
       },
     ],
   },
@@ -927,10 +927,10 @@ const CONGELADAS: Record<string, Congelada> = {
       },
       {
         blob: "fb9613aab31ed67c69468563cb1fe390bf06aef5",
-        // El commit PADRE de este (c17744e) es el último antes de la regeneración; el cambio es la columna nueva del nombre de cocina (migración 20261115100000_nombre_de_cocina, 2026-11-15).
+        // El commit PADRE de este (c17744e) es el último antes de la regeneración; el cambio es la columna nueva del nombre de cocina (migración 20261115170000_nombre_de_cocina, 2026-11-15).
         commit: "c17744e",
         motivo:
-          "Nombre de cocina (ADITIVO; migración 20261115100000_nombre_de_cocina; regenerado con REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1): las filas PRODUCTO y las líneas ITEM suman `nombreDeCocina=null` (nadie tiene nombre de cocina en este mundo). Verificado por programa: sin esa columna el contenido es IDÉNTICO al blob anterior.",
+          "Nombre de cocina (ADITIVO; migración 20261115170000_nombre_de_cocina; regenerado con REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1): las filas PRODUCTO y las líneas ITEM suman `nombreDeCocina=null` (nadie tiene nombre de cocina en este mundo). Verificado por programa: sin esa columna el contenido es IDÉNTICO al blob anterior.",
       },
     ],
   },

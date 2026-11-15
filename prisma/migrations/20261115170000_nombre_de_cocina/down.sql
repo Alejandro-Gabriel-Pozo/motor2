@@ -1,4 +1,4 @@
--- Reversa de 20261115100000_nombre_de_cocina. NO destructiva: ABORTA, sin tocar nada (`RAISE EXCEPTION`), si algún producto tiene nombre de cocina o alguna línea de cuenta lo tiene congelado: ese dato decide
+-- Reversa de 20261115170000_nombre_de_cocina. NO destructiva: ABORTA, sin tocar nada (`RAISE EXCEPTION`), si algún producto tiene nombre de cocina o alguna línea de cuenta lo tiene congelado: ese dato decide
 -- cómo se reimprimen comandas ya enviadas y no se borra en silencio. Primero decidir qué hacer con ellos (resguardarlos):
 --   SELECT "id", "empresaId", "nombre", "nombreDeCocina" FROM "Producto" WHERE "nombreDeCocina" IS NOT NULL;
 --   SELECT "id", "cuentaId", "nombreDeCocina" FROM "CuentaItem" WHERE "nombreDeCocina" IS NOT NULL;
@@ -17,7 +17,7 @@ BEGIN
     EXECUTE 'SELECT count(*) FROM "CuentaItem" WHERE "nombreDeCocina" IS NOT NULL' INTO n_lineas;
   END IF;
   IF n_productos > 0 OR n_lineas > 0 THEN
-    RAISE EXCEPTION 'No se puede bajar 20261115100000_nombre_de_cocina: hay % producto(s) con nombre de cocina y % línea(s) de cuenta con el nombre de cocina congelado. Resguardalos (y decidí cómo se reimprimen esas comandas) antes de seguir.', n_productos, n_lineas USING ERRCODE = '55000';
+    RAISE EXCEPTION 'No se puede bajar 20261115170000_nombre_de_cocina: hay % producto(s) con nombre de cocina y % línea(s) de cuenta con el nombre de cocina congelado. Resguardalos (y decidí cómo se reimprimen esas comandas) antes de seguir.', n_productos, n_lineas USING ERRCODE = '55000';
   END IF;
 END
 $$;

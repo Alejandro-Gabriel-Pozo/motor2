@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/base-temporal-migrada";
 
 /**
- * Nombre de cocina (2026-11-15) — migración 20261115100000_nombre_de_cocina: `Producto.nombreDeCocina` y `CuentaItem.nombreDeCocina` (TEXT NULL, cada una con un CHECK: NULL, o de 1 a 80 caracteres sin espacios en los
+ * Nombre de cocina (2026-11-15) — migración 20261115170000_nombre_de_cocina: `Producto.nombreDeCocina` y `CuentaItem.nombreDeCocina` (TEXT NULL, cada una con un CHECK: NULL, o de 1 a 80 caracteres sin espacios en los
  * bordes ni saltos de línea; en el producto, además, solo un PV). Sobre una base temporal armada migración por migración, con un producto, una cuenta y una línea CARGADOS ANTES de la migración.
  *
  * Qué fija: (a) lo que ya existía queda con NULL y todo lo demás intacto; (b) los CHECK aceptan NULL y un nombre válido y rechazan vacío, bordes con espacios, saltos de línea, más de 80 y (producto) un tipo que no es PV;
@@ -13,7 +13,7 @@ import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/bas
  *
  * Mutaciones: borrar el `RAISE` del down.sql rompe (e); quitar `char_length` de un CHECK rompe (b); quitar `"tipo" = 'PV'` del CHECK del producto rompe (b).
  */
-const NOMBRE = "20261115100000_nombre_de_cocina";
+const NOMBRE = "20261115170000_nombre_de_cocina";
 const RAIZ = join(__dirname, "../../prisma/migrations", NOMBRE);
 const leer = (archivo: "migration.sql" | "down.sql") => readFileSync(join(RAIZ, archivo), "utf8");
 const E = "emp-nombre-de-cocina";
@@ -57,7 +57,7 @@ afterAll(async () => {
   await base?.eliminar();
 }, 60_000);
 
-describe("Nombre de cocina: en el producto y congelado en la línea (migración 20261115100000)", () => {
+describe("Nombre de cocina: en el producto y congelado en la línea (migración 20261115170000)", () => {
   it("(a) al aplicar, el producto y la línea que ya existían quedan con nombreDeCocina NULL y lo demás sin cambios", async () => {
     const productosAntes = await q(`SELECT * FROM "Producto" ORDER BY "id"`);
     const lineasAntes = await q(`SELECT * FROM "CuentaItem" ORDER BY "id"`);
