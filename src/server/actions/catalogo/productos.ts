@@ -323,7 +323,7 @@ export interface DatosProducto extends Pick<EntradaProducto, "alicuotaIvaVenta" 
 /**
  * Lo que recibe la EDICIÓN (M.2-A4): como `DatosProducto`, pero el precio de venta, el factor de conversión y las dos unidades son opcionales. Ausentes (`undefined`) quedan como estaban —tenga o no la clave
  * `producto_campos_sensibles` quien edita—: el formulario abierto sin la clave no los manda, y la clave puede llegar mientras edita. `null` en la unidad de compra sigue siendo «sin unidad de compra». El alta
- * (`darDeAltaProducto`) los sigue pidiendo. Edición parcial (DEC-0356 de Pedernal): TODOS los campos son opcionales en la edición —el nombre y el tipo también—: ausente (`undefined`) = no se toca; `null` o vacío enviado a propósito = se borra.
+ * (`darDeAltaProducto`) los sigue pidiendo. Edición parcial (decisión 0356 de Pedernal): TODOS los campos son opcionales en la edición —el nombre y el tipo también—: ausente (`undefined`) = no se toca; `null` o vacío enviado a propósito = se borra.
  */
 export type DatosProductoEdicion = Omit<DatosProducto, CampoSensibleDelProducto | CampoAusenteEnLaEdicion> &
   Partial<Pick<DatosProducto, CampoSensibleDelProducto | CampoAusenteEnLaEdicion>> & Pick<EntradaEdicionProducto, "alicuotaVista"> & {

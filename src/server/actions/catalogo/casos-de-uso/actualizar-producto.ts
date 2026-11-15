@@ -117,7 +117,7 @@ async function actualizarProductoEnTransaccion(
     // compra ausente en null, y `validarDatosDeProducto` rechazaría la unidad de stock. Se completan con lo guardado ANTES de lo demás, y la puerta se vuelve a calcular con los datos que de verdad se validan (el
     // guard es la única definición, como en S-52 y S-12). Solo `undefined` es «ausente»: `null` o vacío en la unidad de compra es «sin unidad» a propósito, y un valor presente (aunque vacío) se valida como siempre.
     const pedidos = comando.datos;
-    // Edición parcial (DEC-0356 de Pedernal, ver `completar-edicion-de-producto.ts`): lo ausente (`undefined`) se completa con lo guardado para TODOS los campos del producto, no solo los cuatro sensibles; `null` o vacío enviado a propósito sí borra.
+    // Edición parcial (decisión 0356 de Pedernal, ver `completar-edicion-de-producto.ts`): lo ausente (`undefined`) se completa con lo guardado para TODOS los campos del producto, no solo los cuatro sensibles; `null` o vacío enviado a propósito sí borra.
     const completado = completarEdicionConLoGuardado(pedidos, existente);
     let datos: EntradaProducto = completado.datos;
     let puerta = completado.hayAusentes ? guardComandoDatosDeProducto({ datos, modo: "EDICION" }) : comando.puerta;

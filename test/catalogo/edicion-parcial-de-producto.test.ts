@@ -8,7 +8,7 @@ import { actualizarProducto, type DatosProductoEdicion } from "../../src/server/
 import { TRATAMIENTO_DE_AUSENTE } from "../../src/server/lecturas/catalogo/completar-edicion-de-producto";
 
 /**
- * EDICIÓN PARCIAL del producto (decisión de Pedernal DEC-0356, 13/11/2026; el dueño pidió ser iguales a Pedernal en todo, 2026-11-13), por la Server Action pública y contra Postgres real:
+ * EDICIÓN PARCIAL del producto (decisión 0356 de Pedernal, 13/11/2026; el dueño pidió ser iguales a Pedernal en todo, 2026-11-13), por la Server Action pública y contra Postgres real:
  * un campo AUSENTE (`undefined`) no se toca; `null` o vacío enviado a propósito sí lo borra; un valor lo actualiza.
  *
  * El ORÁCULO está escrito aparte del código, campo por campo (`ORACULO`): qué se manda y qué tiene que quedar. El guardián compara sus claves contra `TRATAMIENTO_DE_AUSENTE` (la declaración del código):
@@ -45,7 +45,7 @@ const ORACULO: Record<string, Fila_Oraculo> = {
 const COLUMNAS = ["nombre", "tipo", "categoriaId", "unidadCompraId", "unidadStockId", "factorConversion", "observaciones", "insumoId", "precioVenta", "pasoVenta", "seProduce", "esConsignacion", "proveedorConsignacionId", "precioConsignacion"] as const;
 const comoNumero = new Set(["factorConversion", "precioVenta", "pasoVenta", "precioConsignacion"]);
 
-describe("edición parcial del producto (DEC-0356 de Pedernal)", () => {
+describe("edición parcial del producto (decisión 0356 de Pedernal)", () => {
   let ids: Ids & { unidadKg: string; categoriaA: string; insumoA: string; proveedorA: string; mp: string; pv: string };
   let n = 0;
 
@@ -162,7 +162,7 @@ describe("edición parcial del producto (DEC-0356 de Pedernal)", () => {
     expect([a.ok, b.ok].filter(Boolean)).toHaveLength(1);
     const rechazada = a.ok ? b : a;
     expect(rechazada.ok).toBe(false);
-    expect(!rechazada.ok && rechazada.mensaje).toContain("mientras lo editabas");
+    expect(!rechazada.ok && rechazada.mensaje).toContain("El precio vigente ahora es");
     expect([1800, 1900]).toContain((await leer(ids.pv)).precioVenta);
   });
 });

@@ -3,7 +3,7 @@ import type { EntradaEdicionProducto, EntradaProducto } from "@/core/features/ca
 import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
 
 /**
- * EDICIÓN PARCIAL de un producto (decisión de Pedernal DEC-0356, 13/11/2026; el dueño pidió ser iguales a Pedernal en todo, 2026-11-13): al editar, un campo AUSENTE (`undefined`) NO se toca y conserva lo guardado;
+ * EDICIÓN PARCIAL de un producto (decisión 0356 de Pedernal, 13/11/2026; el dueño pidió ser iguales a Pedernal en todo, 2026-11-13): al editar, un campo AUSENTE (`undefined`) NO se toca y conserva lo guardado;
  * `null` o vacío enviado a propósito SÍ lo borra. Antes `datosParaGuardar` convertía en null o false la categoría, el insumo, «se produce», la consignación y el proveedor de consignación cuando no venían (y el precio
  * de consignación en 0): una pantalla que olvidaba mandar uno lo borraba en silencio.
  *
