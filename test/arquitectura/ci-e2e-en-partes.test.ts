@@ -90,7 +90,8 @@ function problemasDelWorkflow(workflow: string): string[] {
     if (!necesita.includes(id)) p.push(`el Gate no espera al job ${id} (needs)`);
     if (!new RegExp(`test .*"\\$\\{\\{ needs\\.${id}\\.result \\}\\}" = "success"`).test(gate)) p.push(`el Gate no exige ${id} en success`);
   }
-  if (!/^    if: always\(\)\s*$/m.test(gate)) p.push("el Gate no corre siempre (`if: always()`): un job rojo lo dejaría omitido");
+  // `always() && !(perilla apagada)`: corre siempre salvo en un push a main con la perilla CI_EN_MAIN apagada (lo fija `ci-perilla-en-main.test.ts`).
+  if (!/^    if: \$\{\{ always\(\) && !\(.*vars\.CI_EN_MAIN != 'si'\) \}\}\s*$/m.test(gate)) p.push("el Gate no corre siempre (`if: always()`): un job rojo lo dejaría omitido");
   if (!/^    name: Gate \(requerido\)\s*$/m.test(gate)) p.push("el job gate ya no se llama «Gate (requerido)»: la regla de la rama dejaría de encontrarlo");
   if (/\$\{\{\s*secrets\./.test(workflow)) p.push("el workflow usa secrets.*");
   return p;
