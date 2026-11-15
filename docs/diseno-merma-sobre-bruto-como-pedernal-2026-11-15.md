@@ -31,7 +31,7 @@
 | **M2** | Columna `baseDeCantidad` (`NETA` por defecto) en las tres tablas de versiones | **Aditiva y reversible** (`down.sql`) | Autorización permanente del 2026-11-15 |
 | **M2b** | Ensanchar `mermaPorcentaje` de 2 a 4 decimales (cuatro tablas) | Cambia el tipo de la columna **sin cambiar ningún valor**; reversible solo si ningún valor usa más de 2 decimales | **Autorización EXPRESA** por base, con ensayo (§11, texto Z) |
 | **M3a** | Todo el código **lee** la marca (sin cambiar lo que se escribe) | Ninguna | Se despliega solo |
-| **M3b** | Lo nuevo se carga en bruto; al editar una versión `NETA` se crea la nueva en bruto con vista previa y confirmación | Ninguna | **Confirmación expresa del dueño** (§11, texto X) **y aprobación de los textos nuevos de la vista previa** (Q-M3) |
+| **M3b** | Lo nuevo se carga en bruto; al editar una versión `NETA` se crea la nueva en bruto con vista previa y confirmación | Ninguna | **Confirmación expresa del dueño** (§11, texto X); los textos de la vista previa ya están aprobados (Q-M3) |
 
 **Ninguna versión existente se reescribe.** Lo que cambia son las versiones **nuevas** y, al editar, la nueva versión convertida (con confirmación).
 
@@ -287,7 +287,7 @@ Repetir el clic: una sola versión nueva. Concurrencia: la versión esperada.
 | DT-M12 | **Toda versión nueva es `BRUTA`**; el único camino a una `NETA` nueva es el «a ciegas» de scripts y pruebas (`receta-a-ciegas.ts`, ya acotado por un guardián), con la marca **explícita**, para que las caracterizaciones sigan fijando el comportamiento viejo | I5 y regresión |
 | DT-M13 | La **vista previa la calcula el servidor** con las funciones puras de conversión; la confirmación es un booleano estricto en el comando del caso de uso (molde: `confirmaCantidadDesproporcionada`, `docs/diseno-guardia-de-unidad-receta-2026-11-09.md`), vale para ese pedido y esa versión esperada, y se verifica **dentro** de la transacción | I15; el cliente no decide |
 | DT-M14 | La conversión es una **función pura** `convertirLineaNetaABruta({neto, merma}) → {bruto, merma}` en `Decimal`/enteros, con propiedades (`fast-check`): `bruto` dentro de 0,00005 del exacto; `|neto' − neto| ≤ bruto × 5×10⁻⁷ + 0,00005` con 4 decimales de merma; merma nueva < 100 para toda merma de 0 a 1.000 | I13 e I14 |
-| DT-M15 | Los textos de la vista previa son **nuevos** y se proponen en Q-M3; **no se escriben en el código hasta que el dueño los apruebe** | Regla «lo que el dueño no pidió no entra» |
+| DT-M15 | Los textos de la vista previa son nuevos y **ya están aprobados** (Q-M3, 2026-11-15); no se agrega ningún otro | Regla «lo que el dueño no pidió no entra» |
 
 
 ## 9. Nivel 8, 9 y 10 (acceso, consultas, pruebas, migración y operación)
@@ -381,13 +381,12 @@ SELECT 'combinacion', "empresaId", count(*), count(*) FILTER (WHERE "mermaPorcen
 
 - **Q-M1 — Editar una receta vieja (cargada como neto): CONFIRMADA la dirección (2026-11-15, chat con el orquestador, opciones).** Literal: «Al editarla se convierte a bruto». No era la recomendación de este diseño (que proponía dejarla neta); se adopta la del dueño. La forma está en §6.2: versión nueva, vista previa y confirmación, versión vieja intacta.
 - **Q-M2 — Opciones y combinaciones: CONFIRMADA (2026-11-15).** Literal: «La misma regla que las recetas (Recomendada)».
-- **Q-M3 — ABIERTA. Textos nuevos de la vista previa de la conversión** (cambian lo que ve el cliente; el dueño debe aprobarlos). Se reutilizan los ya aprobados «Bruto», «Merma», «Neto» y «Pendiente de completar». Propuesta:
+- **Q-M3 — Textos nuevos de la vista previa de la conversión: CONFIRMADA (2026-11-15, chat con el orquestador, opciones recomendadas).** Aprobados tal cual:
   - **T-M1** (encabezado): «Esta receta se cargó con el neto. Al guardar pasa a cargarse con el bruto; la anterior queda en el historial.»
   - **T-M2** (columnas): «Antes» y «Después».
   - **T-M3** (botón de confirmar): «Guardar y pasar a bruto».
-  - **T-M4** (fila del costo): «Costo» (reutilizado: ya existe en el reporte de costos de Motor2, `tabla-costos.tsx:11,18`; Pedernal usa «Costo por unidad», `catalogo-produccion.ts:40` y `catalogo-stock.ts:30`, para el costo de otra cosa). Alternativa si el dueño prefiere más precisión: «Costo por unidad vendida» (texto nuevo).
-  - **Opciones para el dueño:** **A (recomendada)** aprobar los cuatro como están; **B** corregirlos uno por uno.
-  - **Si no se responde:** **M3b no se enciende** (no hay textos aprobados para la conversión; nace cerrado). M0, M1, M2, M2b y M3a no dependen de esta respuesta.
+  - **T-M4** (fila del costo): «Costo» (no «Costo por unidad vendida»).
+  - Reutilizados sin cambio: «Bruto», «Merma», «Neto», «Pendiente de completar». Con esto M3b ya no espera textos; sigue esperando la **autorización expresa X** (§11).
 
 ## 11. Qué hay que autorizar expresamente
 
@@ -414,7 +413,7 @@ SELECT 'combinacion', "empresaId", count(*), count(*) FILTER (WHERE "mermaPorcen
 3. **M2 — la marca** (aditiva). Entra en la autorización permanente.
 4. **M2b — merma a 4 decimales.** Autorización Z.
 5. **M3a — leer la marca** en todos los consumidores (sin cambiar lo que se escribe).
-6. **M3b — escribir en bruto y convertir al editar**, con vista previa y confirmación. Autorización X y textos aprobados (Q-M3).
+6. **M3b — escribir en bruto y convertir al editar**, con vista previa y confirmación. Autorización X (textos ya aprobados, Q-M3).
 7. **Etapas posteriores con nombre (NO pedidas):** botón explícito «pasar a bruto» sin tener que editar; sacar la merma de opciones y combinaciones (poda).
 
 **Supuestos declarados (el dueño los corrige):** S1 las versiones vigentes que nadie edita siguen dando lo mismo que hoy; S2 una receta nueva sin versión anterior es bruta; S3 el neto es solo para mostrar y reportar, nunca se guarda como dato propio; S4 no se recalculan costos ni stock ya registrados; S5 se conserva el bruto y se acerca el neto (no al revés); S6 la vista previa no se pide cuando la conversión es exacta.
@@ -443,7 +442,6 @@ SELECT 'combinacion', "empresaId", count(*), count(*) FILTER (WHERE "mermaPorcen
 - **Dinero con números de JavaScript** en `costos.ts` y los sitios de stock: sigue (no se reescribe); las funciones nuevas nacen exactas. Anotado como deuda aparte.
 - **Dos fórmulas coexistiendo** mientras haya versiones `NETA` vigentes sin editar o en el historial: es el costo de no reescribir.
 - **Recetas con merma ≥ 100 ya cargadas** (válidas hoy): siguen válidas como `NETA`; al editarlas se convierten y quedan < 100.
-- **Textos nuevos pendientes (Q-M3):** sin su aprobación M3b no se enciende.
 - **Pruebas que escriben recetas:** pasan a escribir `BRUTA`; las caracterizaciones del comportamiento viejo deben forzar `NETA` por el camino «a ciegas» (DT-M12).
 - **El «sexto archivo» de la fórmula** que mencionó el encargo no se encontró (§1): si existe, M0 lo encuentra con el guardián.
 - **Congelamiento de producción:** nada se aplica ni se despliega desde este documento.
