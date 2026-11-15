@@ -56,7 +56,7 @@ export interface ComandoAnularVenta {
 export type MotivoAnulacionDeVentaRechazada = Extract<ResultadoAnulacionDeVenta, { ok: false }>["motivo"];
 
 /** Solo lo que produce el caso de uso: un `operacionId` que no es un string lo rechaza antes el guard (`guardComandoAnularVenta`). */
-export type CodigoAnularVenta = MotivoAnulacionDeVentaRechazada | "NO_ENCONTRADA" | "ES_ADICIONAL";
+export type CodigoAnularVenta = MotivoAnulacionDeVentaRechazada | "NO_ENCONTRADA" | "ES_ADICIONAL" | "PRODUCTO_OCULTO";
 
 /**
  * `datos` de una anulación exitosa. `operacionesAnuladas` empieza por la venta pedida y sigue con sus hermanas de promo (misma

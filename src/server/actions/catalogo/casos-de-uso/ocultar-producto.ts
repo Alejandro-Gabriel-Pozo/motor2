@@ -1,6 +1,7 @@
 import "server-only";
 import { decidirSobreProducto, marcasDeOcultar, ocultoPor, type MotivoDeRechazo, type Quien } from "@/core/catalogo/ocultar-producto";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { tieneExistenciaDistintaDeCero } from "@/server/lecturas/catalogo/existencia-para-ocultar";
@@ -69,9 +70,9 @@ function codigoDe(motivo: MotivoDeRechazo): CodigoDeOcultar {
  *
  * @contract Deja el producto oculto o visible en el alcance pedido, con su fila de auditoría si cambió: todo o nada.
  * @idempotency Por estado — si la marca ya está en el estado pedido no se escribe ni se audita; el `marcaId` es la clave del alta (un reintento no crea una segunda marca: la base tiene un único por producto y alcance).
- * @transaction `actor.transaccion` (READ COMMITTED): la fila del producto tomada (`FOR UPDATE`), las marcas, la escritura, la existencia y la auditoría, todo junto; el rechazo por existencia la deshace.
+ * @transaction conTransaccionSerializable (SERIALIZABLE) con `tambienChoqueDeUnico`: la fila del producto tomada (`FOR UPDATE`), las marcas, la escritura, la existencia y la auditoría, todo junto; el rechazo por existencia la deshace. SERIALIZABLE (y no READ COMMITTED) porque anular una venta —que DEVUELVE existencia— ya corre serializable: con las dos del mismo lado, ocultar y anular a la vez no pueden dejar «oculto y con existencia» (una aborta y relee). Lo decidió la prueba de concurrencia (test/movimientos/anular-venta-producto-oculto.test.ts).
  * @sideEffects registrarCambioAuditado (`OcultamientoProducto`, `oculto`, con la sucursal o nula si es de la empresa), en la misma transacción. La revalidación de la carta pública la hará la Server Action.
- * @ficha permiso=producto_disponibilidad transaccion=SIMPLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
+ * @ficha permiso=producto_disponibilidad transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function ocultarProductoCasoDeUso(
   actor: Pick<ContextoDeAccion, "transaccion" | "usuarioId" | "sucursalId" | "sucursalNombre" | "ahora">,
@@ -88,7 +89,7 @@ export async function ocultarProductoCasoDeUso(
   if (!permiso.ok) return fracaso(codigoDe(permiso.motivo), permiso.motivo);
 
   try {
-    return await actor.transaccion(async (tx): Promise<ResultadoOcultarProducto> => {
+    return await conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoOcultarProducto> => {
       await tomarFilaDeProducto(tx, comando.productoId);
       const producto = await tx.producto.findUnique({ where: { id: comando.productoId }, select: { id: true, nombre: true } });
       if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", MENSAJE_PRODUCTO_NO_ENCONTRADO);
@@ -128,7 +129,7 @@ export async function ocultarProductoCasoDeUso(
       });
       const despues = actual ? marcas.map((m) => (m.id === actual.id ? { ...m, oculto: comando.oculto } : m)) : [...marcas, { sucursalId: sucursalDeLaMarca, oculto: comando.oculto }];
       return exito(comando.oculto ? "OCULTADO" : "MOSTRADO", { yaEstaba: false, sigueOcultoPor: ocultoPor(despues, actor.sucursalId) === "EMPRESA" ? "EMPRESA" : null });
-    });
+    }, undefined, undefined, true);
   } catch (e) {
     if (!(e instanceof RechazoQueDeshace)) throw e;
     return e.motivo === "TIENE_EXISTENCIA" ? fracaso("TIENE_EXISTENCIA", "TIENE_EXISTENCIA") : fracaso("VERSION_DESACTUALIZADA", "VERSION_DESACTUALIZADA");

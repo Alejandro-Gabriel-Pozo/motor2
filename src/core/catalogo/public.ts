@@ -52,7 +52,7 @@ export type { CabeceraRecetaInput, DatosParaValidarReceta, IngredienteInput, Pas
 export { resolverDisponibilidad, resolverDisponibilidadPorSucursal } from "./disponibilidad-producto";
 export { whereDisponibleEn, whereDisponibleEnAlguna } from "./disponibilidad-producto-consulta";
 export { whereNoOcultoEn, MENSAJE_PRODUCTO_OCULTO } from "./ocultar-producto-consulta";
-export { ocultoPor } from "./ocultar-producto";
+export { ocultoPor, decidirSobreProducto } from "./ocultar-producto";
 export { ALCANCE_CENTRAL, alcanceDeSucursal, incluirRecetaVigente, quedarseConLaVigente, whereConReceta } from "./recetas-vigentes";
 export type { AlcanceDeReceta } from "./recetas-vigentes";
 // Hito 4, paso A5 (O.8a): el armado puro de la comparativa de precios por insumo (lo usa el lector de la comparativa, server/lecturas/catalogo/ofertas-de-proveedor.ts).

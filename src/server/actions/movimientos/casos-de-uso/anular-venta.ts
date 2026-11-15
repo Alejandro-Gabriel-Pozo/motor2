@@ -1,3 +1,5 @@
+import { ocultosQueQuedarianConExistencia } from "@/server/lecturas/catalogo/ocultamiento";
+import { MENSAJE_PRODUCTO_OCULTO } from "@/core/catalogo/public";
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
@@ -92,6 +94,11 @@ export async function anularVentaEnTx(
   // consumió, anular la desharía a ciegas: se rechaza ANTES de escribir nada y se corrige con un ajuste.
   const posteriores = evaluarPosterioresAAnularVenta(await cargarPosterioresDeVentas(tx, { ventas: aAnular, sucursalId: actor.sucursalId }));
   if (!posteriores.ok) return fracaso(posteriores.motivo, posteriores.mensaje);
+
+  // «Ocultar» (diseño 2026-11-15, O-5, R-8): anular DEVUELVE existencia; si algún producto de la venta (o de sus hermanas y adicionales) está oculto en esta sucursal y la devolución lo dejaría con saldo
+  // por encima de cero, se rechaza TODA la anulación antes de escribir (primero se vuelve a mostrar el producto). Una venta que dejó el saldo en negativo se puede anular hasta cero. Corre en esta transacción SERIALIZABLE.
+  const sumanAOcultos = await ocultosQueQuedarianConExistencia(actor.sucursalId, aAnular.flatMap((op) => construirReversionDeVenta(op.lineas)), "anular_venta", tx);
+  if (sumanAOcultos.length > 0) return fracaso("PRODUCTO_OCULTO", MENSAJE_PRODUCTO_OCULTO);
 
   const ahora = actor.ahora;
   let movimientosRevertidos = 0;
