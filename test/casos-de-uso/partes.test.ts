@@ -30,7 +30,7 @@ const datos = (extra: Partial<EntradaDeParte> = {}): DatosDeParte => {
   if (!r.ok) throw new Error(JSON.stringify(r.errores));
   return r.valor;
 };
-const alta = (d: DatosDeParte, clave: string = randomUUID(), empresaId = A) => altaDeParteCasoDeUso(actorDe(empresaId), { claveIdempotencia: clave, datos: d }, azarDelProceso);
+const altaDeParte = (d: DatosDeParte, clave: string = randomUUID(), empresaId = A) => altaDeParteCasoDeUso(actorDe(empresaId), { claveIdempotencia: clave, datos: d }, azarDelProceso);
 const filas = () => prismaAdmin.parte.count();
 const auditoria = () => prismaAdmin.registroAuditoria.findMany({ where: { entidad: "Parte" }, orderBy: { creadoEn: "asc" } });
 
@@ -46,10 +46,10 @@ describe("alta de una ficha", () => {
   it("crea la ficha (ACTIVA, versión 1, con quien la creó) y la repetición con la misma clave y los mismos datos devuelve la misma, sin escribir ni auditar de nuevo", async () => {
     const clave = randomUUID();
     const d = datos({ documento: { tipo: "CUIT", numero: cuit("12345678") } });
-    const primera = await alta(d, clave);
+    const primera = await altaDeParte(d, clave);
     expect(primera).toMatchObject({ ok: true, datos: { yaExistia: false, posiblesDuplicados: [] } });
     if (!primera.ok) return;
-    const repetida = await alta(d, clave);
+    const repetida = await altaDeParte(d, clave);
     expect(repetida).toMatchObject({ ok: true, datos: { yaExistia: true, parteId: primera.datos.parteId } });
     expect(await filas()).toBe(1);
     expect(await auditoria()).toHaveLength(1);
@@ -58,26 +58,26 @@ describe("alta de una ficha", () => {
 
   it("la misma clave con OTROS datos es CLAVE_REUTILIZADA y no cambia nada", async () => {
     const clave = randomUUID();
-    await alta(datos(), clave);
-    expect(await alta(datos({ nombre: "Otra Persona" }), clave)).toMatchObject({ ok: false, codigo: "CLAVE_REUTILIZADA" });
+    await altaDeParte(datos(), clave);
+    expect(await altaDeParte(datos({ nombre: "Otra Persona" }), clave)).toMatchObject({ ok: false, codigo: "CLAVE_REUTILIZADA" });
     expect(await filas()).toBe(1);
   });
 
   it("un documento ya registrado devuelve la ficha dueña (activa: DOCUMENTO_YA_REGISTRADO; inactiva: PARTE_INACTIVA_CON_ESE_DOCUMENTO) y no crea otra; CUIL del mismo número también choca", async () => {
     const numero = cuit("22222222");
-    const primera = await alta(datos({ documento: { tipo: "CUIT", numero } }));
+    const primera = await altaDeParte(datos({ documento: { tipo: "CUIT", numero } }));
     if (!primera.ok) throw new Error("no creó");
-    expect(await alta(datos({ nombre: "Otra", documento: { tipo: "CUIL", numero } }))).toMatchObject({ ok: false, codigo: "DOCUMENTO_YA_REGISTRADO", parteId: primera.datos.parteId });
+    expect(await altaDeParte(datos({ nombre: "Otra", documento: { tipo: "CUIL", numero } }))).toMatchObject({ ok: false, codigo: "DOCUMENTO_YA_REGISTRADO", parteId: primera.datos.parteId });
     await cambiarEstadoDeParteCasoDeUso(actorDe(A), { parteId: primera.datos.parteId, activa: false });
-    expect(await alta(datos({ nombre: "Otra", documento: { tipo: "CUIT", numero } }))).toMatchObject({ ok: false, codigo: "PARTE_INACTIVA_CON_ESE_DOCUMENTO", parteId: primera.datos.parteId });
+    expect(await altaDeParte(datos({ nombre: "Otra", documento: { tipo: "CUIT", numero } }))).toMatchObject({ ok: false, codigo: "PARTE_INACTIVA_CON_ESE_DOCUMENTO", parteId: primera.datos.parteId });
     expect(await filas()).toBe(1);
   });
 
   it("avisa las fichas que podrían ser la misma (mismo nombre sin acentos ni mayúsculas, correo o teléfono) sin bloquear el alta", async () => {
-    const a = await alta(datos({ nombre: "José Núñez", email: "jose@x.com", telefono: "299 400-0000" }));
-    const b = await alta(datos({ nombre: "JOSE NUNEZ" }));
-    const c = await alta(datos({ nombre: "Otro Nombre", email: "jose@x.com" }));
-    const d = await alta(datos({ nombre: "Tercero", telefono: "(299) 4000000" }));
+    const a = await altaDeParte(datos({ nombre: "José Núñez", email: "jose@x.com", telefono: "299 400-0000" }));
+    const b = await altaDeParte(datos({ nombre: "JOSE NUNEZ" }));
+    const c = await altaDeParte(datos({ nombre: "Otro Nombre", email: "jose@x.com" }));
+    const d = await altaDeParte(datos({ nombre: "Tercero", telefono: "(299) 4000000" }));
     if (!a.ok || !b.ok || !c.ok || !d.ok) throw new Error("no crearon");
     expect([b.datos.posiblesDuplicados, c.datos.posiblesDuplicados, d.datos.posiblesDuplicados]).toEqual([[a.datos.parteId], [a.datos.parteId], [a.datos.parteId]]);
     expect(await filas()).toBe(4);
@@ -85,7 +85,7 @@ describe("alta de una ficha", () => {
 
   it("ocho altas a la vez del mismo documento dejan UNA ficha: una gana y las demás reciben DOCUMENTO_YA_REGISTRADO con la ganadora (nunca un error crudo)", async () => {
     const numero = cuit("33333333");
-    const r = await Promise.allSettled(Array.from({ length: 8 }, () => alta(datos({ documento: { tipo: "CUIT", numero } }))));
+    const r = await Promise.allSettled(Array.from({ length: 8 }, () => altaDeParte(datos({ documento: { tipo: "CUIT", numero } }))));
     expect(r.every((x) => x.status === "fulfilled")).toBe(true);
     const ok = r.filter((x) => x.status === "fulfilled" && x.value.ok);
     const choques = r.filter((x) => x.status === "fulfilled" && !x.value.ok);
@@ -98,7 +98,7 @@ describe("alta de una ficha", () => {
   it("seis reintentos a la vez con la misma clave dejan UNA ficha y una sola auditoría; todos devuelven la misma ficha", async () => {
     const clave = randomUUID();
     const d = datos({ nombre: "Clic Doble" });
-    const r = await Promise.allSettled(Array.from({ length: 6 }, () => alta(d, clave)));
+    const r = await Promise.allSettled(Array.from({ length: 6 }, () => altaDeParte(d, clave)));
     const exitos = r.flatMap((x) => (x.status === "fulfilled" && x.value.ok ? [x.value.datos.parteId] : []));
     expect(r.every((x) => x.status === "fulfilled" && x.value.ok)).toBe(true);
     expect(new Set(exitos).size).toBe(1);
@@ -107,7 +107,7 @@ describe("alta de una ficha", () => {
   });
 
   it("la auditoría dice QUÉ pasó y QUIÉN, nunca los datos personales", async () => {
-    await alta(datos({ nombre: "Persona Secreta", email: "secreto@x.com", telefono: "299 1112233", documento: { tipo: "CUIT", numero: cuit("44444444") }, nota: "nota privada" }));
+    await altaDeParte(datos({ nombre: "Persona Secreta", email: "secreto@x.com", telefono: "299 1112233", documento: { tipo: "CUIT", numero: cuit("44444444") }, nota: "nota privada" }));
     const filasDeAuditoria = await auditoria();
     expect(filasDeAuditoria).toHaveLength(1);
     expect(filasDeAuditoria[0]).toMatchObject({ entidad: "Parte", campo: "alta", actorId: usuarioId, valorAnterior: null, valorNuevo: "creada" });
@@ -116,8 +116,8 @@ describe("alta de una ficha", () => {
 
   it("aislamiento: el mismo documento en otra empresa es otra ficha; cada empresa ve solo las suyas", async () => {
     const numero = cuit("55555555");
-    expect(await alta(datos({ documento: { tipo: "CUIT", numero } }))).toMatchObject({ ok: true });
-    expect(await alta(datos({ documento: { tipo: "CUIT", numero } }), randomUUID(), EMPRESA_TESTIGO_ID)).toMatchObject({ ok: true });
+    expect(await altaDeParte(datos({ documento: { tipo: "CUIT", numero } }))).toMatchObject({ ok: true });
+    expect(await altaDeParte(datos({ documento: { tipo: "CUIT", numero } }), randomUUID(), EMPRESA_TESTIGO_ID)).toMatchObject({ ok: true });
     expect(await filas()).toBe(2);
     expect(await buscarPartes({ empresaId: A, texto: "" }, actorDe(A).db)).toHaveLength(1);
   });
@@ -125,7 +125,7 @@ describe("alta de una ficha", () => {
 
 describe("edición de una ficha", () => {
   const crear = async (extra: Partial<EntradaDeParte> = {}) => {
-    const r = await alta(datos(extra));
+    const r = await altaDeParte(datos(extra));
     if (!r.ok) throw new Error("no creó");
     return r.datos.parteId;
   };
@@ -174,7 +174,7 @@ describe("edición de una ficha", () => {
 
 describe("desactivar y reactivar", () => {
   it("desactiva, repite sin cambio, reactiva; audita solo los cambios reales; una ficha ajena es PARTE_NO_ENCONTRADA", async () => {
-    const creada = await alta(datos());
+    const creada = await altaDeParte(datos());
     if (!creada.ok) throw new Error("no creó");
     const id = creada.datos.parteId;
     expect(await cambiarEstadoDeParteCasoDeUso(actorDe(A), { parteId: id, activa: false })).toMatchObject({ ok: true, datos: { activa: false, yaEstaba: false } });
@@ -185,7 +185,7 @@ describe("desactivar y reactivar", () => {
   });
 
   it("cinco desactivaciones a la vez: una sola escribe y una sola auditoría", async () => {
-    const creada = await alta(datos());
+    const creada = await altaDeParte(datos());
     if (!creada.ok) throw new Error("no creó");
     const r = await Promise.all(Array.from({ length: 5 }, () => cambiarEstadoDeParteCasoDeUso(actorDe(A), { parteId: creada.datos.parteId, activa: false })));
     expect(r.every((x) => x.ok)).toBe(true);
@@ -197,9 +197,9 @@ describe("desactivar y reactivar", () => {
 describe("búsqueda", () => {
   it("por nombre (sin acentos ni mayúsculas), por documento y por documento con formato; las inactivas solo si se piden; solo nombre, documento y estado; orden: documento idéntico, empieza con, contiene", async () => {
     const numero = cuit("77777777");
-    await alta(datos({ nombre: "Panadería Sur", documento: { tipo: "CUIT", numero } }));
-    await alta(datos({ nombre: "La Panadería del Norte", email: "dato@personal.com" }));
-    const inactiva = await alta(datos({ nombre: "Panadería Vieja" }));
+    await altaDeParte(datos({ nombre: "Panadería Sur", documento: { tipo: "CUIT", numero } }));
+    await altaDeParte(datos({ nombre: "La Panadería del Norte", email: "dato@personal.com" }));
+    const inactiva = await altaDeParte(datos({ nombre: "Panadería Vieja" }));
     if (!inactiva.ok) throw new Error("no creó");
     await cambiarEstadoDeParteCasoDeUso(actorDe(A), { parteId: inactiva.datos.parteId, activa: false });
     const db = actorDe(A).db;

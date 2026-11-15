@@ -253,7 +253,7 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
   // Ola «precio y carta», Fase 2, B2: el pago a un consignante exige que el proveedor lo sea de algún producto. El mundo ya le registra un pago (`pagoConsignante`, abajo), así que lo es de uno.
   await producto("consignado", "MP", { esConsignacion: true, proveedorConsignacionId: proveedor.id, precioConsignacion: 10 });
   const presentacion = await db.presentacion.create({ data: { id: id("presentacion"), empresaId, productoId: mp.id, unidadCompraId: g.id, factorConversion: 1000 } });
-  const parte = await db.parte.create({ data: { id: randomUUID(), empresaId, idempotenciaAlta: randomUUID(), payloadHash: "h", naturaleza: "HUMANA", nombre: "Parte de prueba" } });
+  const parte = await db.parte.create({ data: { id: randomUUID(), empresaId, idempotenciaAlta: randomUUID(), payloadHash: "h", naturaleza: "HUMANA", nombre: `Parte ${marca}` } });
   const cliente = await db.cliente.create({ data: { id: id("cliente"), empresaId, nombre: `Cliente ${marca}`, descuentoPorcentaje: 10 } });
   const rol = await db.rol.create({ data: { id: id("rol"), empresaId, nombre: `Rol ${marca}`, clave: null } });
   const motivo = await db.motivoMerma.create({ data: { id: id("motivo"), empresaId, nombre: `Motivo ${marca}` } });

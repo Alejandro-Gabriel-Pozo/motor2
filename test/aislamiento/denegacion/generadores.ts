@@ -180,6 +180,8 @@ const completos: Record<string, Valor> = {
   "accion|actions/partes/partes.ts|editarParte": (k, c) => intento(c, ["parteId"], [{ parteId: k.parteId, versionEsperada: 1, datos: { naturaleza: "HUMANA", nombre: "Persona editada" } }]),
   "accion|actions/partes/partes.ts|cambiarEstadoDeParte": (k, c) => intento(c, ["parteId"], [k.parteId, false]),
   "accion|actions/partes/partes.ts|buscarFichasDeParte": () => ["Parte", false],
+  // La consulta de búsqueda recibe la empresa explícita: en el escenario ajeno es la OTRA empresa (la RLS no deja ver nada).
+  "consulta|consultas/partes/buscar-partes.ts|buscarPartes": (k, c) => [{ empresaId: k.empresaId, texto: "Parte" }, c.db],
   "accion|actions/catalogo/unidades.ts|crearUnidad": () => [{ nombre: "Unidad nueva", magnitud: "PESO" }],
   "accion|actions/catalogo/recetas.ts|agregarIngredienteAReceta": (k, c) =>
     conVariantes(intento(c, ["productoPvId"], [k.productoPvId, ingrediente(k, c.propio.productoMp3Id), 1]), intento(c, ["productoMp3Id", "unidadId"], [c.propio.productoPvId, ingrediente(k, k.productoMp3Id), 1])),
