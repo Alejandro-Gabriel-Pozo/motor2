@@ -133,6 +133,9 @@ export const MATRIZ_ESPERADA: Readonly<Record<AccionClave, FilaEsperada>> = {
   insumo_alta: { modulo: "catalogo_basico", contexto: "empresa", nivelMinimo: "operario", roles: ["admin", "operador"] },
   categoria_alta: { modulo: "catalogo_basico", contexto: "empresa", nivelMinimo: "operario", roles: ["admin", "operador"] },
   proveedor_alta: { modulo: "proveedores_basico", contexto: "empresa", nivelMinimo: "operario", roles: ["admin", "operador"] },
+  partes_ver: { modulo: "proveedores_basico", contexto: "empresa", nivelMinimo: "operario", roles: ["admin"] }, // Parte P1, D10 (2026-11-12): piso como Pedernal (el operario puede buscar, dar de alta y editar fichas); semilla solo `admin` (todo nace cerrado).
+  partes_editar: { modulo: "proveedores_basico", contexto: "empresa", nivelMinimo: "operario", roles: ["admin"] },
+  partes_desactivar: { modulo: "proveedores_basico", contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] }, // solo el administrador o el gerente desactiva.
   producto_disponibilidad: { modulo: "catalogo_basico", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin", "operador"] },
   pos_alta_mesa: { modulo: "salon", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin"] },
   pos_abrir_cuenta: { modulo: "salon", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin"] },

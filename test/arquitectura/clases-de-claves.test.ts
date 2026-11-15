@@ -62,6 +62,9 @@ const GOBIERNO: Readonly<Record<(typeof G)[number], NivelDeAccion>> = {
 };
 
 const O = [
+  // Parte P1 (b): ver, buscar, dar de alta y editar fichas (piso operario como Pedernal, D10 2026-11-12; semilla solo `admin`: todo nace cerrado, el gerente las delega).
+  "partes_ver",
+  "partes_editar",
   "reporte_vencimientos",
   "reporte_salud",
   "reporte_historial",
@@ -128,6 +131,8 @@ const L = [
 ] as const satisfies readonly AccionClave[];
 
 const A = [
+  // Parte P1 (b): desactivar y reactivar fichas (piso administrador, semilla admin: D10, 2026-11-12).
+  "partes_desactivar",
   "guardar_receta",
   "grupos_familia",
   "secciones",
@@ -217,7 +222,8 @@ describe("GT-26 — las clases de claves (G gobierno, O operativas sensibles, L 
     // A 61 → 60: se retira `notificar_alertas` (decisión del dueño, limpieza paquete A paso 3).
     // O 22 → 21 y L 33 → 34: `opcion_apagar_en_sucursal` pasa de O a L (su semilla suma `operador` en las empresas nuevas).
     // O 21 → 22: Pagos X0 suma `declarar_pago_compra`.
-    expect([G.length, O.length, L.length, A.length]).toEqual([14, 22, 34, 60]);
+    // O 22 → 24 y A 60 → 61: Parte P1 suma `partes_ver` y `partes_editar` (O: piso operario, semilla solo admin) y `partes_desactivar` (A).
+    expect([G.length, O.length, L.length, A.length]).toEqual([14, 24, 34, 61]);
   });
 
   it("toda clave del catálogo declara su clase, y toda clase declarada existe en el catálogo (las dos direcciones)", () => {
