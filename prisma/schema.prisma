@@ -42,6 +42,7 @@ model User {
   versionesDeOpcionCreadas   VersionDeOpcion[]
   opcionesApagadasEnSucursal OpcionApagadaEnSucursal[]
   entradasDelDiaActualizadas EntradaDelDiaDeCupo[]
+  ocultamientosActualizados  OcultamientoProducto[]
   recetasDeCombinacionCreadas RecetaDeCombinacionVersion[]
   ventas                     Venta[]
   facturasProvCreadas        FacturaProveedor[]   @relation("FacturaProveedorCreadaPor")
@@ -147,6 +148,7 @@ model Sucursal {
   seccionesHabituales      SeccionHabitualProducto[]
   frecuenciasConteo        FrecuenciaConteoProducto[]
   disponibilidadesProducto DisponibilidadProducto[]
+  ocultamientosProducto    OcultamientoProducto[]
   traspasosComoOrigen      TraspasoSucursal[]            @relation("TraspasoOrigen")
   traspasosComoDestino     TraspasoSucursal[]            @relation("TraspasoDestino")
   pagosConsignante         PagoConsignante[]
@@ -434,6 +436,7 @@ model Producto {
   seccionesHabituales       SeccionHabitualProducto[]
   frecuenciasConteo         FrecuenciaConteoProducto[]
   disponibilidades          DisponibilidadProducto[]
+  ocultamientos             OcultamientoProducto[]
   traspasos                 TraspasoSucursal[]
   contenidosCarta           ContenidoCartaProducto[]
   descuentosCarta           DescuentoProductoSucursal[]
@@ -504,6 +507,33 @@ model DisponibilidadProducto {
 
   @@unique([sucursalId, productoId])
   @@unique([empresaId, id])
+}
+
+/// «Ocultar» un producto, como Pedernal (docs/diseno-ocultar-como-pedernal-2026-11-15.md, nivel 6; etapa E3): una fila por (producto, alcance). `sucursalId` NULL = toda la empresa; con valor, solo esa sucursal
+/// (alcance `PROPIA_O_EMPRESA`, como `RecetaVersion`; sus políticas de alcance van en la migración siguiente). ADR-009, familia `optout`: SIN FILA = VISIBLE (lo contrario de `DisponibilidadProducto`).
+/// INDEPENDIENTE de `DisponibilidadProducto` («Desactivar»): ninguna toca a la otra. Nunca se borra (la app no tiene DELETE): «volver a mostrar» pone `oculto = false` y la historia completa es la auditoría.
+/// `id` lo manda la aplicación (no tiene default: es la idempotencia del alta). `version` arranca en 1 y la sube la acción en cada cambio de estado (control de versión: `UPDATE … WHERE version = ?`).
+/// Los dos índices únicos PARCIALES (una marca de empresa por producto; una por sucursal) los declara la migración a mano: Prisma no los expresa.
+/// Todavía NO la lee ni la escribe ningún código: se conecta por etapas (caso de uso, ventas, stock, pantalla).
+model OcultamientoProducto {
+  id               String    @id
+  empresaId        String    @default(dbgenerated("app_empresa_actual()"))
+  empresa          Empresa   @relation(fields: [empresaId], references: [id])
+  productoId       String
+  producto         Producto  @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  /// NULL = toda la empresa.
+  sucursalId       String?
+  sucursal         Sucursal? @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  oculto           Boolean
+  actualizadoPorId String
+  actualizadoPor   User      @relation(fields: [actualizadoPorId], references: [id], onDelete: Restrict)
+  /// Cuándo cambió el estado por última vez (reloj inyectado de la acción; sin default a propósito).
+  actualizadoEn    DateTime
+  version          Int       @default(1)
+  creadoEn         DateTime  @default(now())
+
+  @@unique([empresaId, id])
+  @@index([productoId])
 }
 
 /// Nombre interno histórico "Familia" (Catalogo.js:180-197) — de cara al
@@ -2518,6 +2548,7 @@ model Empresa {
   registroAuditoriaRel           RegistroAuditoria[]
   productoRel                    Producto[]
   disponibilidadProductoRel      DisponibilidadProducto[]
+  ocultamientoProductoRel        OcultamientoProducto[]
   insumoRel                      Insumo[]
   grupoRel                       Grupo[]
   categoriaProductoRel           CategoriaProducto[]
