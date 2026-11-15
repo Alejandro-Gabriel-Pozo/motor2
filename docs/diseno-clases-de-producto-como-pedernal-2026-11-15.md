@@ -9,7 +9,7 @@ Estado: **diseño en papel.** Sin código, sin migración escrita, sin tocar nin
 1. **Qué es una clase:** lo que el producto ES para el negocio, elegido al crearlo entre cinco valores cerrados: **Materia prima, Insumo, Reventa, Elaborado, Producto vendible**. De la clase depende qué datos lleva y qué puede hacer. La clase **no cambia** después de crear el producto.
 2. **Qué tiene Motor2 hoy:** dos tipos (`MP`/`PV`) más la marca «se produce» (`seProduce`). Con eso se **derivan tres** de las cinco clases (Materia prima, Elaborado, Vendible). **Insumo y Reventa no existen como dato**, y no se pueden deducir con seguridad de lo cargado.
 3. **Lo más barato que alcanza para empezar:** (E0) la lista ya dice las tres clases derivadas; (E1) **una columna nueva y opcional** con la clase, rellenada **solo con lo seguro** (respuesta 1 del dueño); (E2) el alta y la ficha eligen la clase y muestran su descripción corta; (E3) Insumo con sus reglas; (E4) Reventa. Cada etapa se puede usar sin la siguiente.
-4. **Tres preguntas de negocio** (§11): dos **CONFIRMADAS** por el dueño el 2026-11-15 (relleno solo con lo seguro; «se produce» ya no se prende ni se apaga en una materia prima) y una **abierta**: el dueño preguntó «Como lo hace pedernal?» sobre los pares «compra + venta» actuales de lo que se revende. La respuesta con evidencia está en §11.2.
+4. **Preguntas de negocio** (§11): dos **CONFIRMADAS** el 2026-11-15 (relleno solo con lo seguro; «se produce» ya no se prende ni se apaga en una materia prima), una **CONFIRMADA en dirección** (los pares «compra + venta» actuales se **unen par por par**, §11.2; el diseño de la unión guiada está en §11.3) y una **abierta** nueva (con qué costo arranca la Reventa unida, §11.4).
 5. **Un hallazgo que conviene saber antes de leer:** en Motor2 la palabra «Insumo» ya significa **otra cosa** (el nodo de familia de Maestros → Insumos, el modelo `Insumo`). En Pedernal «Insumo» es una **clase** (packaging, limpieza). No se renombra nada sin pedido (§4.4, D-T1).
 
 ## 1. Nivel 1 — Propósito y alcance
@@ -299,13 +299,13 @@ Fuente de cada celda: 5.1, 5.2 y Pedernal `0025`/`0032`. **Celdas NO VERIFICADAS
 | E1 | `CHECK` directo contra la base (cada valor permitido y uno no permitido); disparador (cambiar la clase por `UPDATE` directo falla); relleno: tabla de reglas 6.4 fila por fila, **idempotencia** (correr dos veces = lo mismo) y **concurrencia** (dos corridas simultáneas); `down.sql` revierte y deja la base como estaba. |
 | E2 | Alta con cada clase (qué campos se aceptan y rechazan: `CAMPO_NO_ADMITIDO_POR_LA_CLASE`); **alta repetida** (idempotencia) y **dos altas simultáneas** (concurrencia); aislamiento entre empresas (otra empresa ve «no encontrado»). |
 | E3 | Insumo no entra en receta nueva (versiones viejas intactas); sí lo consume una opción; fuera del food cost; **equivalencia** con la convención «No comestibles». |
-| E4 | Reventa: se compra y se vende; conviven con los pares MP+PV actuales; ningún reporte cambia de resultado. |
+| E4 | Reventa: se compra y se vende; los pares MP+PV actuales siguen como están hasta que E6 los una; ningún reporte cambia de resultado. |
 
 ### 10.3 Operación
 
 Orden: (1) escribir la migración E1 con `down.sql`, llevarla a `main` (autorizado, aditivo); (2) **ensayo del relleno en una copia descartable** con informe; (3) **aplicar en bases reales solo con autorización expresa** (sigue congelado). Ninguna base se toca para este diseño.
 
-## 11. Preguntas de NEGOCIO (respuestas del dueño del 2026-11-15 y una pregunta suya abierta)
+## 11. Preguntas de NEGOCIO (respuestas del dueño del 2026-11-15 y una pregunta nueva abierta)
 
 ### 11.1 Respondidas (CONFIRMADAS)
 
@@ -314,7 +314,9 @@ Orden: (1) escribir la migración E1 con `down.sql`, llevarla a `main` (autoriza
 | 1 | `relleno-clases-existentes` | «Solo lo seguro; Insumo y Reventa para altas nuevas (Recomendada)» — 2026-11-15, chat dueño ↔ orquestador (opción C) | **CONFIRMADA** | Se rellena Materia prima, Elaborado y Vendible; **Insumo y Reventa solo en altas nuevas**; el packaging existente queda como Materia prima. Sin columna «por confirmar» ni excepción a «la clase no cambia» (6.5). |
 | 3 | `se-produce-en-materia-prima` | «No, como Pedernal (Recomendada)» — 2026-11-15, chat dueño ↔ orquestador (opción A) | **CONFIRMADA** | «Se produce» **no se prende ni se apaga** en una materia prima ya cargada; para producir se crea el Elaborado y se desactiva la materia prima. Puede obligar a corregir casos existentes: consulta de solo lectura y qué se hace con cada grupo en **§6.6**. |
 
-### 11.2 Pregunta 2 — `pares-compra-venta-existentes`: **pregunta del dueño: «Como lo hace pedernal?»** (2026-11-15, chat dueño ↔ orquestador). **ABIERTA: no se eligió por el dueño.**
+### 11.2 Pregunta 2 — `pares-compra-venta-existentes`: el dueño preguntó «Como lo hace pedernal?» y, con la explicación, respondió **«Unirlos par por par»** — **CONFIRMADA (dirección)**
+
+**Respuesta del dueño (2026-11-15, chat dueño ↔ orquestador, relatada por el orquestador, literal):** «Unirlos par por par». **No era la recomendación de este documento (A, que convivan).** La explicación de cómo lo hace Pedernal sigue siendo evidencia; el diseño de la unión está en §11.3.
 
 **La respuesta, con evidencia (código de Pedernal `main` leído el 2026-11-15; lo que no leí está marcado NO VERIFICADO):**
 
@@ -338,7 +340,142 @@ Orden: (1) escribir la migración E1 con `down.sql`, llevarla a `main` (autoriza
 | **Ventas ya registradas** | Intactas. | Intactas: quedan apuntando al Vendible desactivado (la historia no se reescribe). Los reportes por producto muestran dos filas (viejo y nuevo). | Ídem. |
 | **Riesgo / reversibilidad** | Ninguno. Convive la forma vieja y la nueva (se ven dos formas de cargar lo mismo). | Medio: es trabajo manual y cada par se puede revisar; se revierte reactivando el viejo mientras no haya movimientos nuevos. | **Alto: destructivo para los reportes y fuera de la autorización permanente** (no es aditivo ni reversible). |
 
-**Recomendación: A.** Es lo más barato, no toca datos y deja la unión (B) para después, **si el dueño la quiere**, sin ninguna herramienta nueva: coincide con la regla de Pedernal (la clase no cambia; se crea el correcto y se desactiva el otro). **Qué pasa si no se responde:** rige **A**. **Opción C: no se recomienda.**
+**Nota sobre la tabla:** la columna **B** de arriba era un esbozo manual; **§11.3 la reemplaza** (la unión es guiada, con registro y reversible). Las columnas A y C quedan como evidencia de lo que **no** se eligió. **Estado: CONFIRMADA la dirección «par por par»; NO cubierta por la autorización permanente** (ver 11.3.1).
+
+
+### 11.3 Unión guiada de pares «materia prima + producto de venta» (etapa E6) — DISEÑO PROPUESTO
+
+#### 11.3.1 Condición de la etapa
+
+> **Requiere autorización expresa por base, backup y ensayo. NO cubierto por la autorización permanente del 2026-11-15** (que alcanza solo a migraciones aditivas y reversibles de etapas ratificadas). Es lo que pidió el orquestador, relatando al dueño, el 2026-11-15; se aplica **también a la migración de la tabla de vínculo** (11.3.6), aunque sea aditiva: la etapa entera queda congelada hasta que el dueño la autorice, base por base.
+
+Dato del dueño (solo lectura, copia del 12/11, relatado por el orquestador): **0 recetas, 0 ingredientes, 0 productos con «se produce» y 0 insumos**: no hay pares en esa copia. Eso **no vale para otra base**: el recuento se repite en cada una con la consulta de 11.3.9.
+
+#### 11.3.2 Qué es un «par» (alcance cerrado, lista de permitidos)
+
+Un par es una **materia prima** (`tipo = MP`, `seProduce = false`, sin consignación) y **un producto de venta** (`tipo = PV`, `seProduce = false`, no es respaldo de un adicional) cuya **receta vigente** tiene **un solo ingrediente: esa materia prima**. Todo lo demás **no entra** en la unión y sale en el informe como «fuera de alcance» (PV con más de un ingrediente, con consignación, con «se produce»): decide el dueño aparte. *(Que la receta sea exactamente 1:1 —cantidad 1, merma 0— se muestra en el informe; si no lo es, el par se marca «a revisar» y no se une sin una confirmación que lo diga.)*
+
+#### 11.3.3 Forma más barata: **script de operación con ensayo**, no pantalla (PROPUESTA)
+
+- **Por qué:** el dueño informó 0 pares en la copia; una pantalla de gestión para un número chico (o cero) no se justifica («primero la opción más barata»). La pantalla queda como etapa posterior **solo si** aparecen muchos pares en alguna base.
+- **Cómo:** un script (en `scripts/`, con el formato de los de operación que ya existen; **NO VERIFICADO** cuál se reutiliza) con **dos modos**: `ensayo` (no escribe nada: genera el informe por par) y `aplicar` (necesita el archivo de **confirmaciones** de las personas y escribe).
+- **Cada par lo confirma una persona con permiso:** el archivo de confirmaciones lleva, por par, el **id de la persona** que confirma; el script **valida en el servidor** (no confía en el archivo) que esa persona pertenezca a la empresa y tenga los permisos que la unión usa (como mínimo `proceso_ajuste` —`src/core/permisos/acciones.ts:121`, nivel administrador— y alta/edición de producto; **NO VERIFICADO** el nombre exacto de este último). Sin permiso: el par se rechaza y los demás siguen. Esa persona queda en la auditoría (quién).
+
+#### 11.3.4 Qué propone por par y qué muestra antes de confirmar
+
+| Dato de la Reventa nueva | De dónde sale (PROPUESTA) | Si falta |
+|---|---|---|
+| **Nombre** | el del producto de venta (lo que ve el cliente) | Siempre existe |
+| **Unidad de stock** | la de la materia prima (la que ya lleva el stock) | Siempre existe |
+| **Precio de venta** (y modo `DIRECTO`) | el del producto de venta | «Sin precio»: pendiente de completar, no se inventa |
+| **Alícuota de IVA** | la de venta del producto de venta (`alicuotaIvaVenta`) | «Sin declarar»: pendiente (la Reventa **no se vende** sin alícuota: I10) |
+| **Sección de la carta** y **disponibilidad por sucursal** | las del producto de venta | Se muestran las diferencias entre sucursales |
+| **Proveedor y precio de compra** | los vínculos proveedor-producto de la materia prima | Sin proveedor: pendiente |
+| **Costo** | ver **11.4** (pregunta abierta) | — |
+| **Código** | uno nuevo; **no se reutiliza** el de los viejos | — |
+
+**Informe por par, antes de confirmar (sin importes en el repositorio):** nombre del par; unidad y factor de conversión; **stock por sección y sucursal** (con signo y lote de vencimiento si lo hay); **costo vigente** de la materia prima; precio de venta; proveedor; **cuántas recetas de otros platos usan la materia prima** y cuáles (incluye las recetas propias de sucursal y los **sustitutos** que la nombran); **ventas históricas** del producto de venta (cantidad, primer y último día); **cuentas abiertas** con el producto de venta; **traspasos pendientes** de la materia prima; **huella** del estado (versiones de las recetas y saldos) para detectar cambios entre la propuesta y la confirmación.
+
+#### 11.3.5 Qué hace al confirmar (una sola transacción por par: todo o nada)
+
+1. **Bloquea** las dos filas viejas y verifica la **huella**: si el stock, una receta o el producto cambió desde la propuesta, **rechaza** y hay que volver a proponer.
+2. **Rechaza** si hay cuentas abiertas con el producto de venta, traspasos pendientes de la materia prima, o el par ya está unido (idempotencia).
+3. **Crea** la Reventa nueva (clase `REVENTA`, datos de 11.3.4). **Requiere E4** (Reventa creable y vendible).
+4. **Mueve el stock con movimientos registrados:** por cada sección con saldo, una **salida** de ajuste de la materia prima y una **entrada** de ajuste de la Reventa, **en la misma operación**, con el lote de vencimiento y un detalle que dice «unión del par». **Nunca se borra ni se edita un movimiento.** (Motor2 **no tiene** hoy un «mover stock entre productos»: `RECLASIFICACION` es entre secciones, `transiciones.ts:94`; `AJUSTE` lleva el signo puesto y exige el permiso `proceso_ajuste`, `transiciones.ts:75,162`.)
+5. **Reapunta las recetas de otros platos** a la Reventa: **una versión nueva** de cada receta afectada (las versiones de receta no se editan; `RecetaIngrediente.insumoProductoId`, `schema.prisma:859`), incluidas las recetas propias de sucursal y los sustitutos. Las versiones viejas **quedan** en el historial.
+6. **Desactiva** (no borra) la materia prima y el producto de venta viejos.
+7. **Escribe el vínculo** viejo → nuevo (11.3.6) y **audita** (quién, cuándo, qué: `registrarCambioAuditado`, `src/server/auditoria/registrar-cambio-auditado.ts:25`).
+
+Las **ventas históricas** quedan apuntando al producto de venta desactivado: la historia no se reescribe (los reportes por producto muestran la fila vieja y la nueva; el vínculo permite sumarlas).
+
+#### 11.3.6 Vínculo viejo → nuevo (nivel 6, esquema PROPUESTO; no se escribe)
+
+Una tabla **aditiva y de solo agregar** (sin borrado): `UnionDeProductos`.
+
+| Columna | Qué guarda |
+|---|---|
+| `id`, `empresaId` | identidad y empresa (RLS como el resto) |
+| `reventaId`, `materiaPrimaId`, `productoDeVentaId` | los tres productos (claves compuestas por empresa) |
+| `claveDeIdempotencia` | única por empresa: repetir la misma confirmación no duplica |
+| `estado` | `CONFIRMADA` o `DESHECHA` (`CHECK`) |
+| `operacionDeStockId` | la operación con los movimientos de la unión (para deshacer) |
+| `antes` (JSON) | el estado previo: saldos por sección, ids y versiones de las recetas reapuntadas, precio, sección, disponibilidad |
+| `confirmadaPor`, `confirmadaEn` | quién y cuándo (fecha con zona) |
+| `deshechaPor`, `deshechaEn`, `motivoDelDeshacer` | lo mismo para deshacer |
+
+Restricciones: **única parcial** `(empresaId, materiaPrimaId) WHERE estado = 'CONFIRMADA'` y lo mismo para `productoDeVentaId`: un producto viejo no puede estar en dos uniones vigentes; `CHECK` de estado y de coherencia (`DESHECHA` exige quién y cuándo). Migración con `down.sql` (`DROP TABLE`); **es destructiva de datos al revertir si ya hay uniones**, por eso la etapa va con backup. **NO cubierta por la autorización permanente (11.3.1).**
+
+#### 11.3.7 Deshacer (reversible, con registro)
+
+- Comando propio, con permiso, que **mueve el stock de vuelta con movimientos nuevos**, **reapunta las recetas a una versión nueva que vuelve a la materia prima**, **reactiva** los dos productos viejos, **desactiva** la Reventa y marca la unión `DESHECHA` con quién, cuándo y por qué.
+- **Solo mientras la Reventa nueva no tenga compras ni ventas propias.** Si ya las tiene, deshacer **se rechaza** (no se puede devolver el saldo sin partir esa historia): se maneja a mano, con el vínculo como guía. *(Decisión técnica PROPUESTA.)*
+
+#### 11.3.8 «¿Qué pasa si…?» de la unión
+
+| Situación | Qué pasa |
+|---|---|
+| **Se confirma dos veces el mismo par** (doble clic, reintento, corrido dos veces) | La segunda ve la unión vigente y no hace nada (clave de idempotencia + única parcial). |
+| **Dos personas confirman el mismo par a la vez** | Gana una (bloqueo de las filas viejas); la otra recibe «ya unido». |
+| **Entra una venta del producto viejo mientras se confirma** | Si la venta se confirmó antes, cambió la huella y se rechaza; si había una cuenta abierta con el producto, se rechaza. No se cobra contra un producto desactivado. |
+| **Cambia el stock, una receta o el producto entre la propuesta y la confirmación** | La huella no coincide: se rechaza y se vuelve a proponer. |
+| **Falla a la mitad** (cae la red, falla reapuntar la tercera receta) | **Nada** queda hecho: una transacción por par. Los demás pares siguen. |
+| **Una receta de sucursal o un sustituto nombra la materia prima** | Se reapunta igual (nueva versión); si no se puede, **se rechaza el par entero**. |
+| **El stock está en negativo en alguna sección** | El informe lo marca; la salida/entrada se hace con el signo que corresponde; la persona lo confirma sabiendo. |
+| **Hay un traspaso pendiente de la materia prima** | Se rechaza hasta que se cierre. |
+| **La materia prima es de consignación o tiene «se produce»** | Fuera de alcance: no se une. |
+| **La persona que confirma pierde el permiso antes de aplicar** | Se valida en el servidor al aplicar: se rechaza ese par. |
+| **Falta el precio, la alícuota o el proveedor** | La Reventa se crea con «pendiente de completar» y **no se vende** hasta completar; no se inventa. |
+| **Se quiere deshacer una unión ya con ventas nuevas** | Se rechaza (11.3.7). |
+
+#### 11.3.9 Consulta de solo lectura para contar pares (repetirla en cada base; PROPUESTA, no se corre)
+
+```sql
+-- SOLO LECTURA: candidatos a par (producto de venta cuya receta vigente central tiene un único ingrediente).
+WITH vigente AS (
+  SELECT DISTINCT ON (r."empresaId", r."productoId") r."id", r."empresaId", r."productoId"
+  FROM "RecetaVersion" r
+  WHERE r."sucursalId" IS NULL
+  ORDER BY r."empresaId", r."productoId", r."version" DESC
+), con_un_solo_ingrediente AS (
+  SELECT v."empresaId", v."productoId", min(i."insumoProductoId") AS "materiaPrimaId",
+         bool_and(i."cantidad" = 1 AND i."mermaPorcentaje" = 0) AS "es_uno_a_uno"
+  FROM vigente v JOIN "RecetaIngrediente" i ON i."recetaVersionId" = v."id" AND i."empresaId" = v."empresaId"
+  GROUP BY v."empresaId", v."productoId" HAVING count(*) = 1
+)
+SELECT c."empresaId",
+       count(*)                                  AS candidatos,
+       count(*) FILTER (WHERE c."es_uno_a_uno")  AS exactos_1_a_1
+FROM con_un_solo_ingrediente c
+JOIN "Producto" pv ON pv."id" = c."productoId" AND pv."empresaId" = c."empresaId" AND pv."tipo" = 'PV' AND NOT pv."seProduce"
+JOIN "Producto" mp ON mp."id" = c."materiaPrimaId" AND mp."empresaId" = c."empresaId" AND mp."tipo" = 'MP' AND NOT mp."seProduce" AND NOT mp."esConsignacion"
+GROUP BY c."empresaId";
+```
+(Campos leídos en `prisma/schema.prisma:778-835,850-872,353-423`; **NO VERIFICADO** que ejecute tal cual: se prueba en una copia. Cuenta sin nombres ni importes.)
+
+#### 11.3.10 Dimensiones, oráculo y pruebas de la unión (regla de combinaciones, 2026-10-28)
+
+**Dimensiones que cambian dinero, stock, visibilidad o permisos:** stock del par (cero / positivo / negativo; por sección y sucursal) × recetas que usan la materia prima (ninguna / una / varias / propia de sucursal / con sustituto) × ventas históricas (sí/no) × cuentas abiertas (sí/no) × traspasos pendientes (sí/no) × consignación (sí/no) × permiso de quien confirma (tiene / no tiene) × estado de la unión (nueva / vigente / deshecha) × datos faltantes (precio / alícuota / proveedor).
+
+| Resultado esperado (oráculo, aparte del código) | Condición |
+|---|---|
+| **Se une** | par dentro de alcance, sin cuentas abiertas ni traspasos pendientes, huella igual, persona con permiso, unión nueva |
+| **Se rechaza el par (los demás siguen)** | cuentas abiertas · traspaso pendiente · consignación o «se produce» · huella distinta · persona sin permiso · unión ya vigente (idempotente) |
+| **Se une con «pendiente de completar» (no se vende)** | falta precio, alícuota o proveedor |
+| **Se deshace** | unión vigente y la Reventa sin compras ni ventas propias |
+| **No se deshace** | la Reventa ya tiene compras o ventas propias |
+| **Invariantes siempre** | saldo total en la unidad de stock igual antes y después (salida de la materia prima = entrada de la Reventa); ningún movimiento borrado ni editado; los dos viejos desactivados, nunca borrados; cada receta que apuntaba a la materia prima apunta a la Reventa en su versión vigente |
+
+**Pruebas:** **idempotencia** (confirmar dos veces = una unión); **concurrencia** (dos confirmaciones simultáneas del mismo par; una confirmación contra una venta simultánea del producto viejo); **atomicidad** (falla forzada al reapuntar la receta *n*: nada cambia); **aislamiento entre empresas** (un par de otra empresa es «no encontrado»); **autorización en el servidor** (sin permiso se rechaza aunque el archivo lo traiga); **deshacer** (vuelve el saldo, las recetas y los activos); **equivalencia de resultado** (el costo de receta y el stock total del plato antes y después de la unión coinciden); guardián que falla si aparece una dimensión nueva sin declarar. Todo contra la base real de pruebas y el `ensayo` previo en una copia.
+
+### 11.4 Pregunta 4 (NUEVA, ABIERTA) — `costo-de-arranque-de-la-reventa-unida`: ¿con qué costo arranca la Reventa unida?
+
+El dueño preguntó (relatado por el orquestador): «¿arranca del último costo de compra del viejo?». **Lo ideal es que sí, para no partir el historial de costos sin avisar. Pero hoy el sistema no puede copiarlo con un movimiento:** el costo vigente de un producto sale de sus **entradas valorizadas**, que solo son **compras y traspasos recibidos** (`PROCESOS_QUE_FIJAN_EL_COSTO`, `src/core/reportes/comun.ts:218`); un ajuste (que es lo que mueve el stock en la unión) lleva precio 0. Cambia **dinero** (costo y margen del plato), por eso es pregunta de negocio:
+
+- **A. Arranca vacío hasta su primera compra** (avisado en la propuesta de cada par: «el costo de este producto nuevo empieza sin dato; el historial queda en el viejo»). Mientras tanto, el costo de receta y el margen de los platos que lo usan **no tienen dato** (se muestra «pendiente de completar», no un cero).
+- **B. Hereda por lectura el último costo de compra del viejo, vía el vínculo, hasta su primera compra propia.** No se inventa ningún movimiento; el historial no se parte; es un cambio de **lectura** (los lugares que hoy leen el costo, p. ej. `comun.ts`, `costo-historico.ts`: **NO VERIFICADO** cuántos son). Cambia el cálculo de costo: requiere su propio diseño de pruebas de equivalencia.
+- **C. Un «ingreso con costo de origen»** (motivo nuevo que fija costo): lo más directo, pero **cambia qué fija el costo** (`PROCESOS_QUE_FIJAN_EL_COSTO`) y no se recomienda: es una regla de dinero nueva.
+
+**Recomendación: B** (cumple «sin partir el historial sin avisar» y no toca movimientos). **Qué pasa si no se responde:** rige **A** con el aviso explícito en cada par, y **ningún par se confirma sin que la persona acepte ese aviso**.
 
 ## 12. Decisiones técnicas (no cambian negocio; las toma el ingeniero y el dueño las puede corregir)
 
@@ -350,6 +487,8 @@ Orden: (1) escribir la migración E1 con `down.sql`, llevarla a `main` (autoriza
 | D-T4 | Relleno por **script con ensayo previo**, no por SQL puro (reutiliza `no-comestibles.ts`; no duplica la regla). | PROPUESTA |
 | D-T5 | La etiqueta `respaldo` de la lista **se mantiene** (no se pidió sacarla). | PROPUESTA |
 | D-T6 | Hasta E4, `tipo` **sigue siendo la fuente** de lo que habilita compra, venta y receta; la clase se suma al lado. | PROPUESTA |
+| D-T8 | La unión de pares es un **script de operación con ensayo** (no pantalla); la pantalla solo si aparecen muchos pares. | PROPUESTA |
+| D-T9 | El deshacer de la unión se permite **solo mientras la Reventa no tenga compras ni ventas propias**. | PROPUESTA |
 | D-T7 | Las 5 etiquetas y 5 descripciones se agregan al archivo de textos de la lista de Motor2 (`ETIQUETA_DEL_TIPO` hoy tiene 4 claves distintas) como **un solo cambio**, con test de que no falta ninguna. | PROPUESTA |
 
 ## 13. Etapas de implementación (la más barata primero; cada una se usa sola)
@@ -363,6 +502,7 @@ Orden: (1) escribir la migración E1 con `down.sql`, llevarla a `main` (autoriza
 | **E3** | **Insumo**: alta, fuera de receta nueva, fuera del food cost, consumible por una opción | No (o relaja un `CHECK`) | E2; pregunta 1 |
 | **E4** | **Reventa**: se compra y se vende en una sola ficha; relaja `Producto_claseDeUso_tipo_chk`; toca el uso de `tipo` | Sí, aditiva | E3; pregunta 2 |
 | **E5** | Reportes leen la clase (de a uno, con prueba de equivalencia) | No | E2 |
+| **E6** | **Unión guiada de pares** (11.3): script con ensayo, tabla de vínculo, deshacer. **Va DESPUÉS de las clases (E1 a E4) y NO bloquea el resto.** | Sí (tabla `UnionDeProductos`) | E4 (Reventa creable y vendible); **autorización expresa por base, backup y ensayo; NO cubierto por la autorización permanente**; pregunta 4 |
 
 **Verificación end-to-end de cada etapa (gate obligatorio, en la MISMA corrida y todo limpio):** `npx tsc --noEmit`, `npm run lint`, `npm run arquitectura`, `npm run analizar:muerto`, `npm test`, `npm run build`, `npm run plataforma:build` y `npm run test:e2e`.
 
@@ -374,7 +514,7 @@ Orden: (1) escribir la migración E1 con `down.sql`, llevarla a `main` (autoriza
 | `tipo` MP/PV sigue vivo junto a la clase | **Datos y código existentes** (~63 archivos lo leen) | Imposición |
 | Etiqueta `respaldo` en la lista | Existe en Motor2 y nadie pidió sacarla | PROPUESTA |
 | Columna por `Prisma` (`String?` + `CHECK` a mano) en vez de SQL puro | **Prisma** | Imposición |
-| Reventa llega en E4 y el par MP+PV existente convive | Datos existentes + costo | Depende de la pregunta 2 |
+| Reventa llega en E4 y el par MP+PV existente se **une par por par** en E6 (Pedernal no tuvo ese caso) | **Datos existentes** en producción | Dirección CONFIRMADA (2026-11-15); la etapa no está autorizada |
 
 ## 15. Cosas NO VERIFICADAS (para que nadie las dé por hechas)
 
@@ -384,6 +524,10 @@ Orden: (1) escribir la migración E1 con `down.sql`, llevarla a `main` (autoriza
 4. Cuántos productos reales caerían en cada regla del relleno (**no se leyó ninguna base**; el informe lo da, sin nombres, antes de aplicar).
 5. Que el servidor de Motor2 acepte hoy que una opción consuma un elaborado (supuesto de P4/I5: no se leyó `guardar-consumo`).
 6. El nombre exacto del permiso de alta de producto en Motor2 (se reutiliza, no se crea).
+7. Cuál script de operación de `scripts/` se reutiliza para la unión y cómo valida permisos una persona que no ejecuta la sesión.
+8. Si `RecetaIngrediente`/`SustitutoRecetaIngrediente` y las recetas de sucursal cubren **todos** los lugares que nombran la materia prima (se verifica en el ensayo con el informe).
+9. Cuántos lugares leen el costo de un producto (para la opción B de la pregunta 4).
+10. Que la consulta de 11.3.9 y la de 6.6 ejecuten tal cual (se prueban en una copia).
 
 ## 16. Fuentes leídas
 
