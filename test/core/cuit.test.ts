@@ -66,22 +66,28 @@ describe("validarCuit", () => {
     expect(validarCuit(undefined)).toEqual({ ok: true, valor: null });
   });
 
-  it("válido con separadores → los 11 dígitos", () => {
+  it("válido con los guiones exactos → los 11 dígitos; los extremos se recortan (E1: la regla estricta de Pedernal)", () => {
     expect(validarCuit("30-70308853-4")).toEqual({ ok: true, valor: "30703088534" });
-    expect(validarCuit(" 33 69345023 9 ")).toEqual({ ok: true, valor: "33693450239" });
+    expect(validarCuit(" 33693450239 ")).toEqual({ ok: true, valor: "33693450239" });
+    expect(validarCuit(" 33-69345023-9 ")).toEqual({ ok: true, valor: "33693450239" });
+  });
+
+  it("E1: NO limpia lo de adentro (espacios, puntos, guiones sueltos) y NO filtra prefijos", () => {
+    for (const malo of ["33 69345023 9", "33.69345023.9", "3369345023-9", "33-693450239"]) {
+      expect(validarCuit(malo), malo).toMatchObject({ ok: false, codigo: "formato", mensaje: "El CUIT no tiene un formato válido: son 11 dígitos, por ejemplo 30-12345678-1." });
+    }
+    // Prefijos fuera de la lista vieja (20 23 24 27 30 33 34) con su dígito verificador correcto: ahora pasan.
+    expect(validarCuit("10123456780")).toEqual({ ok: true, valor: "10123456780" });
+    expect(validarCuit("00000000000")).toEqual({ ok: true, valor: "00000000000" });
   });
 
   it("verificador mal → código «verificador»", () => {
     const r = validarCuit("20-12345678-9");
-    expect(r.ok).toBe(false);
-    if (!r.ok) {
-      expect(r.codigo).toBe("verificador");
-      expect(r.mensaje).toContain("El CUIT");
-    }
+    expect(r).toEqual({ ok: false, codigo: "verificador", mensaje: "El CUIT no es válido: el dígito verificador no coincide." });
   });
 
-  it("formato: letras, 10 u 12 dígitos, prefijo inexistente", () => {
-    for (const malo of ["abc", "3070308853", "307030885345", "21-12345678-0", "00000000000"]) {
+  it("formato: letras, 10 u 12 dígitos", () => {
+    for (const malo of ["abc", "3070308853", "307030885345"]) {
       const r = validarCuit(malo);
       expect(r.ok, malo).toBe(false);
       if (!r.ok) expect(r.codigo, malo).toBe("formato");

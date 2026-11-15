@@ -1,7 +1,7 @@
+import { nombreDeFicha, nombreMinimoDeFicha } from "@/core/datos/nombre-de-ficha";
 import { esIdentificador } from "@/core/datos/identificador";
 import { validarImporte } from "@/core/datos/importe";
 import { ENTERO_MAXIMO_RAZONABLE, validarTopeDeLista, LARGO_MAXIMO_DE_ID } from "@/core/datos/limites";
-import { validarNombreCatalogo } from "@/core/datos/nombre-catalogo";
 import { contextoDeCantidad, numeroDeEntrada, tieneALoSumoDecimales } from "@/core/datos/numero-tecleado";
 import { validarFactorDeEscala, validarPorcentajeDeDiferencia } from "@/core/datos/porcentaje-y-factor";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
@@ -92,10 +92,14 @@ function enteroONulo(valor: unknown, etiqueta: string, minimo: number, maximo: n
   return entero(valor, etiqueta, minimo, maximo);
 }
 
+/** El nombre de un grupo u opción EN EL ALTA: la regla de nombre de Pedernal (ficha de elección: 1 a 80, sin exigir letra), con los textos de siempre. */
 function nombre(valor: unknown, etiqueta: string): ResultadoDato<string> {
-  const n = validarNombreCatalogo(valor, etiqueta, { obligatorio: true });
-  if (!n.ok) return rechazar(n.codigo, n.mensaje);
-  return aceptar(n.valor!); // obligatorio: nunca null
+  return nombreDeFicha(valor, "ELECCION", `${etiqueta} no puede estar vacío.`, etiqueta);
+}
+
+/** El nombre EN LA EDICIÓN (el guard no conoce el guardado): recortado, no vacío y dentro del tope. La regla estricta la aplica el caso de uso SOLO si el nombre cambió. */
+function nombreDeEdicion(valor: unknown, etiqueta: string): ResultadoDato<string> {
+  return nombreMinimoDeFicha(valor, "ELECCION", `${etiqueta} no puede estar vacío.`, etiqueta);
 }
 
 function deLista<T extends string>(valor: unknown, lista: readonly T[], mensaje: string): ResultadoDato<T> {
@@ -222,7 +226,7 @@ export function guardComandoEditarGrupoDeOpciones(entrada: {
   if (!grupoId.ok) return grupoId;
   const version = versionEsperada(entrada.versionEsperada, 1);
   if (!version.ok) return version;
-  const n = nombre(entrada.nombre, "El nombre del grupo");
+  const n = nombreDeEdicion(entrada.nombre, "El nombre del grupo");
   if (!n.ok) return n;
   const minimo = entero(entrada.cantidadMinima, "El mínimo de opciones", 0, CANTIDAD_MAXIMA_DE_OPCION);
   if (!minimo.ok) return minimo;
@@ -296,7 +300,7 @@ export function guardComandoEditarOpcionDeGrupo(entrada: { opcionId: unknown; ve
   if (!opcionId.ok) return opcionId;
   const version = versionEsperada(entrada.versionEsperada, 1);
   if (!version.ok) return version;
-  const n = nombre(entrada.nombre, "El nombre de la opción");
+  const n = nombreDeEdicion(entrada.nombre, "El nombre de la opción");
   if (!n.ok) return n;
   const descripcion = descripcionEnCarta(entrada.descripcionEnCarta);
   if (!descripcion.ok) return descripcion;

@@ -1,4 +1,5 @@
 import "server-only";
+import { nombreDeFichaSiCambio } from "@/core/datos/nombre-de-ficha";
 import { MENSAJE_OPCION_NO_ENCONTRADA } from "@/core/features/catalogo/opciones-de-venta.guard";
 import type { ComandoEditarOpcionDeGrupo, ResultadoEditarOpcionDeGrupo } from "@/core/features/catalogo/opciones-de-venta.schema";
 import { cambiosPorColumna } from "@/core/opciones/public";
@@ -31,10 +32,14 @@ export async function editarOpcionDeGrupoCasoDeUso(
     async (tx): Promise<ResultadoEditarOpcionDeGrupo> => {
       const opcion = await cargarOpcionEnTx(tx, comando.opcionId);
       if (!opcion) return fracaso("OPCION_NO_ENCONTRADA", MENSAJE_OPCION_NO_ENCONTRADA);
+      // Regla de nombre de Pedernal (E1): el guard de la edición solo recortó el nombre; la estricta se aplica ACÁ y solo si CAMBIA respecto del guardado (leído dentro de la transacción).
+      const pedido = nombreDeFichaSiCambio(comando.nombre, opcion.nombre, "ELECCION", "El nombre de la opción no puede estar vacío.", "El nombre de la opción");
+      if (!pedido.ok) return fracaso("DATO_INVALIDO", pedido.mensaje);
+      const nombre = pedido.valor;
       // Carta «B», E3: ausente = la descripción queda como está; `null` = se vacía (el mismo patrón que `prefijoEnCarta` del grupo).
       const descripcionEnCarta = comando.descripcionEnCarta === undefined ? opcion.descripcionEnCarta : comando.descripcionEnCarta;
       const cambios = cambiosPorColumna([
-        { campo: "nombre", antes: opcion.nombre, despues: comando.nombre },
+        { campo: "nombre", antes: opcion.nombre, despues: nombre },
         { campo: "descripcionEnCarta", antes: opcion.descripcionEnCarta, despues: descripcionEnCarta },
       ]);
       if (cambios.length === 0) return exito(`La opción «${opcion.nombre}» no tenía cambios.`, { version: opcion.version, huboCambio: false, productosAfectados: 0 });
@@ -42,20 +47,20 @@ export async function editarOpcionDeGrupoCasoDeUso(
         return fracaso("VERSION_DESACTUALIZADA", `La opción «${opcion.nombre}» cambió mientras la editabas: otra persona la guardó antes. Recargá la pantalla y volvé a hacer el cambio.`);
       }
 
-      if (comando.nombre !== opcion.nombre) {
-        const otra = await opcionConElMismoNombre(tx, opcion.grupoId, comando.nombre, opcion.id);
+      if (nombre !== opcion.nombre) {
+        const otra = await opcionConElMismoNombre(tx, opcion.grupoId, nombre, opcion.id);
         if (otra) return fracaso("NOMBRE_REPETIDO", `Ya hay una opción llamada «${otra.nombre}» en «${opcion.grupo.nombre}». Elegí otro nombre.`);
       }
 
-      const tocadas = await actualizarOpcionDeGrupo(tx, { id: opcion.id, versionEsperada: comando.versionEsperada, nombre: comando.nombre, descripcionEnCarta, ahora: actor.ahora });
+      const tocadas = await actualizarOpcionDeGrupo(tx, { id: opcion.id, versionEsperada: comando.versionEsperada, nombre, descripcionEnCarta, ahora: actor.ahora });
       if (tocadas === 0) return fracaso("VERSION_DESACTUALIZADA", `La opción «${opcion.nombre}» cambió mientras la editabas. Recargá la pantalla y volvé a hacer el cambio.`);
 
-      const descripcion = `Opción «${comando.nombre}» de «${opcion.grupo.nombre}»: edición.`;
+      const descripcion = `Opción «${nombre}» de «${opcion.grupo.nombre}»: edición.`;
       for (const c of cambios) {
         await registrarCambioAuditado(tx, { entidad: "OpcionDeGrupo", entidadId: opcion.id, campo: c.campo, descripcion, valorAnterior: c.antes, valorNuevo: c.despues, actorId: actor.usuarioId, sucursalId: null });
       }
 
-      return exito(`Opción «${comando.nombre}» guardada.`, { version: opcion.version + 1, huboCambio: true, productosAfectados: 0 });
+      return exito(`Opción «${nombre}» guardada.`, { version: opcion.version + 1, huboCambio: true, productosAfectados: 0 });
     },
     undefined,
     undefined,

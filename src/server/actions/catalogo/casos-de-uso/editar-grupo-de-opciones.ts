@@ -1,4 +1,5 @@
 import "server-only";
+import { nombreDeFichaSiCambio } from "@/core/datos/nombre-de-ficha";
 import { MENSAJE_GRUPO_NO_ENCONTRADO } from "@/core/features/catalogo/opciones-de-venta.guard";
 import type { ComandoEditarGrupoDeOpciones, ResultadoEditarGrupoDeOpciones } from "@/core/features/catalogo/opciones-de-venta.schema";
 import { MENSAJE_PREFIJO_SOLO_VARIANTE_O_MEDIDA, admitePrefijoEnCarta, cambiosPorColumna, validarGrupo } from "@/core/opciones/public";
@@ -42,6 +43,10 @@ export async function editarGrupoDeOpcionesCasoDeUso(
     async (tx): Promise<ResultadoEditarGrupoDeOpciones> => {
       const grupo = await cargarGrupoEnTx(tx, comando.grupoId);
       if (!grupo) return fracaso("GRUPO_NO_ENCONTRADO", MENSAJE_GRUPO_NO_ENCONTRADO);
+      // Regla de nombre de Pedernal (E1): el guard de la edición solo recortó el nombre; la estricta se aplica ACÁ y solo si CAMBIA respecto del guardado (leído dentro de la transacción).
+      const pedido = nombreDeFichaSiCambio(comando.nombre, grupo.nombre, "ELECCION", "El nombre del grupo no puede estar vacío.", "El nombre del grupo");
+      if (!pedido.ok) return fracaso("DATO_INVALIDO", pedido.mensaje);
+      const nombre = pedido.valor;
       const regla = validarGrupo({ tipo: grupo.tipo, cantidadMinima: comando.cantidadMinima, cantidadMaxima: comando.cantidadMaxima });
       if (!regla.ok) return fracaso("CONFIGURACION_INVALIDA", regla.mensaje);
       // Fase 4 (ADR-035): «se lee en la carta como»; no viene = queda como estaba. Solo VARIANTE y MEDIDA (el tipo es inmutable).
@@ -49,7 +54,7 @@ export async function editarGrupoDeOpcionesCasoDeUso(
       if (prefijoEnCarta !== null && prefijoEnCarta !== grupo.prefijoEnCarta && !admitePrefijoEnCarta(grupo.tipo)) return fracaso("CONFIGURACION_INVALIDA", MENSAJE_PREFIJO_SOLO_VARIANTE_O_MEDIDA);
 
       const cambios = cambiosPorColumna([
-        { campo: "nombre", antes: grupo.nombre, despues: comando.nombre },
+        { campo: "nombre", antes: grupo.nombre, despues: nombre },
         { campo: "cantidadMinima", antes: grupo.cantidadMinima, despues: comando.cantidadMinima },
         { campo: "cantidadMaxima", antes: grupo.cantidadMaxima, despues: comando.cantidadMaxima },
         { campo: "prefijoEnCarta", antes: grupo.prefijoEnCarta, despues: prefijoEnCarta },
@@ -59,8 +64,8 @@ export async function editarGrupoDeOpcionesCasoDeUso(
         return fracaso("VERSION_DESACTUALIZADA", `El grupo «${grupo.nombre}» cambió mientras lo editabas: otra persona lo guardó antes. Recargá la pantalla y volvé a hacer el cambio.`);
       }
 
-      if (comando.nombre !== grupo.nombre) {
-        const otro = await grupoConElMismoNombre(tx, comando.nombre, grupo.id);
+      if (nombre !== grupo.nombre) {
+        const otro = await grupoConElMismoNombre(tx, nombre, grupo.id);
         if (otro) return fracaso("NOMBRE_REPETIDO", `Ya hay un grupo llamado «${otro.nombre}». Elegí otro nombre.`);
       }
 
@@ -73,13 +78,13 @@ export async function editarGrupoDeOpcionesCasoDeUso(
       const tocadas = await actualizarGrupoDeOpciones(tx, { ...comando, prefijoEnCarta, id: grupo.id, ahora: actor.ahora });
       if (tocadas === 0) return fracaso("VERSION_DESACTUALIZADA", `El grupo «${grupo.nombre}» cambió mientras lo editabas. Recargá la pantalla y volvé a hacer el cambio.`);
 
-      const descripcion = `Grupo de opciones «${comando.nombre}»: edición.`;
+      const descripcion = `Grupo de opciones «${nombre}»: edición.`;
       for (const c of cambios) {
         await registrarCambioAuditado(tx, { entidad: "GrupoDeOpciones", entidadId: grupo.id, campo: c.campo, descripcion, valorAnterior: c.antes, valorNuevo: c.despues, actorId: actor.usuarioId, sucursalId: null });
       }
 
       const afectados = productosSinPoderVenderse({ tipo: grupo.tipo, ...comando, activo: grupo.activo }, admisiones, await opcionesActivasDelGrupo(tx, grupo.id));
-      return exito(`Grupo «${comando.nombre}» guardado.${avisoDeProductosAfectados(afectados)}`, { version: grupo.version + 1, huboCambio: true, productosAfectados: afectados });
+      return exito(`Grupo «${nombre}» guardado.${avisoDeProductosAfectados(afectados)}`, { version: grupo.version + 1, huboCambio: true, productosAfectados: afectados });
     },
     undefined,
     undefined,

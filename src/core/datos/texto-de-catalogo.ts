@@ -21,8 +21,8 @@ import { invalido, valido, type ResultadoDeRegla } from "./resultado-de-regla";
  * latina (dígitos, signos, `º` y `ª` no cuentan). Se informa antes el carácter no permitido, después el largo, después la falta de letras. Se conservan
  * mayúsculas y acentos tal cual.
  *
- * NO está conectada a ninguna pantalla ni acción todavía (etapa E1 del plan de paridad; antes de endurecer se cuenta cuántos nombres ya cargados la
- * romperían: `docs/e1-recuento-de-textos-y-cuit-2026-11-15.md`). Puro: sin reloj ni azar.
+ * Se conecta a las pantallas y acciones por `nombre-de-ficha.ts` (alta estricta; edición estricta solo si el nombre cambia); qué punto usa qué ficha: `docs/e1-recuento-de-textos-y-cuit-2026-11-15.md`
+ * §5. Puro: sin reloj ni azar.
  */
 export type MotivoDeTextoInvalido = "VACIO" | "DEMASIADO_LARGO" | "CARACTER_PROHIBIDO" | "SIN_LETRAS";
 

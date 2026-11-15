@@ -2,7 +2,7 @@
 
 Etapa E1 del plan de paridad con Pedernal (`motor2-docs/_planes/plan-de-paridad-con-pedernal-2026-11-14.md`, §E1). Pedido del dueño: «Sí, copiar a Pedernal en esas cinco» (2026-11-15, chat con el orquestador, relatado) y «Necesitamos ser iguales en todo…» (2026-11-13).
 
-**Estado de este documento: la regla ya existe como código puro (`src/core/datos/texto-de-catalogo.ts`, `fichas-de-texto.ts`, `src/core/fiscal/cuit-estricto.ts`) y NO está conectada a ninguna pantalla ni acción.** Antes de conectarla hay que contar cuántos datos ya cargados la romperían. La consulta de abajo es de SOLO LECTURA; la corre el orquestador sobre una copia de la base (nunca escribe, nunca sobre producción en caliente). Quien la corre decide después, con el dueño, qué conectar.
+**Estado de este documento:** la regla existe como código puro (`src/core/datos/texto-de-catalogo.ts`, `fichas-de-texto.ts`, `src/core/fiscal/cuit-estricto.ts`; PR #284, sin conectar). El PR de conexión (§5) la conecta en los puntos donde Pedernal la aplica, según lo aclarado por el dueño el 2026-11-15 («No, lo que quiero es igualar a pedernal acá...», relatado por el orquestador). El recuento de abajo se hizo ANTES de conectar; las consultas son de SOLO LECTURA, las corre el orquestador sobre una copia de la base (nunca escribe) y se repiten en cada base antes del deploy.
 
 ## 1. Qué mide
 
@@ -179,31 +179,54 @@ Cero filas con `vacio`, `caracter_prohibido`, `demasiado_largo` o `sin_letras`. 
 
 **Límite:** es UNA copia del 12/11. El recuento se repite en cada base antes de conectar y antes del deploy. Este resultado no autoriza conectar: eso lo decide el dueño.
 
-## 5. Puntos de validación que existen hoy y a qué ficha corresponderían
+## 5. Puntos de validación de nombres: estado después de conectar
 
-Inventario verificado en el código de Motor2 (rama `main`, 2026-11-15). **Ninguno se cambió.** Hoy todos validan con `validarTextoCatalogo` / `RE_TEXTO_CATALOGO` (`src/core/texto.ts`: cualquier letra o número Unicode, más `- . , ( ) % & / ' _`, 80 caracteres, sin `-` inicial), que acepta alfabetos no latinos y `_` y no admite `+ : ; " # ¿ ¡ ? ! $ ° ª º « » ® ™`.
+Inventario verificado en el código de Motor2 (2026-11-15). Antes de E1 todos validaban con `validarTextoCatalogo` / `RE_TEXTO_CATALOGO` (`src/core/texto.ts`: cualquier letra o número Unicode, más `- . , ( ) % & / ' _`, 80 caracteres, sin `-` inicial). La tabla de abajo es la que recorre `test/arquitectura/nombres-puntos-de-validacion.test.ts`: si aparece un punto de validación de nombre nuevo sin declarar, falla.
 
-| Dato | Dónde se valida hoy (archivo:línea) | Ficha de Pedernal | Riesgo de conectar |
+### 5.1 Conectados a la regla de Pedernal (alta estricta; edición estricta SOLO si el nombre cambia)
+
+| Archivo | Ficha | Dato |
+|---|---|---|
+| `src/core/features/catalogo/productos.guard.ts` | PRODUCTO | nombre de producto (alta rápida y alta/edición completa) |
+| `src/server/lecturas/catalogo/datos-de-producto.ts` | PRODUCTO | nombre de producto (estricta en el alta; en la edición solo si cambió) |
+| `src/core/features/catalogo/duplicar-producto.guard.ts` | PRODUCTO | nombre del producto duplicado |
+| `src/core/features/catalogo/insumos.guard.ts` | PRODUCTO | insumo (conectado); grupo de insumos (viejo) |
+| `src/server/actions/catalogo/casos-de-uso/renombrar-o-fusionar-insumo.ts` | PRODUCTO | renombrar un insumo (estricta solo si cambia) |
+| `src/core/features/catalogo/categorias-producto.guard.ts` | ELECCION | categoría de producto |
+| `src/core/features/catalogo/proveedores.guard.ts` | RAZON_SOCIAL | alta de proveedor |
+| `src/server/actions/catalogo/casos-de-uso/actualizar-proveedor.ts` | RAZON_SOCIAL | edición de proveedor (estricta solo si cambia) |
+| `src/core/features/clientes/clientes.guard.ts` | RAZON_SOCIAL | alta y edición de cliente |
+| `src/server/actions/clientes/casos-de-uso/actualizar-cliente.ts` | RAZON_SOCIAL | edición de cliente (estricta solo si cambia) |
+| `src/core/features/carta/secciones.guard.ts` | ELECCION | sección de carta |
+| `src/server/actions/carta/casos-de-uso/guardar-seccion-carta.ts` | ELECCION | edición de sección de carta (estricta solo si cambia) |
+| `src/core/features/catalogo/opciones-de-venta.guard.ts` | ELECCION | grupo y opción de venta (conectado); descripción y prefijo «se lee en la carta como» (viejo, no son nombres) |
+| `src/server/actions/catalogo/casos-de-uso/editar-grupo-de-opciones.ts` | ELECCION | edición de grupo de opciones (estricta solo si cambia) |
+| `src/server/actions/catalogo/casos-de-uso/editar-opcion-de-grupo.ts` | ELECCION | edición de opción (estricta solo si cambia) |
+
+Fichas: PRODUCTO (1 a 120, con letra, con `¿ ¡ ? ! % $`), ELECCION (1 a 80, sin exigir letra, con `¿ ¡ ? ! % $`: sección de carta, grupo y opción de venta y categoría de producto), RAZON_SOCIAL (1 a 200, con letra, sin `¿ ¡ ? ! % $`: proveedor y cliente).
+
+En las ediciones el guard solo recorta, exige no vacío y el tope de la ficha; el caso de uso, que lee la fila, aplica la regla estricta solo si el nombre pedido es distinto del guardado (la comparación la hace el servidor). Lo ya guardado que no cumple no se toca ni bloquea lecturas.
+
+### 5.2 Sin regla de Pedernal verificada: siguen con la regla vieja (NO se conectan ni se inventan)
+
+| Archivo | Validador viejo | Dato | Qué hace Pedernal |
 |---|---|---|---|
-| Nombre de producto | `src/core/features/catalogo/productos.guard.ts:101` (`validarTextoCatalogo`); `:46`/`duplicar-producto.guard.ts:34` (`nombreDeCatalogo`) | PRODUCTO (120, letra) | Sube el largo de 80 a 120 (más permisivo) y exige letra; rechaza alfabeto no latino y `_`. Las columnas de base pueden tener tope propio: NO VERIFICADO si hay CHECK de 80 en `Producto.nombre`. Único por empresa sin mayúsculas: no cambia. |
-| Nombre de insumo y de grupo de insumos | `src/core/features/catalogo/insumos.guard.ts:21,28,35` | PRODUCTO (insumo) · REFERENCIA (grupo) | Igual; el grupo de insumos no tiene ficha verificada en Pedernal. |
-| Categoría de producto | `src/core/features/catalogo/categorias-producto.guard.ts:19` | ELECCION (nodo) | Baja de 80 a 80 (igual); admite `¿¡?!%$`; rechaza `_` y no latinos. Depende de E4. |
-| Proveedor | `src/core/features/catalogo/proveedores.guard.ts:24`; `src/server/actions/catalogo/casos-de-uso/actualizar-proveedor.ts:52` | RAZON_SOCIAL (200, letra, sin `¿¡?!%$`) | Sube a 200; **deja de admitir `%`**; exige letra (un nombre solo de dígitos se rechaza). |
-| Cliente | `src/core/features/clientes/clientes.guard.ts:17` | RAZON_SOCIAL | Igual que proveedor. |
-| Unidad | `src/core/features/catalogo/unidades.guard.ts:31` | (E2: 14 unidades fijas) | No se toca en E1. |
-| Sección de carta, ítem agrupado, género | `src/core/carta/validaciones.ts:85,94,103`; `src/core/features/carta/secciones.guard.ts` | ELECCION (sección) · REFERENCIA (ítem agrupado, género) | Mismo largo; cambia el conjunto de signos. |
-| Grupo y opción de venta (opciones de un producto) | `src/core/features/catalogo/opciones-de-venta.guard.ts:96` (`validarNombreCatalogo`), `:194`, `:258` (`RE_TEXTO_CATALOGO`) | ELECCION (grupo, opción) | `validarNombreCatalogo` hoy exige letra O número; ELECCION no exige letra. Más permisivo en eso, más estricto en alfabetos. |
-| «Nombre en la carta» del producto | `src/core/features/carta/contenido-producto.guard.ts:29` (CHECK `ContenidoCartaProducto_nombre_en_carta_chk`) | ELECCION | No se comparó con Pedernal en esta etapa (NO VERIFICADO si Pedernal tiene la misma columna). |
-| Sucursal, rol | `src/core/features/sucursales/sucursal.guard.ts:22,38`; `src/core/permisos/nombres-de-rol.ts:27` | sin ficha verificada | Pedernal puede tratarlos distinto (los roles son de plataforma): preguntar antes de conectar. |
-| Motivos y secciones de movimientos | `src/core/features/movimientos/secciones.guard.ts:15`; `motivos.guard.ts:22` | sin ficha verificada | Idem. `motivos.guard.ts:15` ya tiene su propio charset para `descripcion`. |
-| CUIT (empresa, proveedor, invitación, consola de plataforma) | `src/core/fiscal/cuit.ts` (`validarCuit`, `normalizarCuit`, `esCuitValido`) usado en `src/core/features/catalogo/contacto-de-proveedor.ts:21`, `src/server/actions/auth/casos-de-uso/aceptar-invitacion-de-gerente.ts:91`, `src/app/invitacion/formulario-de-aceptacion.tsx:24`, `plataforma/src/servidor/ciclo-de-vida.ts:93,165`, `src/core/fiscal/diagnostico-cuit.ts:51,62` | `cuitDesdeTexto` (estricto) | Quitar la lista de prefijos: más permisivo. No limpiar espacios/puntos: es más estricto con lo que escribe una persona; hay que decidir dónde se recorta antes de validar (formulario y servidor). Es el punto de mayor riesgo para el alta de empresas. |
-| Otros usos de `esTextoDeUnaLinea` (no son nombres) | `src/core/seguridad/ruta-servible.ts:25`, `src/core/carta/tema.ts:273` | — | Fuera de alcance. |
+| `src/core/permisos/nombres-de-rol.ts` | validarTextoCatalogo | nombre de rol | rol: sin regla de Pedernal; decisión pendiente (NO VERIFICADO si Pedernal lo valida; no se encontró) |
+| `src/core/features/sucursales/sucursal.guard.ts` | validarTextoCatalogo | nombre de sucursal | sucursal: regla propia (NFC, recorte, 1 a 100 caracteres, rechaza controles con una lista de prohibidos; la base no limita): no es la ficha de catálogo y choca con «todo nace cerrado» |
+| `src/core/features/carta/contenido-producto.guard.ts` | RE_TEXTO_CATALOGO | «Nombre en la carta» del producto | nombre en la carta: sin regla de Pedernal; decisión pendiente (NO VERIFICADO) |
+| `src/core/features/catalogo/unidades.guard.ts` | nombreDeCatalogo | nombre de unidad | unidad: catálogo FIJO de 14 unidades (etapa E2, otra decisión) |
+| `src/core/features/movimientos/secciones.guard.ts` | nombreDeCatalogo | sección de movimientos | depósito de stock: usa la ficha de elección y la base lo repite; la equivalencia con la «sección» de Motor2 NO está verificada |
+| `src/core/features/movimientos/motivos.guard.ts` | nombreDeCatalogo | motivo de merma y destino de consumo | motivos de movimiento: catálogo FIJO sembrado por código (clase cerrada), no texto libre; merma y destino: no encontrado |
+| `src/core/carta/validaciones.ts` | validarTextoCatalogo | ítem agrupado y género de la carta | ítem agrupado y género: sin regla de Pedernal; decisión pendiente (no encontrado en Pedernal) |
+| `src/core/features/catalogo/insumos.guard.ts` | nombreDeCatalogo | insumo (conectado); grupo de insumos (viejo) | grupo de insumos: sin regla de Pedernal; decisión pendiente |
+| `src/core/features/catalogo/opciones-de-venta.guard.ts` | RE_TEXTO_CATALOGO, validarTextoCatalogo | grupo y opción de venta (conectado); descripción y prefijo «se lee en la carta como» (viejo, no son nombres) | descripción y prefijo en la carta: sin regla de Pedernal; decisión pendiente |
 
-Lo que NO se cambia en la base: los CHECK de las columnas de nombre de hoy son de largo y «no solo espacios»; Pedernal repite la lista de permitidos en la base (`texto_de_catalogo_valido`, migración 0025 y 0043 de Pedernal). Repetirla en Motor2 es una migración (aditiva y reversible si se hace por columna, con las filas que no cumplen resueltas antes); **no está autorizada ni propuesta acá**.
+### 5.3 CUIT (fuera de la tabla que recorre el guardián de nombres)
 
-## 6. Qué decide el dueño después del recuento
+`validarCuit` (`src/core/fiscal/cuit.ts`) ahora delega en la regla estricta de Pedernal (`cuit-estricto.ts`) y lo usan los cuatro puntos: `src/core/features/catalogo/contacto-de-proveedor.ts` (proveedor), `src/server/actions/auth/casos-de-uso/aceptar-invitacion-de-gerente.ts` y `src/app/invitacion/formulario-de-aceptacion.tsx` (invitación y empresa), `plataforma/src/servidor/ciclo-de-vida.ts` (consola de plataforma). Se sigue guardando la forma canónica de 11 dígitos. `normalizarCuit` y `esCuitValido` (con la lista de prefijos) quedan SOLO para el diagnóstico de la consola de plataforma (`src/core/fiscal/diagnostico-cuit.ts`) y para comparar el CUIT declarado por el gerente con el escrito en la consola (`plataforma/.../botones.tsx`): leen datos viejos con separadores.
 
-1. Por cada columna con filas que rompen: corregir a mano, aceptar que queden como están (solo se rechazan al editar el nombre) o no conectar esa columna.
-2. Qué fichas usan los datos sin ficha verificada (grupo de insumos, sucursal, rol, motivos, secciones de movimientos, ítem agrupado, género).
-3. Dónde se recorta lo que escribe una persona en el CUIT (la regla nueva no lo hace).
-4. Si se repite la lista en la base (migración): decisión aparte.
+## 6. Qué decide el dueño
+
+1. Los datos «sin regla de Pedernal» (§5.2): con la evidencia de la tabla, si se les aplica una ficha, se dejan como están o se espera a que Pedernal los defina.
+2. Los textos de error: Pedernal no tiene un mensaje propio por motivo para nombres de catálogo (todos salen como un genérico), así que los mensajes que ve la pantalla siguen siendo los de Motor2. El texto de caracteres no permitidos («Se admiten letras, números, espacios y - . , ( ) % & / '») ya no describe exactamente la lista nueva: corregirlo es un texto nuevo que necesita aprobación del dueño (la tabla de mensajes está en la descripción del PR).
+3. Si se repite la lista en la base (CHECK por columna): decisión aparte, migración; no está autorizada ni propuesta acá.

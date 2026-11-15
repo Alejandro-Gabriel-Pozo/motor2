@@ -54,7 +54,7 @@ export interface ComandoEditarGrupoDeOpciones {
 /** `productosAfectados` (D-4): cuántos productos que admiten el grupo quedan sin poder venderse con este cambio (un grupo obligatorio apagado). Se avisa, no se bloquea. */
 export type ResultadoEditarGrupoDeOpciones = ResultadoCaso<
   { version: number; huboCambio: boolean; productosAfectados: number },
-  "GRUPO_NO_ENCONTRADO" | "VERSION_DESACTUALIZADA" | "NOMBRE_REPETIDO" | ConfiguracionInvalida
+  "GRUPO_NO_ENCONTRADO" | "VERSION_DESACTUALIZADA" | "NOMBRE_REPETIDO" | "DATO_INVALIDO" | ConfiguracionInvalida
 >;
 
 // ───────────────────────────── Opciones y versiones ─────────────────────────────
@@ -96,7 +96,7 @@ export interface ComandoEditarOpcionDeGrupo {
 
 export type ResultadoEditarOpcionDeGrupo = ResultadoCaso<
   { version: number; huboCambio: boolean; productosAfectados: number },
-  "OPCION_NO_ENCONTRADA" | "VERSION_DESACTUALIZADA" | "NOMBRE_REPETIDO"
+  "OPCION_NO_ENCONTRADA" | "VERSION_DESACTUALIZADA" | "NOMBRE_REPETIDO" | "DATO_INVALIDO"
 >;
 
 export interface ComandoAgregarVersionDeOpcion {
