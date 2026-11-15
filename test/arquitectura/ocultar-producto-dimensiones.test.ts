@@ -54,6 +54,21 @@ const COLUMNAS: Record<string, Record<string, Declaracion>> = {
     producto: { afecta: false, motivo: "relación de productoId." },
     disponible: { afecta: true, motivo: "D1: Desactivar." },
   },
+  OcultamientoProducto: {
+    id: { afecta: false, motivo: "identidad de la fila (la manda la aplicación: idempotencia del alta)." },
+    empresaId: { afecta: false, motivo: "aislamiento por empresa." },
+    empresa: { afecta: false, motivo: "relación de empresaId." },
+    productoId: { afecta: false, motivo: "a qué producto." },
+    producto: { afecta: false, motivo: "relación de productoId." },
+    sucursalId: { afecta: true, motivo: "D2: el alcance de Ocultar (nulo = toda la empresa; con valor = esa sucursal)." },
+    sucursal: { afecta: false, motivo: "relación de sucursalId." },
+    oculto: { afecta: true, motivo: "D2: la marca de Ocultar (sin fila = visible)." },
+    actualizadoPorId: { afecta: false, motivo: "trazabilidad: quién cambió el estado por última vez." },
+    actualizadoPor: { afecta: false, motivo: "relación de actualizadoPorId." },
+    actualizadoEn: { afecta: false, motivo: "trazabilidad: cuándo cambió el estado por última vez." },
+    version: { afecta: false, motivo: "control de versión (optimistic locking) de la acción de ocultar; no cambia qué se ve ni qué opera." },
+    creadoEn: { afecta: false, motivo: "trazabilidad: cuándo se creó la fila." },
+  },
 };
 
 /** (c) Lectores de la disponibilidad, según la tabla de §8.5 del diseño. */

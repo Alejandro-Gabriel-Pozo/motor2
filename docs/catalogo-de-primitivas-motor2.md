@@ -45,6 +45,7 @@ Una fila por modelo de `prisma/schema.prisma` (112 modelos, 18 primitivas o grup
 |---|---|
 | `Producto` | Producto |
 | `DisponibilidadProducto` | Producto |
+| `OcultamientoProducto` | Producto |
 | `Presentacion` | Producto |
 | `ProveedorPorProducto` | Producto |
 | `PrecioLocalProducto` | Producto |
