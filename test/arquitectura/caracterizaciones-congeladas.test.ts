@@ -507,6 +507,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "«Ocultar» como Pedernal, E3c1 (docs/diseno-ocultar-como-pedernal-2026-11-15.md, I-6; CAMBIA SOLO LA LÍNEA `lecturas` de los pasos que venden por la vía directa y de agregar ítems): cada línea NUEVA de una venta de mostrador lee ahora `ocultamientoProducto.findMany` ×1 (para rechazar un producto oculto). Verificado con diff: al sacar ese token y el contador de `lecturas (N)`, el golden nuevo es IDÉNTICO al anterior; ni un resultado, ni una fila, ni una escritura, ni un mensaje cambian. El cierre de una cuenta NO hace la lectura (cobra lo ya cargado).",
       },
+      {
+        blob: "ab1cbc068245de8abf61b8ad1b3903bfcb13ff24",
+        // El commit PADRE de este (9fa33026) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "9fa33026",
+        motivo:
+          "«Ocultar» como Pedernal, E3c2 (docs/diseno-ocultar-como-pedernal-2026-11-15.md, O-5 y R-8; CAMBIA SOLO LA LÍNEA `lecturas` de los 5 pasos de anulación y conteo): anular una venta lee ahora `ocultamientoProducto.findMany` ×1 antes de escribir (para rechazar devolver existencia a un producto oculto). Verificado línea por línea: cada una de las 5 líneas gana ese único token y su contador sube en 1; ni un resultado, ni una fila, ni una escritura, ni un mensaje cambian.",
+      },
     ],
   },
   "test/reportes/caracterizacion/reportes-c0.golden.txt": {

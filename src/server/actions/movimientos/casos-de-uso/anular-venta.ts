@@ -1,6 +1,6 @@
+import "server-only";
 import { ocultosQueQuedarianConExistencia } from "@/server/lecturas/catalogo/ocultamiento";
 import { MENSAJE_PRODUCTO_OCULTO } from "@/core/catalogo/public";
-import "server-only";
 import type { Prisma } from "@prisma/client";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { MENSAJE_OPERACION_NO_ENCONTRADA } from "@/core/features/compras/compra.guard";
