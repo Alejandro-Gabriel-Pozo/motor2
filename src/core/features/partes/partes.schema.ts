@@ -1,5 +1,5 @@
 import type { Exito, Fracaso, ResultadoCaso } from "@/core/resultado-caso";
-import type { DatosDeParte, EntradaDeParte, ErrorDeCampoDeParte } from "@/core/datos/datos-de-parte";
+import type { DatosDeParte, EntradaDeParte } from "@/core/datos/datos-de-parte";
 
 /**
  * Tipos de la feature «partes» (ficha única de personas y empresas; docs/diseno-parte-ficha-unica-2026-11-15.md, etapa P1 (b)): los comandos y resultados de los casos de uso de `src/server/actions/partes/casos-de-uso/`.
@@ -65,4 +65,3 @@ export interface DatosDeEstadoDeParte {
 }
 export type ResultadoEstadoDeParte = ResultadoCaso<DatosDeEstadoDeParte, CodigoDeFalloDeEstadoDeParte>;
 
-export type { ErrorDeCampoDeParte };

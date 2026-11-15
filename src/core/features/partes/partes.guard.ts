@@ -13,7 +13,7 @@ const rechazo = (codigo: RechazoDeGuardDeParte["codigo"], errores: readonly Erro
 
 const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 /** El id de una ficha es un UUID (lo genera el servidor): cualquier otra cosa es un identificador inválido. */
-export const esIdentificadorDeParte = (valor: unknown): valor is string => typeof valor === "string" && REGEX_UUID.test(valor);
+const esIdentificadorDeParte = (valor: unknown): valor is string => typeof valor === "string" && REGEX_UUID.test(valor);
 
 function datosValidos(entrada: Parameters<typeof validarDatosDeParte>[0]): ResultadoDeGuardDeParte<DatosDeParte> {
   const r = validarDatosDeParte(entrada);

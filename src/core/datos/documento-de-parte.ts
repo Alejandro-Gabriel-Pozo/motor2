@@ -1,5 +1,11 @@
-import { cuitDesdeTexto } from "@/core/fiscal/cuit-estricto";
+import { validarCuit } from "@/core/fiscal/public";
 import { invalido, valido, type ResultadoDeRegla } from "./resultado-de-regla";
+
+/** Los 11 dígitos canónicos de un CUIT, CUIL o CDI (módulo 11, sin lista de prefijos: la regla estricta de `cuit-estricto.ts`, que `validarCuit` aplica) o `null`. */
+function cuitCanonico(texto: string): string | null {
+  const r = validarCuit(texto);
+  return r.ok ? r.valor : null;
+}
 
 /**
  * EL DOCUMENTO DE UNA PARTE (ficha única de personas y empresas; docs/diseno-parte-2026-11-12.md §4.1, invariantes I1 a I4; AGENTS.md «Paridad con Pedernal»): igual a `dominio/documento.ts` de Pedernal
@@ -17,7 +23,7 @@ export const TIPOS_DE_DOCUMENTO_DE_PARTE = ["CUIT", "CUIL", "CDI", "DNI", "PASAP
 export type TipoDeDocumentoDeParte = (typeof TIPOS_DE_DOCUMENTO_DE_PARTE)[number];
 
 /** Los únicos tipos que admite una empresa (persona jurídica). */
-export const TIPOS_DE_DOCUMENTO_DE_EMPRESA = ["CUIT", "ID_EXTRANJERO"] as const satisfies readonly TipoDeDocumentoDeParte[];
+const TIPOS_DE_DOCUMENTO_DE_EMPRESA = ["CUIT", "ID_EXTRANJERO"] as const satisfies readonly TipoDeDocumentoDeParte[];
 
 export type NaturalezaDeParte = "HUMANA" | "JURIDICA";
 
@@ -45,7 +51,7 @@ const FORMATO_DE_PASAPORTE = /^[A-Z0-9]{6,9}$/;
 const FORMATO_DE_DOCUMENTO_EXTRANJERO = /^[A-Z0-9]{3,20}$/;
 const FORMATO_DE_PAIS = /^[A-Z]{2}$/;
 
-export function esTipoDeDocumentoDeParte(texto: string): texto is TipoDeDocumentoDeParte {
+function esTipoDeDocumentoDeParte(texto: string): texto is TipoDeDocumentoDeParte {
   return (TIPOS_DE_DOCUMENTO_DE_PARTE as readonly string[]).includes(texto);
 }
 
@@ -85,8 +91,8 @@ export function documentoDeParteDesdeDatos(naturaleza: NaturalezaDeParte, datos:
     const dni = dniDesdeTexto(datos.numero);
     return dni === null ? invalido("DNI_INVALIDO") : valido({ tipo, pais: null, numero: dni });
   }
-  const cuit = cuitDesdeTexto(datos.numero);
-  return cuit.ok ? valido({ tipo, pais: null, numero: cuit.valor }) : invalido("CUIT_INVALIDO");
+  const cuit = cuitCanonico(datos.numero);
+  return cuit === null ? invalido("CUIT_INVALIDO") : valido({ tipo, pais: null, numero: cuit });
 }
 
 /**
@@ -113,8 +119,8 @@ export function documentoNormalizado(documento: DocumentoDeParte): string {
  */
 export function documentoBuscadoDesdeTexto(texto: string): string | null {
   const limpio = texto.trim();
-  const cuit = cuitDesdeTexto(limpio);
-  if (cuit.ok) return `T${cuit.valor}`;
+  const cuit = cuitCanonico(limpio);
+  if (cuit !== null) return `T${cuit}`;
   const dni = dniDesdeTexto(limpio);
   return dni === null ? null : `D${dni}`;
 }

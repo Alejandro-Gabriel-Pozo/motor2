@@ -10,9 +10,9 @@ import { textoDeUnaLineaDesdeTexto } from "./texto-de-catalogo";
  * compara las dos capas. Diferencias con Pedernal, cada una con su motivo: el nombre usa la ficha RAZON_SOCIAL de Motor2 (sin `¿ ¡ ? ! % $`, decisión del dueño D4, 2026-11-12); la nota rechaza controles e invisibles (R-2, D17, 2026-11-13).
  * Puro: sin reloj ni azar.
  */
-export const LARGO_MAXIMO_DEL_APELLIDO_DE_PARTE = 100;
-export const LARGO_MAXIMO_DEL_ALIAS_DE_PARTE = 100;
-export const LARGO_MAXIMO_DE_LA_NOTA_DE_PARTE = 2000;
+const LARGO_MAXIMO_DEL_APELLIDO_DE_PARTE = 100;
+const LARGO_MAXIMO_DEL_ALIAS_DE_PARTE = 100;
+const LARGO_MAXIMO_DE_LA_NOTA_DE_PARTE = 2000;
 const LARGO_MAXIMO_DEL_TELEFONO = 40;
 const LARGO_MAXIMO_DEL_DOMICILIO_LIBRE = 300;
 
@@ -24,7 +24,7 @@ export const CONDICIONES_IVA_DE_PARTE = [
 export type CondicionIvaDeParte = (typeof CONDICIONES_IVA_DE_PARTE)[number];
 
 /** Los 24 códigos ISO 3166-2:AR (la lista de la base, `Parte_domProvincia_chk`). */
-export const PROVINCIAS_DE_PARTE = [
+const PROVINCIAS_DE_PARTE = [
   "AR-A", "AR-B", "AR-C", "AR-D", "AR-E", "AR-F", "AR-G", "AR-H", "AR-J", "AR-K", "AR-L", "AR-M", "AR-N", "AR-P", "AR-Q", "AR-R", "AR-S", "AR-T", "AR-U", "AR-V", "AR-W", "AR-X", "AR-Y", "AR-Z",
 ] as const;
 

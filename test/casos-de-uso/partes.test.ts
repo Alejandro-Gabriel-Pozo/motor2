@@ -6,7 +6,7 @@ import { azarDelProceso } from "../../src/lib/azar";
 import { altaDeParteCasoDeUso } from "../../src/server/actions/partes/casos-de-uso/alta-de-parte";
 import { cambiarEstadoDeParteCasoDeUso } from "../../src/server/actions/partes/casos-de-uso/cambiar-estado-de-parte";
 import { editarParteCasoDeUso } from "../../src/server/actions/partes/casos-de-uso/editar-parte";
-import { buscarPartes } from "../../src/server/consultas/partes/buscar-partes";
+import { buscarPartes } from "../../src/server/lecturas/partes/buscar-partes";
 import { baseDeEmpresa } from "../../src/server/sesion/base";
 import { EMPRESA_TESTIGO_ID } from "../setup/empresa-de-prueba";
 import { EMPRESA_POR_DEFECTO_ID as A, crearUsuarioConMembresia, limpiarBaseDeTest, prismaAdmin, sembrarBase } from "../setup/test-db";

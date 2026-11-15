@@ -4,7 +4,7 @@ import { guardComandoAltaDeParte, guardComandoCambiarEstadoDeParte, guardComando
 import { aResultadoAccion } from "@/core/resultado-caso";
 import type { EntradaDeAltaDeParte, EntradaDeEdicionDeParte } from "@/core/features/partes/partes.schema";
 import { azarDelProceso } from "@/lib/azar";
-import { buscarPartes, type FichaEncontrada } from "@/server/consultas/partes/buscar-partes";
+import { buscarPartes, type FichaEncontrada } from "@/server/lecturas/partes/buscar-partes";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { requerirVerDeEmpresa } from "../con-sesion";
 import { type ResultadoAccion } from "../tipos";
