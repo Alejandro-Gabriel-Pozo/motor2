@@ -666,7 +666,8 @@ model Presentacion {
   /// Control de versión optimista (el caso de uso edita con `versionEsperada`).
   version          Int      @default(1)
 
-  @@unique([productoId, unidadCompraId])
+  /// Índice COMÚN (antes único): «caja x6» y «caja x12» comparten la unidad. Mientras la línea de compra no apunte a la presentación, dos activas con la misma unidad se rechazan en compras (`cargarPresentacionActiva`).
+  @@index([productoId, unidadCompraId])
   @@unique([empresaId, id])
 }
 

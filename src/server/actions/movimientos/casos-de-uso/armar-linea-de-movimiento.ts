@@ -8,7 +8,7 @@ import { obtenerLoteMasProximoAVencer, resolverConsumoPorFamilia } from "@/serve
 import { crearCacheProducto } from "@/server/persistencia/movimientos/producto-cache";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
 import { rendimientoEfectivo } from "@/core/catalogo/public";
-import { cargarPresentacionActiva, cargarRecetaVigenteParaProducir } from "@/server/persistencia/movimientos/cargar-linea-de-movimiento";
+import { PRESENTACION_AMBIGUA, cargarPresentacionActiva, cargarRecetaVigenteParaProducir } from "@/server/persistencia/movimientos/cargar-linea-de-movimiento";
 import type { DatosMovimientoInput, ItemMovimientoInput } from "@/core/features/movimientos/movimiento.schema";
 
 /**
@@ -108,6 +108,10 @@ export async function armarLineaMovimiento(
     transicion.aplicaFactorConversion && item.unidadCompraId
       ? await cargarPresentacionActiva(tx, { productoId: producto.id, unidadCompraId: item.unidadCompraId })
       : null;
+  // Fallo cerrado: dos presentaciones activas con la misma unidad (la línea solo trae la unidad) rechazan la línea; no se mueve stock ni costo.
+  if (presentacion === PRESENTACION_AMBIGUA) {
+    return { ok: false, mensaje: `No se puede registrar la compra de "${producto.nombre}": hay más de una presentación activa en esa unidad.` };
+  }
 
   let numCant: number;
   let precioEntrada: number;

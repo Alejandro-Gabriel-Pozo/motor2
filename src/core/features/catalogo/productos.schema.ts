@@ -237,11 +237,12 @@ export interface ComandoAgregarPresentacionAlternativa {
  *  - `ES_LA_UNIDAD_POR_DEFECTO`: la unidad pedida ya es la unidad de compra por defecto del producto;
  *  - `FACTOR_INVALIDO`: el factor no es una cantidad válida para la unidad de stock del producto;
  *  - `FACTOR_CON_USO` (M-4): la presentación ya existe, ya se usó en compras y el factor pedido es DISTINTO del guardado: no se cambia (reactivarla con el mismo factor sí);
+ *  - `PRESENTACION_AMBIGUA` (a2-1): ya hay más de una presentación de ese producto con esa unidad (la base ya no lo impide; hasta que la línea de compra apunte a la presentación no debería existir): fallo cerrado, no se escribe nada.
  *  - `SIN_PERMISO_CAMPOS_SENSIBLES` (M.2): la presentación no existía, o existe y el factor pedido es distinto del guardado, y quien lo pide no tiene `producto_campos_sensibles`; va ANTES de `FACTOR_CON_USO`.
  */
 export type ResultadoAgregarPresentacionAlternativa = ResultadoCaso<
   null,
-  "PRODUCTO_NO_ENCONTRADO" | "ES_LA_UNIDAD_POR_DEFECTO" | "FACTOR_INVALIDO" | "FACTOR_CON_USO" | "SIN_PERMISO_CAMPOS_SENSIBLES"
+  "PRODUCTO_NO_ENCONTRADO" | "ES_LA_UNIDAD_POR_DEFECTO" | "FACTOR_INVALIDO" | "FACTOR_CON_USO" | "SIN_PERMISO_CAMPOS_SENSIBLES" | "PRESENTACION_AMBIGUA"
 >;
 
 /** Comando «activar o desactivar una presentación de compra»: el id y el booleano, sin validar (sin guard). */
