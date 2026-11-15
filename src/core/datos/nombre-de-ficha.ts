@@ -19,7 +19,7 @@ import { texto } from "@/core/texto";
  *    estricta SOLO si el nombre pedido es distinto del guardado (la comparación la hace el servidor contra lo guardado, nunca contra lo que manda el formulario).
  * Lo ya guardado que no cumple NO se toca ni se bloquea al leer: acá no hay lecturas.
  */
-export const MENSAJE_DE_NOMBRE_NO_PERMITIDO = "Esta acción no está permitida";
+const MENSAJE_DE_NOMBRE_NO_PERMITIDO = "Esta acción no está permitida";
 
 /** Con la regla estricta de la ficha, o el rechazo. `texto()` recorta y trata `null`/`undefined` como vacío (los mismos de `nombreDeCatalogo`). */
 export function nombreDeFicha(valor: unknown, ficha: FichaDeTexto, mensajeVacio: string): ResultadoDato<string> {
