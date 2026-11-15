@@ -264,6 +264,7 @@ forma (UNIDAD / FRACCIONES × 7 conjuntos / PESO / HEREDADA) × cantidad pedida 
 | T5 | Los textos del papel «1/2» van en una función pura con denominadores 2, 4, 8 | resultado igual al de Pedernal (D: decisión 181) |
 | T6 | La magnitud de la unidad (conteo) se valida en el servidor y luego con un disparador | un CHECK no puede mirar otra tabla (Prisma/estructura) |
 | T7 | Tope por ítem 999: se revisa para peso en gramos; no se cambia sin pedido | «lo que el dueño no pidió no entra» |
+| T8 | La columna nueva `porcionesOfrecidas` se declara en el oráculo de columnas de «Duplicar producto» (`COLUMNAS_DEL_DUPLICADO`, `src/core/catalogo/duplicar-producto.ts`) como `SE_COPIA`, **junto con** `pasoVenta` (que ya se copia): el CHECK exige que el paso salga de las fracciones | el guardián existente (`test/catalogo/duplicar-producto-columnas.test.ts`) falla si una columna de `Producto` no está declarada |
 
 ## 15. Diferencias con Pedernal, declaradas
 
