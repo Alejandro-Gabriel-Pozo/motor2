@@ -351,6 +351,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "U0 de «una sola compra» (docs/diseno-una-sola-compra-2026-11-06.md; CAMBIA SOLO LA PREPARACIÓN, no la venta): `registrarMovimiento` COMPRA es ahora una factura de UNA parte al 100 %% en la sucursal, pagada ahora. Cambian SOLO las líneas de las compras de preparación (34 OPERACION y 34 KARDEX de proceso COMPRA), en tres campos: la clave de reintento, la huella y el mensaje pasan de la Operacion a la cabecera de la factura (claveIdempotencia, payloadHash y resultadoMensaje de la Operacion quedan en null), la fila de Kardex gana su renglón (facturaProveedorRenglonId) y pierde unidadCompraId y cantidadCompra (viven en el renglón). Comparado línea por línea: ni una fila de venta, stock, costo ni importe cambia.",
       },
+      {
+        blob: "4c4add0d7b6dd0579dd967581f3be43c108ffc9c",
+        // El commit PADRE de este (d261b95d) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "d261b95d",
+        motivo:
+          "«Ocultar» como Pedernal, E3c1 (docs/diseno-ocultar-como-pedernal-2026-11-15.md, I-6; CAMBIA SOLO LA LÍNEA `lecturas` de los pasos que venden por la vía directa y de agregar ítems): cada línea NUEVA de una venta de mostrador lee ahora `ocultamientoProducto.findMany` ×1 (para rechazar un producto oculto). Verificado con diff: al sacar ese token y el contador de `lecturas (N)`, el golden nuevo es IDÉNTICO al anterior; ni un resultado, ni una fila, ni una escritura, ni un mensaje cambian. El cierre de una cuenta NO hace la lectura (cobra lo ya cargado).",
+      },
     ],
   },
   "test/movimientos/caracterizacion/venta-matriz-ampliada.golden.txt": {
@@ -492,6 +499,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "58f066f2",
         motivo:
           "Regla de números del dueño (2026-11-09, «1.000,00»; SOLO FORMATO, no cambia ningún valor, redondeo ni efecto): el mensaje de cierre de cuenta del POS sale con 2 decimales («se registró la venta por $ 40.200» pasa a «$ 40.200,00»). Cambia 1 línea.",
+      },
+      {
+        blob: "8f463808741e3d4815eeef35e86faa94ad676091",
+        // El commit PADRE de este (d261b95d) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "d261b95d",
+        motivo:
+          "«Ocultar» como Pedernal, E3c1 (docs/diseno-ocultar-como-pedernal-2026-11-15.md, I-6; CAMBIA SOLO LA LÍNEA `lecturas` de los pasos que venden por la vía directa y de agregar ítems): cada línea NUEVA de una venta de mostrador lee ahora `ocultamientoProducto.findMany` ×1 (para rechazar un producto oculto). Verificado con diff: al sacar ese token y el contador de `lecturas (N)`, el golden nuevo es IDÉNTICO al anterior; ni un resultado, ni una fila, ni una escritura, ni un mensaje cambian. El cierre de una cuenta NO hace la lectura (cobra lo ya cargado).",
       },
     ],
   },
