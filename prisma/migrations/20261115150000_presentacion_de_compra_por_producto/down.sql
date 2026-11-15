@@ -1,4 +1,4 @@
--- Reversa de 20261115120000_presentacion_de_compra_por_producto. Saca el índice, los CHECK y las tres columnas nuevas; NO toca ninguna columna ni fila de antes (la cantidad, la unidad y `activa` quedan como estaban).
+-- Reversa de 20261115150000_presentacion_de_compra_por_producto. Saca el índice, los CHECK y las tres columnas nuevas; NO toca ninguna columna ni fila de antes (la cantidad, la unidad y `activa` quedan como estaban).
 -- Descarta lo cargado SOLO con el código nuevo: los nombres propios y las marcas de peso variable. Idempotente.
 -- Volver primero el código si hiciera falta y recién después correr esto, a mano, como dueño, con `psql -1 -v ON_ERROR_STOP=1 -f down.sql` (UNA transacción).
 

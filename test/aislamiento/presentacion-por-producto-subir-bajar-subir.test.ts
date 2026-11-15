@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/base-temporal-migrada";
 
 /**
- * Presentación de compra por producto (etapa C1 / P3 etapa 1, `docs/diseno-productos-igual-a-pedernal-2026-11-13.md` §9): SUBIR, BAJAR y SUBIR de la migración real `20261115120000_presentacion_de_compra_por_producto`
+ * Presentación de compra por producto (etapa C1 / P3 etapa 1, `docs/diseno-productos-igual-a-pedernal-2026-11-13.md` §9): SUBIR, BAJAR y SUBIR de la migración real `20261115150000_presentacion_de_compra_por_producto`
  * sobre una base TEMPORAL descartable (`crearBaseTemporalMigrada`: solo Postgres local, jamás una base real), con su `down.sql` tal cual está en el repo.
  *
  * Qué comprueba:
@@ -22,7 +22,7 @@ import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/bas
  * Mutación (anotada en el commit): sacar un DROP del down.sql → rojo el caso 5; cambiar `lower("nombre")` por `"nombre"` en el índice → rojo los casos 2 y 3.
  */
 const RAIZ = join(__dirname, "../../prisma/migrations");
-const MIGRACION = "20261115120000_presentacion_de_compra_por_producto";
+const MIGRACION = "20261115150000_presentacion_de_compra_por_producto";
 const sql = (archivo: "migration.sql" | "down.sql") => readFileSync(join(RAIZ, MIGRACION, archivo), "utf8");
 const INDICE = "Presentacion_empresaId_productoId_nombre_lower_key";
 const CHEQUEOS = ["Presentacion_factorConversion_chk", "Presentacion_nombre_chk", "Presentacion_version_chk"];

@@ -1,4 +1,4 @@
--- Verificación de 20261115120000_presentacion_de_compra_por_producto (solo lectura). Correr ANTES y DESPUÉS de aplicar, en cada base, y guardar la salida.
+-- Verificación de 20261115150000_presentacion_de_compra_por_producto (solo lectura). Correr ANTES y DESPUÉS de aplicar, en cada base, y guardar la salida.
 -- ANTES: (1) cuántas presentaciones hay (la migración las conserva todas); (2) las que violarían un CHECK (factor <= 0, o unidad con nombre vacío o de más de 80): tiene que salir vacío;
 -- (3) pares de presentaciones del mismo producto cuyas unidades se llaman igual sin distinguir mayúsculas (romperían el índice único nuevo): tiene que salir vacío.
 -- DESPUÉS: las tres columnas nuevas, con el nombre rellenado (ninguna en NULL), el CHECK y el índice.
