@@ -15,9 +15,9 @@ Fotos: Motor2 `origin/main` `e327b8f` (2026-11-15). Pedernal: código `ZuluHub-E
 5. **No se puede ocultar** un producto con existencia distinta de cero (también negativa). Mostrar no tiene condiciones.
 6. Son **cuatro combinaciones** posibles (activo o desactivado × visible u oculto); Ocultar y Desactivar no se pisan.
 7. Una tabla nueva y **una sola migración aditiva** con `down.sql` (autorización permanente del 2026-11-15). Las demás etapas **no migran**.
-8. Lo más barato primero: cambiar el texto a «Desactivar» (sin migración) y, si respondés la pregunta 2, cerrar ya el hueco para productos desactivados (sin migración).
+8. Lo más barato primero: cambiar el texto a «Desactivar» (sin migración). El hueco de `anularVentaEnTx` se cierra **solo para productos ocultos** (P-2 respondida: lo desactivado se sigue permitiendo, como Pedernal).
 9. Una diferencia con Pedernal que **no se puede igualar**: Motor2 no tiene «conteo abierto con cargas» (cada conteo es un registro suelto). Va declarada en §10.4 con su motivo.
-10. **Tres preguntas de negocio** al final: quién oculta para toda la empresa, qué pasa al anular con un producto Desactivado, y qué hace hoy la pantalla de «Sin stock hoy».
+10. Las **tres preguntas de negocio** del final quedaron **respondidas el 2026-11-15** (todas con la opción recomendada, salvo que P-2 fue la opción B de este documento: ver «Respuestas del dueño»).
 
 ---
 
@@ -26,7 +26,7 @@ Fotos: Motor2 `origin/main` `e327b8f` (2026-11-15). Pedernal: código `ZuluHub-E
 | # | Fecha | Texto literal | Fuente | Qué fija | Estado |
 |---|---|---|---|---|---|
 | O-1 | 2026-11-15 | «Lo actual pasa a llamarse Desactivar y se suma Ocultar como Pedernal (Recomendada)» | chat del dueño con el orquestador; `motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, sección «Ocultar y tres defectos de las capturas» | Lo actual → «Desactivar» sin cambiar su comportamiento; se suma «Ocultar» como Pedernal; independiente de Desactivar; por local o toda la empresa; sin fila = visible | **CONFIRMADA** |
-| O-2 | 2026-11-15 | (la etiqueta de la opción A, «Como Pedernal», tal como la relata el plan: «el operador solo en sus locales, toda la empresa solo gerente y administrador; visible por defecto») | plan de paridad, «Precisiones…», pregunta «Ocultar en Motor2» | Permisos de Ocultar: operador en sus locales; toda la empresa solo rol de gerencia | **CONFIRMADA en dirección** (el dueño eligió la opción; el detalle de permisos es el texto de la opción, no una frase suya). La traducción a los roles de Motor2 es la pregunta 1 |
+| O-2 | 2026-11-15 | (la etiqueta de la opción A, «Como Pedernal», tal como la relata el plan: «el operador solo en sus locales, toda la empresa solo gerente y administrador; visible por defecto») | plan de paridad, «Precisiones…», pregunta «Ocultar en Motor2» | Permisos de Ocultar: operador en sus locales; toda la empresa solo rol de gerencia | **CONFIRMADA en dirección** (el dueño eligió la opción; el detalle de permisos es el texto de la opción, no una frase suya). La traducción a los roles de Motor2 quedó en O-10 |
 | O-3 | 2026-11-15 | «…bloquea si hay existencia distinta de cero o un conteo abierto; un oculto no admite líneas nuevas en mostrador y salón, deja cobrar lo ya cargado y no suma existencia» | mismo archivo de decisiones (relato del orquestador) | El comportamiento de Ocultar | **CONFIRMADA en dirección**; «conteo abierto» no existe tal cual en Motor2 (ver §4.6) |
 | O-4 | 2026-11-12 | «si podría ser ocultar en toda la empresa y por sucursal y obviamente oculto vs desactivo que no son excluyentes; sería que no aparezca ni en conteos, ni en carta/pos; si tenía stock no debería dejar, al igual que el desactivar» | `ZuluHub-docs`, `11-especificaciones/carta-real-especificacion.md` (Revisión 3) | Es la decisión **de Pedernal** que Motor2 copia | **CONFIRMADA (Pedernal)**; ratificada para Motor2 el 2026-11-15 (E6, «Sí, copiar a Pedernal en esas cinco (Recomendada)») |
 | O-5 | 2026-11-13 | «Anular una venta cuyo producto quedó oculto: se rechaza («Este producto está oculto.»); para anular, primero se vuelve a mostrar el producto (la anulación devuelve existencia, y un oculto no recibe existencia).» | `ZuluHub-docs`, `decisiones-del-dueno-2026-11.md:115` | Anular con producto oculto se rechaza | **CONFIRMADA (Pedernal)**; para Motor2 vale por el plan E6 y por O-6 |
@@ -34,8 +34,11 @@ Fotos: Motor2 `origin/main` `e327b8f` (2026-11-15). Pedernal: código `ZuluHub-E
 | O-7 | 2026-11-13 | «Necesitamos ser iguales en todo. Por la salvedad de que nosotros usamos Prisma… el resultado tiene que ser el mismo y sobre todo de las mismas formas, salvo porque nosotros usamos Prisma.» | `AGENTS.md`, «Paridad con Pedernal» | Mismo resultado y misma forma; toda diferencia con motivo | **CONFIRMADA** |
 | O-8 | 2026-11-15 | «Y mientras las autorizaciones tengan down.sql, vamos…» | mismo archivo de decisiones | Migraciones **aditivas y reversibles** de etapas ratificadas: se escriben y llevan a `main` sin pedir una por una; **aplicar en bases reales sigue congelado** | **CONFIRMADA** (lectura del orquestador, a corregir por el dueño) |
 | O-9 | 2026-11-11 | «yo creo una promoción y nace sin ninguna sección tildada… Esto me asegura de que toda decisión sea adrede. Lo mismo con el código» | `AGENTS.md`, «Todo nace cerrado» | Denegar por defecto: ante duda o error el sistema cierra | **CONFIRMADA** |
+| O-10 | 2026-11-15 | «Solo administración (Recomendada)» | chat del dueño con el orquestador (relatado por el orquestador; respuesta a P-1) | Ocultar en toda la empresa: solo administración (`admin`); el operador solo en sus sucursales | **CONFIRMADA** |
+| O-11 | 2026-11-15 | «Permitir, igual que Pedernal (Recomendada)» | ídem (respuesta a P-2; es la opción B de este documento) | Anular una venta con producto **Desactivado** se sigue permitiendo; **solo** se rechaza cuando el producto está **Oculto**. El hueco de desactivado **no se cierra** | **CONFIRMADA** |
+| O-12 | 2026-11-15 | «Sigue con Desactivar por ahora (Recomendada)» | ídem (respuesta a P-3) | La pantalla de mantenimiento de la carta («Sin stock hoy») sigue usando Desactivar | **CONFIRMADA** («por ahora»: pasar a Ocultar sería otro pedido) |
 
-**Qué NO hay:** ninguna decisión del dueño sobre el nombre interno de la tabla, sobre la pantalla donde vive el botón ni sobre los textos nuevos de error. Van como PROPUESTA o decisión técnica.
+**Qué NO hay (después de O-10 a O-12):** ninguna decisión del dueño sobre el nombre interno de la tabla, sobre la pantalla donde vive el botón ni sobre los textos nuevos de error. Van como PROPUESTA o decisión técnica.
 
 ---
 
@@ -75,7 +78,7 @@ Fotos: Motor2 `origin/main` `e327b8f` (2026-11-15). Pedernal: código `ZuluHub-E
 - Renombrar la marca actual a «Desactivar» (texto; O-1).
 - Marca nueva «Ocultar / Volver a mostrar» por (producto, alcance), con alcance **sucursal** o **empresa**; sin fila = visible.
 - Que carta pública, POS (salón, cuenta, mostrador), venta directa, conteos y movimientos que suman existencia respeten la marca.
-- Cerrar el hueco de `anularVentaEnTx` (O-6).
+- Cerrar el hueco de `anularVentaEnTx` **para productos ocultos** (O-6, O-11; lo desactivado se sigue permitiendo).
 
 **Fuera de alcance (no se pidió; PROPUESTA de dejarlo afuera):**
 - Un «agotado automático» según el stock (Pedernal tampoco lo hace).
@@ -90,7 +93,7 @@ Fotos: Motor2 `origin/main` `e327b8f` (2026-11-15). Pedernal: código `ZuluHub-E
 | Actor | Qué hace | Contexto | Estado |
 |---|---|---|---|
 | Operador | Oculta y vuelve a mostrar **en las sucursales donde trabaja** | Sucursal activa | PROPUESTA de mapa: reutiliza `producto_disponibilidad` (Editar). Pedernal: `vidrieras.marcar_disponibilidad` para los tres roles. **CONFIRMADA en dirección** (O-2) |
-| Administrador (`admin`) | Oculta y muestra en **cualquier sucursal** y **en toda la empresa** | Empresa | **CONFIRMADA en dirección** (O-2); el mapa a los roles de Motor2 es la pregunta 1 |
+| Administrador (`admin`) | Oculta y muestra en **cualquier sucursal** y **en toda la empresa** | Empresa | **CONFIRMADA en dirección** (O-2); **CONFIRMADA** (O-10: solo `admin`) |
 | Mozo / cajero | Solo **sufre** la marca: no ve el producto en el selector; una línea nueva se rechaza con un mensaje claro | Sucursal | CONFIRMADA (O-3) |
 | Sistema (movimientos de stock, conteos, anulación, carta pública) | Lee la marca y rechaza o filtra | Servidor | CONFIRMADA (O-3, O-5) |
 | Cliente final (carta pública) | No ve el producto oculto; sin aviso de «oculto» | Público | CONFIRMADA (O-4) |
@@ -154,7 +157,7 @@ Fotos: Motor2 `origin/main` `e327b8f` (2026-11-15). Pedernal: código `ZuluHub-E
 | I-8 | **Fijar un estado, no alternar:** dos veces seguidas da el mismo resultado (`yaEstaba`), sin escribir ni auditar | CONFIRMADA (Pedernal, regla de idempotencia del usuario) |
 | I-9 | **Toda escritura deja rastro:** quién (persona), cuándo (reloj inyectado), qué cambió (antes/después, alcance); no se borra la fila: «mostrar» pone `oculto = no` | CONFIRMADA (O-9, trazabilidad) |
 | I-10 | **Aislamiento:** un producto o sucursal de otra empresa nunca se ve ni se escribe; una sucursal fuera del alcance del operador tampoco | CONFIRMADA (regla permanente) |
-| I-11 | **Quién oculta para toda la empresa:** solo el rol de gerencia con alcance total; el operador solo en sus sucursales | CONFIRMADA en dirección (O-2); mapa a roles = pregunta 1 |
+| I-11 | **Quién oculta para toda la empresa:** solo `admin` con alcance total; el operador solo en sus sucursales | **CONFIRMADA** (O-2, O-10) |
 | I-12 | **Una sola definición de «oculto en esta sucursal»** en el código (un lector, un filtro Prisma, un guardián que prohíba escribirlo a mano), igual que `whereDisponibleEn` | PROPUESTA (patrón existente del proyecto) |
 | I-13 | **Falla cerrado:** si la lectura de la marca falla, no se agrega la línea ni se suma existencia (no se asume «visible») | PROPUESTA (O-9) |
 | I-14 | **Desactivar no cambia** (reglas, mensajes de bloqueo, permisos, auditoría, D4, ancla, base) salvo el **nombre visible** | CONFIRMADA (O-1) |
@@ -231,7 +234,7 @@ Lo que el esquema Prisma **no** puede expresar y va a mano en la migración (pre
 
 ## Nivel 8 — Acceso e interfaces
 
-**8.1 Permisos (PROPUESTA de mapa, sujeto a la pregunta 1).** Pedernal usa dos acciones; Motor2 tiene su propio catálogo. **Primero la opción más barata:** reutilizar `producto_disponibilidad` (Editar) para ocultar y mostrar **en una sucursal** (operador y admin, como hoy para Desactivar); y para **toda la empresa** exigir, además de esa clave, el **rol de gerencia con alcance total** (hoy `admin`). Una clave nueva (por ejemplo para «ocultar en toda la empresa») sería una migración de datos (como `20261104111000_permiso_declarar_pago_compra`) y se evita si la pregunta 1 se responde con la opción recomendada.
+**8.1 Permisos (mapa PROPUESTA; la regla «solo administración para la empresa» está CONFIRMADA, O-10).** Pedernal usa dos acciones; Motor2 tiene su propio catálogo. **Primero la opción más barata:** reutilizar `producto_disponibilidad` (Editar) para ocultar y mostrar **en una sucursal** (operador y admin, como hoy para Desactivar); y para **toda la empresa** exigir, además de esa clave, el **rol de gerencia con alcance total** (hoy `admin`). Una clave nueva (por ejemplo para «ocultar en toda la empresa») sería una migración de datos (como `20261104111000_permiso_declarar_pago_compra`) y se evita (O-10: solo `admin`, sin permiso nuevo).
 
 **8.2 Dónde está el botón (PROPUESTA, la opción más barata).** En la **ficha del producto**, en la misma tabla por sucursal donde hoy están «Disponible: Sí/No» y el botón Activar/Desactivar (`src/app/(app)/catalogo/productos/[id]/page.tsx`): la columna «Disponible» pasa a **«Activo»** y se suma **«Oculto»** con su botón «Ocultar / Volver a mostrar»; una fila o un bloque «Toda la empresa» para el alcance de empresa. Una sucursal que ve «oculto en toda la empresa» no tiene botón para mostrar. **Pantalla propia o integración en la carta: no** (no se pidió). Maqueta: por regla del 2026-11-05 se arma con la pantalla real sobre una base descartable cuando llegue el código.
 
@@ -269,16 +272,16 @@ Lo que el esquema Prisma **no** puede expresar y va a mano en la migración (pre
 
 | Etapa | Qué | ¿Migra? | Depende de | Estado |
 |---|---|---|---|---|
-| **E0** | Confirmar este diseño: las **tres preguntas** del final y la lectura de niveles 1 a 5 | No | — | PENDIENTE del dueño |
-| **E1** | **Vocabulario «Desactivar»**: encabezado y botón de la ficha, descripción del permiso `producto_disponibilidad` («Marcar un producto como disponible o no disponible» → «Activar o desactivar un producto en una sucursal»), mensajes («no está disponible en «X»» → «está desactivado en «X»» en los puntos del inventario), pantalla de mantenimiento de la carta solo si la pregunta 3 lo pide. Regenerar con motivo declarado los goldens que lo fijan (`caracterizaciones-congeladas`, `test/carta`, `test/reportes`) | **No** | E0 (el texto exacto de cada mensaje) | PROPUESTA; el cambio de nombre es CONFIRMADA (O-1) |
-| **E1b** | **Hueco para el producto desactivado** en `anularVentaEnTx`: consultar `productoDisponibleEn` por cada línea de reversión **antes de escribir** y rechazar con el mensaje estándar | **No** | **Pregunta 2** (opción A) | PENDIENTE: no entra si no se responde A |
+| **E0** | Confirmar la lectura de niveles 1 a 5 (las tres preguntas de negocio ya están respondidas, O-10 a O-12) | No | — | PENDIENTE del dueño (niveles 1 a 5); preguntas CONFIRMADAS |
+| **E1** | **Vocabulario «Desactivar»**: encabezado y botón de la ficha, descripción del permiso `producto_disponibilidad` («Marcar un producto como disponible o no disponible» → «Activar o desactivar un producto en una sucursal»), mensajes («no está disponible en «X»» → «está desactivado en «X»» en los puntos del inventario), pantalla de mantenimiento de la carta solo (P-3: sigue con Desactivar «por ahora», O-12: no se toca). Regenerar con motivo declarado los goldens que lo fijan (`caracterizaciones-congeladas`, `test/carta`, `test/reportes`) | **No** | E0 (el texto exacto de cada mensaje) | PROPUESTA; el cambio de nombre es CONFIRMADA (O-1) |
+| ~~E1b~~ | ~~Hueco para el producto desactivado en `anularVentaEnTx`~~ | — | — | **SIN EFECTO** (O-11: lo desactivado se sigue permitiendo, como Pedernal) |
 | **E2** | **Núcleo puro y oráculo**: `ocultoPor`, `decidirSobreProducto` (función pura con las dimensiones del §10.2), la tabla oráculo escrita aparte del código y el test que recorre **todas** las combinaciones. Sin tabla ni pantalla | **No** | E0 | PROPUESTA |
 | **E3** | **Tabla `OcultamientoProducto`** (nivel 6) + RLS + registro en los guardianes + acción Ocultar/Mostrar con auditoría + columna «Oculto» y botón en la ficha | **Sí** (una, aditiva, con `down.sql`) | E0 y niveles 1 a 5 confirmados | PROPUESTA; autorización de la regla del 2026-11-15 (O-8) |
 | **E4** | **Venta**: rechazo de línea nueva en `agregarItems` y venta directa; carta pública y selectores filtran | No | E3 | PROPUESTA |
 | **E5** | **Stock**: control de «suma existencia» en los escritores, conteo, traspaso destino, reclasificar, propuesta de factura; **anulación (hueco para oculto)**; comprobación de existencia al ocultar; bloqueo `FOR SHARE`/`FOR UPDATE` | No | E3 | PROPUESTA |
 | **E6** (opcional) | Dos disparadores en la base como Pedernal 0049 | **Sí** (aditiva, con `down.sql`) | E5 + decisión técnica 4 | PROPUESTA, sin fecha |
 
-E1, E1b y E2 se pueden hacer **antes** de tener la tabla y no migran. La única migración obligatoria es E3.
+E1 y E2 se pueden hacer **antes** de tener la tabla y no migran. La única migración obligatoria es E3.
 
 ### 10.2 Combinaciones (regla del 2026-10-28): dimensiones y oráculo
 
@@ -308,7 +311,7 @@ Recorrido: 2 × 4 × 3 × 2 × 2 × 15 = **1.440 combinaciones** de D1 a D6 (má
 | R-6 | Entrada que suma | D2 ≠ ninguno **y** saldo final > 0 | Rechazo |
 | R-7 | Salida que resta / corregir negativo hasta cero | cualquier D2 | Permitido |
 | R-8 | Anular venta | D2 ≠ ninguno **y** el producto devuelto quedaría con saldo > 0 | Rechazo «Este producto está oculto.» |
-| R-9 | Anular venta | D1 = desactivado, D2 = ninguno | **Pregunta 2**: A = rechazo, B = como hoy (se permite). Sin respuesta: B (no se agrega nada que no se pidió) |
+| R-9 | Anular venta | D1 = desactivado, D2 = ninguno | **Se permite** (O-11, igual que Pedernal); el hueco de desactivado **no se cierra** |
 | R-10 | Contar | D2 ≠ ninguno | Rechazo; no aparece en la lista |
 | R-11 | Ocultar | D3 ≠ cero en el alcance | Rechazo por existencia; no queda fila |
 | R-12 | Ocultar | D3 = cero | Se oculta (con permiso) |
@@ -329,7 +332,7 @@ Recorrido: 2 × 4 × 3 × 2 × 2 × 15 = **1.440 combinaciones** de D1 a D6 (má
 | Integración (base de pruebas) | Ocultar con existencia positiva y negativa (rechaza, **no queda fila ni auditoría**); ocultar sin existencia; mostrar; «ya estaba» (sin auditar); producto de otra empresa; sucursal fuera de alcance; operador oculta en otro local → rechazo; operador oculta en la empresa → rechazo | `test/catalogo/ocultar-producto.test.ts` |
 | Venta | Línea nueva de un oculto (local y empresa) rechazada y **sin dejar nada**; lo ya cargado se cobra; unir y dividir cuentas con un producto ocultado después sigue funcionando; mostrar de nuevo reabre; ocultar en un local no toca otros ni otra empresa | `test/pos/producto-oculto-en-ventas.test.ts` |
 | Stock | Entrada, compra, producción, traspaso entrante y ajuste positivo rechazados; salidas y corrección de negativo permitidas; un oculto no se cuenta; ocultar en un local no frena a los otros | `test/stock/producto-oculto-en-stock.test.ts` |
-| **Anulación (el hueco)** | Anular la venta de un producto ocultado después: rechazo y **nada escrito** (ni reversión ni auditoría); anular con saldo negativo que no pasa de cero: permitido; venta con hermanas y adicionales: se rechaza **toda** la anulación; tras «mostrar» la anulación pasa; **con Desactivado**: según la pregunta 2 | `test/movimientos/anular-venta-producto-oculto.test.ts` |
+| **Anulación (el hueco)** | Anular la venta de un producto ocultado después: rechazo y **nada escrito** (ni reversión ni auditoría); anular con saldo negativo que no pasa de cero: permitido; venta con hermanas y adicionales: se rechaza **toda** la anulación; tras «mostrar» la anulación pasa; **con Desactivado (y no oculto): se permite** (O-11) | `test/movimientos/anular-venta-producto-oculto.test.ts` |
 | **Concurrencia** | (a) ocultar vs. entrada que suma, en paralelo y repetido: nunca queda oculto con existencia nueva (una de las dos pierde); (b) dos ocultar a la vez: una fila, un registro de auditoría; (c) ocultar vs. desactivar; (d) ocultar vs. agregar línea: «se agregó» o «oculto», nunca a medias; (e) anular vs. ocultar | `test/concurrencia/` |
 | **Idempotencia** | Ocultar dos veces seguidas y desde dos pestañas: un solo cambio, un solo registro; anular dos veces: el comportamiento de hoy | idem |
 | Aislamiento / RLS | La tabla sin alcance no se ve ni se escribe; una empresa no ve la marca de otra; una sucursal fuera del alcance no se escribe; fila de empresa visible en todas las sucursales | `test/aislamiento/` |
@@ -343,7 +346,7 @@ Recorrido: 2 × 4 × 3 × 2 × 2 × 15 = **1.440 combinaciones** de D1 a D6 (má
 | D-1 | Nombre de la tabla: `OcultamientoProducto` (Pedernal: `disponibilidad_de_producto`) | Motor2 ya tiene `DisponibilidadProducto` con el sentido **contrario** (sin fila = no); renombrarla toca decenas de archivos, políticas RLS y pruebas fijadas, y no cambia el comportamiento que pidió el dueño (O-1) | PROPUESTA (pregunta técnica 8) |
 | D-2 | Desactivar es **por sucursal** (Motor2) y global en el producto (Pedernal: `producto.activo`) | Es lo ya construido y el dueño pidió que no cambie (O-1) | CONFIRMADA |
 | D-3 | «Conteo abierto con cargas» no se puede igualar | Motor2 no tiene esa figura (§4.6); se traduce a existencia distinta de cero y, si se verifica, a conteo sin resolver | PROPUESTA; **NO VERIFICADO** |
-| D-4 | Permisos: Pedernal `vidrieras.marcar_disponibilidad` y `vidrieras.editar` con tres roles; Motor2 `producto_disponibilidad` con `admin` y `operador` | Catálogo de permisos propio de Motor2 | PROPUESTA (§8.1, pregunta 1) |
+| D-4 | Permisos: Pedernal `vidrieras.marcar_disponibilidad` y `vidrieras.editar` con tres roles; Motor2 `producto_disponibilidad` con `admin` y `operador` | Catálogo de permisos propio de Motor2 | PROPUESTA (§8.1, O-10) |
 | D-5 | El control de «suma existencia» corre **en el código** de los escritores primero; Pedernal lo tiene además como disparadores en la base | Prisma y la forma del código de Motor2; los disparadores quedan como etapa E6 opcional | PROPUESTA (decisión técnica 4) |
 | D-6 | `version` la sube la acción (Pedernal: un disparador) | Evitar un disparador más; igual resultado | PROPUESTA (decisión técnica 3) |
 | D-7 | Un solo mensaje por regla; Desactivar sigue bloqueando por receta y saldo (Pedernal: por existencia y conteo) | Es lo ya construido (O-1) | CONFIRMADA |
@@ -354,7 +357,7 @@ Recorrido: 2 × 4 × 3 × 2 × 2 × 15 = **1.440 combinaciones** de D1 a D6 (má
 2. **Concurrencia en READ COMMITTED:** si se implementa solo «leo y rechazo», queda la carrera del nivel 7. Por eso la prueba de concurrencia (a) es **obligatoria** antes de dar E5 por hecha.
 3. **Un lugar que lee disponibilidad y nadie declaró:** el guardián de dimensiones lo detecta.
 4. **Goldens:** E1 cambia textos fijados en pruebas de caracterización; se regeneran **con motivo declarado**, nunca a ciegas.
-5. **Pantalla de mantenimiento de la carta** usa Desactivar como «agotado hoy»: si Ocultar es mejor para eso (como el «agotar de un toque» de Pedernal), la pregunta 3.
+5. **Pantalla de mantenimiento de la carta** usa Desactivar como «agotado hoy»; el dueño dijo que siga así «por ahora» (O-12). Pasarla a Ocultar (como el «agotar de un toque» de Pedernal) sería otro pedido.
 6. **Anular una venta ya cobrada** de un producto que se ocultó después queda **bloqueada hasta volver a mostrar** (decisión de Pedernal, O-5): es una molestia buscada; el mensaje debe decir qué hacer.
 
 ### 10.6 Cómo lo probaría el dueño (cuando se construya, sin leer código)
@@ -369,24 +372,15 @@ Recorrido: 2 × 4 × 3 × 2 × 2 × 15 = **1.440 combinaciones** de D1 a D6 (má
 
 ---
 
-## Preguntas de NEGOCIO abiertas
+## Respuestas del dueño a las preguntas de negocio (2026-11-15)
 
-Solo las que cambian el modelo de datos, el dinero o los permisos. Una clave por pregunta.
+Las tres preguntas que este documento dejó abiertas quedaron **respondidas el 2026-11-15** (chat del dueño con el orquestador; opciones elegidas; relatado por el orquestador):
 
-**P-1. Permisos — ¿quién oculta para toda la empresa?** En Pedernal: operador en sus locales y «gerente y administrador» para toda la empresa. En Motor2 los roles son **`admin` y `operador`** (no hay un «gerente» aparte).
-- **A. (Recomendada) Solo `admin` oculta en toda la empresa**; el operador solo en sus sucursales. Es lo mismo que Pedernal con los roles de Motor2 y sin permisos nuevos.
-- B. Admin y también operadores con acceso a todas las sucursales.
-- Si no se responde: **A** (cerrado por defecto, O-9).
+- **P-1 (permisos de empresa):** «Solo administración (Recomendada)». **CONFIRMADA** (O-10): solo `admin` oculta en toda la empresa; el operador, solo en sus sucursales; sin permiso nuevo.
+- **P-2 (anular con producto Desactivado):** «Permitir, igual que Pedernal (Recomendada)». **CONFIRMADA** (O-11). Es la opción B del borrador de este documento: solo se bloquea anular cuando el producto está **Oculto**; el hueco de desactivado **no se cierra** (la etapa E1b queda sin efecto).
+- **P-3 (pantalla «Sin stock hoy»):** «Sigue con Desactivar por ahora (Recomendada)». **CONFIRMADA** (O-12).
 
-**P-2. Anular una venta cuyo producto está hoy Desactivado (no Oculto) en esa sucursal.** Hoy se permite y le devuelve existencia a un producto desactivado (el hueco de `anularVentaEnTx`). Pedernal **no** lo rechaza (solo rechaza oculto).
-- **A. (Recomendada) Rechazarlo**, como cualquier otro movimiento sobre un producto desactivado en Motor2 («está desactivado en «X»: activalo antes de anular»); cierra el hueco por completo. Diferencia con Pedernal declarada. Cambia lo que puede hacer un operador al anular después de desactivar.
-- B. Permitirlo como hoy y como Pedernal, y declarar el hueco.
-- Si no se responde: **B** para lo desactivado (lo pedido es el caso oculto, O-5); el caso oculto se cierra igual.
-
-**P-3. La pantalla de mantenimiento de la carta («En carta» / «Sin stock hoy»).** Hoy esa pantalla usa la marca de Desactivar para «agotar» un producto de un toque; Pedernal usa **Ocultar** para eso.
-- **A. (Recomendada) Sigue como hoy** (usa Desactivar; solo cambia el rótulo si hace falta). No cambia ningún comportamiento (O-1).
-- B. Pasa a usar Ocultar (como el «agotar de un toque» de Pedernal): cambia qué pasa con el stock y con las anulaciones de lo agotado.
-- Si no se responde: **A**.
+**Preguntas de negocio abiertas hoy: ninguna.** Siguen abiertas las decisiones técnicas de abajo (no se le preguntan al dueño).
 
 ## Decisiones técnicas (con recomendación; no se le preguntan al dueño)
 
