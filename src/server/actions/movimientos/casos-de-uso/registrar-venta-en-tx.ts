@@ -103,8 +103,8 @@ async function armarLinea(
   obtenerProducto: Obtener,
   costoUnitarioPorProducto: Map<string, number | null>,
   costoDeInsumo: (productoId: string) => number | null,
-  gruposAdmitidosDe: GruposAdmitidosDe,
-  permitirOcultosYaCargados: boolean
+  permitirOcultosYaCargados: boolean,
+  gruposAdmitidosDe: GruposAdmitidosDe
 ): Promise<{ ok: true; linea: LineaArmada | null } | { ok: false; mensaje: string; codigo?: typeof CODIGO_PRODUCTO_SIN_RECETA | typeof CODIGO_PRODUCTO_REQUIERE_OPCIONES }> {
   // Las reglas (qué cantidad saltea la línea, cuál es un error, qué mensaje gana) son puras y viven en `core/movimientos/linea-de-venta.ts`; acá queda el ORDEN: cada una se llama
   // en el mismo lugar donde estaba el `if`, antes o después de la lectura que le toca (los goldens registran las lecturas también en los rechazos).
@@ -241,7 +241,7 @@ export async function registrarVentaEnTx(
   const indiceEnLineas = new Map<number, number>();
   const gruposAdmitidosDe = crearLectorDeGruposAdmitidos(tx, actor.sucursalId, datos.lineas);
   for (const [i, item] of datos.lineas.entries()) {
-    const armado = await armarLinea(item, actor.sucursalId, actor.sucursalNombre, tx, obtenerProducto, costoUnitarioPorProducto, costoDeInsumo, gruposAdmitidosDe, opciones.permitirOcultosYaCargados === true);
+    const armado = await armarLinea(item, actor.sucursalId, actor.sucursalNombre, tx, obtenerProducto, costoUnitarioPorProducto, costoDeInsumo, opciones.permitirOcultosYaCargados === true, gruposAdmitidosDe);
     if (!armado.ok) return armado.codigo ? { ok: false, codigo: armado.codigo, mensaje: armado.mensaje } : fallo(armado.mensaje);
     if (!armado.linea) continue;
     let padre: number | null = null;

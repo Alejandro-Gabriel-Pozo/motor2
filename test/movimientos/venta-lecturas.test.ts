@@ -140,6 +140,8 @@ const LECTURAS_DE_LA_VENTA_DE_MOSTRADOR: Record<string, number> = {
   "disponibilidadProducto.findUnique": 2,
   "grupo.findMany": 1,
   "movimientoStock.groupBy": 2,
+  // «Ocultar» (diseño 2026-11-15, I-6): una lectura por línea NUEVA de la venta directa, para rechazar un oculto. El cierre de una cuenta (abajo) cobra lo ya cargado y NO la hace: sus lecturas no cambian.
+  "ocultamientoProducto.findMany": 1,
   "precioLocalProducto.findMany": 2,
   "producto.findMany": 3,
   "producto.findUnique": 2,
