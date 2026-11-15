@@ -385,7 +385,7 @@ SELECT 'combinacion', "empresaId", count(*), count(*) FILTER (WHERE "mermaPorcen
   - **T-M1** (encabezado): «Esta receta se cargó con el neto. Al guardar pasa a cargarse con el bruto; la anterior queda en el historial.»
   - **T-M2** (columnas): «Antes» y «Después».
   - **T-M3** (botón de confirmar): «Guardar y pasar a bruto».
-  - **T-M4** (fila del costo): «Costo por unidad vendida».
+  - **T-M4** (fila del costo): «Costo» (reutilizado: ya existe en el reporte de costos de Motor2, `tabla-costos.tsx:11,18`; Pedernal usa «Costo por unidad», `catalogo-produccion.ts:40` y `catalogo-stock.ts:30`, para el costo de otra cosa). Alternativa si el dueño prefiere más precisión: «Costo por unidad vendida» (texto nuevo).
   - **Opciones para el dueño:** **A (recomendada)** aprobar los cuatro como están; **B** corregirlos uno por uno.
   - **Si no se responde:** **M3b no se enciende** (no hay textos aprobados para la conversión; nace cerrado). M0, M1, M2, M2b y M3a no dependen de esta respuesta.
 
