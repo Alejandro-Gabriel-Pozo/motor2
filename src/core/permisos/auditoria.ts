@@ -107,6 +107,9 @@ export const ENTIDADES_AUDITABLES = [
   "SeccionCarta",
   // "Mesa" (ADR-039): se habilitó el puesto mostrador de una sucursal — `entidadId` es el id de la mesa creada (número 0, tipo MOSTRADOR), `campo: "tipo"`, `valorAnterior: null`, con `sucursalId`.
   "Mesa",
+  // "Parte" (ficha única de personas y empresas, P1): el alta (`campo: "alta"`), cada campo que cambia en una edición (`campo` es el NOMBRE del campo, `valorNuevo: "cambió"`) y el estado (`campo: "estado"`, ACTIVA/INACTIVA) —
+  // `entidadId` es el id de la ficha, `sucursalId` null (es de la empresa). Los datos personales (nombre, documento, correo, teléfono, domicilio, nota) NUNCA se guardan: solo qué campo cambió y quién (decisión D19, 2026-11-13).
+  "Parte",
 ] as const;
 
 /**

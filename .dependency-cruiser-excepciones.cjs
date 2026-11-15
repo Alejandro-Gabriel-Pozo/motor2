@@ -151,6 +151,11 @@ const ACCIONES_CON_CASO_DE_USO = [
       "Hito 3, B3-5 + B3-7: aceptarMiInvitacion → auth/casos-de-uso/aceptar-invitacion-de-gerente.ts y aceptarMiInvitacionDeUsuario → auth/casos-de-uso/aceptar-invitacion-de-usuario.ts (transacción serializable, revalidación, persistencia y auditoría viven en el caso de uso). abrirInvitacion solo lee la invitación y escribe la cookie: no escribe la base.",
   },
   {
+    ruta: "src/server/actions/partes/partes.ts",
+    motivo:
+      "Parte P1 (b): altaDeParte → partes/casos-de-uso/alta-de-parte.ts, editarParte → editar-parte.ts y cambiarEstadoDeParte → cambiar-estado-de-parte.ts (transacción serializable, clave de alta única por empresa, control de versión, persistencia y auditoría sin valores personales viven en el caso de uso); la búsqueda es una lectura.",
+  },
+  {
     ruta: "src/server/actions/movimientos/pagos-factura-proveedor.ts",
     motivo:
       "Pagos X0: declararPagoDeFacturaProveedor → movimientos/casos-de-uso/declarar-pago-de-factura-proveedor.ts y anularPagoDeFacturaProveedor → anular-pago-de-factura-proveedor.ts (transacción serializable, idempotencia, candado de la cabecera, persistencia en server/persistencia/compras y auditoría viven en el caso de uso). La acción solo pide el permiso de empresa `declarar_pago_compra`, valida el formato y delega.",
