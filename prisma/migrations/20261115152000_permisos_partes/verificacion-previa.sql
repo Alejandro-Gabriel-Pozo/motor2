@@ -1,6 +1,6 @@
--- Verificación previa de 20261115150000_permisos_partes (datos: claves partes_ver, partes_editar y partes_desactivar). SOLO LEE (transacción de solo lectura). Se corre con el rol dueño en CADA base real ANTES de aprobar la migración
+-- Verificación previa de 20261115152000_permisos_partes (datos: claves partes_ver, partes_editar y partes_desactivar). SOLO LEE (transacción de solo lectura). Se corre con el rol dueño en CADA base real ANTES de aprobar la migración
 -- (y de nuevo DESPUÉS, para comparar):
---   psql "<DIRECT_URL de la base>" -f prisma/migrations/20261115150000_permisos_partes/verificacion-previa.sql
+--   psql "<DIRECT_URL de la base>" -f prisma/migrations/20261115152000_permisos_partes/verificacion-previa.sql
 -- Devuelve SOLO cuentas (nunca nombres ni emails). Cómo leerla:
 --   1. «roles_admin» es cuántas empresas tienen su rol de sistema `admin`: tras la migración cada clave tiene exactamente esa cantidad de filas (`partes_ver`, `partes_editar`, `partes_desactivar`).
 --   2. «claves_ya_existentes» tiene que dar 0 antes de aplicar (si da más, alguien ya las cargó a mano: la migración no pisa nada, pero hay que mirar quién).

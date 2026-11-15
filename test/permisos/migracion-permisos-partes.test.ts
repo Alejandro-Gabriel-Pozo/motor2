@@ -5,12 +5,12 @@ import { ACCIONES } from "../../src/core/permisos/acciones";
 import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/base-temporal-migrada";
 
 /**
- * Parte P1 (b) — migración de DATOS 20261115150000_permisos_partes: alta de las claves `partes_ver`, `partes_editar` (empresa, piso operario, semilla solo admin) y `partes_desactivar` (empresa, piso administrador, semilla admin)
+ * Parte P1 (b) — migración de DATOS 20261115152000_permisos_partes: alta de las claves `partes_ver`, `partes_editar` (empresa, piso operario, semilla solo admin) y `partes_desactivar` (empresa, piso administrador, semilla admin)
  * y su siembra SOLO al rol de clave `admin` de cada empresa (todo nace cerrado): ni el operador ni un rol propio. Dos empresas para comprobar que cada fila lleva el `empresaId` de su rol. Base temporal armada migración por migración (las anteriores
  * aplicadas, la nuestra a mano). También comprueba su `down.sql`: borra la semilla pura y ABORTA si alguien configuró algo a mano.
  * Mutación: sembrar `partes_ver` al operador → rojo «NINGÚN otro rol»; sacar el `ON CONFLICT DO NOTHING` → rojo «es idempotente».
  */
-const NOMBRE = "20261115150000_permisos_partes";
+const NOMBRE = "20261115152000_permisos_partes";
 const CLAVES = ["partes_ver", "partes_editar", "partes_desactivar"] as const;
 const leer = (archivo: string) => readFileSync(join(__dirname, "../../prisma/migrations", NOMBRE, archivo), "utf8");
 
@@ -71,7 +71,7 @@ describe("migración de datos Parte P1 (b): las claves partes_*", () => {
 
   it("down.sql: ABORTA si alguien configuró algo a mano (el operador con una clave) y, con solo la semilla, la borra; se repite sin fallar", async () => {
     await q(`INSERT INTO "PermisoRol" ("id", "empresaId", "rolId", "accionClave", "puedeVer", "puedeEditar") VALUES ('a-op|x', 'emp-a', 'a-operador', 'partes_ver', true, true)`);
-    await expect(q(leer("down.sql"))).rejects.toThrow(/No se puede bajar 20261115150000_permisos_partes: hay 1 fila/);
+    await expect(q(leer("down.sql"))).rejects.toThrow(/No se puede bajar 20261115152000_permisos_partes: hay 1 fila/);
     expect((await q(`SELECT count(*)::int AS n FROM "PermisoRol" WHERE "accionClave" = ANY($1)`, [[...CLAVES]])).rows[0].n, "el down abortado no tocó nada").toBe(7);
     await q(`DELETE FROM "PermisoRol" WHERE "id" = 'a-op|x'`);
     await q(leer("down.sql"));
