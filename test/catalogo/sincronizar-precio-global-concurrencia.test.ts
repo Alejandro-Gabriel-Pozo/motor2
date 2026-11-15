@@ -42,7 +42,7 @@ describe("sincronizar el precio de venta de un ítem agrupado: control del valor
   const precios = async (ids: string[]) => Promise.all(ids.map(async (id) => Number((await prisma.producto.findUniqueOrThrow({ where: { id } })).precioVenta)));
   const auditorias = (ids: string[]) => prisma.registroAuditoria.count({ where: { entidad: "Producto", entidadId: { in: ids }, campo: "precioVenta" } });
   const codigo = (r: PromiseSettledResult<ResultadoAccion | ResultadoConSincronizable>) =>
-    r.status === "rejected" ? `error:${String(r.reason)}` : r.value.ok ? "ok" : /desde que se ofreció igualarlo|mientras lo editabas/.test(r.value.mensaje) ? "PRECIO_DESACTUALIZADO" : r.value.mensaje;
+    r.status === "rejected" ? `error:${String(r.reason)}` : r.value.ok ? "ok" : /desde que se ofreció igualarlo|mientras lo editabas|^El precio vigente ahora es/.test(r.value.mensaje) ? "PRECIO_DESACTUALIZADO" : r.value.mensaje;
   const datos = (nombre: string, precioVenta: number, precioVentaVisto: number) => ({ nombre, tipo: "PV" as const, unidadStockId: unidadId, factorConversion: 1, precioVenta, precioVentaVisto });
 
   it("otro cambió el precio de un hermano después de ofrecer igualarlo → PRECIO_DESACTUALIZADO y NO cambia ninguno", async () => {

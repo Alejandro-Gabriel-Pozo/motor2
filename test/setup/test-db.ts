@@ -222,6 +222,7 @@ export async function limpiarBaseDeTest() {
   // Los puntos de venta del proveedor (M3e) lo referencian (RESTRICT): antes que él.
   await prismaAdmin.puntoDeVentaDeProveedor.deleteMany();
   await prismaAdmin.proveedor.deleteMany();
+  await prismaAdmin.parte.deleteMany();
 
   // Plataforma (ADR-007, A2): `empresaId` tiene default `app_empresa_actual()` (la ÚNICA empresa ACTIVE), así que la base de test
   // tiene que terminar con exactamente la empresa por defecto de la migración, en pie y ACTIVE, sea lo que sea que un test haya tocado.
