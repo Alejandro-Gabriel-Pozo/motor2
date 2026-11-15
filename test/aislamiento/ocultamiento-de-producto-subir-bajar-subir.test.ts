@@ -137,29 +137,29 @@ describe("Ocultar E3a: subir, bajar y subir (OcultamientoProducto, con su migrac
     expect(await q(`SELECT count(*)::int AS n FROM "OcultamientoProducto"`), `${etiqueta}: nace vacía (sin marca = visible)`).toEqual([{ n: 0 }]);
     // Humo como el rol real de la app: las restricciones las decide la base.
     await comoApp(E, { lectura: "suc_a", escritura: "suc_a" }, async (c) => {
-      expect(await falla(c, marca("m_emp", "prod_a1", null)), `${etiqueta}: marca de empresa`).toBeNull();
-      expect(await falla(c, marca("m_emp2", "prod_a1", null)), `${etiqueta}: dos marcas de empresa del mismo producto`).toBe("23505");
-      expect(await falla(c, marca("m_emp", "prod_a2", null)), `${etiqueta}: mismo id`).toBe("23505");
-      expect(await falla(c, marca("m_a", "prod_a1", "suc_a")), `${etiqueta}: marca de sucursal`).toBeNull();
-      expect(await falla(c, marca("m_a2", "prod_a1", "suc_a")), `${etiqueta}: dos marcas del mismo producto en la sucursal`).toBe("23505");
-      expect(await falla(c, marca("m_b", "prod_a1", "suc_b")), `${etiqueta}: sucursal fuera del alcance`).toBe("42501");
-      expect(await falla(c, marca("m_x", "prod_x1", null)), `${etiqueta}: producto de otra empresa`).toBe("23503");
-      expect(await falla(c, marca("m_sx", "prod_a2", "suc_x")), `${etiqueta}: sucursal de otra empresa, fuera del alcance`).toBe("42501");
-      expect(await falla(c, `INSERT INTO "OcultamientoProducto" ("id","productoId","sucursalId","oculto","actualizadoPorId","actualizadoEn","version") VALUES ('m_v','prod_a2',NULL,true,'u_ocu',now(),0)`), `${etiqueta}: versión 0`).toBe("23514");
-      expect(await falla(c, `INSERT INTO "OcultamientoProducto" ("id","productoId","sucursalId","oculto","actualizadoPorId","actualizadoEn") VALUES (' ','prod_a2',NULL,true,'u_ocu',now())`), `${etiqueta}: id vacío`).toBe("23514");
-      expect(await falla(c, `INSERT INTO "OcultamientoProducto" ("id","productoId","oculto","actualizadoPorId","actualizadoEn") VALUES ('m_nu','prod_a2',true,'no_existe',now())`), `${etiqueta}: quién cambió tiene que existir`).toBe("23503");
-      expect(await falla(c, `UPDATE "OcultamientoProducto" SET "oculto" = false, "version" = "version" + 1, "actualizadoEn" = now(), "actualizadoPorId" = 'u_ocu' WHERE "id" = 'm_a'`), `${etiqueta}: volver a mostrar`).toBeNull();
-      expect(await falla(c, `UPDATE "OcultamientoProducto" SET "productoId" = 'prod_a2' WHERE "id" = 'm_a'`), `${etiqueta}: mover la fila de producto`).toBe("42501");
-      expect(await falla(c, `UPDATE "OcultamientoProducto" SET "sucursalId" = 'suc_b' WHERE "id" = 'm_a'`), `${etiqueta}: mover la fila de sucursal`).toBe("42501");
+      expect(await falla(c, marca("00000000-0000-4000-8000-000000000002", "prod_a1", null)), `${etiqueta}: marca de empresa`).toBeNull();
+      expect(await falla(c, marca("00000000-0000-4000-8000-000000000001", "prod_a1", null)), `${etiqueta}: dos marcas de empresa del mismo producto`).toBe("23505");
+      expect(await falla(c, marca("00000000-0000-4000-8000-000000000002", "prod_a2", null)), `${etiqueta}: mismo id`).toBe("23505");
+      expect(await falla(c, marca("00000000-0000-4000-8000-000000000004", "prod_a1", "suc_a")), `${etiqueta}: marca de sucursal`).toBeNull();
+      expect(await falla(c, marca("00000000-0000-4000-8000-000000000003", "prod_a1", "suc_a")), `${etiqueta}: dos marcas del mismo producto en la sucursal`).toBe("23505");
+      expect(await falla(c, marca("00000000-0000-4000-8000-000000000005", "prod_a1", "suc_b")), `${etiqueta}: sucursal fuera del alcance`).toBe("42501");
+      expect(await falla(c, marca("00000000-0000-4000-8000-000000000006", "prod_x1", null)), `${etiqueta}: producto de otra empresa`).toBe("23503");
+      expect(await falla(c, marca("00000000-0000-4000-8000-000000000007", "prod_a2", "suc_x")), `${etiqueta}: sucursal de otra empresa, fuera del alcance`).toBe("42501");
+      expect(await falla(c, `INSERT INTO "OcultamientoProducto" ("id","productoId","sucursalId","oculto","actualizadoPorId","actualizadoEn","version") VALUES ('00000000-0000-4000-8000-000000000009','prod_a2',NULL,true,'u_ocu',now(),0)`), `${etiqueta}: versión 0`).toBe("23514");
+      expect(await falla(c, `INSERT INTO "OcultamientoProducto" ("id","productoId","sucursalId","oculto","actualizadoPorId","actualizadoEn") VALUES ('no-es-uuid','prod_a2',NULL,true,'u_ocu',now())`), `${etiqueta}: id que no es uuid`).toBe("23514");
+      expect(await falla(c, `INSERT INTO "OcultamientoProducto" ("id","productoId","oculto","actualizadoPorId","actualizadoEn") VALUES ('00000000-0000-4000-8000-000000000010','prod_a2',true,'no_existe',now())`), `${etiqueta}: quién cambió tiene que existir`).toBe("23503");
+      expect(await falla(c, `UPDATE "OcultamientoProducto" SET "oculto" = false, "version" = "version" + 1, "actualizadoEn" = now(), "actualizadoPorId" = 'u_ocu' WHERE "id" = '00000000-0000-4000-8000-000000000004'`), `${etiqueta}: volver a mostrar`).toBeNull();
+      expect(await falla(c, `UPDATE "OcultamientoProducto" SET "productoId" = 'prod_a2' WHERE "id" = '00000000-0000-4000-8000-000000000004'`), `${etiqueta}: mover la fila de producto`).toBe("42501");
+      expect(await falla(c, `UPDATE "OcultamientoProducto" SET "sucursalId" = 'suc_b' WHERE "id" = '00000000-0000-4000-8000-000000000004'`), `${etiqueta}: mover la fila de sucursal`).toBe("42501");
       expect(await falla(c, `DELETE FROM "OcultamientoProducto"`), `${etiqueta}: DELETE`).toBe("42501");
       expect(await falla(c, `TRUNCATE "OcultamientoProducto"`), `${etiqueta}: TRUNCATE`).toBe("42501");
-      expect((await c.query(`SELECT "id" FROM "OcultamientoProducto" ORDER BY 1`)).rows, `${etiqueta}: ve la de empresa y la de su sucursal`).toEqual([{ id: "m_a" }, { id: "m_emp" }]);
+      expect((await c.query(`SELECT "id" FROM "OcultamientoProducto" ORDER BY 1`)).rows, `${etiqueta}: ve la de empresa y la de su sucursal`).toEqual([{ id: "00000000-0000-4000-8000-000000000002" }, { id: "00000000-0000-4000-8000-000000000004" }]);
     });
     await comoApp(E, { escritura: "suc_a,suc_x" }, async (c) => {
-      expect(await falla(c, marca("m_sx", "prod_a2", "suc_x")), `${etiqueta}: aun con el alcance abierto, la sucursal de otra empresa la frena la clave foránea`).toBe("23503");
+      expect(await falla(c, marca("00000000-0000-4000-8000-000000000007", "prod_a2", "suc_x")), `${etiqueta}: aun con el alcance abierto, la sucursal de otra empresa la frena la clave foránea`).toBe("23503");
     });
     await comoApp(E, {}, async (c) => {
-      expect(await falla(c, marca("m_sin", "prod_a2", null)), `${etiqueta}: sin alcance no se escribe ni la de empresa`).toBe("42501");
+      expect(await falla(c, marca("00000000-0000-4000-8000-000000000008", "prod_a2", null)), `${etiqueta}: sin alcance no se escribe ni la de empresa`).toBe("42501");
     });
     return f;
   }
@@ -189,23 +189,23 @@ describe("Ocultar E3a: subir, bajar y subir (OcultamientoProducto, con su migrac
       await c.query("BEGIN");
       await fijar(c, E, { escritura: "suc_a" });
     }
-    expect((await a.query(alta("conc_a"))).rowCount, "la primera alta entra").toBe(1);
-    const segunda = b.query(alta("conc_b")); // queda esperando el índice único de la primera
+    expect((await a.query(alta("00000000-0000-4000-8000-000000000011"))).rowCount, "la primera alta entra").toBe(1);
+    const segunda = b.query(alta("00000000-0000-4000-8000-000000000012")); // queda esperando el índice único de la primera
     await new Promise((r) => setTimeout(r, 300));
     await a.query("COMMIT");
     expect((await segunda).rowCount, "la segunda, simultánea, no agrega nada").toBe(0);
     await b.query("COMMIT");
     await a.query("BEGIN");
     await fijar(a, E, { escritura: "suc_a" });
-    expect((await a.query(alta("conc_c"))).rowCount, "repetir la misma alta tampoco").toBe(0);
+    expect((await a.query(alta("00000000-0000-4000-8000-000000000013"))).rowCount, "repetir la misma alta tampoco").toBe(0);
     await a.query("COMMIT");
-    expect(await q(`SELECT "id" FROM "OcultamientoProducto" WHERE "productoId" = 'prod_a2'`), "una sola fila").toEqual([{ id: "conc_a" }]);
+    expect(await q(`SELECT "id" FROM "OcultamientoProducto" WHERE "productoId" = 'prod_a2'`), "una sola fila").toEqual([{ id: "00000000-0000-4000-8000-000000000011" }]);
     await base.cliente.query(`DELETE FROM "OcultamientoProducto"`);
   });
 
   it("3. BAJAR CON DATOS: la reversa de esquema ABORTA sin dejar nada a medias; la de políticas pasa (no es destructiva)", async () => {
     if (!hayRol) return;
-    await base.cliente.query(`INSERT INTO "OcultamientoProducto" ("id","empresaId","productoId","oculto","actualizadoPorId","actualizadoEn") VALUES ('dato',$1,'prod_a1',true,'u_ocu',now())`, [E]);
+    await base.cliente.query(`INSERT INTO "OcultamientoProducto" ("id","empresaId","productoId","oculto","actualizadoPorId","actualizadoEn") VALUES ('00000000-0000-4000-8000-000000000014',$1,'prod_a1',true,'u_ocu',now())`, [E]);
     await correr(RLS, "down.sql");
     expect((await foto()).politicas.filter((p) => p.tabla === "OcultamientoProducto").map((p) => p.nombre), "sin la migración de políticas queda solo la de empresa").toEqual(["aislamiento_empresa"]);
     const conDatos = await foto();

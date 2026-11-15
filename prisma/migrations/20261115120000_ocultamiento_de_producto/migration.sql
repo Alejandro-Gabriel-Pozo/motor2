@@ -5,10 +5,13 @@
 -- («Desactivar», sentido contrario: sin fila = no disponible): ninguna toca a la otra. Nombre distinto a propósito (diferencia D-1 del diseño). Nunca se borra: «volver a mostrar» pone `oculto = false`.
 --
 -- QUÉ DECIDE LA BASE (no depende de que el caso de uso se acuerde): una marca de empresa por producto y una por sucursal (dos índices únicos PARCIALES: así dos personas que ocultan a la vez nunca dejan dos filas, la
--- escritura es INSERT … ON CONFLICT); el producto y la sucursal son de la MISMA empresa (clave foránea compuesta; con `sucursalId` NULL la FK de sucursal no se evalúa, como RecetaVersion); `version >= 1`; `id` no vacío;
+-- escritura es INSERT … ON CONFLICT); el producto y la sucursal son de la MISMA empresa (clave foránea compuesta; con `sucursalId` NULL la FK de sucursal no se evalúa, como RecetaVersion); `version >= 1`; `id` con forma de uuid (lo manda la app: E5, «lo nuevo nace con uuid, timestamptz y solo inserción»);
 -- quién cambió y cuándo no pueden faltar. La app NO puede borrar (sin DELETE ni TRUNCATE) ni cambiar a qué producto o alcance apunta una fila: solo UPDATE de `oculto`, `actualizadoPorId`, `actualizadoEn`, `version`.
 -- QUÉ DECIDE EL CASO DE USO (etapas siguientes): quién puede ocultar en toda la empresa (solo administración, O-10), que no haya existencia distinta de cero, «ya estaba», la auditoría y el control de versión.
 -- Las políticas de alcance de sucursal (RLS por sucursal) van en la migración siguiente (20261115121000), salida exacta del generador, como el resto de las tablas con `sucursalId`.
+--
+-- FECHAS: TIMESTAMPTZ(3) (ratificado por el dueño el 2026-11-15, E5). Prisma lo lee y escribe como Date en UTC igual que el TIMESTAMP(3) del resto; la zona de Argentina se aplica donde ya se aplica (al mostrar, no al guardar).
+-- `id`: columna TEXT (como todas las claves del proyecto, para que la FK de `Auditoría`/otras no cambie de tipo) con CHECK de forma uuid: el valor lo genera la app con `crypto.randomUUID()`.
 --
 -- ADITIVA: solo agrega una tabla, sus índices, claves, reglas, política de empresa y privilegios; no toca ninguna fila ni columna existentes. El código anterior no la lee ni la escribe, así que se puede aplicar por
 -- adelantado y el Instant Rollback de Vercel sigue siendo seguro. Índices sin CONCURRENTLY (tabla nueva y vacía, ADR-029 §8).
@@ -23,9 +26,9 @@ CREATE TABLE "OcultamientoProducto" (
     "sucursalId" TEXT,
     "oculto" BOOLEAN NOT NULL,
     "actualizadoPorId" TEXT NOT NULL,
-    "actualizadoEn" TIMESTAMP(3) NOT NULL,
+    "actualizadoEn" TIMESTAMPTZ(3) NOT NULL,
     "version" INTEGER NOT NULL DEFAULT 1,
-    "creadoEn" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "creadoEn" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "OcultamientoProducto_pkey" PRIMARY KEY ("id")
 );
@@ -56,7 +59,7 @@ ALTER TABLE "OcultamientoProducto" ADD CONSTRAINT "OcultamientoProducto_actualiz
 
 -- Reglas (CHECK con nombre)
 ALTER TABLE "OcultamientoProducto" ADD CONSTRAINT "OcultamientoProducto_version_chk" CHECK ("version" >= 1);
-ALTER TABLE "OcultamientoProducto" ADD CONSTRAINT "OcultamientoProducto_id_no_vacio_chk" CHECK (length(btrim("id")) > 0);
+ALTER TABLE "OcultamientoProducto" ADD CONSTRAINT "OcultamientoProducto_id_uuid_chk" CHECK ("id" ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$');
 
 -- RLS por empresa (las políticas por sucursal van en 20261115121000)
 ALTER TABLE "OcultamientoProducto" ENABLE ROW LEVEL SECURITY;

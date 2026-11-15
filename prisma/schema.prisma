@@ -512,7 +512,7 @@ model DisponibilidadProducto {
 /// «Ocultar» un producto, como Pedernal (docs/diseno-ocultar-como-pedernal-2026-11-15.md, nivel 6; etapa E3): una fila por (producto, alcance). `sucursalId` NULL = toda la empresa; con valor, solo esa sucursal
 /// (alcance `PROPIA_O_EMPRESA`, como `RecetaVersion`; sus políticas de alcance van en la migración siguiente). ADR-009, familia `optout`: SIN FILA = VISIBLE (lo contrario de `DisponibilidadProducto`).
 /// INDEPENDIENTE de `DisponibilidadProducto` («Desactivar»): ninguna toca a la otra. Nunca se borra (la app no tiene DELETE): «volver a mostrar» pone `oculto = false` y la historia completa es la auditoría.
-/// `id` lo manda la aplicación (no tiene default: es la idempotencia del alta). `version` arranca en 1 y la sube la acción en cada cambio de estado (control de versión: `UPDATE … WHERE version = ?`).
+/// `id` lo manda la aplicación (uuid, sin default: es la idempotencia del alta; CHECK de forma en la migración). Fechas en timestamptz (E5). `version` arranca en 1 y la sube la acción en cada cambio de estado (control de versión: `UPDATE … WHERE version = ?`).
 /// Los dos índices únicos PARCIALES (una marca de empresa por producto; una por sucursal) los declara la migración a mano: Prisma no los expresa.
 /// Todavía NO la lee ni la escribe ningún código: se conecta por etapas (caso de uso, ventas, stock, pantalla).
 model OcultamientoProducto {
@@ -528,9 +528,9 @@ model OcultamientoProducto {
   actualizadoPorId String
   actualizadoPor   User      @relation(fields: [actualizadoPorId], references: [id], onDelete: Restrict)
   /// Cuándo cambió el estado por última vez (reloj inyectado de la acción; sin default a propósito).
-  actualizadoEn    DateTime
+  actualizadoEn    DateTime  @db.Timestamptz(3)
   version          Int       @default(1)
-  creadoEn         DateTime  @default(now())
+  creadoEn         DateTime  @default(now()) @db.Timestamptz(3)
 
   @@unique([empresaId, id])
   @@index([productoId])
