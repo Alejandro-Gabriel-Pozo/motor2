@@ -92,15 +92,9 @@ function enteroONulo(valor: unknown, etiqueta: string, minimo: number, maximo: n
   return entero(valor, etiqueta, minimo, maximo);
 }
 
-/** El nombre de un grupo u opción EN EL ALTA: la regla de nombre de Pedernal (ficha de elección: 1 a 80, sin exigir letra), con los textos de siempre. */
-function nombre(valor: unknown, etiqueta: string): ResultadoDato<string> {
-  return nombreDeFicha(valor, "ELECCION", `${etiqueta} no puede estar vacío.`);
-}
-
-/** El nombre EN LA EDICIÓN (el guard no conoce el guardado): recortado, no vacío y dentro del tope. La regla estricta la aplica el caso de uso SOLO si el nombre cambió. */
-function nombreDeEdicion(valor: unknown, etiqueta: string): ResultadoDato<string> {
-  return nombreMinimoDeFicha(valor, "ELECCION", `${etiqueta} no puede estar vacío.`);
-}
+// E1: en el ALTA, la regla de nombre de Pedernal (ficha de elección); en la EDICIÓN solo el mínimo (la estricta, solo si el nombre cambia, la aplica el caso de uso).
+const nombre = (valor: unknown, etiqueta: string): ResultadoDato<string> => nombreDeFicha(valor, "ELECCION", `${etiqueta} no puede estar vacío.`);
+const nombreDeEdicion = (valor: unknown, etiqueta: string): ResultadoDato<string> => nombreMinimoDeFicha(valor, "ELECCION", `${etiqueta} no puede estar vacío.`);
 
 function deLista<T extends string>(valor: unknown, lista: readonly T[], mensaje: string): ResultadoDato<T> {
   return typeof valor === "string" && (lista as readonly string[]).includes(valor) ? aceptar(valor as T) : rechazar("formato", mensaje);

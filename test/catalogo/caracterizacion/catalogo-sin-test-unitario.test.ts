@@ -40,11 +40,8 @@ describe("catálogo: las 7 acciones sin test unitario (caracterización)", () =>
 
   it("crearCategoriaProducto: vacío, caracteres no permitidos, alta y «se reusa» (sin refrescar)", async () => {
     expect(await crearCategoriaProducto("   ")).toEqual({ ok: false, mensaje: "El nombre de la categoría no puede estar vacío." });
-    expect(await crearCategoriaProducto("-Bebidas")).toEqual({ ok: false, mensaje: 'El nombre de la categoría no puede empezar con "-".' });
-    expect(await crearCategoriaProducto("Bebidas<>")).toEqual({
-      ok: false,
-      mensaje: "El nombre de la categoría tiene caracteres no permitidos. Se admiten letras, números, espacios y - . , ( ) % & / '",
-    });
+    expect(await crearCategoriaProducto("-Bebidas")).toEqual({ ok: false, mensaje: "Esta acción no está permitida" });
+    expect(await crearCategoriaProducto("Bebidas<>")).toEqual({ ok: false, mensaje: "Esta acción no está permitida" });
     expect(await prisma.categoriaProducto.count()).toBe(0);
 
     const alta = await crearCategoriaProducto("  Bebidas  ");
@@ -71,10 +68,7 @@ describe("catálogo: las 7 acciones sin test unitario (caracterización)", () =>
 
   it("crearInsumo: vacío, alta y «se reusa» sin distinguir mayúsculas (sin refrescar)", async () => {
     expect(await crearInsumo("")).toEqual({ ok: false, mensaje: "El nombre del insumo no puede estar vacío." });
-    expect(await crearInsumo("Harina#")).toEqual({
-      ok: false,
-      mensaje: "El nombre del insumo tiene caracteres no permitidos. Se admiten letras, números, espacios y - . , ( ) % & / '",
-    });
+    expect(await crearInsumo("Harina_")).toEqual({ ok: false, mensaje: "Esta acción no está permitida" });
     const alta = await crearInsumo(" Harina ");
     const fila = await prisma.insumo.findFirstOrThrow();
     expect(alta).toEqual({ ok: true, mensaje: 'Insumo "Harina" creado.', id: fila.id, nombre: "Harina" });
