@@ -53,7 +53,8 @@ const MAXIMOS = {
   // Sube a propósito de 34 a 37 con Productos P1: la marca «Falta completar», el precio y la clase, y la sección de la carta de cada fila de la lista devuelven solo lo que se les pasa (ids), sin texto libre propio.
   SIN_MARCA_PROPIA: 37,
   OK_SIN_EFECTO_POR_DISENO: 2,
-  EN_LA_SUCURSAL_VACIA: 2,
+  // Sube a propósito de 2 a 3 con la caja (C1): `abrirSesionDeCaja` se ejerce parada en la sucursal vacía (S1 ya tiene su caja abierta: la lectura de caja necesita esa sesión abierta como dato propio).
+  EN_LA_SUCURSAL_VACIA: 3,
 } as const;
 
 describe("GT-3b: la matriz de denegación por defecto cubre todo el inventario", () => {
