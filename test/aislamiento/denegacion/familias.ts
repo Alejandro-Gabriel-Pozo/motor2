@@ -11,7 +11,7 @@ export interface Familia {
 }
 
 export const FAMILIAS = {
-  gobierno: { nombre: "gobierno (auth, permisos, clientes)", filtro: (p) => p.tipo === "accion" && /^actions\/(auth|permisos|clientes)\//.test(p.archivo) },
+  gobierno: { nombre: "gobierno (auth, permisos, clientes)", filtro: (p) => p.tipo === "accion" && /^actions\/(auth|permisos|clientes|partes)\//.test(p.archivo) },
   catalogo: { nombre: "catálogo", filtro: (p) => p.tipo === "accion" && p.archivo.startsWith("actions/catalogo/") },
   carta: { nombre: "carta", filtro: (p) => p.tipo === "accion" && p.archivo.startsWith("actions/carta/") },
   stock: { nombre: "stock y movimientos", filtro: (p) => p.tipo === "accion" && /^actions\/(movimientos|stock|traspasos|reportes)\//.test(p.archivo) },
