@@ -13,7 +13,7 @@ import { Decimal } from "decimal.js";
  * el mismo que daba `Math.round` salvo cuando el flotante caía apenas por debajo del empate (el error que se corrige). Quien aplique el cambio (frente 2, en su carril) mide antes el
  * efecto en el Kardex con la copia de solo lectura y regenera los goldens con ese motivo.
  *
- * Los decimales son un PARÁMETRO que por defecto vale `DECIMALES_DE_CANTIDAD` (4, la escala de las columnas `Decimal(14,4)` y la de Pedernal): se acepta de 0 a 4 y cualquier otro valor
+ * Los decimales son un PARÁMETRO que por defecto vale `DECIMALES_DE_CANTIDAD` (4, la escala de las columnas `Decimal(14,4)` y la de Pedernal): se acepta de 0 a `MAXIMO_DE_DECIMALES` (8: el arrastre de cálculo de stock del frente 2 usa 8, ver su `redondearACantidadDeUnidad`) y cualquier otro valor
  * FALLA CERRADO (`RangeError`), igual que un valor que no es un número finito: no se devuelve `NaN` ni un valor a medias.
  *
  * Entra y sale `number` (el borde del dominio); el `Decimal` no sale de acá. `new Decimal(n)` toma la representación decimal más corta del double (`String(n)`), que es el valor que se
@@ -23,14 +23,17 @@ import { Decimal } from "decimal.js";
 /** Los decimales de una cantidad: 4 fijos, como Pedernal y como las columnas `Decimal(14,4)` de Motor2. */
 export const DECIMALES_DE_CANTIDAD = 4;
 
+/** El máximo de decimales que se acepta como parámetro: los de un cálculo intermedio (arrastre), no los que se guardan. */
+export const MAXIMO_DE_DECIMALES = 8;
+
 /** Clon propio: no depende de la configuración global de Decimal. Empates alejándose del cero. */
 const D = Decimal.clone({ precision: 40, rounding: Decimal.ROUND_HALF_UP });
 
 /** Redondea `cantidad` a `decimales` en decimal exacto, con el empate alejándose del cero; normaliza `-0` a `0`. Ver el encabezado. */
 export function redondearCantidadExacta(cantidad: number, decimales: number = DECIMALES_DE_CANTIDAD): number {
   if (!Number.isFinite(cantidad)) throw new RangeError("redondearCantidadExacta: la cantidad tiene que ser un número finito");
-  if (!Number.isInteger(decimales) || decimales < 0 || decimales > DECIMALES_DE_CANTIDAD) {
-    throw new RangeError(`redondearCantidadExacta: los decimales tienen que ser un entero de 0 a ${DECIMALES_DE_CANTIDAD}`);
+  if (!Number.isInteger(decimales) || decimales < 0 || decimales > MAXIMO_DE_DECIMALES) {
+    throw new RangeError(`redondearCantidadExacta: los decimales tienen que ser un entero de 0 a ${MAXIMO_DE_DECIMALES}`);
   }
   const redondeado = new D(cantidad).toDecimalPlaces(decimales, D.ROUND_HALF_UP).toNumber();
   return redondeado === 0 ? 0 : redondeado;

@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
-import { DECIMALES_DE_CANTIDAD, redondearCantidadExacta } from "@/core/datos/cantidad-exacta";
-import { redondearACantidadDeUnidad } from "@/core/movimientos/transiciones";
+import { DECIMALES_DE_CANTIDAD, MAXIMO_DE_DECIMALES, redondearCantidadExacta } from "@/core/datos/cantidad-exacta";
 
 /**
  * Oráculo de `redondearCantidadExacta` (frente 3, E-1b). El oráculo es independiente del código: la división entera con empate alejándose del cero de Pedernal
  * (`dividirRedondeando(..., "MITAD_SUBE_SIMETRICA")`, `src/primitivas/cantidad/redondeo-entero.ts`), reescrita acá con `bigint`. Casos fijos (los del encabezado de la primitiva), propiedades con
  * `fast-check`, y el contraste con `redondearACantidadDeUnidad` (`Math.round`) que muestra qué cambia y qué no.
  */
+
+/** El redondeo anterior (`Math.round` en coma flotante), copiado acá como referencia: no depende de `transiciones.ts`, que cambia en el carril del frente 2. */
+const redondearConMathRound = (cantidad: number, decimales: number): number => Math.round(cantidad * 10 ** decimales) / 10 ** decimales;
 
 /** `numerador / denominador` a entero, empate alejándose del cero. Denominador positivo. */
 function dividirAlejandoDelCero(numerador: bigint, denominador: bigint): bigint {
@@ -46,8 +48,14 @@ describe("redondearCantidadExacta: casos fijos", () => {
 
   it("sin decimales usa 4, la escala fija de la cantidad", () => {
     expect(DECIMALES_DE_CANTIDAD).toBe(4);
+    expect(MAXIMO_DE_DECIMALES).toBe(8);
     expect(redondearCantidadExacta(1.23455)).toBe(1.2346);
     expect(redondearCantidadExacta(1.23454)).toBe(1.2345);
+  });
+
+  it("acepta hasta 8 decimales como parámetro (cálculo intermedio) y el valor se conserva", () => {
+    expect(redondearCantidadExacta(0.123456785, 8)).toBe(0.12345679);
+    expect(redondearCantidadExacta(0.123456784, 8)).toBe(0.12345678);
   });
 
   it("normaliza -0 a 0", () => {
@@ -61,7 +69,7 @@ describe("redondearCantidadExacta: falla cerrada", () => {
     expect(() => redondearCantidadExacta(cantidad, 2)).toThrow(RangeError);
   });
 
-  it.each([[-1], [5], [6], [1.5], [Number.NaN], [Number.POSITIVE_INFINITY]])("los decimales %s se rechazan", (decimales) => {
+  it.each([[-1], [9], [1.5], [Number.NaN], [Number.POSITIVE_INFINITY]])("los decimales %s se rechazan", (decimales) => {
     expect(() => redondearCantidadExacta(1, decimales)).toThrow(RangeError);
   });
 });
@@ -121,20 +129,20 @@ describe("redondearCantidadExacta: propiedades contra el oráculo de enteros", (
   });
 });
 
-describe("redondearCantidadExacta frente a redondearACantidadDeUnidad (Math.round): qué cambia y qué no", () => {
+describe("redondearCantidadExacta frente al redondeo anterior (Math.round): qué cambia y qué no", () => {
   it("con valores que no son empate coincide", () => {
     for (const [x, d] of [[1.2344, 2], [1.2346, 2], [10, 4], [0.5001, 0], [3.14159, 4]] as const) {
-      expect(redondearCantidadExacta(x, d)).toBe(redondearACantidadDeUnidad(x, d));
+      expect(redondearCantidadExacta(x, d)).toBe(redondearConMathRound(x, d));
     }
   });
 
   it("corrige el empate positivo que el flotante dejaba apenas por debajo", () => {
-    expect(redondearACantidadDeUnidad(1.005, 2)).toBe(1);
+    expect(redondearConMathRound(1.005, 2)).toBe(1);
     expect(redondearCantidadExacta(1.005, 2)).toBe(1.01);
   });
 
   it("cambia el empate NEGATIVO exacto: antes hacia +∞, ahora alejándose del cero (diferencia declarada)", () => {
-    expect(redondearACantidadDeUnidad(-0.125, 2)).toBe(-0.12);
+    expect(redondearConMathRound(-0.125, 2)).toBe(-0.12);
     expect(redondearCantidadExacta(-0.125, 2)).toBe(-0.13);
   });
 });
