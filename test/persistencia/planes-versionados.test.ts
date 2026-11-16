@@ -211,7 +211,7 @@ describe("asignar un plan a una empresa", () => {
     await expect(prismaAdmin.$executeRawUnsafe(`DELETE FROM "PlanDeEmpresa"`)).rejects.toThrow(/solo se agrega/);
     const version = await prismaAdmin.versionDePlan.findFirstOrThrow({ where: { estado: "PUBLICADA" } });
     const insertar = (numero: number, versionId: string) =>
-      prismaAdmin.$executeRawUnsafe(`INSERT INTO "PlanDeEmpresa" ("id","empresaId","versionDePlanId","numero","vigenteDesde","origen","motivo","asignadoPor","claveIdempotencia","payloadHash") VALUES ('${randomUUID()}','${empresaId}','${versionId}',${numero},now(),'CAMBIO','m','a','${randomUUID()}','h')`);
+      prismaAdmin.$executeRawUnsafe(`INSERT INTO "PlanDeEmpresa" ("id","empresaId","versionDePlanId","numero","aplicaDesde","origen","motivo","asignadoPor","claveIdempotencia","payloadHash") VALUES ('${randomUUID()}','${empresaId}','${versionId}',${numero},now(),'CAMBIO','m','a','${randomUUID()}','h')`);
     await expect(insertar(5, version.id)).rejects.toThrow(/siguiente de la empresa/);
     await crearPlan(prismaAdmin, { clave: nuevaClave(), codigo: "otro", nombreComercial: "O", modulos: [] }, AUTOR);
     const borrador = await prismaAdmin.versionDePlan.findFirstOrThrow({ where: { estado: "BORRADOR" } });

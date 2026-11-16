@@ -61,9 +61,9 @@ describe("huella del reintento", () => {
 describe("asignación vigente (se calcula, nunca se marca)", () => {
   const t = (iso: string) => new Date(iso);
   const filas = [
-    { numero: 1, versionDePlanId: "v1", vigenteDesde: t("2026-01-01T00:00:00Z") },
-    { numero: 3, versionDePlanId: "v3", vigenteDesde: t("2026-03-01T00:00:00Z") },
-    { numero: 2, versionDePlanId: "v2", vigenteDesde: t("2026-02-01T00:00:00Z") },
+    { numero: 1, versionDePlanId: "v1", aplicaDesde: t("2026-01-01T00:00:00Z") },
+    { numero: 3, versionDePlanId: "v3", aplicaDesde: t("2026-03-01T00:00:00Z") },
+    { numero: 2, versionDePlanId: "v2", aplicaDesde: t("2026-02-01T00:00:00Z") },
   ];
   it("es la de número mayor que ya empezó", () => {
     expect(asignacionVigenteEn(filas, t("2026-02-15T00:00:00Z"))?.versionDePlanId).toBe("v2");

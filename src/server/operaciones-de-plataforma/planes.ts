@@ -230,14 +230,14 @@ export async function asignarPlanAEmpresa(db: Db, pedido: PedidoDeAsignar, autor
       if (version.plan.estado !== "ACTIVO") throw new PlanesError(`El plan "${codigo}" está retirado.`, "ESTADO_INVALIDO");
       const fueraDelTecho = soloFuera(estadoDeModulosFrenteAlTecho(activos, version.modulos));
 
-      const historial = await tx.planDeEmpresa.findMany({ where: { empresaId: empresa.id }, select: { id: true, numero: true, versionDePlanId: true, vigenteDesde: true } });
+      const historial = await tx.planDeEmpresa.findMany({ where: { empresaId: empresa.id }, select: { id: true, numero: true, versionDePlanId: true, aplicaDesde: true } });
       const vigente = asignacionVigenteEn(historial, ahora());
       if (vigente && vigente.versionDePlanId === version.id) return { empresaId: empresa.id, planDeEmpresaId: vigente.id, numero: vigente.numero, asignado: false, fueraDelTecho };
 
       const numero = historial.reduce((m, a) => Math.max(m, a.numero), 0) + 1;
       const planDeEmpresaId = azar.uuid();
       await tx.planDeEmpresa.create({
-        data: { id: planDeEmpresaId, empresaId: empresa.id, versionDePlanId: version.id, numero, vigenteDesde: ahora(), origen: "CAMBIO", motivo, asignadoPor: autor.adminEmail, claveIdempotencia: clave, payloadHash },
+        data: { id: planDeEmpresaId, empresaId: empresa.id, versionDePlanId: version.id, numero, aplicaDesde: ahora(), origen: "CAMBIO", motivo, asignadoPor: autor.adminEmail, claveIdempotencia: clave, payloadHash },
       });
       await auditarCambioDePlataforma(tx, autor, "plan-asignado", empresa.id, { plan: codigo, version: pedido.numeroDeVersion, numero, fueraDelTecho: Object.keys(fueraDelTecho).join(",") });
       return { empresaId: empresa.id, planDeEmpresaId, numero, asignado: true, fueraDelTecho };

@@ -5,6 +5,8 @@
 --   VersionDePlan el contenido: BORRADOR (a lo sumo uno por plan, se edita) → PUBLICADA (INMUTABLE, con número consecutivo por plan). `modulos` es el TECHO de módulos vendibles.
 --   PlanDeEmpresa la asignación empresa → versión. SOLO SE AGREGA (número consecutivo por empresa; el vigente se CALCULA, nunca se marca ni se edita).
 --
+-- Nombre de la columna `aplicaDesde` (en Pedernal `vigente_desde`): diferencia declarada, Motor2 retiró la palabra «vigencia» del código por decisión del dueño (test/carta/retirados-por-decision-del-duenio.test.tsx).
+--
 -- Privilegios y candados (igual que ModuloEmpresa / AuditoriaPlataforma): `motor2_app` pierde todo en Plan y VersionDePlan y solo LEE PlanDeEmpresa (de su empresa, por RLS); `motor2_plataforma` escribe sin DELETE.
 -- Triggers: el dueño queda exento (migra y limpia la base de test); cualquier otro rol sin permiso es rechazado aunque un GRANT futuro se lo diera.
 --
@@ -66,7 +68,7 @@ CREATE TABLE "PlanDeEmpresa" (
     "empresaId" TEXT NOT NULL,
     "versionDePlanId" UUID NOT NULL,
     "numero" INTEGER NOT NULL,
-    "vigenteDesde" TIMESTAMPTZ(3) NOT NULL,
+    "aplicaDesde" TIMESTAMPTZ(3) NOT NULL,
     "origen" TEXT NOT NULL,
     "motivo" TEXT NOT NULL,
     "asignadoPor" TEXT NOT NULL,
@@ -245,7 +247,7 @@ ON CONFLICT ("id") DO NOTHING;
 UPDATE "VersionDePlan" SET "estado" = 'PUBLICADA', "numero" = 1, "publicadaEn" = now(), "publicadaPor" = 'migracion:planes_versionados'
 WHERE "id" = '00000000-0000-4000-8000-0000000a0003' AND "estado" = 'BORRADOR';
 
-INSERT INTO "PlanDeEmpresa" ("id", "empresaId", "versionDePlanId", "numero", "vigenteDesde", "origen", "motivo", "asignadoPor", "claveIdempotencia", "payloadHash")
+INSERT INTO "PlanDeEmpresa" ("id", "empresaId", "versionDePlanId", "numero", "aplicaDesde", "origen", "motivo", "asignadoPor", "claveIdempotencia", "payloadHash")
 SELECT gen_random_uuid(), e."id", '00000000-0000-4000-8000-0000000a0003', 1, now(), 'TRANSICION',
        'Plan de transición: toda empresa existente parte del plan «actual»', 'migracion:planes_versionados', gen_random_uuid(), 'transicion-m1'
 FROM "Empresa" e

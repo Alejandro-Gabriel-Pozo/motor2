@@ -2779,7 +2779,7 @@ model PlanDeEmpresa {
   versionDePlanId   String        @db.Uuid
   versionDePlan     VersionDePlan @relation(fields: [versionDePlanId], references: [id], onDelete: Restrict)
   numero            Int
-  vigenteDesde      DateTime      @db.Timestamptz(3)
+  aplicaDesde       DateTime      @db.Timestamptz(3)
   origen            String
   motivo            String
   /// Quién la asignó: el email del administrador de plataforma (texto, sin FK: no es un `User`) o `migracion:…`.

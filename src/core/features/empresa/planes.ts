@@ -68,14 +68,14 @@ export function huellaCanonica(valor: Record<string, string | number | readonly 
 export interface AsignacionDeEmpresa {
   numero: number;
   versionDePlanId: string;
-  vigenteDesde: Date;
+  aplicaDesde: Date;
 }
 
 /** La asignación vigente: la de número mayor que ya empezó. Sin ninguna, `null` (una empresa sin plan). Se CALCULA: nunca se marca ni se edita. */
 export function asignacionVigenteEn<T extends AsignacionDeEmpresa>(asignaciones: readonly T[], ahora: Date): T | null {
   let vigente: T | null = null;
   for (const a of asignaciones) {
-    if (a.vigenteDesde.getTime() > ahora.getTime()) continue;
+    if (a.aplicaDesde.getTime() > ahora.getTime()) continue;
     if (vigente === null || a.numero > vigente.numero) vigente = a;
   }
   return vigente;
