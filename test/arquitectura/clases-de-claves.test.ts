@@ -62,9 +62,6 @@ const GOBIERNO: Readonly<Record<(typeof G)[number], NivelDeAccion>> = {
 };
 
 const O = [
-  // Parte P1 (b): ver, buscar, dar de alta y editar fichas (piso operario como Pedernal, D10 2026-11-12; semilla solo `admin`: todo nace cerrado, el gerente las delega).
-  "partes_ver",
-  "partes_editar",
   "reporte_vencimientos",
   "reporte_salud",
   "reporte_historial",
@@ -93,6 +90,9 @@ const O = [
 ] as const satisfies readonly AccionClave[];
 
 const L = [
+  // Parte P1: ver, buscar, dar de alta y editar fichas (piso operario como Pedernal; desde 2026-11-16 la semilla suma `operador`, «como pedernal,»): pasan de O a L, igual que `opcion_apagar_en_sucursal`.
+  "partes_ver",
+  "partes_editar",
   "alta_producto",
   "producto_editar",
   "ver_stock",
@@ -223,7 +223,8 @@ describe("GT-26 — las clases de claves (G gobierno, O operativas sensibles, L 
     // O 22 → 21 y L 33 → 34: `opcion_apagar_en_sucursal` pasa de O a L (su semilla suma `operador` en las empresas nuevas).
     // O 21 → 22: Pagos X0 suma `declarar_pago_compra`.
     // O 22 → 24 y A 60 → 61: Parte P1 suma `partes_ver` y `partes_editar` (O: piso operario, semilla solo admin) y `partes_desactivar` (A).
-    expect([G.length, O.length, L.length, A.length]).toEqual([14, 24, 34, 61]);
+    // O 24 → 22 y L 34 → 36: `partes_ver` y `partes_editar` suman `operador` a su semilla (pedido del dueño 2026-11-16): pasan de O a L.
+    expect([G.length, O.length, L.length, A.length]).toEqual([14, 22, 36, 61]);
   });
 
   it("toda clave del catálogo declara su clase, y toda clase declarada existe en el catálogo (las dos direcciones)", () => {
