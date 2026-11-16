@@ -83,7 +83,6 @@ const O = [
   "pos_enviar_a_cocina",
   "pos_liberar_mesa",
   "producto_campos_sensibles",
-  "compra_recibir",
   // E3a (decisión del dueño, 2026-10-27): proponer el reparto de una factura entre sucursales (de empresa, piso operario, semilla solo admin; el gerente la asigna en la matriz a quien reparte).
   "compra_repartir",
   // Pagos X0 (2026-11-04): declarar y anular el pago de una factura de proveedor (dinero; de empresa, piso operario, semilla solo admin; el gerente la asigna a quien confirme los pagos).
@@ -131,6 +130,8 @@ const L = [
 ] as const satisfies readonly AccionClave[];
 
 const A = [
+  // Compras N3-a (2026-11-16): confirmar la recepción de una compra pendiente pasa de O a A (piso administrador, semilla admin): confirman el gerente y el administrador, no el operador (dueño: «un gerente o administrador la confirma»).
+  "compra_recibir",
   // Parte P1 (b): desactivar y reactivar fichas (piso administrador, semilla admin: D10, 2026-11-12).
   "partes_desactivar",
   "guardar_receta",
@@ -223,7 +224,8 @@ describe("GT-26 — las clases de claves (G gobierno, O operativas sensibles, L 
     // O 22 → 21 y L 33 → 34: `opcion_apagar_en_sucursal` pasa de O a L (su semilla suma `operador` en las empresas nuevas).
     // O 21 → 22: Pagos X0 suma `declarar_pago_compra`.
     // O 22 → 24 y A 60 → 61: Parte P1 suma `partes_ver` y `partes_editar` (O: piso operario, semilla solo admin) y `partes_desactivar` (A).
-    expect([G.length, O.length, L.length, A.length]).toEqual([14, 24, 34, 61]);
+    // O 24 → 23 y A 61 → 62: Compras N3-a (2026-11-16) sube `compra_recibir` de O a A (piso administrador).
+    expect([G.length, O.length, L.length, A.length]).toEqual([14, 23, 34, 62]);
   });
 
   it("toda clave del catálogo declara su clase, y toda clase declarada existe en el catálogo (las dos direcciones)", () => {

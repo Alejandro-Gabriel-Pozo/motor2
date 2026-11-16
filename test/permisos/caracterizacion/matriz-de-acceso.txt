@@ -3,10 +3,11 @@
   [S1] requierePermiso (editar)
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
     MODULO_NO_ACTIVO//catalogo_basico//: precio_local, producto_disponibilidad, opcion_apagar_en_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//recetas//: reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_sin_receta, reporte_insumos_sin_receta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central
     MODULO_NO_ACTIVO//salon//: proceso_venta, proceso_devolucion_cliente, anular_venta, reporte_ventas_por_seccion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_rotacion_mesas, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, pos_asignar_cliente, pos_emitir_ticket_corregido, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa
     MODULO_NO_ACTIVO//stock//: secciones, stock_minimo, ver_stock, proceso_consumo, proceso_ajuste, proceso_control, proceso_transferencia, proceso_merma, cancelar_conteo, reporte_resumen, reporte_consolidado, reporte_periodo, reporte_categorias, reporte_valuacion, reporte_historial_importes, reporte_perdidas, reporte_devoluciones, reporte_diferencias, reporte_vencimientos, reporte_salud, reporte_historial, reporte_trazabilidad, reporte_conteos, stock_seccion_habitual, conteo_resolver_pendiente, stock_reclasificar, conteo_frecuencia
@@ -15,10 +16,11 @@
   [S1] requierePermisoVer
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
     MODULO_NO_ACTIVO//catalogo_basico//: precio_local, producto_disponibilidad, opcion_apagar_en_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//recetas//: reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_sin_receta, reporte_insumos_sin_receta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central
     MODULO_NO_ACTIVO//salon//: proceso_venta, proceso_devolucion_cliente, anular_venta, reporte_ventas_por_seccion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_rotacion_mesas, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, pos_asignar_cliente, pos_emitir_ticket_corregido, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa
     MODULO_NO_ACTIVO//stock//: secciones, stock_minimo, ver_stock, proceso_consumo, proceso_ajuste, proceso_control, proceso_transferencia, proceso_merma, cancelar_conteo, reporte_resumen, reporte_consolidado, reporte_periodo, reporte_categorias, reporte_valuacion, reporte_historial_importes, reporte_perdidas, reporte_devoluciones, reporte_diferencias, reporte_vencimientos, reporte_salud, reporte_historial, reporte_trazabilidad, reporte_conteos, stock_seccion_habitual, conteo_resolver_pendiente, stock_reclasificar, conteo_frecuencia
@@ -76,10 +78,11 @@
   [S1] requierePermiso (editar)
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
     MODULO_NO_ACTIVO//catalogo_basico//: precio_local, producto_disponibilidad, opcion_apagar_en_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//recetas//: reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_sin_receta, reporte_insumos_sin_receta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central
     MODULO_NO_ACTIVO//salon//: proceso_venta, proceso_devolucion_cliente, anular_venta, reporte_ventas_por_seccion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_rotacion_mesas, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, pos_asignar_cliente, pos_emitir_ticket_corregido, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa
     MODULO_NO_ACTIVO//stock//: secciones, stock_minimo, ver_stock, proceso_consumo, proceso_ajuste, proceso_control, proceso_transferencia, proceso_merma, cancelar_conteo, reporte_resumen, reporte_consolidado, reporte_periodo, reporte_categorias, reporte_valuacion, reporte_historial_importes, reporte_perdidas, reporte_devoluciones, reporte_diferencias, reporte_vencimientos, reporte_salud, reporte_historial, reporte_trazabilidad, reporte_conteos, stock_seccion_habitual, conteo_resolver_pendiente, stock_reclasificar, conteo_frecuencia
@@ -88,10 +91,11 @@
   [S1] requierePermisoVer
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
     MODULO_NO_ACTIVO//catalogo_basico//: precio_local, producto_disponibilidad, opcion_apagar_en_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//recetas//: reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_sin_receta, reporte_insumos_sin_receta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central
     MODULO_NO_ACTIVO//salon//: proceso_venta, proceso_devolucion_cliente, anular_venta, reporte_ventas_por_seccion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_rotacion_mesas, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, pos_asignar_cliente, pos_emitir_ticket_corregido, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa
     MODULO_NO_ACTIVO//stock//: secciones, stock_minimo, ver_stock, proceso_consumo, proceso_ajuste, proceso_control, proceso_transferencia, proceso_merma, cancelar_conteo, reporte_resumen, reporte_consolidado, reporte_periodo, reporte_categorias, reporte_valuacion, reporte_historial_importes, reporte_perdidas, reporte_devoluciones, reporte_diferencias, reporte_vencimientos, reporte_salud, reporte_historial, reporte_trazabilidad, reporte_conteos, stock_seccion_habitual, conteo_resolver_pendiente, stock_reclasificar, conteo_frecuencia
@@ -147,10 +151,11 @@
   [S1] requierePermiso (editar)
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
     MODULO_NO_ACTIVO//catalogo_basico//: precio_local, producto_disponibilidad, opcion_apagar_en_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//recetas//: reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_sin_receta, reporte_insumos_sin_receta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central
     MODULO_NO_ACTIVO//salon//: proceso_venta, proceso_devolucion_cliente, anular_venta, reporte_ventas_por_seccion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_rotacion_mesas, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, pos_asignar_cliente, pos_emitir_ticket_corregido, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa
     MODULO_NO_ACTIVO//stock//: secciones, stock_minimo, ver_stock, proceso_consumo, proceso_ajuste, proceso_control, proceso_transferencia, proceso_merma, cancelar_conteo, reporte_resumen, reporte_consolidado, reporte_periodo, reporte_categorias, reporte_valuacion, reporte_historial_importes, reporte_perdidas, reporte_devoluciones, reporte_diferencias, reporte_vencimientos, reporte_salud, reporte_historial, reporte_trazabilidad, reporte_conteos, stock_seccion_habitual, conteo_resolver_pendiente, stock_reclasificar, conteo_frecuencia
@@ -159,10 +164,11 @@
   [S1] requierePermisoVer
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
     MODULO_NO_ACTIVO//catalogo_basico//: precio_local, producto_disponibilidad, opcion_apagar_en_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//recetas//: reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_sin_receta, reporte_insumos_sin_receta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central
     MODULO_NO_ACTIVO//salon//: proceso_venta, proceso_devolucion_cliente, anular_venta, reporte_ventas_por_seccion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_rotacion_mesas, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, pos_asignar_cliente, pos_emitir_ticket_corregido, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa
     MODULO_NO_ACTIVO//stock//: secciones, stock_minimo, ver_stock, proceso_consumo, proceso_ajuste, proceso_control, proceso_transferencia, proceso_merma, cancelar_conteo, reporte_resumen, reporte_consolidado, reporte_periodo, reporte_categorias, reporte_valuacion, reporte_historial_importes, reporte_perdidas, reporte_devoluciones, reporte_diferencias, reporte_vencimientos, reporte_salud, reporte_historial, reporte_trazabilidad, reporte_conteos, stock_seccion_habitual, conteo_resolver_pendiente, stock_reclasificar, conteo_frecuencia
@@ -218,10 +224,11 @@
   [S1] requierePermiso (editar)
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
     MODULO_NO_ACTIVO//catalogo_basico//: precio_local, producto_disponibilidad, opcion_apagar_en_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//recetas//: reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_sin_receta, reporte_insumos_sin_receta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central
     MODULO_NO_ACTIVO//salon//: proceso_venta, proceso_devolucion_cliente, anular_venta, reporte_ventas_por_seccion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_rotacion_mesas, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, pos_asignar_cliente, pos_emitir_ticket_corregido, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa
     MODULO_NO_ACTIVO//stock//: secciones, stock_minimo, ver_stock, proceso_consumo, proceso_ajuste, proceso_control, proceso_transferencia, proceso_merma, cancelar_conteo, reporte_resumen, reporte_consolidado, reporte_periodo, reporte_categorias, reporte_valuacion, reporte_historial_importes, reporte_perdidas, reporte_devoluciones, reporte_diferencias, reporte_vencimientos, reporte_salud, reporte_historial, reporte_trazabilidad, reporte_conteos, stock_seccion_habitual, conteo_resolver_pendiente, stock_reclasificar, conteo_frecuencia
@@ -230,10 +237,11 @@
   [S1] requierePermisoVer
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
     MODULO_NO_ACTIVO//catalogo_basico//: precio_local, producto_disponibilidad, opcion_apagar_en_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//recetas//: reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_sin_receta, reporte_insumos_sin_receta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central
     MODULO_NO_ACTIVO//salon//: proceso_venta, proceso_devolucion_cliente, anular_venta, reporte_ventas_por_seccion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_rotacion_mesas, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, pos_asignar_cliente, pos_emitir_ticket_corregido, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa
     MODULO_NO_ACTIVO//stock//: secciones, stock_minimo, ver_stock, proceso_consumo, proceso_ajuste, proceso_control, proceso_transferencia, proceso_merma, cancelar_conteo, reporte_resumen, reporte_consolidado, reporte_periodo, reporte_categorias, reporte_valuacion, reporte_historial_importes, reporte_perdidas, reporte_devoluciones, reporte_diferencias, reporte_vencimientos, reporte_salud, reporte_historial, reporte_trazabilidad, reporte_conteos, stock_seccion_habitual, conteo_resolver_pendiente, stock_reclasificar, conteo_frecuencia
@@ -421,10 +429,11 @@
   [S1] requierePermiso (editar)
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
     MODULO_NO_ACTIVO//catalogo_basico//: precio_local, producto_disponibilidad, opcion_apagar_en_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//recetas//: reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_sin_receta, reporte_insumos_sin_receta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central
     MODULO_NO_ACTIVO//salon//: proceso_venta, proceso_devolucion_cliente, anular_venta, reporte_ventas_por_seccion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_rotacion_mesas, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, pos_asignar_cliente, pos_emitir_ticket_corregido, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa
     MODULO_NO_ACTIVO//stock//: secciones, stock_minimo, ver_stock, proceso_consumo, proceso_ajuste, proceso_control, proceso_transferencia, proceso_merma, cancelar_conteo, reporte_resumen, reporte_consolidado, reporte_periodo, reporte_categorias, reporte_valuacion, reporte_historial_importes, reporte_perdidas, reporte_devoluciones, reporte_diferencias, reporte_vencimientos, reporte_salud, reporte_historial, reporte_trazabilidad, reporte_conteos, stock_seccion_habitual, conteo_resolver_pendiente, stock_reclasificar, conteo_frecuencia
@@ -433,10 +442,11 @@
   [S1] requierePermisoVer
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
     MODULO_NO_ACTIVO//catalogo_basico//: precio_local, producto_disponibilidad, opcion_apagar_en_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//recetas//: reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_sin_receta, reporte_insumos_sin_receta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central
     MODULO_NO_ACTIVO//salon//: proceso_venta, proceso_devolucion_cliente, anular_venta, reporte_ventas_por_seccion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_rotacion_mesas, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, pos_asignar_cliente, pos_emitir_ticket_corregido, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa
     MODULO_NO_ACTIVO//stock//: secciones, stock_minimo, ver_stock, proceso_consumo, proceso_ajuste, proceso_control, proceso_transferencia, proceso_merma, cancelar_conteo, reporte_resumen, reporte_consolidado, reporte_periodo, reporte_categorias, reporte_valuacion, reporte_historial_importes, reporte_perdidas, reporte_devoluciones, reporte_diferencias, reporte_vencimientos, reporte_salud, reporte_historial, reporte_trazabilidad, reporte_conteos, stock_seccion_habitual, conteo_resolver_pendiente, stock_reclasificar, conteo_frecuencia
@@ -451,10 +461,11 @@
   [S2] requierePermiso (editar)
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
     MODULO_NO_ACTIVO//catalogo_basico//: precio_local, producto_disponibilidad, opcion_apagar_en_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//recetas//: reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_sin_receta, reporte_insumos_sin_receta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central
     MODULO_NO_ACTIVO//salon//: proceso_venta, proceso_devolucion_cliente, anular_venta, reporte_ventas_por_seccion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_rotacion_mesas, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, pos_asignar_cliente, pos_emitir_ticket_corregido, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa
     MODULO_NO_ACTIVO//stock//: secciones, stock_minimo, ver_stock, proceso_consumo, proceso_ajuste, proceso_control, proceso_transferencia, proceso_merma, cancelar_conteo, reporte_resumen, reporte_consolidado, reporte_periodo, reporte_categorias, reporte_valuacion, reporte_historial_importes, reporte_perdidas, reporte_devoluciones, reporte_diferencias, reporte_vencimientos, reporte_salud, reporte_historial, reporte_trazabilidad, reporte_conteos, stock_seccion_habitual, conteo_resolver_pendiente, stock_reclasificar, conteo_frecuencia
@@ -463,10 +474,11 @@
   [S2] requierePermisoVer
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
     MODULO_NO_ACTIVO//catalogo_basico//: precio_local, producto_disponibilidad, opcion_apagar_en_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//recetas//: reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_sin_receta, reporte_insumos_sin_receta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central
     MODULO_NO_ACTIVO//salon//: proceso_venta, proceso_devolucion_cliente, anular_venta, reporte_ventas_por_seccion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_rotacion_mesas, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, pos_asignar_cliente, pos_emitir_ticket_corregido, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa
     MODULO_NO_ACTIVO//stock//: secciones, stock_minimo, ver_stock, proceso_consumo, proceso_ajuste, proceso_control, proceso_transferencia, proceso_merma, cancelar_conteo, reporte_resumen, reporte_consolidado, reporte_periodo, reporte_categorias, reporte_valuacion, reporte_historial_importes, reporte_perdidas, reporte_devoluciones, reporte_diferencias, reporte_vencimientos, reporte_salud, reporte_historial, reporte_trazabilidad, reporte_conteos, stock_seccion_habitual, conteo_resolver_pendiente, stock_reclasificar, conteo_frecuencia
@@ -512,10 +524,11 @@
 ## usuario admin
   [S1] requierePermiso (editar)
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//recetas//: reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_sin_receta, reporte_insumos_sin_receta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central
     MODULO_NO_ACTIVO//salon//: proceso_venta, proceso_devolucion_cliente, anular_venta, reporte_ventas_por_seccion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_rotacion_mesas, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, pos_asignar_cliente, pos_emitir_ticket_corregido, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa
     MODULO_NO_ACTIVO//traspasos//: traspaso_ver_bandeja, traspaso_solicitar, traspaso_enviar_directo, traspaso_aprobar, traspaso_cancelar_solicitud, traspaso_rechazar_solicitud, traspaso_aceptar, traspaso_rechazar_envio, traspaso_confirmar_reingreso
@@ -523,10 +536,11 @@
     SIN_CAPACIDAD////sucursal: ver_stock
   [S1] requierePermisoVer
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//recetas//: reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_sin_receta, reporte_insumos_sin_receta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central
     MODULO_NO_ACTIVO//salon//: proceso_venta, proceso_devolucion_cliente, anular_venta, reporte_ventas_por_seccion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_rotacion_mesas, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, pos_asignar_cliente, pos_emitir_ticket_corregido, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa
     MODULO_NO_ACTIVO//traspasos//: traspaso_ver_bandeja, traspaso_solicitar, traspaso_enviar_directo, traspaso_aprobar, traspaso_cancelar_solicitud, traspaso_rechazar_solicitud, traspaso_aceptar, traspaso_rechazar_envio, traspaso_confirmar_reingreso
@@ -579,10 +593,11 @@
 ## usuario gerente
   [S1] requierePermiso (editar)
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//recetas//: reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_sin_receta, reporte_insumos_sin_receta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central
     MODULO_NO_ACTIVO//salon//: proceso_venta, proceso_devolucion_cliente, anular_venta, reporte_ventas_por_seccion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_rotacion_mesas, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, pos_asignar_cliente, pos_emitir_ticket_corregido, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa
     MODULO_NO_ACTIVO//traspasos//: traspaso_ver_bandeja, traspaso_solicitar, traspaso_enviar_directo, traspaso_aprobar, traspaso_cancelar_solicitud, traspaso_rechazar_solicitud, traspaso_aceptar, traspaso_rechazar_envio, traspaso_confirmar_reingreso
@@ -590,10 +605,11 @@
     SIN_CAPACIDAD////sucursal: ver_stock
   [S1] requierePermisoVer
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//recetas//: reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_sin_receta, reporte_insumos_sin_receta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central
     MODULO_NO_ACTIVO//salon//: proceso_venta, proceso_devolucion_cliente, anular_venta, reporte_ventas_por_seccion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_rotacion_mesas, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, pos_asignar_cliente, pos_emitir_ticket_corregido, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa
     MODULO_NO_ACTIVO//traspasos//: traspaso_ver_bandeja, traspaso_solicitar, traspaso_enviar_directo, traspaso_aprobar, traspaso_cancelar_solicitud, traspaso_rechazar_solicitud, traspaso_aceptar, traspaso_rechazar_envio, traspaso_confirmar_reingreso
@@ -644,10 +660,11 @@
 ## usuario operador
   [S1] requierePermiso (editar)
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//recetas//: reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_sin_receta, reporte_insumos_sin_receta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central
     MODULO_NO_ACTIVO//salon//: proceso_venta, proceso_devolucion_cliente, anular_venta, reporte_ventas_por_seccion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_rotacion_mesas, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, pos_asignar_cliente, pos_emitir_ticket_corregido, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa
     MODULO_NO_ACTIVO//traspasos//: traspaso_ver_bandeja, traspaso_solicitar, traspaso_enviar_directo, traspaso_aprobar, traspaso_cancelar_solicitud, traspaso_rechazar_solicitud, traspaso_aceptar, traspaso_rechazar_envio, traspaso_confirmar_reingreso
@@ -656,10 +673,11 @@
     SIN_PERMISO/ROL_SIN_LA_ACCION//editar/: secciones, stock_minimo, precio_local, gestion_usuarios, activar_usuario_sucursal, notas_usuario_sucursal, proceso_ajuste, cancelar_conteo, ver_auditoria, reporte_resumen, reporte_consolidado, reporte_periodo, reporte_categorias, reporte_valuacion, reporte_historial_importes, reporte_perdidas, reporte_devoluciones, reporte_diferencias, reporte_vencimientos, reporte_salud, reporte_historial, reporte_trazabilidad, stock_seccion_habitual
   [S1] requierePermisoVer
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//recetas//: reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_sin_receta, reporte_insumos_sin_receta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central
     MODULO_NO_ACTIVO//salon//: proceso_venta, proceso_devolucion_cliente, anular_venta, reporte_ventas_por_seccion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_rotacion_mesas, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, pos_asignar_cliente, pos_emitir_ticket_corregido, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa
     MODULO_NO_ACTIVO//traspasos//: traspaso_ver_bandeja, traspaso_solicitar, traspaso_enviar_directo, traspaso_aprobar, traspaso_cancelar_solicitud, traspaso_rechazar_solicitud, traspaso_aceptar, traspaso_rechazar_envio, traspaso_confirmar_reingreso
@@ -715,10 +733,11 @@
 ## usuario especial
   [S1] requierePermiso (editar)
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//recetas//: reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_sin_receta, reporte_insumos_sin_receta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central
     MODULO_NO_ACTIVO//salon//: proceso_venta, proceso_devolucion_cliente, anular_venta, reporte_ventas_por_seccion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_rotacion_mesas, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, pos_asignar_cliente, pos_emitir_ticket_corregido, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa
     MODULO_NO_ACTIVO//traspasos//: traspaso_ver_bandeja, traspaso_solicitar, traspaso_enviar_directo, traspaso_aprobar, traspaso_cancelar_solicitud, traspaso_rechazar_solicitud, traspaso_aceptar, traspaso_rechazar_envio, traspaso_confirmar_reingreso
@@ -727,10 +746,11 @@
     SIN_PERMISO/ROL_SIN_LA_ACCION//editar/: secciones, stock_minimo, precio_local, gestion_usuarios, activar_usuario_sucursal, notas_usuario_sucursal, proceso_consumo, proceso_ajuste, proceso_transferencia, cancelar_conteo, ver_auditoria, reporte_resumen, reporte_consolidado, reporte_periodo, reporte_categorias, reporte_valuacion, reporte_historial_importes, reporte_perdidas, reporte_devoluciones, reporte_diferencias, reporte_vencimientos, reporte_salud, reporte_historial, reporte_trazabilidad, reporte_conteos, stock_seccion_habitual, conteo_resolver_pendiente, stock_reclasificar, conteo_frecuencia, producto_disponibilidad, opcion_apagar_en_sucursal
   [S1] requierePermisoVer
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//recetas//: reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_sin_receta, reporte_insumos_sin_receta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central
     MODULO_NO_ACTIVO//salon//: proceso_venta, proceso_devolucion_cliente, anular_venta, reporte_ventas_por_seccion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_rotacion_mesas, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, pos_asignar_cliente, pos_emitir_ticket_corregido, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa
     MODULO_NO_ACTIVO//traspasos//: traspaso_ver_bandeja, traspaso_solicitar, traspaso_enviar_directo, traspaso_aprobar, traspaso_cancelar_solicitud, traspaso_rechazar_solicitud, traspaso_aceptar, traspaso_rechazar_envio, traspaso_confirmar_reingreso
@@ -918,10 +938,11 @@
 ## usuario dos sucursales
   [S1] requierePermiso (editar)
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//recetas//: reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_sin_receta, reporte_insumos_sin_receta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central
     MODULO_NO_ACTIVO//salon//: proceso_venta, proceso_devolucion_cliente, anular_venta, reporte_ventas_por_seccion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_rotacion_mesas, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, pos_asignar_cliente, pos_emitir_ticket_corregido, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa
     MODULO_NO_ACTIVO//traspasos//: traspaso_ver_bandeja, traspaso_solicitar, traspaso_enviar_directo, traspaso_aprobar, traspaso_cancelar_solicitud, traspaso_rechazar_solicitud, traspaso_aceptar, traspaso_rechazar_envio, traspaso_confirmar_reingreso
@@ -930,10 +951,11 @@
     SIN_PERMISO/ROL_SIN_LA_ACCION//editar/: secciones, stock_minimo, precio_local, gestion_usuarios, activar_usuario_sucursal, notas_usuario_sucursal, proceso_ajuste, cancelar_conteo, ver_auditoria, reporte_resumen, reporte_consolidado, reporte_periodo, reporte_categorias, reporte_valuacion, reporte_historial_importes, reporte_perdidas, reporte_devoluciones, reporte_diferencias, reporte_vencimientos, reporte_salud, reporte_historial, reporte_trazabilidad, stock_seccion_habitual
   [S1] requierePermisoVer
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//recetas//: reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_sin_receta, reporte_insumos_sin_receta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central
     MODULO_NO_ACTIVO//salon//: proceso_venta, proceso_devolucion_cliente, anular_venta, reporte_ventas_por_seccion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_rotacion_mesas, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, pos_asignar_cliente, pos_emitir_ticket_corregido, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa
     MODULO_NO_ACTIVO//traspasos//: traspaso_ver_bandeja, traspaso_solicitar, traspaso_enviar_directo, traspaso_aprobar, traspaso_cancelar_solicitud, traspaso_rechazar_solicitud, traspaso_aceptar, traspaso_rechazar_envio, traspaso_confirmar_reingreso
@@ -949,10 +971,11 @@
     alta_producto, categoria_alta, conteo_frecuencia, conteo_resolver_pendiente, insumo_alta, opcion_apagar_en_sucursal, proceso_consumo, proceso_control, proceso_merma, proceso_transferencia, producto_asignar_insumo, producto_disponibilidad, producto_editar, producto_presentaciones, producto_ver_catalogo, reporte_conteos, stock_reclasificar
   [S2] requierePermiso (editar)
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//recetas//: reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_sin_receta, reporte_insumos_sin_receta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central
     MODULO_NO_ACTIVO//salon//: proceso_venta, proceso_devolucion_cliente, anular_venta, reporte_ventas_por_seccion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_rotacion_mesas, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, pos_asignar_cliente, pos_emitir_ticket_corregido, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa
     MODULO_NO_ACTIVO//traspasos//: traspaso_ver_bandeja, traspaso_solicitar, traspaso_enviar_directo, traspaso_aprobar, traspaso_cancelar_solicitud, traspaso_rechazar_solicitud, traspaso_aceptar, traspaso_rechazar_envio, traspaso_confirmar_reingreso
@@ -961,10 +984,11 @@
     SIN_PERMISO/ROL_SIN_LA_ACCION//editar/: secciones, stock_minimo, precio_local, gestion_usuarios, activar_usuario_sucursal, notas_usuario_sucursal, proceso_ajuste, proceso_transferencia, cancelar_conteo, ver_auditoria, reporte_resumen, reporte_consolidado, reporte_periodo, reporte_categorias, reporte_valuacion, reporte_historial_importes, reporte_perdidas, reporte_devoluciones, reporte_diferencias, reporte_vencimientos, reporte_salud, reporte_historial, reporte_trazabilidad, reporte_conteos, stock_seccion_habitual, conteo_resolver_pendiente, stock_reclasificar, conteo_frecuencia, producto_disponibilidad, opcion_apagar_en_sucursal
   [S2] requierePermisoVer
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//recetas//: reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_sin_receta, reporte_insumos_sin_receta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central
     MODULO_NO_ACTIVO//salon//: proceso_venta, proceso_devolucion_cliente, anular_venta, reporte_ventas_por_seccion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_rotacion_mesas, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, pos_asignar_cliente, pos_emitir_ticket_corregido, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa
     MODULO_NO_ACTIVO//traspasos//: traspaso_ver_bandeja, traspaso_solicitar, traspaso_enviar_directo, traspaso_aprobar, traspaso_cancelar_solicitud, traspaso_rechazar_solicitud, traspaso_aceptar, traspaso_rechazar_envio, traspaso_confirmar_reingreso
@@ -1012,19 +1036,21 @@
 ## usuario admin
   [S1] requierePermiso (editar)
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//traspasos//: traspaso_ver_bandeja, traspaso_solicitar, traspaso_enviar_directo, traspaso_aprobar, traspaso_cancelar_solicitud, traspaso_rechazar_solicitud, traspaso_aceptar, traspaso_rechazar_envio, traspaso_confirmar_reingreso
     ok: secciones, stock_minimo, precio_local, gestion_usuarios, activar_usuario_sucursal, notas_usuario_sucursal, proceso_consumo, proceso_ajuste, proceso_control, proceso_transferencia, proceso_merma, proceso_venta, proceso_devolucion_cliente, cancelar_conteo, anular_venta, ver_auditoria, reporte_resumen, reporte_consolidado, reporte_periodo, reporte_categorias, reporte_ventas_por_seccion, reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_valuacion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_historial_importes, reporte_perdidas, reporte_devoluciones, reporte_diferencias, reporte_vencimientos, reporte_salud, reporte_historial, reporte_trazabilidad, reporte_rotacion_mesas, reporte_sin_receta, reporte_insumos_sin_receta, reporte_conteos, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central, pos_asignar_cliente, stock_seccion_habitual, pos_emitir_ticket_corregido, conteo_resolver_pendiente, stock_reclasificar, conteo_frecuencia, producto_disponibilidad, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa, opcion_apagar_en_sucursal
     SIN_CAPACIDAD////sucursal: ver_stock
   [S1] requierePermisoVer
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//traspasos//: traspaso_ver_bandeja, traspaso_solicitar, traspaso_enviar_directo, traspaso_aprobar, traspaso_cancelar_solicitud, traspaso_rechazar_solicitud, traspaso_aceptar, traspaso_rechazar_envio, traspaso_confirmar_reingreso
     ok: secciones, stock_minimo, precio_local, gestion_usuarios, activar_usuario_sucursal, notas_usuario_sucursal, proceso_consumo, proceso_ajuste, proceso_control, proceso_transferencia, proceso_merma, proceso_venta, proceso_devolucion_cliente, cancelar_conteo, anular_venta, ver_auditoria, reporte_resumen, reporte_consolidado, reporte_periodo, reporte_categorias, reporte_ventas_por_seccion, reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_valuacion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_historial_importes, reporte_perdidas, reporte_devoluciones, reporte_diferencias, reporte_vencimientos, reporte_salud, reporte_historial, reporte_trazabilidad, reporte_rotacion_mesas, reporte_sin_receta, reporte_insumos_sin_receta, reporte_conteos, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central, pos_asignar_cliente, stock_seccion_habitual, pos_emitir_ticket_corregido, conteo_resolver_pendiente, stock_reclasificar, conteo_frecuencia, producto_disponibilidad, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa, opcion_apagar_en_sucursal
     SIN_CAPACIDAD////sucursal: ver_stock
@@ -1071,19 +1097,21 @@
 ## usuario gerente
   [S1] requierePermiso (editar)
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//traspasos//: traspaso_ver_bandeja, traspaso_solicitar, traspaso_enviar_directo, traspaso_aprobar, traspaso_cancelar_solicitud, traspaso_rechazar_solicitud, traspaso_aceptar, traspaso_rechazar_envio, traspaso_confirmar_reingreso
     ok: secciones, stock_minimo, precio_local, gestion_usuarios, activar_usuario_sucursal, notas_usuario_sucursal, proceso_consumo, proceso_ajuste, proceso_control, proceso_transferencia, proceso_merma, proceso_venta, proceso_devolucion_cliente, cancelar_conteo, anular_venta, ver_auditoria, reporte_resumen, reporte_consolidado, reporte_periodo, reporte_categorias, reporte_ventas_por_seccion, reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_valuacion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_historial_importes, reporte_perdidas, reporte_devoluciones, reporte_diferencias, reporte_vencimientos, reporte_salud, reporte_historial, reporte_trazabilidad, reporte_rotacion_mesas, reporte_sin_receta, reporte_insumos_sin_receta, reporte_conteos, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central, pos_asignar_cliente, stock_seccion_habitual, pos_emitir_ticket_corregido, conteo_resolver_pendiente, stock_reclasificar, conteo_frecuencia, producto_disponibilidad, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa, opcion_apagar_en_sucursal
     SIN_CAPACIDAD////sucursal: ver_stock
   [S1] requierePermisoVer
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//traspasos//: traspaso_ver_bandeja, traspaso_solicitar, traspaso_enviar_directo, traspaso_aprobar, traspaso_cancelar_solicitud, traspaso_rechazar_solicitud, traspaso_aceptar, traspaso_rechazar_envio, traspaso_confirmar_reingreso
     ok: secciones, stock_minimo, precio_local, gestion_usuarios, activar_usuario_sucursal, notas_usuario_sucursal, proceso_consumo, proceso_ajuste, proceso_control, proceso_transferencia, proceso_merma, proceso_venta, proceso_devolucion_cliente, cancelar_conteo, anular_venta, ver_auditoria, reporte_resumen, reporte_consolidado, reporte_periodo, reporte_categorias, reporte_ventas_por_seccion, reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_valuacion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_historial_importes, reporte_perdidas, reporte_devoluciones, reporte_diferencias, reporte_vencimientos, reporte_salud, reporte_historial, reporte_trazabilidad, reporte_rotacion_mesas, reporte_sin_receta, reporte_insumos_sin_receta, reporte_conteos, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central, pos_asignar_cliente, stock_seccion_habitual, pos_emitir_ticket_corregido, conteo_resolver_pendiente, stock_reclasificar, conteo_frecuencia, producto_disponibilidad, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa, opcion_apagar_en_sucursal
     SIN_CAPACIDAD////sucursal: ver_stock
@@ -1128,20 +1156,22 @@
 ## usuario operador
   [S1] requierePermiso (editar)
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//traspasos//: traspaso_ver_bandeja, traspaso_solicitar, traspaso_enviar_directo, traspaso_aprobar, traspaso_cancelar_solicitud, traspaso_rechazar_solicitud, traspaso_aceptar, traspaso_rechazar_envio, traspaso_confirmar_reingreso
     ok: proceso_consumo, proceso_control, proceso_transferencia, proceso_merma, proceso_venta, proceso_devolucion_cliente, reporte_conteos, conteo_resolver_pendiente, stock_reclasificar, conteo_frecuencia, producto_disponibilidad, opcion_apagar_en_sucursal
     SIN_CAPACIDAD////sucursal: ver_stock
     SIN_PERMISO/ROL_SIN_LA_ACCION//editar/: secciones, stock_minimo, precio_local, gestion_usuarios, activar_usuario_sucursal, notas_usuario_sucursal, proceso_ajuste, cancelar_conteo, anular_venta, ver_auditoria, reporte_resumen, reporte_consolidado, reporte_periodo, reporte_categorias, reporte_ventas_por_seccion, reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_valuacion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_historial_importes, reporte_perdidas, reporte_devoluciones, reporte_diferencias, reporte_vencimientos, reporte_salud, reporte_historial, reporte_trazabilidad, reporte_rotacion_mesas, reporte_sin_receta, reporte_insumos_sin_receta, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central, pos_asignar_cliente, stock_seccion_habitual, pos_emitir_ticket_corregido, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa
   [S1] requierePermisoVer
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//traspasos//: traspaso_ver_bandeja, traspaso_solicitar, traspaso_enviar_directo, traspaso_aprobar, traspaso_cancelar_solicitud, traspaso_rechazar_solicitud, traspaso_aceptar, traspaso_rechazar_envio, traspaso_confirmar_reingreso
     ok: proceso_consumo, proceso_control, proceso_transferencia, proceso_merma, proceso_venta, proceso_devolucion_cliente, reporte_conteos, conteo_resolver_pendiente, stock_reclasificar, conteo_frecuencia, producto_disponibilidad, opcion_apagar_en_sucursal
     SIN_CAPACIDAD////sucursal: ver_stock
@@ -1191,20 +1221,22 @@
 ## usuario especial
   [S1] requierePermiso (editar)
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//traspasos//: traspaso_ver_bandeja, traspaso_solicitar, traspaso_enviar_directo, traspaso_aprobar, traspaso_cancelar_solicitud, traspaso_rechazar_solicitud, traspaso_aceptar, traspaso_rechazar_envio, traspaso_confirmar_reingreso
     ok: proceso_control, proceso_merma
     SIN_CAPACIDAD////sucursal: ver_stock
     SIN_PERMISO/ROL_SIN_LA_ACCION//editar/: secciones, stock_minimo, precio_local, gestion_usuarios, activar_usuario_sucursal, notas_usuario_sucursal, proceso_consumo, proceso_ajuste, proceso_transferencia, proceso_venta, proceso_devolucion_cliente, cancelar_conteo, anular_venta, ver_auditoria, reporte_resumen, reporte_consolidado, reporte_periodo, reporte_categorias, reporte_ventas_por_seccion, reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_valuacion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_historial_importes, reporte_perdidas, reporte_devoluciones, reporte_diferencias, reporte_vencimientos, reporte_salud, reporte_historial, reporte_trazabilidad, reporte_rotacion_mesas, reporte_sin_receta, reporte_insumos_sin_receta, reporte_conteos, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central, pos_asignar_cliente, stock_seccion_habitual, pos_emitir_ticket_corregido, conteo_resolver_pendiente, stock_reclasificar, conteo_frecuencia, producto_disponibilidad, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa, opcion_apagar_en_sucursal
   [S1] requierePermisoVer
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//traspasos//: traspaso_ver_bandeja, traspaso_solicitar, traspaso_enviar_directo, traspaso_aprobar, traspaso_cancelar_solicitud, traspaso_rechazar_solicitud, traspaso_aceptar, traspaso_rechazar_envio, traspaso_confirmar_reingreso
     ok: proceso_consumo, proceso_control, proceso_transferencia, proceso_merma, proceso_venta, proceso_devolucion_cliente
     SIN_CAPACIDAD////sucursal: ver_stock
@@ -1386,20 +1418,22 @@
 ## usuario dos sucursales
   [S1] requierePermiso (editar)
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//traspasos//: traspaso_ver_bandeja, traspaso_solicitar, traspaso_enviar_directo, traspaso_aprobar, traspaso_cancelar_solicitud, traspaso_rechazar_solicitud, traspaso_aceptar, traspaso_rechazar_envio, traspaso_confirmar_reingreso
     ok: proceso_consumo, proceso_control, proceso_transferencia, proceso_merma, proceso_venta, proceso_devolucion_cliente, reporte_conteos, conteo_resolver_pendiente, stock_reclasificar, conteo_frecuencia, producto_disponibilidad, opcion_apagar_en_sucursal
     SIN_CAPACIDAD////sucursal: ver_stock
     SIN_PERMISO/ROL_SIN_LA_ACCION//editar/: secciones, stock_minimo, precio_local, gestion_usuarios, activar_usuario_sucursal, notas_usuario_sucursal, proceso_ajuste, cancelar_conteo, anular_venta, ver_auditoria, reporte_resumen, reporte_consolidado, reporte_periodo, reporte_categorias, reporte_ventas_por_seccion, reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_valuacion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_historial_importes, reporte_perdidas, reporte_devoluciones, reporte_diferencias, reporte_vencimientos, reporte_salud, reporte_historial, reporte_trazabilidad, reporte_rotacion_mesas, reporte_sin_receta, reporte_insumos_sin_receta, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central, pos_asignar_cliente, stock_seccion_habitual, pos_emitir_ticket_corregido, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa
   [S1] requierePermisoVer
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//traspasos//: traspaso_ver_bandeja, traspaso_solicitar, traspaso_enviar_directo, traspaso_aprobar, traspaso_cancelar_solicitud, traspaso_rechazar_solicitud, traspaso_aceptar, traspaso_rechazar_envio, traspaso_confirmar_reingreso
     ok: proceso_consumo, proceso_control, proceso_transferencia, proceso_merma, proceso_venta, proceso_devolucion_cliente, reporte_conteos, conteo_resolver_pendiente, stock_reclasificar, conteo_frecuencia, producto_disponibilidad, opcion_apagar_en_sucursal
     SIN_CAPACIDAD////sucursal: ver_stock
@@ -1413,20 +1447,22 @@
     alta_producto, categoria_alta, conteo_frecuencia, conteo_resolver_pendiente, insumo_alta, opcion_apagar_en_sucursal, proceso_consumo, proceso_control, proceso_devolucion_cliente, proceso_merma, proceso_transferencia, proceso_venta, producto_asignar_insumo, producto_disponibilidad, producto_editar, producto_presentaciones, producto_ver_catalogo, reporte_conteos, stock_reclasificar
   [S2] requierePermiso (editar)
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//traspasos//: traspaso_ver_bandeja, traspaso_solicitar, traspaso_enviar_directo, traspaso_aprobar, traspaso_cancelar_solicitud, traspaso_rechazar_solicitud, traspaso_aceptar, traspaso_rechazar_envio, traspaso_confirmar_reingreso
     ok: ver_stock, proceso_control, proceso_merma
     SIN_CAPACIDAD////sucursal: proceso_consumo
     SIN_PERMISO/ROL_SIN_LA_ACCION//editar/: secciones, stock_minimo, precio_local, gestion_usuarios, activar_usuario_sucursal, notas_usuario_sucursal, proceso_ajuste, proceso_transferencia, proceso_venta, proceso_devolucion_cliente, cancelar_conteo, anular_venta, ver_auditoria, reporte_resumen, reporte_consolidado, reporte_periodo, reporte_categorias, reporte_ventas_por_seccion, reporte_costos, reporte_rendimiento_recetas, reporte_rendimiento_sucursal, reporte_valuacion, reporte_tickets, reporte_descuentos_clientes, reporte_descuentos_productos, reporte_historial_importes, reporte_perdidas, reporte_devoluciones, reporte_diferencias, reporte_vencimientos, reporte_salud, reporte_historial, reporte_trazabilidad, reporte_rotacion_mesas, reporte_sin_receta, reporte_insumos_sin_receta, reporte_conteos, pos_mesas, pos_tomar_pedido, pos_anular_item, pos_cerrar_cuenta, calibrar_rendimiento_local, receta_sucursal_editar, receta_sucursal_copiar, receta_sucursal_volver_central, pos_asignar_cliente, stock_seccion_habitual, pos_emitir_ticket_corregido, conteo_resolver_pendiente, stock_reclasificar, conteo_frecuencia, producto_disponibilidad, pos_alta_mesa, pos_abrir_cuenta, pos_enviar_a_cocina, pos_liberar_mesa, opcion_apagar_en_sucursal
   [S2] requierePermisoVer
     MODULO_NO_ACTIVO//carta//: carta_ver, carta_generos, carta_contenido_producto, carta_producto_descuento, carta_items_agrupados, carta_tema, carta_copiar_de_sucursal
-    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras, compra_recibir
+    MODULO_NO_ACTIVO//compras//: proceso_compra, proceso_devolucion_proveedor, anular_compra, corregir_compra, reporte_compras
     MODULO_NO_ACTIVO//consignacion//: proceso_devolucion_consignacion, pagar_consignante
     MODULO_NO_ACTIVO//produccion//: proceso_produccion
     MODULO_NO_ACTIVO//promociones//: carta_promo_activar, carta_promo_precio_local, reporte_margen_promociones, promo_menu_del_dia
+    MODULO_NO_ACTIVO//recepcion_de_compras//: compra_recibir
     MODULO_NO_ACTIVO//traspasos//: traspaso_ver_bandeja, traspaso_solicitar, traspaso_enviar_directo, traspaso_aprobar, traspaso_cancelar_solicitud, traspaso_rechazar_solicitud, traspaso_aceptar, traspaso_rechazar_envio, traspaso_confirmar_reingreso
     ok: ver_stock, proceso_control, proceso_transferencia, proceso_merma, proceso_venta, proceso_devolucion_cliente
     SIN_CAPACIDAD////sucursal: proceso_consumo
@@ -1835,6 +1871,8 @@
     Tu empresa no tiene activado el módulo "Promociones".
   MODULO_NO_ACTIVO//proveedores_basico//
     Tu empresa no tiene activado el módulo "Proveedores básico".
+  MODULO_NO_ACTIVO//recepcion_de_compras//
+    Tu empresa no tiene activado el módulo "Recepción separada de compras".
   MODULO_NO_ACTIVO//recetas//
     Tu empresa no tiene activado el módulo "Recetas".
   MODULO_NO_ACTIVO//salon//
