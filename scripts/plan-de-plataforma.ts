@@ -3,10 +3,10 @@
  * para operar planes: ninguna pantalla de la app ni de la consola lo hace todavía (la pantalla es M2).
  *
  * Uso (cada comando necesita --actor, el email de un administrador de plataforma ACTIVO, y el código de 6 dígitos de su app de autenticación: ver `scripts/politica-empresa.ts`):
- *   npm run plan-de-plataforma -- crear     --codigo basico --nombre "Básico" --modulos stock,compras --actor yo@plataforma.com [--clave <uuid>] [--instalacion zuluhub]
- *   npm run plan-de-plataforma -- borrador  --codigo basico --nombre "Básico" --modulos stock,compras,carta --actor … [--clave <uuid>]
- *   npm run plan-de-plataforma -- publicar  --codigo basico --numero 1 --motivo "Primera versión" --actor …
- *   npm run plan-de-plataforma -- asignar   --slug norte --codigo basico --version 1 --motivo "Contrato nuevo" --actor … [--clave <uuid>]
+ *   npx tsx scripts/plan-de-plataforma.ts crear     --codigo basico --nombre "Básico" --modulos stock,compras --actor yo@plataforma.com [--clave <uuid>] [--instalacion zuluhub]
+ *   npx tsx scripts/plan-de-plataforma.ts borrador  --codigo basico --nombre "Básico" --modulos stock,compras,carta --actor … [--clave <uuid>]
+ *   npx tsx scripts/plan-de-plataforma.ts publicar  --codigo basico --numero 1 --motivo "Primera versión" --actor …
+ *   npx tsx scripts/plan-de-plataforma.ts asignar   --slug norte --codigo basico --version 1 --motivo "Contrato nuevo" --actor … [--clave <uuid>]
  *
  * `--clave` es la clave de reintento (un UUID): si el comando se corta o se repite, volver a correrlo con la MISMA clave devuelve lo ya hecho y no duplica nada. Sin `--clave` se genera una y se IMPRIME
  * (guardala si querés poder reintentar). `publicar --numero` es el número que esperás para la versión (la última publicada + 1): si otra persona publicó antes, falla sin pisar nada.
