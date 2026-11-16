@@ -136,7 +136,7 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 - **Estado:** ACEPTADA
 - **Cita del dueño:** «Los textos encargarte vos trata de reducir, textos, inventariar y empezar a reutilizar y que representen 1 sola cosa, definir primitivas e invariantes en texto igual que pedernal; Sí, confirmo esos límites (Recomendada)» — 2026-11-16 — chat del dueño con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, secciones «Textos: el orquestador se encarga…» y «Textos: límites de la delegación confirmados»); lote aceptado por el orquestador por delegación (2026-11-16)
 
-### DEC-0014
+### DEC-0015
 - **Fecha:** 2026-11-16
 - **Quién:** la sesión Sonnet del frente 4 (planes y perillas); los cuatro rótulos los aceptó el dueño directamente.
 - **Qué decidió:** cuatro rótulos del historial de la consola de plataforma para las acciones de los planes versionados (M1): «Plan creado», «Borrador de plan guardado», «Versión de plan publicada» y «Plan asignado a la empresa». Van por el catálogo de textos (`rotulo.plan_creado`, `rotulo.plan_borrador_guardado`, `rotulo.plan_version_publicada`, `rotulo.plan_asignado`). Son rótulos de acciones de la plataforma: no tocan dinero, permisos ni texto fiscal. Solo los ve la plataforma: la empresa NO ve ese historial («No, solo la plataforma lo ve», 2026-11-16).

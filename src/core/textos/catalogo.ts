@@ -35,22 +35,22 @@ export const CATALOGO = {
   "rotulo.plan_creado": {
     porDefecto: "Plan creado",
     usos: [{ archivo: "plataforma/src/app/instalaciones/[instalacion]/empresas/textos.ts", nombre: "ACCION_DE_AUDITORIA" }],
-    fuente: { decision: "DEC-0014" },
+    fuente: { decision: "DEC-0015" },
   },
   "rotulo.plan_borrador_guardado": {
     porDefecto: "Borrador de plan guardado",
     usos: [{ archivo: "plataforma/src/app/instalaciones/[instalacion]/empresas/textos.ts", nombre: "ACCION_DE_AUDITORIA" }],
-    fuente: { decision: "DEC-0014" },
+    fuente: { decision: "DEC-0015" },
   },
   "rotulo.plan_version_publicada": {
     porDefecto: "Versión de plan publicada",
     usos: [{ archivo: "plataforma/src/app/instalaciones/[instalacion]/empresas/textos.ts", nombre: "ACCION_DE_AUDITORIA" }],
-    fuente: { decision: "DEC-0014" },
+    fuente: { decision: "DEC-0015" },
   },
   "rotulo.plan_asignado": {
     porDefecto: "Plan asignado a la empresa",
     usos: [{ archivo: "plataforma/src/app/instalaciones/[instalacion]/empresas/textos.ts", nombre: "ACCION_DE_AUDITORIA" }],
-    fuente: { decision: "DEC-0014" },
+    fuente: { decision: "DEC-0015" },
   },
 } as const satisfies Readonly<Record<string, DefinicionDeTexto>>;
 
