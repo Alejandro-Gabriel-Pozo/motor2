@@ -27,12 +27,12 @@ const desactivado = (e: EntradaDeDecision) => e.hechos.desactivar === "desactiva
 const LINEA_NUEVA: OperacionDeProducto[] = ["agregar_linea_salon", "agregar_linea_cuenta_mostrador", "venta_directa_mostrador"];
 const VISIBILIDAD: OperacionDeProducto[] = ["carta_publica", "selector_pos"];
 
-/** Permiso/alcance de ocultar y mostrar: la empresa solo la administración; el local, su operador o la administración. */
+/** Permiso/alcance de ocultar y mostrar: la empresa solo la gerencia (gerente y administrador, O-13) con alcance total; el local, su operador o la gerencia. */
 const permisoOcultar = (e: Extract<EntradaDeDecision, { quien: unknown }>): Esperado =>
   e.quien === "sin_permiso"
     ? "SIN_PERMISO"
     : e.alcance === "empresa"
-      ? e.quien === "admin_alcance_total" ? "permitido" : "SIN_PERMISO"
+      ? e.quien === "gerencia_alcance_total" ? "permitido" : "SIN_PERMISO"
       : e.quien === "operador_de_otro_local" ? "FUERA_DE_ALCANCE" : "permitido";
 
 export const ORACULO: readonly Regla[] = [
@@ -61,7 +61,7 @@ export const ORACULO: readonly Regla[] = [
   { id: "R-10b", texto: "contar: desactivado → rechazo (como hoy)", cuando: (e) => opDeProducto(e, "contar") && desactivado(e), esperado: () => "PRODUCTO_DESACTIVADO" },
   { id: "R-10c", texto: "contar: activo pero oculto → rechazo", cuando: (e) => opDeProducto(e, "contar") && !desactivado(e) && oculto(e), esperado: () => "PRODUCTO_OCULTO" },
   // --- Ocultar y mostrar (R-11 a R-15, R-17).
-  { id: "R-13/14", texto: "ocultar: sin permiso, la empresa sin ser administración, o un local ajeno → rechazo antes de mirar el stock", cuando: (e) => opDeAdmin(e, "ocultar") && esAdmin(e) && permisoOcultar(e) !== "permitido", esperado: (e) => (esAdmin(e) ? permisoOcultar(e) : "SIN_PERMISO") },
+  { id: "R-13/14", texto: "ocultar: sin permiso, la empresa sin ser gerente ni administrador con alcance total, o un local ajeno → rechazo antes de mirar el stock", cuando: (e) => opDeAdmin(e, "ocultar") && esAdmin(e) && permisoOcultar(e) !== "permitido", esperado: (e) => (esAdmin(e) ? permisoOcultar(e) : "SIN_PERMISO") },
   { id: "R-11", texto: "ocultar con permiso y saldo distinto de cero (también negativo) → rechazo por existencia", cuando: (e) => opDeAdmin(e, "ocultar") && esAdmin(e) && permisoOcultar(e) === "permitido" && e.hechos.saldo !== "cero", esperado: () => "TIENE_EXISTENCIA" },
   { id: "R-12/17", texto: "ocultar con permiso y saldo cero → se oculta (no mira recetas ni Desactivar)", cuando: (e) => opDeAdmin(e, "ocultar") && esAdmin(e) && permisoOcultar(e) === "permitido" && e.hechos.saldo === "cero", esperado: () => "permitido" },
   { id: "R-15a", texto: "mostrar: sin permiso o fuera de alcance → rechazo", cuando: (e) => opDeAdmin(e, "mostrar") && esAdmin(e) && permisoOcultar(e) !== "permitido", esperado: (e) => (esAdmin(e) ? permisoOcultar(e) : "SIN_PERMISO") },
