@@ -17,7 +17,7 @@
 
 **Lo que se propone (la forma más barata).** **No reescribir ninguna fila que ya apunta a una unidad.** A cada unidad que la empresa ya tiene se le **anota a cuál de las 14 equivale** (una columna nueva, vacía al principio). Las que no tienen una equivalente clara quedan **«pendiente de completar»** y siguen funcionando exactamente como hoy. Nada se borra, ningún número cambia, ninguna cantidad se convierte. Lo que ve la persona pasa a ser la lista de 14 con los nombres de Pedernal.
 
-**Por qué no «re-apuntar» todo a 14 filas nuevas.** Habría que cambiar la unidad en 12 tablas, varias de las cuales **solo se agregan** (movimientos de stock, renglones de factura, versiones de receta). Reescribirlas contradice esa regla y no se puede deshacer limpio. La alternativa recomendada logra el mismo resultado visible sin tocarlas.
+**Por qué no «re-apuntar» todo a 14 filas nuevas.** Habría que cambiar la unidad en 11 tablas, varias de las cuales **solo se agregan** (movimientos de stock, renglones de factura, versiones de receta). Reescribirlas contradice esa regla y no se puede deshacer limpio. La alternativa recomendada logra el mismo resultado visible sin tocarlas.
 
 | Etapa | Qué | Migración | Quién autoriza |
 |---|---|---|---|
@@ -46,7 +46,7 @@
 **Inventario de lo que ya existe (VERIFICADO en `origin/main`).**
 
 - **Modelo.** `Unidad` por empresa, con RLS: `nombre`, `magnitud` (`PESO|VOLUMEN|CANTIDAD`, enum `MagnitudUnidad`), `activa`, `decimales` (0 a 6), únicos `(empresaId, nombre)` (`prisma/schema.prisma:592-616`). **No tiene factor ni relación con otras unidades.**
-- **Quién la referencia (clave foránea `(empresaId, id)`):** `Producto.unidadStockId` (obligatoria) y `unidadCompraId` + `factorConversion` (`:371-376`); `Presentacion` (`:620-632`); `ProveedorPorProducto` (`:731`); `RecetaIngrediente.unidadId` (`:862`); `RecetaVersion.rendimientoUnidadId` y `racionUnidadId` (`:807-816`); `ConsumoDeOpcion.unidadId` (`:3674`); `RecetaDeCombinacionIngrediente.unidadId` (`:3947`); `MovimientoStock.unidadCompraId` con `cantidadCompra` (`:1421-1426`); `FacturaProveedorRenglon.unidadCompraId` (`:2855`). Son **diez referencias en nueve modelos**; las de movimientos, renglones de factura, versiones de receta y versiones de opción son tablas que solo se agregan.
+- **Quién la referencia (clave foránea `(empresaId, id)`):** `Producto.unidadStockId` (obligatoria) y `unidadCompraId` + `factorConversion` (`:371-376`); `Presentacion` (`:620-632`); `ProveedorPorProducto` (`:731`); `RecetaIngrediente.unidadId` (`:862`); `RecetaVersion.rendimientoUnidadId` y `racionUnidadId` (`:807-816`); `ConsumoDeOpcion.unidadId` (`:3674`); `MovimientoStock.unidadCompraId` con `cantidadCompra` (`:1421-1426`); `FacturaProveedorRenglon.unidadCompraId` (`:2855`). Son **nueve referencias en ocho modelos** (la décima, `RecetaDeCombinacionIngrediente.unidadId`, es de GO-3a, retirado: `test/arquitectura/go3a-retirado.test.ts`, ADR-032; no entra); las de movimientos, renglones de factura, versiones de receta y versiones de opción son tablas que solo se agregan.
 - **Siembra:** `src/core/features/empresa/siembra-de-empresa.ts:10-20` y `prisma/seed.ts:92-100`: kg y l con 2 decimales, g, ml y unidad con 0.
 - **Alta a mano:** `src/server/actions/catalogo/unidades.ts` (`crearUnidad`, permiso `unidades`), caso de uso `crear-unidad.ts`, guardia `src/core/features/catalogo/unidades.guard.ts`; pantalla `src/app/(app)/catalogo/unidades/page.tsx`; cambio de decimales con rechazo si un producto «se produce» queda con un paso que ya no entra (`actualizar-decimales-unidad.ts:37`).
 - **La relación kg↔g por nombre:** `PARES_DE_UNIDADES` en `src/core/catalogo/lectura-de-cantidad.ts:17-20`, usada también por la guardia de unidad (`src/core/catalogo/guardia-de-unidad.ts:33-36`, umbral por magnitud ×1000 si la unidad se llama «g» o «ml») y por `unidadesDeLectura`.
@@ -166,8 +166,8 @@ Insertar, por empresa, las unidades de las 14 que **ninguna de sus unidades ya c
 
 ### 6.4 Lo que se evaluó y se descartó
 
-- **Re-apuntar las diez referencias a filas nuevas y desactivar las viejas** (opción B). Descartada: reescribe tablas que solo se agregan, no es reversible sin una copia completa y tocaría todo lo valorizado. Solo se reconsidera si el dueño pide eliminar las unidades viejas (etapa posterior).
-- **Tabla global `UnidadDeMedida` como Pedernal.** Descartada por ahora: Motor2 tiene claves foráneas compuestas `(empresaId, id)` hacia `Unidad` en nueve modelos (motivo: **Prisma y los datos existentes**, no criterio). La columna logra el mismo resultado visible. Diferencia declarada.
+- **Re-apuntar las nueve referencias a filas nuevas y desactivar las viejas** (opción B). Descartada: reescribe tablas que solo se agregan, no es reversible sin una copia completa y tocaría todo lo valorizado. Solo se reconsidera si el dueño pide eliminar las unidades viejas (etapa posterior).
+- **Tabla global `UnidadDeMedida` como Pedernal.** Descartada por ahora: Motor2 tiene claves foráneas compuestas `(empresaId, id)` hacia `Unidad` en ocho modelos (motivo: **Prisma y los datos existentes**, no criterio). La columna logra el mismo resultado visible. Diferencia declarada.
 - **Derivar la equivalencia por nombre en tiempo de ejecución** (sin tocar la base). Descartada: es exactamente la forma frágil que hoy tiene `PARES_DE_UNIDADES` y viola I6 (adivinar).
 
 ## 7. Nivel 7. Atomicidad y concurrencia — «¿qué pasa si…?»
@@ -212,7 +212,7 @@ Sembrar las 14 en la **misma transacción** del alta de la empresa (hoy siembra 
 
 | # | Decisión | Motivo |
 |---|---|---|
-| DT-U1 | La equivalencia es una **columna** en `Unidad`, no una tabla ni una reescritura | Nueve modelos la referencian con clave compuesta; varios son solo-agregar |
+| DT-U1 | La equivalencia es una **columna** en `Unidad`, no una tabla ni una reescritura | Ocho modelos la referencian con clave compuesta; varios son solo-agregar |
 | DT-U2 | Ampliar `MagnitudUnidad` con `LONGITUD`, `SUPERFICIE`, `TIEMPO` en una migración **aparte** (la de U3), no en U1 | `ADD VALUE` no se deshace; si el dueño no quiere esas dimensiones el resto sigue funcionando. Hasta entonces la dimensión sale del `codigoFijo`, no de `magnitud` |
 | DT-U3 | Los factores y las dimensiones viven en código (`src/core/…`), con una prueba que los compara con el `CHECK` de la base | Como Pedernal (copia en código + prueba); sin tabla sin escritor |
 | DT-U4 | **Los decimales de las unidades existentes no se tocan** (I3). Las 14 nuevas nacen con los decimales actuales de la siembra | Datos existentes |
@@ -240,7 +240,6 @@ SELECT u."empresaId", u.id, u.nombre, u.magnitud, u.decimales, u.activa,
        (SELECT count(*) FROM "RecetaIngrediente"        x WHERE x."empresaId"=u."empresaId" AND x."unidadId"       = u.id) AS receta_ing,
        (SELECT count(*) FROM "RecetaVersion"            x WHERE x."empresaId"=u."empresaId" AND (x."rendimientoUnidadId"=u.id OR x."racionUnidadId"=u.id)) AS receta_cab,
        (SELECT count(*) FROM "ConsumoDeOpcion"          x WHERE x."empresaId"=u."empresaId" AND x."unidadId"       = u.id) AS consumo_opcion,
-       (SELECT count(*) FROM "RecetaDeCombinacionIngrediente" x WHERE x."empresaId"=u."empresaId" AND x."unidadId" = u.id) AS combinacion_ing,
        (SELECT count(*) FROM "MovimientoStock"          x WHERE x."empresaId"=u."empresaId" AND x."unidadCompraId" = u.id) AS movimientos,
        (SELECT count(*) FROM "FacturaProveedorRenglon"  x WHERE x."empresaId"=u."empresaId" AND x."unidadCompraId" = u.id) AS renglones_factura
 FROM "Unidad" u ORDER BY u."empresaId", u.magnitud, u.nombre;
@@ -326,7 +325,7 @@ Esta pieza **escribe datos existentes** (la columna nueva de cada unidad). La au
 
 | Tema | Pedernal | Motor2 tras este diseño | Motivo |
 |---|---|---|---|
-| Dónde vive la lista | Tabla global sembrada, solo inserción | Columna `codigoFijo` + `CHECK` + constante en código | **Prisma y datos existentes**: nueve modelos con clave compuesta a `Unidad` |
+| Dónde vive la lista | Tabla global sembrada, solo inserción | Columna `codigoFijo` + `CHECK` + constante en código | **Prisma y datos existentes**: ocho modelos con clave compuesta a `Unidad` |
 | Cantidades | 4 decimales, nunca redondea | Se redondea a `Unidad.decimales` en lo ya guardado | **Datos existentes** (I3) |
 | Unidad base inmutable | Disparador en la base | Sin cambio en esta etapa (no se verificó la regla actual de Motor2) | NO VERIFICADO: queda anotado, no se pidió |
 | Presentación de compra | Nombre + cantidad en unidad base | Unidad de compra + factor por producto (sin nombre) | No se pidió; etapa posterior |
