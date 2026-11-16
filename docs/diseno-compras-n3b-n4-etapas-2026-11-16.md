@@ -72,7 +72,7 @@ Perillas: las pide esta sesión al frente 4 (`conciliacion_de_tres_vias`, que ya
 | Incertidumbre | reintento por clave: devuelve lo hecho. |
 | Error parcial | conciliación + diferencias + contadores en una transacción. |
 | Datos faltantes | sin orden: se concilia recepción↔factura (dos vías); tolerancia no definida: toda diferencia `ABIERTA`. |
-| Cambio de permisos | configurar tolerancias: solo gerente; resolver: gerente/administrador (a confirmar, **pregunta al dueño**). |
+| Cambio de permisos | configurar tolerancias: solo gerente; resolver una diferencia: **solo gerente y administrador — CONFIRMADA** («Solo gerente y administrador (Recomendada)», 2026-11-16, registro `motor2-docs` «Compras: tres preguntas del frente 5»); el operador no la ve resolver y el servidor lo rechaza. |
 
 **«Pedir nota de crédito»** crea un **pedido de nota** (hecho aparte: `DDD:176` 15A «la devolución no crea sola el pedido»; ver etapa NC) y **«Devolver al proveedor»** abre la devolución (etapa DEV); ninguna de las dos mueve dinero. **Dimensiones del oráculo:** tolerancia (sin definir / definida) × tipo de diferencia × resolución × orden (con/sin) × rol.
 
@@ -80,7 +80,7 @@ Perillas: las pide esta sesión al frente 4 (`conciliacion_de_tres_vias`, que ya
 
 **Necesidad:** «a vos te pueden hacer una nota de crédito y ellos te tienen con saldo a favor… que yo devuelva una compra no significa que devuelva dinero» (`DDD:166`, 15/11); la nota «solo en N4» (`DDD:177`, 18A); un pedido de nota es un paso aparte (15A).
 
-**Decisión de forma (PROPUESTA, con pregunta al dueño): reutilizar las 4 tablas `NotaCreditoProveedor*` que ya existen sin escritor** (trae factura asociada con FK de tres columnas «misma factura y proveedor», único parcial del número vigente, líneas por renglón, imputación por sucursal y `operacionDevolucionId`) en vez del «comprobante clase nota» de Pedernal. Motivo: regla «inventariar lo que ya existe» y «tablas a ciegas»; difiere en forma de Pedernal pero produce el mismo resultado. Se completa solo lo que falte (tope `total acreditado ≤ total de la factura` atómico: `UPDATE … WHERE acreditado + n <= total`, S-1 de Pedernal) — **verificar en la implementación** que las tablas lo permiten sin tocar sus CHECK.
+**Decisión técnica del orquestador general (2026-11-16, «primero lo más barato»; el dueño la puede corregir): reutilizar las 4 tablas `NotaCreditoProveedor*` que ya existen sin escritor** (trae factura asociada con FK de tres columnas «misma factura y proveedor», único parcial del número vigente, líneas por renglón, imputación por sucursal y `operacionDevolucionId`) en vez del «comprobante clase nota» de Pedernal. Motivo: regla «inventariar lo que ya existe» y «tablas a ciegas»; difiere en forma de Pedernal pero produce el mismo resultado. Se completa solo lo que falte (tope `total acreditado ≤ total de la factura` atómico: `UPDATE … WHERE acreditado + n <= total`, S-1 de Pedernal) — **verificar en la implementación** que las tablas lo permiten sin tocar sus CHECK.
 
 **Comandos:** `pedirNotaDeCredito` (pedido con estados `A_SOLICITAR → SOLICITADA → RECIBIDA | RECHAZADA | ANULADA`, importe estimado opcional nunca cero, factura y diferencia opcionales; tabla nueva `PedidoDeNotaDeCredito`), `cargarNotaDeCredito` (idempotente por `claveIdempotencia` ya única; número único entre vigentes; solo sobre factura vigente del mismo proveedor; **no crea stock**) y `anularNotaDeCredito` (registro nuevo; no borra). **La nota nunca reduce sola lo que se paga** (`DDD:167/168`).
 
@@ -98,7 +98,7 @@ Perillas: las pide esta sesión al frente 4 (`conciliacion_de_tres_vias`, que ya
 
 ## Etapa DEV — devolución al proveedor
 
-**Necesidad:** hecho H1 separado: «sale mercadería del stock hacia el proveedor; no mueve dinero, no crea nota, no toca la factura» (`e9-n4` §1); la devolución no crea sola el pedido de nota (`DDD:176` 15A). Una sola lista de motivos «que unifica rechazo y devolución» y «devuelve gerente o administrador» — **supuestos del ingeniero de Pedernal** (`DDD:121(4)`), no del dueño.
+**Cambio de permisos declarado arriba en la tabla. Necesidad:** hecho H1 separado: «sale mercadería del stock hacia el proveedor; no mueve dinero, no crea nota, no toca la factura» (`e9-n4` §1); la devolución no crea sola el pedido de nota (`DDD:176` 15A). Una sola lista de motivos «que unifica rechazo y devolución» y «devuelve gerente o administrador» — **supuestos del ingeniero de Pedernal** (`DDD:121(4)`), no del dueño.
 
 **Modelo:** Motor2 **ya tiene** el proceso de stock `DEVOLUCION_PROVEEDOR` (permiso `proceso_devolucion_proveedor`, piso operario, sin auditoría administrativa propia). Esta etapa **no crea otra salida de stock**: agrega (a) `DevolucionAProveedor` (uuid, `empresaId`, `operacionId` → la `Operacion` ya existente, `compraOrigen` opcional, `motivo` texto obligatorio con lista de permitidos, `diferenciaId` opcional, quién/cuándo, estado `CONFIRMADA|ANULADA` con anulación espejo, `claveIdempotencia`), (b) auditoría administrativa de la devolución, (c) la guarda de anulación en cadena (una compra con devolución vigente no se anula: `COMPRA_CON_DEVOLUCION`; una devolución con pedido de nota vigente no se anula).
 
@@ -108,7 +108,7 @@ Perillas: las pide esta sesión al frente 4 (`conciliacion_de_tres_vias`, que ya
 | Concurrencia | dos devoluciones sobre la misma existencia: la base impide pasar de cero (stock agregado ya validado); devolver y anular la compra a la vez: cerrojo. |
 | Error parcial | devolución + salida de stock atómicas (falla del stock deshace el registro). |
 | Datos faltantes | motivo vacío o cantidad ≤ 0: rechazo. |
-| Cambio de permisos | **PENDIENTE:** hoy cualquier operario puede devolver; Pedernal supuso gerente/administrador. **Pregunta al dueño**; hasta que responda no se cambia el permiso existente. |
+| Cambio de permisos | **CONFIRMADA (cambia lo de hoy):** «Solo gerente y administrador (Recomendada)» (2026-11-16). Hoy `proceso_devolucion_proveedor` es piso operario; pasa a piso administrador. **Qué ve el operador ahora:** deja de ver/usar la opción de devolver al proveedor (la acción se rechaza en el servidor con «Esta acción no está permitida»); sus devoluciones ya hechas siguen visibles en el historial. Cambia permisos Y comportamiento: la etapa lo declara, regenera matrices/goldens de permisos con ese motivo y agrega pruebas de denegación del operador y de aceptación de gerente/administrador. No toca devoluciones ya registradas. |
 
 ---
 
@@ -116,13 +116,16 @@ Perillas: las pide esta sesión al frente 4 (`conciliacion_de_tres_vias`, que ya
 
 N3-b → OC → 3V → NC → DEV, **un PR por etapa**, cada una en su rama sobre la anterior (máximo 2 subagentes Sonnet a la vez; cada uno corre el gate local sin e2e/build). Mientras N3-a no esté commiteada no se arranca código de N3-b. Las migraciones de cada etapa solo agregan; ninguna se aplica.
 
-## Preguntas abiertas al dueño (una por vez; no son supuestos)
+## Respuestas del dueño (2026-11-16, literales, `motor2-docs` «Compras: tres preguntas del frente 5»)
 
-1. Notas de crédito: ¿reutilizar las tablas `NotaCreditoProveedor*` existentes (recomendado) o armar las de Pedernal?
-2. Tres vías: ¿quién resuelve una diferencia (gerente y administrador, o también el operador)?
-3. Devolución al proveedor: ¿la hace cualquier operario (como hoy) o solo gerente y administrador (supuesto de Pedernal)?
-4. Notas y saldo a favor: Pedernal decidió que la nota «siempre pasa por saldo a favor»; Motor2 no arranca el saldo hasta que Pedernal lo construya o el dueño lo pida: ¿se espera?
-5. Facturas repartidas entre sucursales (la parte propia seguiría entrando al stock al cargar): ¿se cubre en una etapa N3-a2?
+- Diferencias de tres vías: «Solo gerente y administrador (Recomendada)» — CONFIRMADA.
+- Devolución al proveedor: «Solo gerente y administrador (Recomendada)» — CONFIRMADA; **cambia el permiso y el comportamiento de hoy** (ver etapa DEV).
+- Facturas repartidas entre sucursales: «Más adelante (Recomendada)» — CONFIRMADA: N3-a2 **diferida**, no se construye ahora.
+- Reutilizar `NotaCreditoProveedor*`: decisión técnica del orquestador general (corregible por el dueño).
+
+## Preguntas abiertas al dueño
+
+- Notas y saldo a favor: Pedernal decidió que la nota «siempre pasa por saldo a favor»; Motor2 no arranca el saldo hasta que Pedernal lo construya o el dueño lo pida (NO VERIFICADO el libro de saldos). Se pregunta cuando toque.
 
 ## Riesgos y NO VERIFICADO
 
