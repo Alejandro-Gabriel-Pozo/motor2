@@ -88,6 +88,7 @@ describe("duplicarProducto: permisos", () => {
     expect(disponibilidad).toHaveLength(2);
     expect(disponibilidad.every((d) => d.disponible === false)).toBe(true);
     expect(r.mensaje, "ya no dice que nació en $0").not.toContain("precio $0");
+    expect(r.mensaje, "avisa que nació sin disponibilidad").toContain("El producto nuevo nace sin disponibilidad para vender.");
     // La receta y las opciones sí se copiaron (tiene esas dos claves).
     expect(await prisma.recetaVersion.count({ where: { productoId: id } })).toBe(1);
     expect(await prisma.productoAdmiteGrupo.count({ where: { productoId: id } })).toBe(2);
@@ -105,6 +106,7 @@ describe("duplicarProducto: permisos", () => {
     const nuevo = await prisma.producto.findUniqueOrThrow({ where: { id } });
     expect([Number(nuevo.precioVenta), Number(nuevo.factorConversion), nuevo.unidadCompraId]).toEqual([5000, 12, caja.id]);
     expect((await prisma.disponibilidadProducto.findMany({ where: { productoId: id } })).every((d) => d.disponible)).toBe(true);
+    expect(r.mensaje, "con la clave nace disponible: no avisa de lo contrario").not.toContain("sin disponibilidad");
   });
 
   it("sin producto_campos_sensibles el precio NO se puede elegir: cualquier precio en el pedido (999, 0 o el mismo del original) se rechaza sin escribir nada; sin precio en el pedido se copia el del original", async () => {

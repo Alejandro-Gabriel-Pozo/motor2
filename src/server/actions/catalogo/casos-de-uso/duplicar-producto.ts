@@ -310,7 +310,7 @@ export async function duplicarProductoCasoDeUso(
           });
         }
 
-        return exito(mensajeDeExito({ codigo, nombre: comando.nombre, origenNombre: origen.nombre, receta, opciones, precio }), { productoId: comando.duplicadoId, nombre: comando.nombre, yaExistia: false, receta, opciones, precio });
+        return exito(mensajeDeExito({ codigo, nombre: comando.nombre, origenNombre: origen.nombre, receta, opciones, precio, sinDisponibilidad: esDeVenta && !puedeEditarCamposSensibles }), { productoId: comando.duplicadoId, nombre: comando.nombre, yaExistia: false, receta, opciones, precio });
       },
       undefined,
       undefined,
@@ -329,7 +329,7 @@ export async function duplicarProductoCasoDeUso(
 }
 
 /** El texto del éxito: el producto nuevo, qué se copió, con qué precio nació y lo que queda pendiente. En lenguaje de proceso; lo no copiado se dice, no se inventa. */
-function mensajeDeExito(c: { codigo: string; nombre: string; origenNombre: string; receta: RecetaDuplicada | null; opciones: OpcionesDuplicadas | null; precio: PrecioDelDuplicado }): string {
+function mensajeDeExito(c: { codigo: string; nombre: string; origenNombre: string; receta: RecetaDuplicada | null; opciones: OpcionesDuplicadas | null; precio: PrecioDelDuplicado; sinDisponibilidad: boolean }): string {
   const partes = [`Producto "${c.nombre}" (${c.codigo}) creado a partir de "${c.origenNombre}".`];
   if (c.receta) {
     partes.push(`Se copió ${c.receta.dondeRegia} (versión ${c.receta.versionDeOrigen}): ${c.receta.ingredientes} ingrediente${c.receta.ingredientes === 1 ? "" : "s"}, ${c.receta.pasos} paso${c.receta.pasos === 1 ? "" : "s"} y la ficha técnica, como versión 1 de la receta del producto nuevo.`);
@@ -344,6 +344,7 @@ function mensajeDeExito(c: { codigo: string; nombre: string; origenNombre: strin
   if (c.precio === "POR_OPCION") {
     partes.push("Se vende por opción: su precio guardado no se cobra, el precio final de cada opción es el que se copió con ellas.");
   }
+  if (c.sinDisponibilidad) partes.push("El producto nuevo nace sin disponibilidad para vender.");
   partes.push("«En la carta» queda pendiente de completar.");
   if (c.receta?.pasosParaRevisar) partes.push(AVISO_PASOS_PARA_REVISAR);
   return partes.join(" ");
