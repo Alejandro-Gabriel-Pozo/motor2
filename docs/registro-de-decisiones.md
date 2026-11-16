@@ -153,6 +153,8 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 - **Por qué:** el dueño pidió reducir, inventariar y reutilizar los textos para que cada uno represente una sola cosa; son rótulos de dinero y por eso él decidió que pasen con las mismas palabras (`docs/diseno-textos-en-datos-2026-11-16.md`, familia D-4).
 - **Costo de revertir:** bajo: volver a escribir la palabra en cada columna y borrar las siete entradas; no hay migración ni datos.
 - **Dónde:** `src/core/textos/catalogo.ts`, `test/arquitectura/guardas/catalogo-de-textos.ts`
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Sí, mismas palabras (Recomendada)» — 2026-11-16 — chat del dueño con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, «Textos: cuatro respuestas del dueño sobre la lista única»)
 
 ### DEC-0018
 - **Fecha:** 2026-11-16
