@@ -28,8 +28,8 @@ export type CodigoDeOcultar = "DATOS_INVALIDOS" | "PRODUCTO_NO_ENCONTRADO" | "SI
 export type ResultadoOcultarProducto = ResultadoCaso<{ yaEstaba: boolean; sigueOcultoPor: "EMPRESA" | null }, CodigoDeOcultar>;
 
 /**
- * TEXTOS PENDIENTES DE APROBACIÓN DEL DUEÑO (no se inventan: «lo que el dueño no pidió no entra»). Hasta que los apruebe, `mensaje` lleva el CÓDIGO interno cerrado, salvo el que ya existe en
- * el sistema («No se encontró el producto.», de Desactivar). La pantalla (etapa d) los traducirá a los textos aprobados.
+ * TEXTOS (DEC-0014, aceptada): lo que ve la persona no es el código interno sino un texto del catálogo (`mensajeDe`): el de existencia es «Primero dejá la existencia en 0.»; los demás rechazos, el genérico
+ * ya aceptado (DEC-0013); y «No se encontró el producto.» ya existía (el de Desactivar). Un texto nuevo entra por el catálogo (`src/core/textos/catalogo.ts`), no escrito acá.
  */
 const MENSAJE_PRODUCTO_NO_ENCONTRADO = "No se encontró el producto.";
 

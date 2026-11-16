@@ -3,7 +3,7 @@
  *
  * Qué mira: las migraciones de `prisma/migrations` desde `PRIMERA_MIGRACION_CON_MOLDE` en adelante. Toda tabla que una de ellas CREA tiene que cumplir tres reglas, que son la forma de
  * Pedernal (ADR-012) y la regla del dueño «También las viejas» / «Sí, copiar a Pedernal en esas cinco» (2026-11-15 y 2026-11-16, `motor2-docs`, seguimiento-de-pedernal):
- *  - ID_UUID: la columna `id` existe y es `UUID` (el id lo manda la aplicación con `azar.uuid()`; decisión del orquestador general 2026-11-16: `@db.Uuid` nativo, como `Parte`).
+*  - ID_UUID: la columna `id` existe y TERMINA siendo `UUID` (su `CREATE TABLE` o un `ALTER … ALTER COLUMN "id" TYPE UUID` posterior; el id lo manda la aplicación con `azar.uuid()`; decisión del orquestador general 2026-11-16: `@db.Uuid` nativo, como `Parte`).
  *  - INSTANTE_CON_ZONA: ninguna columna es `TIMESTAMP` sin zona; los instantes son `TIMESTAMPTZ`.
  *  - SIN_DELETE: alguna migración del conjunto hace `REVOKE` de `ALL` o de `DELETE` sobre la tabla a `motor2_app` (el script del rol da `DELETE` por defecto a toda tabla nueva) y ninguna
  *    migración da `DELETE`, `TRUNCATE` ni `ALL` sobre ella a nadie, ni hace un `GRANT` masivo `ON ALL TABLES`.
@@ -29,14 +29,7 @@ export type Migracion = { carpeta: string; sql: string };
 
 export type Excepcion = { tabla: string; regla: Regla; motivo: string };
 
-export const EXCEPCIONES: readonly Excepcion[] = [
-  {
-    tabla: "OcultamientoProducto",
-    regla: "ID_UUID",
-    motivo:
-      "Su id es TEXT con CHECK de forma uuid (migración 20261115120000). Decisión técnica del orquestador general (2026-11-16, motor2-docs «Fase 1 de los frentes»): se alinea a @db.Uuid antes de aplicarse a ninguna base real; sale de esta lista en ese cambio.",
-  },
-];
+export const EXCEPCIONES: readonly Excepcion[] = [];
 
 /** Saca los comentarios de línea (`--`) y los de bloque, respetando las comillas simples (un `--` dentro de un literal no es comentario). */
 export function sinComentarios(sql: string): string {
@@ -211,12 +204,28 @@ export function migracionesConMolde(todas: readonly Migracion[], corte: string =
   return todas.filter((m) => m.carpeta >= corte).sort((a, b) => (a.carpeta < b.carpeta ? -1 : a.carpeta > b.carpeta ? 1 : 0));
 }
 
+/** El tipo en que TERMINA la columna `id` de cada tabla: el de su `CREATE TABLE` y, después, el de cada `ALTER TABLE "T" ALTER COLUMN "id" [SET DATA] TYPE X` de una migración posterior (gana el último, en el orden de las carpetas). */
+export function tipoFinalDeId(migraciones: readonly Migracion[]): Map<string, string> {
+  const tipos = new Map<string, string>();
+  for (const m of migraciones) {
+    for (const t of tablasCreadas(m.sql, m.carpeta)) {
+      const id = t.columnas.find((c) => c.nombre === "id");
+      if (id) tipos.set(t.nombre, id.tipo);
+    }
+    for (const a of sinComentarios(m.sql).matchAll(/ALTER\s+TABLE\s+(?:ONLY\s+)?"?([A-Za-z_][A-Za-z0-9_]*)"?\s+ALTER\s+COLUMN\s+"?id"?\s+(?:SET\s+DATA\s+)?TYPE\s+([A-Za-z_][A-Za-z0-9_]*)/gi)) {
+      if (tipos.has(a[1])) tipos.set(a[1], a[2].toUpperCase());
+    }
+  }
+  return tipos;
+}
+
 /** Todas las violaciones del molde, sin aplicar excepciones. */
 export function violacionesDeMolde(migraciones: readonly Migracion[]): Violacion[] {
   const violaciones: Violacion[] = [];
   const revocadas = new Set<string>();
   const conBorradoDado = new Set<string>();
   let masivo: string | null = null;
+  const tipoDeId = tipoFinalDeId(migraciones);
   for (const m of migraciones) {
     const p = privilegiosDe(m.sql);
     for (const t of p.revocadas) revocadas.add(t);
@@ -227,7 +236,7 @@ export function violacionesDeMolde(migraciones: readonly Migracion[]): Violacion
     for (const tabla of tablasCreadas(m.sql, m.carpeta)) {
       const id = tabla.columnas.find((c) => c.nombre === "id");
       if (!id) violaciones.push({ tabla: tabla.nombre, regla: "ID_UUID", detalle: `${m.carpeta}: no tiene columna id` });
-      else if (id.tipo !== "UUID") violaciones.push({ tabla: tabla.nombre, regla: "ID_UUID", detalle: `${m.carpeta}: id es ${id.tipo}, tiene que ser UUID` });
+      else if ((tipoDeId.get(tabla.nombre) ?? id.tipo) !== "UUID") violaciones.push({ tabla: tabla.nombre, regla: "ID_UUID", detalle: `${m.carpeta}: id es ${tipoDeId.get(tabla.nombre) ?? id.tipo}, tiene que ser UUID` });
       for (const c of tabla.columnas) {
         if (ES_TIMESTAMP.test(c.tipo) && !ES_TIMESTAMP_CON_ZONA.test(c.tipo)) {
           violaciones.push({ tabla: tabla.nombre, regla: "INSTANTE_CON_ZONA", detalle: `${m.carpeta}: ${c.nombre} es ${c.tipo}, tiene que ser TIMESTAMPTZ` });
