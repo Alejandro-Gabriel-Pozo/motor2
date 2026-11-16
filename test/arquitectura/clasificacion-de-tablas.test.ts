@@ -31,7 +31,7 @@ describe("la clasificación declarada de tablas coincide con el esquema de Prism
     expect(politicasEsperadas("User")).toEqual([]);
     expect(politicasEsperadas("Empresa")).toEqual([]);
     expect(CANTIDAD_DE_POLITICAS_ESPERADAS).toBe(
-      tablasDeClase("POR_EMPRESA").length + 2 + 2 + 3 + tablasDeClase("CONSOLA").length + TABLAS_CON_POLITICA_DE_SUCURSAL.length * 4, // por empresa + UsuarioEmpresa + ModuloEmpresa + Invitacion + consola + 4 por tabla de sucursal
+      tablasDeClase("POR_EMPRESA").length + 2 + 2 + 2 + 3 + tablasDeClase("CONSOLA").length + TABLAS_CON_POLITICA_DE_SUCURSAL.length * 4, // por empresa + UsuarioEmpresa + ModuloEmpresa + PlanDeEmpresa + Invitacion + consola + 4 por tabla de sucursal
     );
   });
 

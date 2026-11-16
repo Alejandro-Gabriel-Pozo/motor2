@@ -4,6 +4,7 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import { type FilaCostoProducto, type FilaImpactoInsumo, resolverAccionFaltante, FOOD_COST_OBJETIVO_PCT } from "@/core/reportes/public";
 import { formatearMonto, formatearPorcentaje } from "@/core/formato-de-numero";
+import { textoDe } from "@/core/textos/texto-de";
 
 const LABEL_ESTADO: Record<string, string> = {
   MARGEN_NEGATIVO: "Margen negativo",
@@ -39,7 +40,7 @@ const COLUMNAS_PRODUCTOS: ColumnaReporte<FilaCostoProducto>[] = [
   { clave: "costo", etiqueta: "Costo", alinear: "derecha", valor: (p) => p.costo, render: (p) => formatearMonto(p.costo) },
   {
     clave: "margen",
-    etiqueta: "Margen",
+    etiqueta: textoDe("columna.margen"),
     ayuda: AYUDA_MARGEN,
     alinear: "derecha",
     valor: (p) => p.margen,
@@ -47,7 +48,7 @@ const COLUMNAS_PRODUCTOS: ColumnaReporte<FilaCostoProducto>[] = [
   },
   {
     clave: "foodCost",
-    etiqueta: "Food cost %",
+    etiqueta: textoDe("columna.food_cost"),
     ayuda: AYUDA_FOOD_COST,
     alinear: "derecha",
     valor: (p) => p.foodCostPct,
@@ -100,7 +101,7 @@ const COLUMNAS_INSUMOS: ColumnaReporte<FilaImpactoInsumo>[] = [
   },
   {
     clave: "costoUnitario",
-    etiqueta: "Costo unitario",
+    etiqueta: textoDe("columna.costo_unitario"),
     alinear: "derecha",
     valor: (i) => i.costoUnitario,
     render: (i) => formatearMonto(i.costoUnitario),
