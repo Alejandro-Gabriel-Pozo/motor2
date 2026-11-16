@@ -1,6 +1,7 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
+import { textoDe } from "@/core/textos/texto-de";
 import { esNumeroEstricto } from "@/core/numero";
 import { guardLineaCompra, guardPesoRealPorMagnitud } from "@/core/features/compras/compra.guard";
 import { TRANSICIONES, convertirCantidadAUnidadDeStock, esSignoFijo, precioPorUnidad, productoValidoParaProceso, redondearACantidadDeUnidad, type ConsumoParaFilas } from "@/core/movimientos/public";
@@ -110,7 +111,7 @@ export async function armarLineaMovimiento(
       : null;
   // Fallo cerrado: dos presentaciones activas con la misma unidad (la línea solo trae la unidad) rechazan la línea; no se mueve stock ni costo.
   if (presentacion === PRESENTACION_AMBIGUA) {
-    return { ok: false, mensaje: `No se puede registrar la compra de "${producto.nombre}": hay más de una presentación activa en esa unidad.` };
+    return { ok: false, mensaje: textoDe("aviso.no_se_puede_registrar_la_compra", { producto: producto.nombre, causa: "rechazo.PRESENTACION_AMBIGUA" }) };
   }
 
   let numCant: number;
