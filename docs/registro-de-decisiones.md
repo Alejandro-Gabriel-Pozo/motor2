@@ -125,3 +125,13 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 - **Dónde:** `src/core/correo/enviar.ts:38`
 - **Estado:** ACEPTADA
 - **Cita del dueño:** «Aceptar (Recomendada)» — 2026-11-13 — chat del dueño con el orquestador (preguntas con opciones)
+
+### DEC-0013
+- **Fecha:** 2026-11-16
+- **Quién:** la sesión Sonnet del tramo T1 del catálogo de textos de interfaz; lote aceptado por el orquestador por delegación del dueño.
+- **Qué decidió:** el primer lote del catálogo de textos (`src/core/textos/`): el rechazo de la etapa a2-1 de Presentaciones, unido en una sola causa («hay más de una presentación activa en esa unidad») con dos marcos, el de la compra («No se puede registrar la compra de "X": …») y el del alta («No se pudo agregar la presentación: …»). Lo único que ve distinto el cliente: la frase del alta gana la palabra «activa» (antes «ya hay más de una en esa unidad»). Entra también un texto nuevo y genérico, «No se pudo completar la operación.» (`MENSAJE_GENERICO`): es lo que devuelve `textoDe` si algo llega mal en ejecución (clave desconocida, hueco sin valor), para no mostrar nunca un texto vacío ni el código crudo; en el uso normal no debería verse jamás. No toca dinero, permisos ni texto fiscal o legal. Es el primer lote del catálogo.
+- **Por qué:** el dueño pidió reducir, inventariar y reutilizar los textos para que cada uno represente una sola cosa; la causa estaba escrita dos veces con palabras distintas (diseño `docs/diseno-textos-en-codigo-2026-11-16.md`, §4 R-11 y §8 T1).
+- **Costo de revertir:** bajo: volver a escribir las dos frases en `armar-linea-de-movimiento.ts` y `agregar-presentacion-alternativa.ts` y borrar las tres entradas del catálogo; no hay migración ni datos.
+- **Dónde:** `src/core/textos/catalogo.ts`, `src/server/actions/movimientos/casos-de-uso/armar-linea-de-movimiento.ts`, `src/server/actions/catalogo/casos-de-uso/agregar-presentacion-alternativa.ts`
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Los textos encargarte vos trata de reducir, textos, inventariar y empezar a reutilizar y que representen 1 sola cosa, definir primitivas e invariantes en texto igual que pedernal; Sí, confirmo esos límites (Recomendada)» — 2026-11-16 — chat del dueño con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, secciones «Textos: el orquestador se encarga…» y «Textos: límites de la delegación confirmados»); lote aceptado por el orquestador por delegación (2026-11-16)
