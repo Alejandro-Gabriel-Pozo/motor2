@@ -1,7 +1,6 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { OPCIONES_AGOTADAS_AYUDAS_VISIBLES } from "@/core/catalogo/public";
 import { useRef, useState, useTransition } from "react";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { formatearCantidad } from "@/core/pos/public";
@@ -79,14 +78,17 @@ export function OpcionesAgotadas({
           No hay opciones que coincidan.
         </Aviso>
       )}
-      {visibles.map((g) => (
-        <section key={g.grupoId} aria-labelledby={`grupo-${g.grupoId}`} className="flex flex-col gap-2 rounded border p-3">
-          <h2 id={`grupo-${g.grupoId}`} className="font-medium">
-            {g.nombre}
-            {OPCIONES_AGOTADAS_AYUDAS_VISIBLES && (
-              <span className="text-sm font-normal text-tinta-suave"> · {g.opciones.filter((o) => !o.agotada).length} de {g.opciones.length} disponibles</span>
-            )}
-          </h2>
+      {/* Propuesta (Frente 6): los grupos con alguna opción agotada van primero y abiertos; los que tienen todo disponible, plegados (se abren buscando o tocando el nombre). */}
+      {[...visibles]
+        .sort((a, b) => Number(b.opciones.some((o) => o.agotada)) - Number(a.opciones.some((o) => o.agotada)))
+        .map((g) => (
+        <details key={g.grupoId} open={buscar.trim() !== "" || g.opciones.some((o) => o.agotada)} className="flex flex-col gap-2 rounded border p-3" data-grupo-de-opciones={g.nombre}>
+          <summary className="flex min-h-11 cursor-pointer items-baseline gap-2">
+            <h2 id={`grupo-${g.grupoId}`} className="font-medium">
+              {g.nombre}
+            </h2>
+            <span className="text-sm text-tinta-suave">· {g.opciones.length}{g.opciones.some((o) => o.agotada) ? "" : " · todas disponibles"}</span>
+          </summary>
           <ul className="flex flex-col divide-y">
             {g.opciones.map((o) => (
               <li key={o.opcionId} className="flex flex-col gap-1 py-2" data-opcion-sucursal={o.nombre}>
@@ -120,7 +122,7 @@ export function OpcionesAgotadas({
               </li>
             ))}
           </ul>
-        </section>
+        </details>
       ))}
       {/* MOVIL (O.462): el resultado y «Deshacer» van PEGADOS AL BORDE DE ABAJO de la pantalla (`sticky bottom-3`), no arriba de la lista: quien toca una opción lejos, en una lista larga en el
           celular, los tenía fuera de la vista y no se enteraba de que se agotó ni podía deshacer. Sigue siendo `status` (o `alert` si falló), con el mismo texto. */}
