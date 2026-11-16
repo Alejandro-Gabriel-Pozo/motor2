@@ -22,7 +22,11 @@ export function estadoInicialDeLaParte(e: { moduloEncendido: boolean; hayPartesA
 export type SeccionParaRecibir = "PROPIA_ACTIVA" | "AJENA" | "INACTIVA";
 
 export type CodigoDeRechazoDeRecepcion = "NO_ES_DE_ESTA_SUCURSAL" | "YA_ANULADA" | "YA_RECIBIDA" | "SECCION_NO_ENCONTRADA" | "SECCION_INACTIVA" | "FECHA_FUERA_DE_RANGO";
-export type DecisionDeConfirmacionDeRecepcion = { ok: true } | { ok: false; codigo: CodigoDeRechazoDeRecepcion; mensaje: string };
+/** La sección dada de baja no lleva mensaje propio: el texto único `mensajeSeccionDesactivada` necesita el nombre de la sección y lo pone el caso de uso. */
+export type DecisionDeConfirmacionDeRecepcion =
+  | { ok: true }
+  | { ok: false; codigo: Exclude<CodigoDeRechazoDeRecepcion, "SECCION_INACTIVA">; mensaje: string }
+  | { ok: false; codigo: "SECCION_INACTIVA" };
 
 export interface EntradaDeConfirmacionDeRecepcion {
   /** La parte pertenece a la sucursal activa de quien confirma. */
@@ -56,7 +60,7 @@ export function decidirConfirmacionDeRecepcion(e: EntradaDeConfirmacionDeRecepci
   if (e.facturaAnulada) return { ok: false, codigo: "YA_ANULADA", mensaje: "La factura fue anulada: esta compra ya no se puede recibir." };
   if (e.estadoDeLaParte !== "PENDIENTE") return { ok: false, codigo: "YA_RECIBIDA", mensaje: MENSAJE_RECEPCION_YA_RECIBIDA };
   if (e.seccion === "AJENA") return { ok: false, codigo: "SECCION_NO_ENCONTRADA", mensaje: "No se encontró la sección." };
-  if (e.seccion === "INACTIVA") return { ok: false, codigo: "SECCION_INACTIVA", mensaje: "Esa sección está desactivada: elegí otra para recibir la mercadería." };
+  if (e.seccion === "INACTIVA") return { ok: false, codigo: "SECCION_INACTIVA" };
   if (e.diaStock < e.diaFactura || e.diaStock > e.hoy) return { ok: false, codigo: "FECHA_FUERA_DE_RANGO", mensaje: mensajeFechaDeStockFueraDeRango(e.diaFactura, e.hoy) };
   return { ok: true };
 }

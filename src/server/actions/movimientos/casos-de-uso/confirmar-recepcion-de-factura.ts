@@ -66,7 +66,10 @@ export async function confirmarRecepcionDeFacturaCasoDeUso(
       diaStock,
       hoy,
     });
-    if (!decision.ok) return fracaso(decision.codigo, decision.codigo === "SECCION_INACTIVA" && seccion ? mensajeSeccionDesactivada(seccion.nombre) : decision.mensaje);
+    if (!decision.ok) {
+      if (decision.codigo === "SECCION_INACTIVA") return fracaso("SECCION_INACTIVA", mensajeSeccionDesactivada(seccion?.nombre ?? ""));
+      return fracaso(decision.codigo, decision.mensaje);
+    }
     // La regla ya garantizó parte y sección; esto solo lo deja claro para el compilador.
     if (!parte || !seccion) return fracaso("NO_ENCONTRADA", MENSAJE_RECEPCION_NO_ENCONTRADA);
 
