@@ -11,8 +11,8 @@ export interface FilaProductoCategoria {
 }
 
 const COLUMNAS: ColumnaReporte<FilaProductoCategoria>[] = [
-  { clave: "producto", etiqueta: "Producto", valor: (p) => p.producto, render: (p) => p.producto },
-  { clave: "cantidad", etiqueta: "Cantidad", alinear: "derecha", valor: (p) => p.cantidad, render: (p) => p.cantidad },
+  { clave: "producto", etiqueta: textoDe("columna.producto"), valor: (p) => p.producto, render: (p) => p.producto },
+  { clave: "cantidad", etiqueta: textoDe("columna.cantidad"), alinear: "derecha", valor: (p) => p.cantidad, render: (p) => p.cantidad },
   { clave: "importe", etiqueta: textoDe("columna.importe"), alinear: "derecha", valor: (p) => p.importe, render: (p) => `${formatearMonto(p.importe)}` },
 ];
 

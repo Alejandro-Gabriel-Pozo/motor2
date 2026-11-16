@@ -6,8 +6,8 @@ import { formatearMonto, formatearEntero } from "@/core/formato-de-numero";
 import { textoDe } from "@/core/textos/texto-de";
 
 const COLUMNAS: ColumnaReporte<FilaDescuentoProducto>[] = [
-  { clave: "producto", etiqueta: "Producto", valor: (f) => f.producto, render: (f) => f.producto },
-  { clave: "unidades", etiqueta: "Unidades", alinear: "derecha", valor: (f) => f.unidades, render: (f) => formatearEntero(f.unidades) },
+  { clave: "producto", etiqueta: textoDe("columna.producto"), valor: (f) => f.producto, render: (f) => f.producto },
+  { clave: "unidades", etiqueta: textoDe("columna.unidades"), alinear: "derecha", valor: (f) => f.unidades, render: (f) => formatearEntero(f.unidades) },
   { clave: "importeALista", etiqueta: textoDe("columna.a_precio_de_lista"), alinear: "derecha", valor: (f) => f.importeALista, render: (f) => `${formatearMonto(f.importeALista)}` },
   { clave: "importeCobrado", etiqueta: textoDe("columna.cobrado"), alinear: "derecha", valor: (f) => f.importeCobrado, render: (f) => `${formatearMonto(f.importeCobrado)}` },
   {

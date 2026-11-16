@@ -8,7 +8,7 @@ import { textoDe } from "@/core/textos/texto-de";
 const COLUMNAS_CON_COSTO: ColumnaReporte<FilaValuacionInventario>[] = [
   {
     clave: "producto",
-    etiqueta: "Producto",
+    etiqueta: textoDe("columna.producto"),
     valor: (f) => `${f.productoCodigo} — ${f.productoNombre}`,
     render: (f) => (
       <>
@@ -29,13 +29,13 @@ const COLUMNAS_CON_COSTO: ColumnaReporte<FilaValuacionInventario>[] = [
   },
   { clave: "costoUnitario", etiqueta: textoDe("columna.costo_unitario"), alinear: "derecha", valor: (f) => f.costoUnitario, render: (f) => `${formatearMonto(f.costoUnitario!)}` },
   { clave: "valor", etiqueta: "Valor", alinear: "derecha", valor: (f) => f.valor, render: (f) => <span className="font-medium">{formatearMonto(f.valor!)}</span> },
-  { clave: "proveedor", etiqueta: "Proveedor", valor: (f) => f.proveedorNombre, render: (f) => f.proveedorNombre ?? "—" },
+  { clave: "proveedor", etiqueta: textoDe("columna.proveedor"), valor: (f) => f.proveedorNombre, render: (f) => f.proveedorNombre ?? "—" },
 ];
 
 const COLUMNAS_SIN_COSTO: ColumnaReporte<FilaValuacionInventario>[] = [
   {
     clave: "producto",
-    etiqueta: "Producto",
+    etiqueta: textoDe("columna.producto"),
     valor: (f) => `${f.productoCodigo} — ${f.productoNombre}`,
     render: (f) => (
       <>
