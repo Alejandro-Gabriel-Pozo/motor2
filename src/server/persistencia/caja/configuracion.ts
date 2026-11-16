@@ -2,6 +2,7 @@ import "server-only";
 import type { CuentaGuardada, MedioGuardado } from "@/core/caja/public";
 import type { DatosQuePideElMedio, TipoDeCuenta, TipoDeMedio } from "@/core/caja/public";
 import type { Prisma } from "@prisma/client";
+import { errorConocidoDeBase, esChoqueDeIndiceUnico } from "@/core/datos/errores-de-base";
 
 /**
  * Persistencia de la CONFIGURACIÓN de caja (etapa C3): medios de pago y cuentas de cobro. Mismo contrato que `caja.ts`: el cliente es el PRIMER parámetro, `data` literal, sin reglas de negocio ni auditoría. La base decide lo que
@@ -114,6 +115,20 @@ export async function cambiarActivaDeCuenta(db: Prisma.TransactionClient, args: 
     data: { activa: args.activa, actualizadoEn: args.ahora, version: { increment: 1 } },
   });
   return count > 0;
+}
+
+/** ¿Hay en la sucursal otra cuenta de cobro ACTIVA (distinta de `exceptoId`, si se pasa)? Es la lectura previa de la regla «una sola activa por sucursal»; la barrera real es el índice único parcial de la base. */
+export async function hayOtraCuentaActivaEnSucursal(db: Prisma.TransactionClient, empresaId: string, sucursalId: string, exceptoId: string | null): Promise<boolean> {
+  const f = await db.cuentaDeCobro.findFirst({ where: { empresaId, sucursalId, activa: true, ...(exceptoId === null ? {} : { id: { not: exceptoId } }) }, select: { id: true } });
+  return f !== null;
+}
+
+/** ¿El error es el choque del índice único parcial «una cuenta activa por sucursal» (`CuentaDeCobro_una_activa_por_sucursal_key`)? Los otros choques de unicidad (el nombre) no lo son. */
+export function esChoqueDeUnaActivaPorSucursal(e: unknown): boolean {
+  if (!esChoqueDeIndiceUnico(e)) return false;
+  const meta = errorConocidoDeBase(e)?.meta;
+  const texto = `${e instanceof Error ? e.message : ""} ${meta ? JSON.stringify(meta) : ""} ${JSON.stringify((e as { cause?: unknown }).cause ?? "")}`;
+  return texto.includes("CuentaDeCobro_una_activa_por_sucursal_key");
 }
 
 /** ¿La sucursal existe en la empresa? (`Sucursal` es de gobierno: se lee sin alcance.) */
