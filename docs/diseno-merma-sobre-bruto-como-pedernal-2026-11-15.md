@@ -9,6 +9,8 @@
 
 ---
 
+> **Nota 2026-11-16 (frente 2): las combinaciones por producto (GO-3a) están RETIRADAS del código** (GO-3a, retirado: `test/arquitectura/go3a-retirado.test.ts`, ADR-032, DEC-02 y DEC-16). Sus modelos (`RecetaDeCombinacionIngrediente`, `RecetaDeCombinacionVersion`) siguen en el esquema solo hasta la migración de retiro: **no se migran ni se convierten**. Donde esta pieza decía «recetas, opciones y combinaciones» o «cuatro tablas», léase **recetas y opciones** y **tres tablas** (versiones: dos; líneas con versión propia: dos). La respuesta del dueño Q-M2 (2026-11-15) sigue en pie para las opciones.
+
 ## 0. Resumen para el dueño
 
 **La diferencia, en una línea.** Hoy en Motor2 la receta carga lo que **lleva el plato** (el neto) y la merma se **suma**: 800 g con 20 % → se descuentan **960 g**. En Pedernal la receta carga lo que **se compra y se descuenta** (el bruto) y la merma se **resta** para saber qué llega al plato: 1.000 g con 20 % → al plato llegan **800 g**. Mismo porcentaje, resultado distinto.
@@ -16,8 +18,8 @@
 **Lo que decidió el dueño (2026-11-15)** y lo que se propone:
 
 1. **M0, sin migración:** juntar la fórmula, que hoy está escrita **nueve veces en cinco archivos**, en una sola función, **sin cambiar ningún resultado**.
-2. **Marcar cada versión con «cómo se cargó»** (`NETA` o `BRUTA`), en recetas, opciones y combinaciones (misma regla en todo: Q-M2). Las versiones que ya existen quedan `NETA` y **no se reescriben**.
-3. **Al editar una receta, opción o combinación vieja se crea una versión NUEVA cargada en bruto** (Q-M1). La conversión conserva lo que se descuenta del stock y lo que se costea; **el neto de hoy se conserva con una diferencia mínima que la persona ve y confirma antes de guardar** (nunca en silencio). La versión vieja queda como está, en el historial.
+2. **Marcar cada versión con «cómo se cargó»** (`NETA` o `BRUTA`), en recetas y opciones (misma regla en todo: Q-M2; las combinaciones por producto están retiradas, ver la nota del principio). Las versiones que ya existen quedan `NETA` y **no se reescriben**.
+3. **Al editar una receta u opción vieja se crea una versión NUEVA cargada en bruto** (Q-M1). La conversión conserva lo que se descuenta del stock y lo que se costea; **el neto de hoy se conserva con una diferencia mínima que la persona ve y confirma antes de guardar** (nunca en silencio). La versión vieja queda como está, en el historial.
 4. **Ensanchar la merma a 4 decimales, como Pedernal (M2b):** con 2 decimales el neto se corre hasta 0,05 g sobre 1 kg; con 4, hasta 0,0005 g. Es lo que hace posible «el mismo neto de hoy».
 
 **Por qué la conversión nunca es exacta del todo.** 800 g de neto con 20 % de merma sobre el neto equivalen a 960 g de bruto con **16,6666…** % de merma, que no cabe en un número finito de decimales (§6.4). Se conserva el **bruto** (stock y costo) y el neto se acerca lo más posible; la diferencia se muestra antes de guardar.
@@ -28,8 +30,8 @@
 |---|---|---|---|
 | **M0** | Una sola función de merma, mismos resultados | **Ninguna** | Nadie: refactor puro |
 | **M1** | Consulta de solo lectura: cuántas recetas, líneas y calibraciones hay en cada base | **Ninguna** | Nadie |
-| **M2** | Columna `baseDeCantidad` (`NETA` por defecto) en las tres tablas de versiones | **Aditiva y reversible** (`down.sql`) | Autorización permanente del 2026-11-15 |
-| **M2b** | Ensanchar `mermaPorcentaje` de 2 a 4 decimales (cuatro tablas) | Cambia el tipo de la columna **sin cambiar ningún valor**; reversible solo si ningún valor usa más de 2 decimales | **Autorización EXPRESA** por base, con ensayo (§11, texto Z) |
+| **M2** | Columna `baseDeCantidad` (`NETA` por defecto) en las dos tablas de versiones | **Aditiva y reversible** (`down.sql`) | Autorización permanente del 2026-11-15 |
+| **M2b** | Ensanchar `mermaPorcentaje` de 2 a 4 decimales (tres tablas) | Cambia el tipo de la columna **sin cambiar ningún valor**; reversible solo si ningún valor usa más de 2 decimales | **Autorización EXPRESA** por base, con ensayo (§11, texto Z) |
 | **M3a** | Todo el código **lee** la marca (sin cambiar lo que se escribe) | Ninguna | Se despliega solo |
 | **M3b** | Lo nuevo se carga en bruto; al editar una versión `NETA` se crea la nueva en bruto con vista previa y confirmación | Ninguna | **Confirmación expresa del dueño** (§11, texto X); los textos de la vista previa ya están aprobados (Q-M3) |
 
@@ -47,15 +49,15 @@
 | N-6 | «Sí, copiar a Pedernal en esas cinco» (incluye E3: costos desde ahora, merma sobre el bruto) | Dueño, 2026-11-15, chat con el orquestador | CONFIRMADA |
 | N-7 | Esta pieza **no** reescribe datos sin autorización expresa por base y con ensayo | Encargo del orquestador (la autorización permanente del 2026-11-15 cubre solo lo aditivo y reversible) | CONFIRMADA |
 | N-8 | Al editar una receta vieja (cargada como neto) **se convierte a bruto** | Dueño, 2026-11-15, chat con el orquestador, opciones: «Al editarla se convierte a bruto» (Q-M1; **no era la recomendación del diseño**: CONFIRMADA la dirección; la forma —versión nueva, vista previa y confirmación, versiones viejas intactas— la fijó el orquestador al transmitirla) | CONFIRMADA |
-| N-9 | Opciones y combinaciones: la misma regla que las recetas | Dueño, 2026-11-15, chat con el orquestador, opciones: «La misma regla que las recetas (Recomendada)» (Q-M2) | CONFIRMADA |
+| N-9 | Opciones (y combinaciones, hoy retiradas): la misma regla que las recetas | Dueño, 2026-11-15, chat con el orquestador, opciones: «La misma regla que las recetas (Recomendada)» (Q-M2) | CONFIRMADA |
 | N-10 | La conversión de neto a bruto **deja el mismo neto de hoy** y **no cambia el costo en silencio**: se muestra antes de guardar y la persona confirma | Encargo del orquestador, 2026-11-15, al transmitir la respuesta del dueño | CONFIRMADA (como requisito de diseño) |
 
 **Fuera de alcance (no se pidió):** base del margen sin IVA, costo neto de IVA, objetivo de food cost (otras etapas del diseño de paridad), rendimiento de la receta (`rinde`), la «merma» como motivo de una salida de stock y la merma de lote de producción (cuatro cosas con el mismo nombre: ficha `merma.md` de Pedernal; esta pieza es solo la **B**: la merma de un ingrediente en la receta).
 
 **Inventario de lo que ya existe (VERIFICADO en `origin/main`).**
 
-- **Dónde se guarda la merma:** `RecetaIngrediente.mermaPorcentaje` `Decimal(6,2)`, por defecto 0 (`prisma/schema.prisma:864`); `RendimientoLocalIngrediente.mermaPorcentaje` y `.cantidad` (calibración **por sucursal**, opcional, `:1549-1550`); `ConsumoDeOpcion.mermaPorcentaje` (`:3676`, `CHECK` de 0 a 100); `RecetaDeCombinacionIngrediente.mermaPorcentaje` (`:3949`, `CHECK` de 0 a 100). **Cuatro tablas.** Pedernal tiene la merma en **una** (`componente_de_composicion.perdida numeric(7,4)`, `CHECK 0 ≤ p < 100`); no tiene merma en opciones ni en combinaciones (`0025_catalogo.sql`: ninguna columna `perdida` ni `merma`).
-- **Las tres tablas de versiones, todas de solo agregar:** `RecetaVersion` (`:778`, «NUNCA se pisa ni borra una versión»), `VersionDeOpcion` (`:3630`) y `RecetaDeCombinacionVersion` (`:3918`).
+- **Dónde se guarda la merma:** `RecetaIngrediente.mermaPorcentaje` `Decimal(6,2)`, por defecto 0 (`prisma/schema.prisma:864`); `RendimientoLocalIngrediente.mermaPorcentaje` y `.cantidad` (calibración **por sucursal**, opcional, `:1549-1550`); `ConsumoDeOpcion.mermaPorcentaje` (`:3676`, `CHECK` de 0 a 100). **Tres tablas** (la cuarta, `RecetaDeCombinacionIngrediente`, es de GO-3a, retirado: no entra). Pedernal tiene la merma en **una** (`componente_de_composicion.perdida numeric(7,4)`, `CHECK 0 ≤ p < 100`); no tiene merma en opciones ni en combinaciones (`0025_catalogo.sql`: ninguna columna `perdida` ni `merma`).
+- **Las dos tablas de versiones, de solo agregar:** `RecetaVersion` (`:778`, «NUNCA se pisa ni borra una versión») y `VersionDeOpcion` (`:3630`). (`RecetaDeCombinacionVersion` es de GO-3a, retirado: no entra.)
 - **Validación hoy:** hasta 1.000 % en recetas (`src/core/datos/limites.ts:30-31`, `src/core/catalogo/receta-validacion.ts:129-131`) y de 0 a 100 en opciones (`src/core/opciones/validar-configuracion.ts:56-57`, `consumo-de-linea-configurada.ts:121`). **Pedernal exige menor que 100**: una receta de hoy puede tener una merma que en Pedernal sería inválida.
 - **La fórmula `cantidad × (1 + merma/100)`, escrita así (nueve expresiones en cinco archivos):**
   1. `src/server/actions/movimientos/casos-de-uso/armar-linea-de-movimiento.ts:66` (producción: lo que sale del stock);
@@ -86,13 +88,13 @@ Quien edita recetas (`guardar_receta` central; `receta_sucursal_editar` propia: 
 |---|---|---|
 | CU-1 | Una sola función decide el bruto y el neto de una línea; todos los consumidores la usan | M0 |
 | CU-2 | Contar, base por base, qué recetas existen y cuántas líneas tienen merma | M1 |
-| CU-3 | Cada versión de receta (y de opción y de combinación) dice si se cargó **neta** o **bruta** | M2 |
+| CU-3 | Cada versión de receta (y de opción) dice si se cargó **neta** o **bruta** | M2 |
 | CU-4 | Una receta vieja (neta) se sigue vendiendo, costeando y reportando exactamente igual que hoy | M3a |
 | CU-5 | Cargar una línea de receta nueva con el **bruto** y la merma; ver el **neto** calculado | M3b |
 | CU-6 | Vender, producir y costear descuentan y valorizan el **bruto** de una receta nueva | M3b |
 | CU-7 | Calibrar por sucursal la cantidad y la merma de una línea (en la base de esa versión) | M3b |
 | CU-8 | «Usar este valor» del reporte de rendimiento escribe lo correcto según la marca de la receta | M3b |
-| CU-9 | Editar una receta, opción o combinación vieja: se crea una versión nueva en bruto, con vista previa de lo que cambia y confirmación; la versión vieja queda intacta | M3b |
+| CU-9 | Editar una receta u opción vieja: se crea una versión nueva en bruto, con vista previa de lo que cambia y confirmación; la versión vieja queda intacta | M3b |
 | CU-10 | Ver, antes de confirmar, el bruto, la merma, el neto y el costo por unidad de cada línea, antes y después | M3b |
 
 ## 4. Nivel 4. Conceptos y ciclo de vida
@@ -107,7 +109,7 @@ Quien edita recetas (`guardar_receta` central; `receta_sucursal_editar` propia: 
 
 - **Marca `baseDeCantidad`:** `NETA` | `BRUTA`, **una por versión** (no por línea: una versión no mezcla bases). Nace con la versión y **no cambia nunca** (la versión es de solo agregar). **Toda versión nueva es `BRUTA`.** Si la versión anterior de la serie era `NETA`, la nueva se crea **convirtiendo** todas sus líneas (con vista previa y confirmación, §6.2). Copiar la receta central como propia o duplicar un producto copia las líneas **con su marca**; si la marca es `NETA`, la copia queda `NETA` hasta que se edite. Las `NETA` solo quedan como historial y como recetas vigentes que nadie editó todavía.
 - **Calibración por sucursal** (`RendimientoLocalIngrediente`): su `cantidad` y su `merma` están en la **base de la versión de la línea a la que cuelgan**. No lleva marca propia. Al convertir una versión se convierten también las calibraciones (§6.2).
-- **Opciones y combinaciones** (`ConsumoDeOpcion`, `RecetaDeCombinacionIngrediente`): **la misma regla y la misma marca** (N-9), en `VersionDeOpcion` y `RecetaDeCombinacionVersion`.
+- **Opciones** (`ConsumoDeOpcion`): **la misma regla y la misma marca** (N-9), en `VersionDeOpcion`.
 - **Estados nuevos de datos:** ninguno más que la marca.
 
 ## 5. Nivel 5. Invariantes y políticas
@@ -119,7 +121,7 @@ Quien edita recetas (`guardar_receta` central; `receta_sucursal_editar` propia: 
 | I3 | En `BRUTA`: 0 ≤ merma < 100; con 100 o más se **rechaza** (no se acota). En `NETA` se admite lo de hoy (hasta 1.000 % en recetas, 0 a 100 en opciones): no se rechaza lo ya cargado | PROPUESTA (CONFIRMADA la parte de rechazar 100 %) |
 | I4 | Merma 0: neto = bruto; las dos bases coinciden y el resultado de una receta sin merma **no cambia en ningún caso** | PROPUESTA |
 | I5 | La marca no se cambia nunca; **toda versión nueva es `BRUTA`** (la única vía a una versión nueva `NETA` es la carga «a ciegas» de scripts y pruebas, que hoy ya está acotada por un guardián, para poder seguir fijando el comportamiento de las versiones viejas). Nadie elige la marca a mano en la pantalla | PROPUESTA |
-| I6 | **Ninguna versión existente se reescribe:** ninguna fila de receta, opción, combinación, movimiento de stock, costo congelado ni venta pasada cambia. La conversión **crea una versión nueva** y deja la vieja en el historial. Lo ya vendido y lo ya valorizado queda como está | PROPUESTA (CONFIRMADA por N-5 y N-8) |
+| I6 | **Ninguna versión existente se reescribe:** ninguna fila de receta, opción, movimiento de stock, costo congelado ni venta pasada cambia. La conversión **crea una versión nueva** y deja la vieja en el historial. Lo ya vendido y lo ya valorizado queda como está | PROPUESTA (CONFIRMADA por N-5 y N-8) |
 | I7 | Dinero y cantidades exactos: las funciones **nuevas** usan `Decimal` (o enteros), moneda explícita, redondeo **una sola vez al final** y a 4 decimales para el neto. Lo existente en números de JavaScript **no se reescribe** (no se pidió): la función única conserva la expresión idéntica de cada sitio (DT-M2) | PROPUESTA |
 | I8 | La función de merma devuelve error, no un valor acotado, ante una merma fuera de rango en `BRUTA` | PROPUESTA (como Pedernal) |
 | I9 | La calibración por sucursal respeta la base de su versión; al convertir una versión se convierten también sus calibraciones, línea por línea, con la misma regla (§6.2) | PROPUESTA |
@@ -135,7 +137,7 @@ Quien edita recetas (`guardar_receta` central; `receta_sucursal_editar` propia: 
 ### 6.1 M2: una columna por tabla de versiones, aditiva y reversible
 
 ```sql
--- migration.sql (PROPUESTA, no aplicar). Se repite para "VersionDeOpcion" y "RecetaDeCombinacionVersion" (Q-M2 confirmada: misma regla en todo).
+-- migration.sql (PROPUESTA, no aplicar). Se repite para "VersionDeOpcion" (Q-M2 confirmada: misma regla en todo).
 ALTER TABLE "RecetaVersion" ADD COLUMN "baseDeCantidad" TEXT NOT NULL DEFAULT 'NETA';
 ALTER TABLE "RecetaVersion" ADD CONSTRAINT "RecetaVersion_baseDeCantidad_chk"
   CHECK ("baseDeCantidad" IN ('NETA', 'BRUTA'));
@@ -153,10 +155,10 @@ ALTER TABLE "RecetaVersion" DROP COLUMN IF EXISTS "baseDeCantidad";
 - **La regla «en BRUTA la merma es menor que 100»** no se puede escribir como `CHECK` de la línea (necesitaría mirar la versión, que es otra tabla). Se impone **en la aplicación** (el guard de la receta, I3) y, como refuerzo, con un **disparador** en las líneas que consulta la marca de su versión (precedente en el proyecto: `20261001230000_auditoria_inmutable`, `20261002160000_reglas_en_la_base_operacion_movimiento`; **NO VERIFICADO** el patrón exacto). **Decisión técnica DT-M11** (§8).
 - `RendimientoLocalIngrediente`: **sin columna** (hereda la base de su línea).
 
-### 6.1b M2b: ensanchar la merma a 4 decimales (cuatro tablas)
+### 6.1b M2b: ensanchar la merma a 4 decimales (tres tablas)
 
 ```sql
--- migration.sql (PROPUESTA, no aplicar). Se repite para RendimientoLocalIngrediente, ConsumoDeOpcion y RecetaDeCombinacionIngrediente.
+-- migration.sql (PROPUESTA, no aplicar). Se repite para RendimientoLocalIngrediente y ConsumoDeOpcion.
 ALTER TABLE "RecetaIngrediente" ALTER COLUMN "mermaPorcentaje" TYPE NUMERIC(7,4);
 
 -- down.sql (PROPUESTA): se NIEGA si algún valor usa más de 2 decimales (volver a (6,2) los redondearía en silencio).
@@ -165,7 +167,7 @@ ALTER TABLE "RecetaIngrediente" ALTER COLUMN "mermaPorcentaje" TYPE NUMERIC(7,4)
 -- ALTER TABLE "RecetaIngrediente" ALTER COLUMN "mermaPorcentaje" TYPE NUMERIC(6,2);
 ```
 
-Es **lossless** (ningún valor existente cambia) pero **cambia el tipo de la columna**: puede reescribir la tabla y toma un bloqueo corto; por eso no entra en «aditivo» y pide autorización expresa (texto Z). Los `CHECK` de 0 a 100 de opciones y combinaciones siguen; el de menor que 100 para `BRUTA` va como en DT-M11. **Con M2b desaparece la diferencia de precisión con Pedernal** (`numeric(7,4)`).
+Es **lossless** (ningún valor existente cambia) pero **cambia el tipo de la columna**: puede reescribir la tabla y toma un bloqueo corto; por eso no entra en «aditivo» y pide autorización expresa (texto Z). El `CHECK` de 0 a 100 de opciones sigue; el de menor que 100 para `BRUTA` va como en DT-M11. **Con M2b desaparece la diferencia de precisión con Pedernal** (`numeric(7,4)`).
 
 ### 6.2 M3b: qué se escribe y cómo se convierte al editar
 
@@ -210,7 +212,7 @@ Para una línea con neto `n` y merma `m` sobre el neto, la línea bruta equivale
 
 ## 7. Nivel 7. Atomicidad y concurrencia — «¿qué pasa si…?»
 
-### 7.1 Guardar una versión de receta, opción o combinación (M3b)
+### 7.1 Guardar una versión de receta u opción (M3b)
 
 | Situación | Resultado |
 |---|---|
@@ -276,14 +278,14 @@ Repetir el clic: una sola versión nueva. Concurrencia: la versión esperada.
 | DT-M1 | Una función única de merma, **en un módulo puro de `src/core/`** (candidato `src/core/catalogo/merma.ts`, expuesto por `public.ts`); la ubicación exacta se fija con `npm run arquitectura` (**NO VERIFICADO** que `core/reportes` y `core/movimientos` puedan importarla sin una excepción) | Una sola fuente de la fórmula (como `merma.ts` de Pedernal) |
 | DT-M2 | **M0 no cambia ni un bit:** la función expone el **factor** `1 + merma/100` (en `number`, para los sitios que hoy son `number`) y la versión `Decimal` (para `consumo-de-linea-configurada.ts`); cada sitio sigue multiplicando **en el mismo orden** (`linea-de-venta.ts:87` documenta que el orden cambia los últimos bits). Una prueba fija que las dos presentaciones coinciden en una grilla | Cero cambio de resultado |
 | DT-M3 | Marca como `TEXT` con `CHECK` (`NETA`/`BRUTA`), no `enum` | Reversible; convención del proyecto |
-| DT-M4 | La marca vive en **las tres tablas de versiones**, no en las líneas | Una versión no mezcla bases; las líneas son de solo agregar |
+| DT-M4 | La marca vive en **las dos tablas de versiones**, no en las líneas | Una versión no mezcla bases; las líneas son de solo agregar |
 | DT-M5 | `DEFAULT 'NETA'` en la base; el código nuevo escribe la marca **siempre explícita** | Compatibilidad hacia atrás y claridad |
 | DT-M6 | **Orden de despliegue:** M0 → M2 → (M2b) → M3a (leer) → M3b (escribir `BRUTA` y convertir). Nunca al revés | Marcha atrás segura (§7.5) |
 | DT-M7 | **Ensanchar `mermaPorcentaje` a `NUMERIC(7,4)` (M2b)**, igual que Pedernal; reemplaza a la propuesta anterior de dejarlo en 2 decimales | Es lo que permite «el mismo neto de hoy» (§6.4) y elimina una diferencia con Pedernal |
 | DT-M8 | Neto = `bruto × (100 − merma) ÷ 100`, redondeado **una vez** a 4 decimales, mitad que se aleja del cero; igual a Pedernal. El criterio de `redondearCantidad` de Motor2 (reportes) **NO VERIFICADO**: se compara con el de Pedernal al implementar | Mismo resultado |
 | DT-M9 | La marca entra por el embudo único de lectura de recetas (`recetas-vigentes`) y se **clasifica en el guardián** `lectores-de-receta.test.ts` | Evita el lector que se olvida de la marca |
 | DT-M10 | Guardián nuevo `test/arquitectura/formula-de-merma-unica.test.ts` (cerco de trinquete en 0): falla ante una fórmula de merma o de conversión fuera del módulo único | I11 |
-| DT-M11 | «BRUTA ⇒ merma < 100»: en la aplicación **y** un disparador de refuerzo en las tres tablas de líneas (precedente: `20261001230000_auditoria_inmutable`; **NO VERIFICADO** el patrón exacto); si el dueño prefiere cero disparadores, solo la aplicación | `CHECK` no puede mirar otra tabla |
+| DT-M11 | «BRUTA ⇒ merma < 100»: en la aplicación **y** un disparador de refuerzo en las dos tablas de líneas con versión (`RecetaIngrediente` y `ConsumoDeOpcion`) (precedente: `20261001230000_auditoria_inmutable`; **NO VERIFICADO** el patrón exacto); si el dueño prefiere cero disparadores, solo la aplicación | `CHECK` no puede mirar otra tabla |
 | DT-M12 | **Toda versión nueva es `BRUTA`**; el único camino a una `NETA` nueva es el «a ciegas» de scripts y pruebas (`receta-a-ciegas.ts`, ya acotado por un guardián), con la marca **explícita**, para que las caracterizaciones sigan fijando el comportamiento viejo | I5 y regresión |
 | DT-M13 | La **vista previa la calcula el servidor** con las funciones puras de conversión; la confirmación es un booleano estricto en el comando del caso de uso (molde: `confirmaCantidadDesproporcionada`, `docs/diseno-guardia-de-unidad-receta-2026-11-09.md`), vale para ese pedido y esa versión esperada, y se verifica **dentro** de la transacción | I15; el cliente no decide |
 | DT-M14 | La conversión es una **función pura** `convertirLineaNetaABruta({neto, merma}) → {bruto, merma}` en `Decimal`/enteros, con propiedades (`fast-check`): `bruto` dentro de 0,00005 del exacto; `|neto' − neto| ≤ bruto × 5×10⁻⁷ + 0,00005` con 4 decimales de merma; merma nueva < 100 para toda merma de 0 a 1.000 | I13 e I14 |
@@ -326,10 +328,8 @@ SELECT "empresaId", count(*) FILTER (WHERE cantidad IS NOT NULL) AS con_cantidad
        count(*) FILTER (WHERE "mermaPorcentaje" IS NOT NULL)     AS con_merma_propia
 FROM "RendimientoLocalIngrediente" GROUP BY "empresaId";
 
--- Opciones y combinaciones con merma (cuántas líneas hay que convertir, por base).
-SELECT 'opcion' AS origen, "empresaId", count(*) AS lineas, count(*) FILTER (WHERE "mermaPorcentaje" > 0) AS con_merma FROM "ConsumoDeOpcion" GROUP BY "empresaId"
-UNION ALL
-SELECT 'combinacion', "empresaId", count(*), count(*) FILTER (WHERE "mermaPorcentaje" > 0) FROM "RecetaDeCombinacionIngrediente" GROUP BY "empresaId";
+-- Opciones con merma (cuántas líneas hay que convertir, por base). Las combinaciones (GO-3a) están retiradas y no se cuentan.
+SELECT 'opcion' AS origen, "empresaId", count(*) AS lineas, count(*) FILTER (WHERE "mermaPorcentaje" > 0) AS con_merma FROM "ConsumoDeOpcion" GROUP BY "empresaId";
 ```
 
 **Qué filas tocaría cada etapa, por base:** M0 y M1: **ninguna**. M2: **ninguna fila se escribe** (valor por defecto como metadato); el resultado de «versiones» de la primera consulta es **cuántas quedarán `NETA`**. M3a: ninguna. M3b: ninguna fila existente; solo versiones nuevas. Después de M2, la verificación del `down` es: `SELECT count(*) FROM "RecetaVersion" WHERE "baseDeCantidad" = 'BRUTA'` (y las dos tablas hermanas) = 0.
@@ -380,7 +380,7 @@ SELECT 'combinacion', "empresaId", count(*), count(*) FILTER (WHERE "mermaPorcen
 ## 10. Preguntas de NEGOCIO
 
 - **Q-M1 — Editar una receta vieja (cargada como neto): CONFIRMADA la dirección (2026-11-15, chat con el orquestador, opciones).** Literal: «Al editarla se convierte a bruto». No era la recomendación de este diseño (que proponía dejarla neta); se adopta la del dueño. La forma está en §6.2: versión nueva, vista previa y confirmación, versión vieja intacta.
-- **Q-M2 — Opciones y combinaciones: CONFIRMADA (2026-11-15).** Literal: «La misma regla que las recetas (Recomendada)».
+- **Q-M2 — Opciones (y combinaciones, hoy retiradas): CONFIRMADA (2026-11-15).** Literal: «La misma regla que las recetas (Recomendada)».
 - **Q-M3 — Textos nuevos de la vista previa de la conversión: CONFIRMADA (2026-11-15, chat con el orquestador, opciones recomendadas).** Aprobados tal cual:
   - **T-M1** (encabezado): «Esta receta se cargó con el neto. Al guardar pasa a cargarse con el bruto; la anterior queda en el historial.»
   - **T-M2** (columnas): «Antes» y «Después».
@@ -394,15 +394,15 @@ SELECT 'combinacion', "empresaId", count(*), count(*) FILTER (WHERE "mermaPorcen
 
 **Autorización X (encender la carga en bruto y la conversión al editar, M3b; por despliegue, nombrando las bases):**
 
-> «Autorizo encender, en [LISTA DE BASES] y a partir del [FECHA], la carga de recetas, opciones y combinaciones en bruto (neto = bruto × (1 − merma)) y la conversión a bruto al editar una versión vieja, sabiendo que **la versión vieja no se toca**, que **la conversión me muestra antes y después y me pide confirmar**, y que **el bruto (lo que se descuenta y se costea) se conserva** mientras que el neto puede diferir en una fracción mínima que veo antes de guardar. Vi el resultado de las consultas de recuento de cada base el [FECHA], los textos de la vista previa que aprobé el [FECHA] y el ensayo sobre copia.»
+> «Autorizo encender, en [LISTA DE BASES] y a partir del [FECHA], la carga de recetas y opciones en bruto (neto = bruto × (1 − merma)) y la conversión a bruto al editar una versión vieja, sabiendo que **la versión vieja no se toca**, que **la conversión me muestra antes y después y me pide confirmar**, y que **el bruto (lo que se descuenta y se costea) se conserva** mientras que el neto puede diferir en una fracción mínima que veo antes de guardar. Vi el resultado de las consultas de recuento de cada base el [FECHA], los textos de la vista previa que aprobé el [FECHA] y el ensayo sobre copia.»
 
 **Alcance:** solo versiones nuevas y versiones convertidas al editar; **no** cambia datos ya cargados, ni costos ni ventas registradas; se puede **apagar** M3b (las ya escritas en bruto se leen bien). Vale para las bases nombradas.
 
 **Autorización Z (ensanchar la merma a 4 decimales, M2b; por base):**
 
-> «Autorizo cambiar, en la base [NOMBRE], el tipo de la columna de merma de las cuatro tablas de 2 a 4 decimales, sabiendo que **no cambia ningún valor ya cargado** y que se puede deshacer mientras ningún valor use más de 2 decimales. Vi el ensayo sobre copia el [FECHA].»
+> «Autorizo cambiar, en la base [NOMBRE], el tipo de la columna de merma de las tres tablas de 2 a 4 decimales, sabiendo que **no cambia ningún valor ya cargado** y que se puede deshacer mientras ningún valor use más de 2 decimales. Vi el ensayo sobre copia el [FECHA].»
 
-**Alcance:** solo el tipo de `mermaPorcentaje` en `RecetaIngrediente`, `RendimientoLocalIngrediente`, `ConsumoDeOpcion` y `RecetaDeCombinacionIngrediente`; no vale para otra base.
+**Alcance:** solo el tipo de `mermaPorcentaje` en `RecetaIngrediente`, `RendimientoLocalIngrediente`, y `ConsumoDeOpcion`; no vale para otra base.
 
 **Condiciones previas que se muestran junto a cada pedido:** el recuento de §9 de esa base; el resultado del ensayo (sumas de control idénticas, oráculo verde, `down` probado); una copia o respaldo reciente; quién lo despliega y cuándo; para X, los textos aprobados (Q-M3).
 
@@ -414,7 +414,7 @@ SELECT 'combinacion', "empresaId", count(*), count(*) FILTER (WHERE "mermaPorcen
 4. **M2b — merma a 4 decimales.** Autorización Z.
 5. **M3a — leer la marca** en todos los consumidores (sin cambiar lo que se escribe).
 6. **M3b — escribir en bruto y convertir al editar**, con vista previa y confirmación. Autorización X (textos ya aprobados, Q-M3).
-7. **Etapas posteriores con nombre (NO pedidas):** botón explícito «pasar a bruto» sin tener que editar; sacar la merma de opciones y combinaciones (poda).
+7. **Etapas posteriores con nombre (NO pedidas):** botón explícito «pasar a bruto» sin tener que editar; sacar la merma de opciones (poda).
 
 **Supuestos declarados (el dueño los corrige):** S1 las versiones vigentes que nadie edita siguen dando lo mismo que hoy; S2 una receta nueva sin versión anterior es bruta; S3 el neto es solo para mostrar y reportar, nunca se guarda como dato propio; S4 no se recalculan costos ni stock ya registrados; S5 se conserva el bruto y se acerca el neto (no al revés); S6 la vista previa no se pide cuando la conversión es exacta.
 
@@ -426,7 +426,7 @@ SELECT 'combinacion', "empresaId", count(*), count(*) FILTER (WHERE "mermaPorcen
 | Base de la cantidad | Siempre bruto | Bruto en lo nuevo; neto (`NETA`) solo en el historial y en lo vigente no editado, marcado; al editar se convierte | **Datos existentes** y N-5/N-8 (dueño, 2026-11-14 y 2026-11-15) |
 | Precisión de la merma | `numeric(7,4)` | `NUMERIC(7,4)` tras M2b | Sin diferencia una vez aplicada M2b (hoy `Decimal(6,2)`) |
 | Rango de la merma | `0 ≤ p < 100` con `CHECK` | `< 100` en la aplicación y disparador de refuerzo para `BRUTA`; lo viejo hasta 1.000 % | **Datos existentes**; `CHECK` no mira otra tabla (DT-M11) |
-| Merma en opciones y combinaciones | No existe | Existe, con la misma regla y marca (N-9) | **Datos existentes** |
+| Merma en opciones | No existe | Existe, con la misma regla y marca (N-9) | **Datos existentes** |
 | Calibración por sucursal | No existe | Existe; hereda la base de su línea | **Datos existentes** |
 | Dónde decide la fórmula | Un archivo (`merma.ts`) | Una función única más guardián (M0) | Igual en la forma |
 | Aritmética | Enteros exactos | Conserva `number` donde hoy lo es (M0); nuevo en `Decimal` | **Datos existentes**: reescribir no se pidió (I7) |
@@ -445,4 +445,4 @@ SELECT 'combinacion', "empresaId", count(*), count(*) FILTER (WHERE "mermaPorcen
 - **Pruebas que escriben recetas:** pasan a escribir `BRUTA`; las caracterizaciones del comportamiento viejo deben forzar `NETA` por el camino «a ciegas» (DT-M12).
 - **El «sexto archivo» de la fórmula** que mencionó el encargo no se encontró (§1): si existe, M0 lo encuentra con el guardián.
 - **Congelamiento de producción:** nada se aplica ni se despliega desde este documento.
-- **Sugerencias (no implementadas):** botón explícito «pasar a bruto» sin editar; poda de la merma en opciones y combinaciones.
+- **Sugerencias (no implementadas):** botón explícito «pasar a bruto» sin editar; poda de la merma en opciones.
