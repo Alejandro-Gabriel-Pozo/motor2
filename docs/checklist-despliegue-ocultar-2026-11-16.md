@@ -52,9 +52,34 @@ Esperado con las migraciones 1 y 2 aplicadas: 5 políticas (`aislamiento_empresa
 
 ## 6. Advertencias y pendientes declarados
 
-- **`prisma migrate resolve --rolled-back` y migraciones ya aplicadas:** los `down.sql` de este repo terminan indicando ese comando; el orquestador anotó que **falla con migraciones ya aplicadas** (hay que borrar la fila de la migración en `_prisma_migrations` después de correr el `down.sql`). **NO VERIFICADO por esta sesión**: confirmarlo en el ensayo y fijar el procedimiento exacto antes del despliegue (afecta a los 94 `down.sql` del repo, no solo a estos cuatro).
+- **`prisma migrate resolve --rolled-back` NO sirve para bajar una migración ya aplicada** (error `P3012`, comprobado en una base local descartable: ver §7 con el procedimiento que sí funciona). Los `down.sql` del repo (94) terminan indicando ese comando: **esa última instrucción es incorrecta para una migración aplicada con éxito**; no se tocaron los `down.sql` (pedido del orquestador), el procedimiento correcto está en §7.
 - **El `down.sql` de la tabla aborta con filas** (por diseño). No hay reversa «con datos» sin decisión del dueño.
 - **El orden de aplicación es por nombre de carpeta**: las cuatro respetan el orden lexicográfico (`…120000 < …121000 < …160000 < 20261117150000`); otras migraciones intermedias (Partes, Presentaciones, Caja, Planes…) no tocan esta tabla.
 - **Techos de la matriz de denegación** que quedaron como deuda (no afectan el despliegue): `SIN_GENERADOR` 17/17 y `SIN_MARCA_PROPIA` 37→38.
 - **Sin construir** (no pedido): lista de ocultos, filtro «Oculto» y «Oculto con existencia negativa». Sin implementar: rechazo por «conteo abierto» (no se verificó qué es `EstadoConteo.PENDIENTE`).
 - Este documento **no autoriza nada**: la autorización de aplicar en cada base real es del dueño, con cita (`docs/registro-de-decisiones.md` si se registra como decisión).
+
+## 7. Procedimiento REAL de rollback de una migración ya aplicada (con evidencia)
+
+Comprobado el 2026-11-16 en una base local descartable (`motor2_rb_test`, Postgres 16, creada vacía, roles por `crear-rol-motor2-app.sql`, **174 migraciones** aplicadas con `prisma migrate deploy` como dueño), con las 4 migraciones de «Ocultar» y **sin tocar ningún `down.sql`**. La base se borró al terminar. NO se hizo contra ninguna base real.
+
+**Lo que NO funciona (evidencia):**
+
+1. `psql -1 -v ON_ERROR_STOP=1 -f prisma/migrations/20261117150000_ocultamiento_id_uuid_nativo/down.sql` → **OK** (el `id` vuelve a `text`).
+2. `prisma migrate resolve --rolled-back 20261117150000_ocultamiento_id_uuid_nativo` → **`Error: P3012 — Migration … cannot be rolled back because it is not in a failed state.`** (la fila de `_prisma_migrations` quedó con `finished_at` y sin `rolled_back_at`). `--rolled-back` solo vale para una migración que **falló** a medio aplicar.
+3. Peor: tras bajar con el `down.sql` y **sin** tocar `_prisma_migrations`, `prisma migrate status` dice «Database schema is up to date!» y `prisma migrate deploy` responde «No pending migrations to apply» mientras el `id` es `text`: **el historial de Prisma miente** (la base está bajada y Prisma cree que está subida), y un `deploy` posterior **no** la sube de nuevo.
+
+**Procedimiento que SÍ funciona (por migración, de a una, en el orden de rollback de §2):**
+
+1. Correr el `down.sql` a mano, como dueño: `psql -1 -v ON_ERROR_STOP=1 -f prisma/migrations/<carpeta>/down.sql`.
+2. Borrar **esa** fila del historial, en la misma base y como dueño: `DELETE FROM _prisma_migrations WHERE migration_name = '<carpeta>';` (una fila por migración; nunca un `DELETE` sin `WHERE`).
+3. `prisma migrate status` pasa a listar esa migración como «not yet applied», y `prisma migrate deploy` la **vuelve a aplicar** correctamente.
+4. NO usar `prisma migrate resolve --rolled-back` en este caso.
+
+**Evidencia del recorrido completo con las 4 de «Ocultar»:** se bajaron en el orden `20261117150000` → `20261115160000` → `20261115121000` → `20261115120000` (cada `down.sql` → «down OK», más el `DELETE` de su fila). Resultado: la tabla `OcultamientoProducto`, la función `rechazar_suma_a_producto_oculto()` y el disparador `MovimientoStock_producto_oculto_trg` **ya no existían**; `prisma migrate status` listó exactamente esas 4 como pendientes; `prisma migrate deploy` las **volvió a aplicar** («All migrations have been successfully applied») y quedó: `id` de tipo `uuid`, 5 políticas sobre la tabla y 1 disparador. Es decir: subir / bajar / subir **con el historial de Prisma consistente**.
+
+**Advertencias de este procedimiento (NO verificado más allá de lo dicho):**
+
+- Probado con la tabla **vacía**; con marcas cargadas el `down.sql` de la tabla aborta (§2.4) y el resto no se probó con datos de este recorrido (los tests `*-subir-bajar-subir.test.ts` sí cubren bajar con datos para el uuid y la tabla).
+- Es un procedimiento **a mano, como dueño**: antes de correrlo en una base real, ensayarlo en la rama de Neon (§5) y tener el respaldo.
+- Aplica por igual a los 94 `down.sql` del repo (la instrucción final de cada uno es la misma); no se verificaron las otras 90.
