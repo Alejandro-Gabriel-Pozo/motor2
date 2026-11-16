@@ -63,8 +63,9 @@ describe("lo que ya existía", () => {
   });
 
   it("la columna es TEXT NULL sin valor por defecto y no aparecen índices, políticas ni privilegios nuevos", async () => {
-    const despues = (await foto()) as { columnas: Array<{ columna: string; data_type: string; is_nullable: string; column_default: string | null }>; indices: unknown; politicas: unknown; privilegios: unknown };
-    const antes = fotoAntes as typeof despues;
+    type Foto = { columnas: Array<{ columna: string; data_type: string; is_nullable: string; column_default: string | null }>; indices: unknown; politicas: unknown; privilegios: unknown };
+    const despues = (await foto()) as unknown as Foto;
+    const antes = fotoAntes as Foto;
     expect(despues.columnas.find((c) => c.columna === "codigoFijo")).toEqual({ columna: "codigoFijo", data_type: "text", is_nullable: "YES", column_default: null });
     expect(despues.columnas.filter((c) => c.columna !== "codigoFijo")).toEqual(antes.columnas);
     expect(despues.indices).toEqual(antes.indices); // sin índice único: dos unidades pueden ser equivalentes a la misma
