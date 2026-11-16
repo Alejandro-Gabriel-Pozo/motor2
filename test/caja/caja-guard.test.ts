@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { centavosDeColumna, centavosDeTexto } from "../../src/core/caja/public";
+import { centavosDeTexto } from "../../src/core/caja/public";
 import { guardComandoAbrirSesion, guardComandoAnularMovimiento, guardComandoCerrarSesion, guardComandoCobrarCuenta, guardComandoMovimientoManual } from "../../src/core/features/caja/caja.guard";
 
 /**
@@ -36,11 +36,6 @@ describe("centavosDeTexto: el texto decimal exacto, sin float", () => {
     expect(centavosDeTexto("1.01")).toBe(BigInt(101));
     expect(centavosDeTexto("4.35")).toBe(BigInt(435));
   });
-});
-
-describe("centavosDeColumna: el importe de la base (2 decimales, con signo) a centavos", () => {
-  it.each([["12.30", BigInt(1230)], ["-5.00", -BigInt(500)], ["0.00", BigInt(0)], ["99999999999999.99", BigInt("9999999999999999")]])("«%s» → %s", (t, e) => expect(centavosDeColumna(t)).toBe(e));
-  it.each(["12.3", "12", "x", "1,00", ""])("«%s» lanza (es un dato de la base: nunca debería ser otra cosa)", (t) => expect(() => centavosDeColumna(t)).toThrow());
 });
 
 describe("guardComandoAbrirSesion", () => {

@@ -26,7 +26,7 @@ import { cargarCuentaParaCobrar } from "@/server/lecturas/caja/total-de-cuenta";
  * @idempotency Clave de reintento única por empresa más la huella del pedido; además único por cuenta: dos cobros de la misma cuenta a la vez dejan uno solo (el otro ve `CUENTA_YA_COBRADA`).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento, también ante el choque de índice único).
  * @sideEffects registrarCambioAuditado (el cobro con su total y la cantidad de renglones; sin datos personales).
- * @ficha permiso=cobrar_cuenta transaccion=SERIALIZABLE idempotencia=POR_CLAVE auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
+ * @ficha permiso=cobrar_cuenta transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function cobrarCuentaCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "empresaId" | "transaccion" | "ahora">,

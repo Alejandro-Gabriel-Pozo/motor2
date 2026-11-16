@@ -1,13 +1,14 @@
 "use server";
 
-import { consultarEstadoDeCaja, type EstadoDeCaja } from "@/server/consultas/caja/estado-de-caja";
-import { listarCobranzasDeSesion, type CobranzaDeSesion } from "@/server/consultas/caja/cobranzas-de-sesion";
-import { listarCuentasSinCobrar, type PaginaDeCuentasSinCobrar } from "@/server/consultas/caja/cuentas-sin-cobrar";
-import { listarMediosDePagoActivos, type MedioDePagoActivo } from "@/server/consultas/caja/medios-de-pago";
+import { consultarEstadoDeCaja, type EstadoDeCaja } from "@/server/lecturas/caja/estado-de-caja";
+import { listarCobranzasDeSesion, type CobranzaDeSesion } from "@/server/lecturas/caja/cobranzas-de-sesion";
+import { listarCuentasSinCobrar, type PaginaDeCuentasSinCobrar } from "@/server/lecturas/caja/cuentas-sin-cobrar";
+import { consultarUltimaSesionDeLaCaja, type UltimaSesionDeLaCaja } from "@/server/lecturas/caja/ultima-sesion-de-la-caja";
+import { listarMediosDePagoActivos, type MedioDePagoActivo } from "@/server/lecturas/caja/medios-de-pago";
 import { requerirVer } from "../con-sesion";
 
 /**
- * Las LECTURAS de la caja (etapa C1, PR-B; docs/diseno-caja-c1-pr-b-permisos-acciones-y-consultas-2026-11-16.md): cada una pide `caja_ver` en la sucursal ACTIVA como primera línea (`requerirVer`) y llama a su consulta de `server/consultas/caja/` con la
+ * Las LECTURAS de la caja (etapa C1, PR-B; docs/diseno-caja-c1-pr-b-permisos-acciones-y-consultas-2026-11-16.md): cada una pide `caja_ver` en la sucursal ACTIVA como primera línea (`requerirVer`) y llama a su lectura de `server/lecturas/caja/` con la
  * sucursal y la empresa del CONTEXTO (nunca una que mande el navegador). Devuelven solo datos de lectura: importes en CENTAVOS como texto, sin datos personales del cliente. El reloj se lee acá, en el borde, y se le pasa a la consulta.
  */
 
@@ -33,4 +34,10 @@ export async function leerCobranzasDeSesion(sesionId: string): Promise<CobranzaD
 export async function leerMediosDeCobro(): Promise<MedioDePagoActivo[]> {
   const ctx = await requerirVer("caja_ver");
   return listarMediosDePagoActivos(ctx.empresaId, ctx.db);
+}
+
+/** La última sesión CERRADA de la caja de la sucursal activa con su arqueo (esperado, contado, «conforme», diferencia con signo, billetes y monedas), o `null` si la caja nunca se cerró. */
+export async function ultimaSesionDeLaCaja(): Promise<UltimaSesionDeLaCaja | null> {
+  const ctx = await requerirVer("caja_ver");
+  return consultarUltimaSesionDeLaCaja(ctx.sucursalId, ctx.db);
 }

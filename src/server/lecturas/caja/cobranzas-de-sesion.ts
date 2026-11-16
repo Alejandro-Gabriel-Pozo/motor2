@@ -1,9 +1,9 @@
 import "server-only";
-import { centavosDeColumna } from "@/core/caja/public";
 import type { Db } from "@/lib/db-tipos";
+import { centavosDeDecimal } from "./centavos-de-decimal";
 
 /**
- * Consulta «cuentas cobradas de una sesión de caja» (etapa C1, PR-B). SOLO LECTURA. Cada cobranza con sus renglones (medio e importe, en el orden en que se cargaron) y el total congelado al cobrar, en CENTAVOS (texto). SIN datos personales: ni el
+ * Lectura «cuentas cobradas de una sesión de caja» (etapa C1, PR-B). SOLO LECTURA. Cada cobranza con sus renglones (medio e importe, en el orden en que se cargaron) y el total congelado al cobrar, en CENTAVOS (texto). SIN datos personales: ni el
  * cliente de la cuenta ni el nombre de quien cobró (solo su id); la mesa y el momento alcanzan para reconocerla. Siempre filtra por la sucursal recibida (la del contexto) además de la RLS: una sesión de otra sucursal devuelve vacío. Más
  * recientes primero, hasta `LIMITE_DE_COBRANZAS_DE_SESION` (una sesión real no se acerca; el tope evita una respuesta sin cota).
  */
@@ -50,9 +50,9 @@ export async function listarCobranzasDeSesion(args: { sucursalId: string; sesion
     cobranzaId: f.id,
     cuentaId: f.cuentaId,
     mesaNumero: f.cuenta.mesa.numero,
-    totalEnCentavos: centavosDeColumna(f.total.toFixed(2)).toString(),
+    totalEnCentavos: centavosDeDecimal(f.total).toString(),
     cobradaEn: f.creadoEn,
     cobradaPorId: f.creadoPorId,
-    renglones: f.cobros.map((c) => ({ orden: c.orden, medioDePagoId: c.medioDePagoId, tipoDeMedio: c.medioDePago.tipo, nombreDeMedio: c.medioDePago.nombre, importeEnCentavos: centavosDeColumna(c.importe.toFixed(2)).toString() })),
+    renglones: f.cobros.map((c) => ({ orden: c.orden, medioDePagoId: c.medioDePagoId, tipoDeMedio: c.medioDePago.tipo, nombreDeMedio: c.medioDePago.nombre, importeEnCentavos: centavosDeDecimal(c.importe).toString() })),
   }));
 }

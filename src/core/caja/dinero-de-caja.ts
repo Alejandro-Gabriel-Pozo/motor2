@@ -27,16 +27,6 @@ export function centavosDeTexto(texto: unknown): bigint | null {
   return centavos < TOPE_EN_CENTAVOS ? centavos : null;
 }
 
-/**
- * Un importe de columna `Decimal(14,2)` leído como texto con 2 decimales (`d.toFixed(2)`: «-123.45») a centavos enteros, sin pasar por `number`. Lanza si no tiene esa forma: es un dato de la base, no de un usuario (la columna nunca da otra cosa).
- */
-export function centavosDeColumna(texto: string): bigint {
-  const m = /^(-?)([0-9]+)\.([0-9]{2})$/.exec(texto);
-  if (!m) throw new Error(`centavosDeColumna: «${texto}» no es un importe de columna con 2 decimales.`);
-  const centavos = BigInt(m[2]!) * BigInt(100) + BigInt(m[3]!);
-  return m[1] === "-" ? -centavos : centavos;
-}
-
 /** El importe de una columna `Decimal(14,2)` (en pesos, 2 decimales) a partir de centavos enteros. Solo para escribir y mostrar: nunca para sumar. */
 export function importeDeCentavos(centavos: bigint): number {
   return Number(centavos) / 100;

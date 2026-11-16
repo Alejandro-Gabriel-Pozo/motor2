@@ -4,7 +4,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { abrirSesionDeCaja, anularMovimientoDeCaja, cerrarSesionDeCaja, cobrarCuenta, registrarMovimientoDeCaja } from "../../src/server/actions/caja/caja";
-import { leerCobranzasDeSesion, leerCuentasSinCobrar, leerEstadoDeCaja, leerMediosDeCobro } from "../../src/server/actions/caja/lecturas-de-caja";
+import { ultimaSesionDeLaCaja, leerCobranzasDeSesion, leerCuentasSinCobrar, leerEstadoDeCaja, leerMediosDeCobro } from "../../src/server/actions/caja/lecturas-de-caja";
 import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { entrarComo, sembrarCuenta, sembrarSalon } from "../pos/salon-fixture";
 import { __setCookieDeTestParaSucursal } from "../setup/next-headers-stub";
@@ -301,6 +301,7 @@ describe("las lecturas de la caja piden `caja_ver` en la sucursal activa", () =>
       await expect(leerCuentasSinCobrar(), nombre).rejects.toThrow(/permiso|acceso|No tenés|no tiene/i);
       await expect(leerCobranzasDeSesion(randomUUID()), nombre).rejects.toThrow(/permiso|acceso|No tenés|no tiene/i);
       await expect(leerMediosDeCobro(), nombre).rejects.toThrow(/permiso|acceso|No tenés|no tiene/i);
+      await expect(ultimaSesionDeLaCaja(), nombre).rejects.toThrow(/permiso|acceso|No tenés|no tiene/i);
     }
   });
 
@@ -368,4 +369,40 @@ describe("las lecturas de la caja piden `caja_ver` en la sucursal activa", () =>
     expect(vistas[0]).toBe(ids[30]);
     expect(primera.items[0]!.totalEnCentavos).toBe("13000");
   }, 120_000);
+
+  describe("ultimaSesionDeLaCaja", () => {
+    it("caja nunca cerrada (ni abierta) = null; una sesión ABIERTA no cuenta", async () => {
+      await como(actores["solo-caja_ver"]!);
+      expect(await ultimaSesionDeLaCaja()).toBeNull();
+      await abrirComoAdmin();
+      await como(actores["solo-caja_ver"]!);
+      expect(await ultimaSesionDeLaCaja()).toBeNull();
+    });
+
+    it("la última cerrada con su arqueo: esperado, contado, diferencia con signo (centavos), billetes y monedas", async () => {
+      const primera = await abrirComoAdmin("100");
+      await como(s.admin);
+      expect(await cerrarSesionDeCaja({ sesionId: primera, billetes: { "100": 1 }, monedas: "0", conformeDeLosDemasMedios: false, observacion: null })).toMatchObject({ ok: true });
+      const segunda = await abrirComoAdmin("100");
+      await como(s.admin);
+      // Esperado 100; se cuentan 2 de 20 + 1 de 100 = 140 + 5.50 de monedas = 145.50: sobran 45.50 = 4550 centavos.
+      expect(await cerrarSesionDeCaja({ sesionId: segunda, billetes: { "100": 1, "20": 2 }, monedas: "5.50", conformeDeLosDemasMedios: false, observacion: "Sobró" })).toMatchObject({ ok: true });
+      await como(actores["solo-caja_ver"]!);
+      const u = await ultimaSesionDeLaCaja();
+      expect(u).toMatchObject({ sesionId: segunda, observacion: "Sobró", monedasEnCentavos: "550" });
+      expect(u?.arqueos).toEqual([expect.objectContaining({ tipo: "EFECTIVO", esperadoEnCentavos: "10000", contadoEnCentavos: "14550", conforme: false, diferenciaEnCentavos: "4550" })]);
+      expect(u?.billetes).toEqual([{ denominacion: 100, cantidad: 1 }, { denominacion: 20, cantidad: 2 }]);
+    });
+
+    it("una diferencia negativa conserva el signo; otra sucursal no ve la sesión de ésta", async () => {
+      const sesion = await abrirComoAdmin("100");
+      await como(s.admin);
+      await cerrarSesionDeCaja({ sesionId: sesion, billetes: { "20": 1 }, monedas: "0", conformeDeLosDemasMedios: false, observacion: null });
+      expect((await ultimaSesionDeLaCaja())?.arqueos[0]?.diferenciaEnCentavos).toBe("-8000");
+      const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
+      const adminNorte = await crearUsuarioConMembresia({ email: "admin-norte2@test.com", sucursalId: norte.id, rolId: await rolDelAdmin() });
+      await como(adminNorte);
+      expect(await ultimaSesionDeLaCaja()).toBeNull();
+    });
+  });
 });

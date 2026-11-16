@@ -25,7 +25,7 @@ Matriz resultante por rol (lo que el gate decide; el piso manda sobre la fila de
 
 | Acción de la pantalla | Gerente | Administrador (rol `admin`) | Operador o rol propio con la fila |
 | --- | --- | --- | --- |
-| Ver la caja y las cuentas sin cobrar (`caja_ver`) | sí | sí | sí, si el gerente se la delega |
+| Ver la caja, las cuentas sin cobrar y la última sesión cerrada (`caja_ver`) | sí | sí | sí, si el gerente se la delega |
 | Abrir la caja (`caja_abrir_sesion`) | sí | sí | sí, si se la delega |
 | Cobrar una cuenta (`cobrar_cuenta`) | sí | sí | sí, si se la delega |
 | Ingreso o egreso manual, anular lo propio (`caja_mover_efectivo`) | sí | sí | NO (el piso es administrador) |
@@ -60,13 +60,14 @@ Adaptadores finos: permiso (primera línea, `conPermiso`) → guard → caso de 
 
 `anularMovimientoDeCaja` decide `puedeAnularAjenos` con el MISMO gate (`requierePermiso` sobre `caja_anular_movimiento_ajeno`), no con una copia de la regla.
 
-## 5. Lecturas (`src/server/actions/caja/lecturas-de-caja.ts` y `src/server/consultas/caja/`)
+## 5. Lecturas (`src/server/actions/caja/lecturas-de-caja.ts` y `src/server/lecturas/caja/`)
 
-Cada lectura pide `caja_ver` en la sucursal ACTIVA como primera línea y llama a su consulta con la sucursal y la empresa del contexto (nada que mande el navegador). Las consultas filtran por sucursal además de la RLS. Importes en CENTAVOS como texto; la pantalla los formatea.
+Cada lectura pide `caja_ver` en la sucursal ACTIVA como primera línea y llama a su lectura con la sucursal y la empresa del contexto (nada que mande el navegador). Las lecturas filtran por sucursal además de la RLS. Importes en CENTAVOS como texto; la pantalla los formatea. Viven en `server/lecturas/` (la capa de las lecturas compartidas) y no en `server/consultas/` porque las usa una Server Action y `server/actions/` no importa de `consultas`; la pantalla las pide con esas acciones (como `buscarFichasDeParte`).
 
 - `leerEstadoDeCaja`: sesión abierta (id, día de negocio, quién la abrió y cuándo), efectivo esperado, esperado por medio y movimientos (con marca de anulado).
-- `leerCuentasSinCobrar(cursor?)`: cuentas cerradas con venta y SIN cobranza (se DERIVA, no hay marca), con mesa, cerrada en y total (el de `cargarCuentaParaCobrar`), de a 30 con cursor. `total-de-cuenta.ts` pasó de `server/persistencia/caja/` a `server/lecturas/caja/` (lectura compartida entre el caso de uso y la consulta: una consulta no puede importar de la persistencia).
+- `leerCuentasSinCobrar(cursor?)`: cuentas cerradas con venta y SIN cobranza (se DERIVA, no hay marca), con mesa, cerrada en y total (el de `cargarCuentaParaCobrar`), de a 30 con cursor. `total-de-cuenta.ts` pasó de `server/persistencia/caja/` a `server/lecturas/caja/` (lectura compartida entre el caso de uso y las lecturas de la caja: una lectura no puede importar de la persistencia).
 - `leerCobranzasDeSesion(sesionId)`: cobranzas con sus renglones y medios, sin datos personales (ni cliente ni nombre de quien cobró).
+- `ultimaSesionDeLaCaja`: la última sesión CERRADA de la caja de la sucursal con su arqueo por medio (esperado, contado, «conforme», diferencia = contado − esperado calculada acá, con signo), billetes por denominación y monedas, o `null` si nunca se cerró; es el resumen de la pantalla «Caja» cerrada (pedido del orquestador, como Pedernal `ultima-sesion-de-la-caja.ts`). Permiso `caja_ver`.
 - `leerMediosDeCobro`: medios de pago activos de la empresa.
 
 ## 6. Tabla «¿qué pasa si…?» de permisos y concurrencia
@@ -79,7 +80,7 @@ Cada lectura pide `caja_ver` en la sucursal ACTIVA como primera línea y llama a
 | Se le desactiva la membresía con la pestaña abierta | No hay contexto: la acción lleva al login (o la lectura lanza) | `obtenerContextoUsuario` |
 | Pierde `caja_anular_movimiento_ajeno` pero conserva `caja_mover_efectivo` | Anula lo propio; lo ajeno devuelve `SIN_PERMISO_SOBRE_MOVIMIENTO_AJENO` | caso de uso con `puedeAnularAjenos` |
 | Una sucursal opera con ids de otra (sesión, cuenta, movimiento) | No se encuentra (`SESION_NO_ENCONTRADA`, `CUENTA_NO_ENCONTRADA`, `MOVIMIENTO_NO_ENCONTRADO`) y la base no cambia | RLS por sucursal + el chequeo de sucursal del caso de uso |
-| Una lectura con id de sesión que no es UUID | Devuelve vacío | consulta |
+| Una lectura con id de sesión que no es UUID | Devuelve vacío | lectura |
 | Mismo pedido dos veces (doble clic) | La segunda devuelve `yaExistia` sin escribir ni auditar | clave de reintento del caso de uso |
 | Pedido mal formado con permiso | Rechazo de guard con código y `campo`, sin tocar la base | `caja.guard.ts` |
 | Pedido mal formado SIN permiso | Dice que falta el permiso (el permiso va antes que el formato) | orden de las capas |

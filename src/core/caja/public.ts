@@ -5,6 +5,6 @@ export { DENOMINACIONES_DE_BILLETE, diferenciaDeArqueo, totalContadoEnCentavos }
 export type { ConteoDeBilletes } from "./arqueo";
 export { MAXIMO_DE_RENGLONES_DE_COBRO, repartirCobro } from "./cobro";
 export type { RenglonDeCobro } from "./cobro";
-export { TOPE_EN_CENTAVOS, centavosDeColumna, centavosDeImporte, centavosDeTexto, importeDeCentavos, textoDeCentavos } from "./dinero-de-caja";
+export { TOPE_EN_CENTAVOS, centavosDeImporte, centavosDeTexto, importeDeCentavos, textoDeCentavos } from "./dinero-de-caja";
 export { CLASES_DE_MOVIMIENTO, importeValidoParaClase, signoDeClase } from "./sesion";
 export type { ClaseDeMovimiento } from "./sesion";
