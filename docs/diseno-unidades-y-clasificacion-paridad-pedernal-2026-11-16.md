@@ -48,8 +48,8 @@ El orden sale de «lo más barato primero» y de que **las migraciones se aprueb
 | **A0** (hecha) | Unidades U0 y merma M0: código puro y función única | No | En `main` (#299, #297) |
 | **A1** | Consultas de **solo lectura** por base: unidades y equivalencias propuestas (U0 del diseño), recetas y líneas con merma (M1), categorías y productos, pares compra+venta (clases §11.3.9) | No | PROPUESTA, sin pedido nuevo: ya diseñadas |
 | **A1b** (actualizado) | **Cantidad exacta con 4 decimales fijos en el stock NUEVO**, como Pedernal: `redondearACantidadDeUnidad` (`transiciones.ts:173`) pasa a `Decimal` y los puntos de llamada dejan de redondear a `Unidad.decimales` y redondean a **4** (detalle en §8). **Sin migración y sin reescribir filas existentes**: las columnas de cantidad ya son `Decimal(14,4)` (**V**: `MovimientoStock.cantidad` `schema.prisma:1419`, `saldoSistema` `:1571`, `RecetaIngrediente.cantidad` `:964`, `CuentaItem.cantidad` `:2500`, `cantidadStock` de factura `:2947` y `:3072`, entre otras). **Antes de aplicar:** medir el efecto en el Kardex con la copia de solo lectura, regenerar los `golden` con motivo declarado, coordinar con el frente 3 (primitiva exacta) | No (código), **cambia resultados de stock nuevo** | **CONFIRMADA** («4 decimales fijos como Pedernal», 2026-11-16) |
-| **A2** | Aditivas y reversibles, **con `down.sql`**, solo escritas y llevadas a `main` (no aplicadas): `Unidad.codigoFijo` (U1), `baseDeCantidad` en las tres tablas de versiones (M2), árbol en `CategoriaProducto` (E1), `ProductoClasificacion` (E2), columna `Producto.clase` (clases E1) | Esquema, no filas | PROPUESTA; **no se escriben hasta que el dueño confirme los niveles 1 a 5 de cada una** (compuerta) |
-| **R4** (actualizado) | Fracciones 2/4/8 y, según P2b, unidad de venta separada: ver `docs/diseno-unidades-y-clasificacion-paridad-pedernal-2026-11-16-fracciones.md`. E0 hecha (#302); E1 a E5 diseñadas; E1b, E2 y E5 piden autorización expresa por base | Esquema + datos (E1b) | Ratificada (2026-11-16); **no escrita** |
+| **A2** | Aditivas y reversibles, **con `down.sql`**, solo escritas y llevadas a `main` (no aplicadas): `Unidad.codigoFijo` (U1), `baseDeCantidad` en las dos tablas de versiones (M2; la de combinaciones, GO-3a, está retirada), árbol en `CategoriaProducto` (E1), `ProductoClasificacion` (E2), columna `Producto.clase` (clases E1) | Esquema, no filas | PROPUESTA; **no se escriben hasta que el dueño confirme los niveles 1 a 5 de cada una** (compuerta) |
+| **R4** (actualizado) | Fracciones 2/4/8 y, unidad de venta separada (**confirmada (b)**): ver `docs/diseno-unidades-y-clasificacion-paridad-pedernal-2026-11-16-fracciones.md`. E0 hecha (#302); E1 a E5 diseñadas; E1b, E2 y E5 piden autorización expresa por base | Esquema + datos (E1b) | Ratificada (2026-11-16); **no escrita** |
 | **A3** | El código lee lo nuevo (U2, M3a, pantallas de clasificación y selector) | No | Después de A2; la pantalla es del frente 6 |
 | **A4** | **Reescriben datos o cambian tipos**, **«requiere autorización expresa por base, con respaldo y ensayo»**: U1b (rellenar `codigoFijo`), U3 (agregar las 14 a empresas existentes), M2b (merma de 2 a 4 decimales), M3b (cargar en bruto y convertir al editar, sin migración pero cambia stock y costo de lo nuevo), clases E1b (relleno parcial) y E6 (**unir pares**), E3 de clasificación (camino en `CuentaItem` **y departamento en `Cuenta`** (actualizado): aditivas, pero la reversión destruye lo sellado) | **Sí** | Nada aplicado; congelamiento vigente |
 
@@ -78,8 +78,8 @@ El orden sale de «lo más barato primero» y de que **las migraciones se aprueb
 | `Unidad` | columna `codigoFijo` (+ CHECK de 14 valores) | U1 |
 | `CategoriaProducto` | `padreId`, `nombreClave`, `version`, `creadoEn`, `actualizadoEn`, único nuevo | E1 |
 | `ProductoClasificacion` (nuevo) | vínculo de solo inserción | E2 |
-| `RecetaVersion`, `VersionDeOpcion`, `RecetaDeCombinacionVersion` | columna `baseDeCantidad` | M2 |
-| `RecetaIngrediente`, `RendimientoLocalIngrediente`, `ConsumoDeOpcion`, `RecetaDeCombinacionIngrediente` | `mermaPorcentaje` de `Decimal(6,2)` a `(7,4)` | M2b |
+| `RecetaVersion`, `VersionDeOpcion` | columna `baseDeCantidad` (la tabla de combinaciones, GO-3a, está retirada y no entra) | M2 |
+| `RecetaIngrediente`, `RendimientoLocalIngrediente`, `ConsumoDeOpcion` | `mermaPorcentaje` de `Decimal(6,2)` a `(7,4)` (la cuarta tabla, de combinaciones, está retirada) | M2b |
 
 **Modelos que se tocan pero NO son solo míos (se piden por turno al orquestador general; ver §3):** `CuentaItem` (E3: dos columnas del camino), `Cuenta` (**0048 confirmado**, entra con E3: se pide el turno al orquestador general), `Producto` (columna de clase y, si se retira, `categoriaId`), `MovimientoStock` y `Presentacion` (no se tocan: ver §3).
 
@@ -141,7 +141,7 @@ Nivel 6 (tablas) **no se diseña de nuevo acá**: las propuestas de esquema ya e
 - **P2. Decimales del stock.** Dueño, 2026-11-16: «4 decimales fijos como Pedernal» (registrada en `motor2-docs`, «tercera tanda»; la cita llega por el orquestador general). **CONFIRMADA** la opción (b): el **stock nuevo** guarda 4 decimales fijos, **no** «los de cada unidad». Alcance y efectos en §8b.
 
 **Fila de espera:**
-- **P2b (la siguiente cuando toque).** Unidad de venta separada: ¿siempre en la unidad de stock o también en otra, como Pedernal? (detalle y opciones en la pieza de fracciones §4; recomendada (a)).
+- **P2b (respondida).** Unidad de venta separada: «También en otra unidad, como Pedernal» (2026-11-16) → **CONFIRMADA (b)**, etapa E5 después de las 14 unidades; ver la pieza de fracciones §4.
 - **P3.** Confirmar «en bloque» las asunciones de clasificación solo del orquestador: diseño del 06/11 («unidad → rubro») reemplazado, vínculo producto → nodo de solo inserción, `CategoriaProducto` ampliada en lugar de tabla nueva.
 - **P4.** ¿Merma a perilla? (solo si el frente 4 la necesita; hoy el frente 4 **no** la crea).
 - **P5.** Por base: unidades o pares que no entren en la regla (con el informe en la mano).
