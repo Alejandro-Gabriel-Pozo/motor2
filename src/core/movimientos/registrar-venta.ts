@@ -82,6 +82,8 @@ export interface DatosVentaEnTx {
 
 export interface OpcionesVentaEnTx {
   permitirStockNegativo?: boolean;
+  /** «Ocultar» (diseño 2026-11-15, I-6, decisión técnica 6): el CIERRE DE UNA CUENTA cobra lo ya cargado aunque el producto se haya ocultado después y lo pone en `true`; la venta directa de mostrador (una línea NUEVA) no: sin esto, un producto oculto se rechaza. Todo nace cerrado: lo que no se declara, rechaza. */
+  permitirOcultosYaCargados?: boolean;
   /** I3: clave y hash del intento, que se guardan en la PRIMERA Operacion del lote junto con el mensaje devuelto (ver registrarVenta). */
   idempotencia?: { clave: string; payloadHash: string };
 }

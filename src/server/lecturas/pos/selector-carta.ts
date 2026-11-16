@@ -1,6 +1,6 @@
 import "server-only";
 import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
-import { whereDisponibleEn } from "@/core/catalogo/public";
+import { whereDisponibleEn, whereNoOcultoEn } from "@/core/catalogo/public";
 import { GENERO_E_ITEM_AGRUPADO_VISIBLE, WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO, WHERE_CUPO_DE_SECCION_ACTIVO, aplicarDescuentoDeProducto, cuposDeSeccionActivos, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, whereCartaDeSucursal, nombreParaMostrar } from "@/core/carta/public";
 import { cargarOpcionesParaVender } from "@/server/lecturas/opciones/opciones-para-vender";
 import { cargarEntradasDePromoParaVender, type CupoDeEntradasLeido } from "@/server/lecturas/pos/entradas-de-promo-para-vender";
@@ -76,7 +76,7 @@ export async function cargarSelectorCartaPos(
   const [carta, productos, preciosLocales, descuentos, precioLocalActivo, generosActivos, contenidosConGenero, agrupadosConGenero, promosCarta] = await Promise.all([
     conCarta ? resolverMenuCarta(sucursalId, db, ahora, precioLocalActivoLeido, "salon", true) : Promise.resolve(null),
     db.producto.findMany({
-      where: { tipo: "PV", ...whereDisponibleEn(sucursalId) },
+      where: { tipo: "PV", ...whereDisponibleEn(sucursalId), ...whereNoOcultoEn(sucursalId) },
       select: { id: true, codigo: true, nombre: true, precioVenta: true, pasoVenta: true, seProduce: true, unidadStock: { select: { decimales: true } } },
     }),
     preciosLocalesVigentes(sucursalId, db, undefined, precioLocalActivoLeido),
