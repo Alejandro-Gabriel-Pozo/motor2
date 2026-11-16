@@ -1,6 +1,14 @@
 import type { ResultadoCaso } from "@/core/resultado-caso";
 import type { ItemMovimientoInput } from "@/core/features/movimientos/movimiento.schema";
-import type { CodigoDeRechazoDeRecepcion, CondicionDePago, MedioDePago } from "@/core/compras/public";
+import type {
+  CodigoDeRechazoDeControl,
+  CodigoDeRechazoDeEntradas,
+  CodigoDeRechazoDeRecepcion,
+  CodigoDeRechazoDeRegistroDeControl,
+  CondicionDePago,
+  CondicionDeControl,
+  MedioDePago,
+} from "@/core/compras/public";
 import type { CabeceraVista, CorreccionCompraInput } from "./compra.schema";
 
 /**
@@ -80,22 +88,53 @@ export type DatosAceptarParteDeFactura = { repetida: true; operacionId: null } |
 
 export type ResultadoAceptarParteDeFactura = ResultadoCaso<DatosAceptarParteDeFactura, CodigoAceptarParteDeFactura>;
 
+/** Una entrada de stock de la recepción: cuánto de UN renglón de la compra entra en UNA sección. Un renglón puede fraccionarse entre varias secciones; la suma de sus entradas es EXACTAMENTE su cantidad. */
+export interface EntradaDeRecepcionInput {
+  renglonId: string;
+  seccionId: string;
+  cantidad: number;
+}
+
 /**
- * Compras, recepción separada (N3-a) — «Confirmar recepción»: un gerente o administrador confirma que llegó la mercadería de una compra cargada «pendiente de recibir» y elige la sección (depósito) y la fecha de stock (entre la fecha de la
- * factura y hoy, en hora argentina). Sin clave de reintento: es idempotente por estado (confirmar dos veces = la segunda devuelve «ya recibida», sin stock nuevo).
+ * Compras, recepción separada (N3-a y N3-b) — «Confirmar recepción»: un gerente o administrador confirma que llegó la mercadería de una compra cargada «pendiente de recibir», elige para cada renglón la sección (depósito) donde entra
+ * (puede dividirlo entre varias) y la fecha de stock (entre la fecha de la factura y hoy, en hora argentina). Sin clave de reintento: es idempotente por estado (confirmar dos veces = la segunda devuelve «ya recibida», sin stock nuevo).
+ * El control de cada línea (conforme, con observaciones, rechazada) se registró antes con `ComandoRegistrarControlDeRecepcion` y NO cambia cuánto stock entra.
  */
 export interface ComandoConfirmarRecepcionDeFactura {
   facturaId: string;
-  seccionId: string;
   /** El mediodía argentino del día de stock elegido. */
   fechaStock: Date;
+  entradas: EntradaDeRecepcionInput[];
 }
 
-export type CodigoConfirmarRecepcionDeFactura = "NO_ENCONTRADA" | CodigoDeRechazoDeRecepcion | "PRODUCTO_NO_DISPONIBLE" | "SIN_LINEAS";
+export type CodigoConfirmarRecepcionDeFactura = "NO_ENCONTRADA" | CodigoDeRechazoDeRecepcion | CodigoDeRechazoDeEntradas | "PRODUCTO_NO_DISPONIBLE" | "SIN_LINEAS";
 
 export type DatosConfirmarRecepcionDeFactura = { operacionId: string; movimientos: number };
 
 export type ResultadoConfirmarRecepcionDeFactura = ResultadoCaso<DatosConfirmarRecepcionDeFactura, CodigoConfirmarRecepcionDeFactura>;
+
+/** El control de UNA línea (renglón) de la compra pendiente: cómo llegó, la observación (obligatoria si no es conforme) y, si se quiere, la cantidad que dice el remito. */
+export interface ControlDeLineaInput {
+  renglonId: string;
+  condicion: CondicionDeControl;
+  observacion?: string | null;
+  cantidadSegunRemito?: number | null;
+}
+
+/**
+ * Compras, recepción separada (N3-b) — «Registrar el control»: quien recibe (incluido el operador) deja constancia de cómo llegó cada línea que controló, ANTES de confirmar la recepción. No se exige controlar todas las líneas (una línea sin control
+ * queda «no se constató»); un renglón se controla UNA vez (no se corrige). Todo o nada: si una línea no sirve, no se guarda ninguna.
+ */
+export interface ComandoRegistrarControlDeRecepcion {
+  facturaId: string;
+  controles: ControlDeLineaInput[];
+}
+
+export type CodigoRegistrarControlDeRecepcion = "NO_ENCONTRADA" | CodigoDeRechazoDeRegistroDeControl | CodigoDeRechazoDeControl | "SIN_CONTROLES" | "RENGLON_AJENO" | "RENGLON_REPETIDO" | "YA_CONTROLADA";
+
+export type DatosRegistrarControlDeRecepcion = { controles: number };
+
+export type ResultadoRegistrarControlDeRecepcion = ResultadoCaso<DatosRegistrarControlDeRecepcion, CodigoRegistrarControlDeRecepcion>;
 
 /** «Anular factura» (administrador): entera y atómica, con motivo. */
 export interface ComandoAnularFacturaProveedor {

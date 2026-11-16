@@ -107,6 +107,34 @@ export async function confirmarParteRecibida(tx: Prisma.TransactionClient, p: { 
   return r.count;
 }
 
+/**
+ * Compras, recepción separada (N3-b): los controles por línea de una parte PENDIENTE, en UN solo INSERT (todo o nada). El id de cada control lo manda la aplicación (uuid). La base arbitra el resto: un control por (parte, renglón), el renglón es de la
+ * factura de la parte y la parte sigue pendiente (disparador). La tabla es de solo inserción para la app.
+ */
+export async function escribirControlesDeLinea(
+  tx: Prisma.TransactionClient,
+  p: {
+    facturaProveedorId: string;
+    parteId: string;
+    registradoPorId: string;
+    controles: readonly { id: string; renglonId: string; condicion: string; observacion: string | null; cantidadSegunRemito: number | null }[];
+  }
+): Promise<number> {
+  const r = await tx.controlDeLineaDeRecepcion.createMany({
+    data: p.controles.map((c) => ({
+      id: c.id,
+      facturaProveedorId: p.facturaProveedorId,
+      facturaProveedorSucursalId: p.parteId,
+      facturaProveedorRenglonId: c.renglonId,
+      condicion: c.condicion,
+      observacion: c.observacion,
+      cantidadSegunRemito: c.cantidadSegunRemito,
+      registradoPorId: p.registradoPorId,
+    })),
+  });
+  return r.count;
+}
+
 /** La propuesta de la parte de una sucursal destino, PENDIENTE, con sus renglones (cantidad > 0). */
 export async function escribirPropuesta(
   tx: Prisma.TransactionClient,

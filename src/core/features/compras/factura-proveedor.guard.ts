@@ -5,9 +5,9 @@ import { esClaveIdempotenciaValida, MENSAJE_CLAVE_DE_REINTENTO_INVALIDA } from "
 import { guardComprobanteDeCompra } from "./compra.guard";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { LARGO_MAXIMO_DETALLE, MAXIMO_LINEAS_POR_OPERACION, validarTextoLibre, validarTopeDeLista } from "@/core/datos/limites";
-import { esCondicionDePago, esMedioDePago } from "@/core/compras/public";
+import { esCondicionDePago, esMedioDePago, validarControlDeLinea } from "@/core/compras/public";
 import { ZONA_ARGENTINA, diaDeCalendario, esDiaISOReal } from "@/core/tiempo/zona-horaria";
-import type { ComandoAceptarParteDeFactura, ComandoAnularFacturaProveedor, ComandoAnularPagoDeFactura, ComandoConfirmarRecepcionDeFactura, ComandoCorregirFacturaProveedor, ComandoDeclararPagoDeFactura, DatosFacturaProveedorInput } from "./factura-proveedor.schema";
+import type { ComandoAceptarParteDeFactura, ComandoAnularFacturaProveedor, ComandoAnularPagoDeFactura, ComandoConfirmarRecepcionDeFactura, ComandoCorregirFacturaProveedor, ComandoDeclararPagoDeFactura, ComandoRegistrarControlDeRecepcion, ControlDeLineaInput, DatosFacturaProveedorInput, EntradaDeRecepcionInput } from "./factura-proveedor.schema";
 
 /**
  * E3a: guards de formato de los tres comandos de la factura de proveedor (docs/diseno-factura-de-proveedor-e3a-2026-10-27.md). Puros, sin base ni permisos: corren dentro de
@@ -82,14 +82,52 @@ export function guardComandoAceptarParteDeFactura(entrada: unknown, ahora: Date)
   return aceptar(entrada as ComandoAceptarParteDeFactura);
 }
 
-/** «Confirmar recepción» (Compras N3-a): la factura, la sección y la fecha de stock (formato; el rango contra la fecha de la factura lo mira el caso de uso, que la conoce). Sin clave de reintento: es idempotente por estado. */
+/**
+ * «Confirmar recepción» (Compras N3-a y N3-b): la factura, las entradas de stock y la fecha de stock (formato; el rango contra la fecha de la factura, las secciones y la suma exacta por renglón los mira el caso de uso, que conoce la factura).
+ * Cada entrada es `{ renglonId, seccionId, cantidad }` con cantidad numérica (la precisión por producto la mira `validarEntradasDeRecepcion`). Sin clave de reintento: es idempotente por estado.
+ */
 export function guardComandoConfirmarRecepcionDeFactura(entrada: unknown, ahora: Date): ResultadoDato<ComandoConfirmarRecepcionDeFactura> {
   const e = (entrada ?? {}) as Partial<Record<keyof ComandoConfirmarRecepcionDeFactura, unknown>>;
   if (typeof e.facturaId !== "string" || !texto(e.facturaId)) return rechazar("vacio", "No se encontró la compra a recibir.");
-  if (typeof e.seccionId !== "string" || !texto(e.seccionId)) return rechazar("vacio", "Elegí la sección donde entra la mercadería.");
+  if (!Array.isArray(e.entradas) || e.entradas.length === 0) return rechazar("vacio", "Elegí la sección donde entra la mercadería.");
+  const excede = validarTopeDeLista(e.entradas, "Las entradas", MAXIMO_LINEAS_POR_OPERACION);
+  if (excede) return rechazar("rango", excede);
+  const entradas: EntradaDeRecepcionInput[] = [];
+  for (const crudo of e.entradas as unknown[]) {
+    const x = (crudo ?? {}) as Partial<Record<keyof EntradaDeRecepcionInput, unknown>>;
+    if (typeof x.renglonId !== "string" || !texto(x.renglonId)) return rechazar("vacio", "Hay una entrada sin renglón.");
+    if (typeof x.seccionId !== "string" || !texto(x.seccionId)) return rechazar("vacio", "Elegí la sección donde entra la mercadería.");
+    if (typeof x.cantidad !== "number" || !Number.isFinite(x.cantidad)) return rechazar("formato", "Cada cantidad tiene que ser un número.");
+    entradas.push({ renglonId: texto(x.renglonId), seccionId: texto(x.seccionId), cantidad: x.cantidad });
+  }
   const fecha = validarFechaDeCompra(e.fechaStock, ahora);
   if (!fecha.ok) return rechazar(fecha.codigo, fecha.mensaje);
-  return aceptar({ facturaId: texto(e.facturaId), seccionId: texto(e.seccionId), fechaStock: e.fechaStock as Date });
+  return aceptar({ facturaId: texto(e.facturaId), fechaStock: e.fechaStock as Date, entradas });
+}
+
+/**
+ * «Registrar el control» (Compras N3-b): la factura y los controles de las líneas (formato: renglón, condición de la lista, observación y cantidad según remito por `validarControlDeLinea`; un renglón no se repite). Que el renglón sea de la compra, que
+ * no tenga ya control y el estado de la parte los mira el caso de uso. Devuelve los controles ya normalizados (observación en su forma canónica).
+ */
+export function guardComandoRegistrarControlDeRecepcion(entrada: unknown): ResultadoDato<ComandoRegistrarControlDeRecepcion> {
+  const e = (entrada ?? {}) as Partial<Record<keyof ComandoRegistrarControlDeRecepcion, unknown>>;
+  if (typeof e.facturaId !== "string" || !texto(e.facturaId)) return rechazar("vacio", "No se encontró la compra a controlar.");
+  if (!Array.isArray(e.controles) || e.controles.length === 0) return rechazar("vacio", "Indicá cómo llegó al menos una línea.");
+  const excede = validarTopeDeLista(e.controles, "Los controles", MAXIMO_LINEAS_POR_OPERACION);
+  if (excede) return rechazar("rango", excede);
+  const vistos = new Set<string>();
+  const controles: ControlDeLineaInput[] = [];
+  for (const crudo of e.controles as unknown[]) {
+    const x = (crudo ?? {}) as Partial<Record<keyof ControlDeLineaInput, unknown>>;
+    if (typeof x.renglonId !== "string" || !texto(x.renglonId)) return rechazar("vacio", "Hay un control sin renglón.");
+    const renglonId = texto(x.renglonId);
+    if (vistos.has(renglonId)) return rechazar("formato", "Un renglón no puede tener dos controles.");
+    vistos.add(renglonId);
+    const c = validarControlDeLinea({ condicion: x.condicion, observacion: x.observacion, cantidadSegunRemito: x.cantidadSegunRemito });
+    if (!c.ok) return rechazar("formato", c.mensaje);
+    controles.push({ renglonId, condicion: c.valor.condicion, observacion: c.valor.observacion, cantidadSegunRemito: c.valor.cantidadSegunRemito });
+  }
+  return aceptar({ facturaId: texto(e.facturaId), controles });
 }
 
 /** «Anular factura»: la factura y el motivo (obligatorio, 1 a 200 caracteres). */

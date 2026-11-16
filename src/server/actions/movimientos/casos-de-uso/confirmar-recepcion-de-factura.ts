@@ -3,6 +3,8 @@ import {
   MENSAJE_RECEPCION_NO_ENCONTRADA,
   MENSAJE_RECEPCION_YA_RECIBIDA,
   decidirConfirmacionDeRecepcion,
+  prorratearPrecioDeRenglon,
+  validarEntradasDeRecepcion,
   type SeccionParaRecibir,
 } from "@/core/compras/public";
 import type { ComandoConfirmarRecepcionDeFactura, ResultadoConfirmarRecepcionDeFactura } from "@/core/features/compras/factura-proveedor.schema";
@@ -23,18 +25,20 @@ class ParteYaRecibida extends Error {}
 
 /**
  * Caso de uso «confirmar la recepción de una compra pendiente» (Compras N3-a, recepción separada; docs/diseno-compras-paridad-escalera-2026-11-16.md, CU-2): un gerente o administrador de la sucursal confirma que llegó la mercadería de una factura
- * cargada «pendiente de recibir» y elige la sección (depósito) y la fecha de stock. Recién acá entran su stock, su costo y su gasto: la compra (`Operacion` COMPRA + una línea del Kardex por renglón, con su renglón) se escribe como la escribe
- * «cargar factura» cuando el módulo está apagado.
+ * cargada «pendiente de recibir» y elige, para cada renglón, la sección (depósito) donde entra (puede dividirlo entre varias: N3-b) y la fecha de stock. Recién acá entran su stock, su costo y su gasto: la compra (`Operacion` COMPRA + una línea del
+ * Kardex por entrada, con su renglón) se escribe como la escribe «cargar factura» cuando el módulo está apagado. El control por línea (conforme, con observaciones, rechazada; `registrar-control-de-recepcion.ts`) NO cambia cuánto stock entra: una línea
+ * RECHAZADA entra igual, en la sección que elige quien recibe (decisión 2026-11-16: todavía no hay depósito de rechazo).
  *
  * `import "server-only"` y SIN `"use server"`: no chequea permisos (la Server Action pidió `compra_recibir` en la sucursal activa: del módulo `recepcion_de_compras`, piso administrador) ni el formato (`guardComandoConfirmarRecepcionDeFactura`).
  *
  * En UNA transacción SERIALIZABLE:
  *  1. `SELECT … FOR UPDATE` de la cabecera de la factura (serializa contra la anulación y contra otra confirmación); no existe en la empresa (la RLS esconde las ajenas) → «no se encontró»;
- *  2. `decidirConfirmacionDeRecepcion` (regla pura, contrastada con el oráculo): la parte es de esta sucursal, la factura no está anulada, la parte sigue pendiente, la sección es de esta sucursal y está activa, y la fecha de stock está
- *     entre la fecha de la factura y hoy (días en hora argentina); cada producto sigue habilitado en esta sucursal;
- *  3. arma las líneas desde los renglones guardados (la parte única recibe el renglón ENTERO, con su cantidad, sus pesos, su lote y su detalle TAL CUAL), escribe la compra y marca la parte RECIBIDA con su compra, con `WHERE estado = 'PENDIENTE'`:
+ *  2. `decidirConfirmacionDeRecepcion` (regla pura, contrastada con el oráculo): la parte es de esta sucursal, la factura no está anulada, la parte sigue pendiente, cada sección es de esta sucursal y está activa, y la fecha de stock está
+ *     entre la fecha de la factura y hoy (días en hora argentina); `validarEntradasDeRecepcion`: por cada renglón la SUMA de sus entradas es EXACTAMENTE su cantidad (diferencia declarada con Pedernal, donde es menor o igual: acá no hay otra
+ *     cantidad recibida); cada producto sigue habilitado en esta sucursal;
+ *  3. arma una línea del Kardex por entrada desde los renglones guardados (el precio TOTAL del renglón se reparte en proporción exacta a la cantidad; el precio por unidad, el lote y el detalle, TAL CUAL), escribe la compra y marca la parte RECIBIDA con su compra, con `WHERE estado = 'PENDIENTE'`:
  *     si no tocó ninguna fila, ganó otra confirmación y se deshace todo (no queda compra huérfana); la segunda barrera es el disparador de la base (una parte recibida no vuelve atrás);
- *  4. audita (`FacturaProveedor`, campo `recepcion`, de PENDIENTE a RECIBIDA: quién (`actorId`), cuándo (el registro) y, en la descripción, la sección y la fecha de stock).
+ *  4. audita (`FacturaProveedor`, campo `recepcion`, de PENDIENTE a RECIBIDA: quién (`actorId`), cuándo (el registro) y, en la descripción, las secciones y la fecha de stock).
  * Idempotente por ESTADO, sin clave de reintento: confirmar dos veces devuelve «ya recibida» sin crear stock de nuevo.
  *
  * @contract Confirma la recepción de la parte pendiente de una sucursal exactamente una vez: entra su stock con la fecha elegida, o no entra nada.
@@ -52,11 +56,15 @@ export async function confirmarRecepcionDeFacturaCasoDeUso(
     if (!factura) return fracaso("NO_ENCONTRADA", MENSAJE_RECEPCION_NO_ENCONTRADA);
 
     const parte = await cargarParteDeFacturaEnSucursal(tx, factura.id, actor.sucursalId);
-    const seccion = await obtenerSeccionPropia(comando.seccionId, actor.sucursalId, tx);
+    // Cada sección elegida: de esta sucursal y activa. El estado que decide la regla es el PEOR de todas (ajena, después inactiva): así una sola regla pura cubre una o varias secciones.
+    const seccionesPorId = new Map<string, Awaited<ReturnType<typeof obtenerSeccionPropia>>>();
+    for (const id of new Set(comando.entradas.map((e) => e.seccionId))) seccionesPorId.set(id, await obtenerSeccionPropia(id, actor.sucursalId, tx));
+    const secciones = [...seccionesPorId.values()];
+    const inactiva = secciones.find((s) => s && !s.activa);
+    const estadoDeLaSeccion: SeccionParaRecibir = secciones.some((s) => !s) ? "AJENA" : inactiva ? "INACTIVA" : "PROPIA_ACTIVA";
     const diaFactura = diaDeCalendario(factura.fecha, ZONA_ARGENTINA);
     const diaStock = diaDeCalendario(comando.fechaStock, ZONA_ARGENTINA);
     const hoy = diaDeCalendario(actor.ahora, ZONA_ARGENTINA);
-    const estadoDeLaSeccion: SeccionParaRecibir = !seccion ? "AJENA" : seccion.activa ? "PROPIA_ACTIVA" : "INACTIVA";
     const decision = decidirConfirmacionDeRecepcion({
       esDeLaSucursalDelActor: parte !== null,
       facturaAnulada: Boolean(factura.anuladaEn),
@@ -67,14 +75,20 @@ export async function confirmarRecepcionDeFacturaCasoDeUso(
       hoy,
     });
     if (!decision.ok) {
-      if (decision.codigo === "SECCION_INACTIVA") return fracaso("SECCION_INACTIVA", mensajeSeccionDesactivada(seccion?.nombre ?? ""));
+      if (decision.codigo === "SECCION_INACTIVA") return fracaso("SECCION_INACTIVA", mensajeSeccionDesactivada(inactiva?.nombre ?? ""));
       return fracaso(decision.codigo, decision.mensaje);
     }
-    // La regla ya garantizó parte y sección; esto solo lo deja claro para el compilador.
-    if (!parte || !seccion) return fracaso("NO_ENCONTRADA", MENSAJE_RECEPCION_NO_ENCONTRADA);
+    // La regla ya garantizó la parte y las secciones; esto solo lo deja claro para el compilador.
+    if (!parte) return fracaso("NO_ENCONTRADA", MENSAJE_RECEPCION_NO_ENCONTRADA);
 
     const renglones = await cargarRenglonesParaRecibir(tx, factura.id);
     if (!renglones.length) return fracaso("SIN_LINEAS", "La compra no tiene mercadería para recibir.");
+    // Las entradas: cada renglón de mercadería entra en una o varias secciones y la suma de sus entradas es EXACTAMENTE su cantidad.
+    const entradasValidas = validarEntradasDeRecepcion(
+      renglones.map((r) => ({ renglonId: r.facturaProveedorRenglonId, cantidad: r.cantidadStock, decimales: r.decimalesDeLaUnidad })),
+      comando.entradas
+    );
+    if (!entradasValidas.ok) return fracaso(entradasValidas.codigo, entradasValidas.mensaje);
     for (const r of renglones) {
       if (!(await productoDisponibleEn(actor.sucursalId, r.productoId, tx))) {
         return fracaso("PRODUCTO_NO_DISPONIBLE", `«${r.productoNombre}» no está disponible en «${actor.sucursalNombre}»: pedí que lo habiliten o que anulen la factura y la vuelvan a cargar.`);
@@ -95,28 +109,32 @@ export async function confirmarRecepcionDeFacturaCasoDeUso(
       claveIdempotencia: null,
       payloadHash: null,
     });
-    const escritas = await escribirLineasDeMovimientoStock(
-      tx,
-      renglones.map((r) => ({
+    // UNA línea del Kardex por entrada, en el orden de los renglones y de las entradas. El precio TOTAL del renglón se reparte en proporción exacta a la cantidad de cada entrada (la suma da el precio del renglón al centavo); el precio por unidad
+    // de stock, el lote y el detalle son los del renglón en todas. La condición del control (conforme, con observaciones, rechazada) NO cambia cuánto stock entra.
+    const lineas = renglones.flatMap((r) => {
+      const deEsteRenglon = comando.entradas.filter((e) => e.renglonId === r.facturaProveedorRenglonId);
+      const precios = prorratearPrecioDeRenglon(r.precioTotal, deEsteRenglon.map((e) => e.cantidad));
+      return deEsteRenglon.map((e, i) => ({
         operacionId: operacion.id,
         productoId: r.productoId,
-        seccionId: seccion.id,
-        proceso: "COMPRA",
-        cantidad: r.cantidadStock,
+        seccionId: e.seccionId,
+        proceso: "COMPRA" as const,
+        cantidad: e.cantidad,
         loteVencimiento: r.loteVencimiento,
         detalle: r.detalle,
-        precioTotal: r.precioTotal,
+        precioTotal: precios[i] ?? 0,
         precioPorUnidadStock: r.precioPorUnidadStock,
         facturaProveedorRenglonId: r.facturaProveedorRenglonId,
-      }))
-    );
+      }));
+    });
+    const escritas = await escribirLineasDeMovimientoStock(tx, lineas);
     const confirmadas = await confirmarParteRecibida(tx, { parteId: parte.id, operacionId: operacion.id, recibidaEn: comando.fechaStock, recibidaPorId: actor.usuarioId });
     if (confirmadas !== 1) throw new ParteYaRecibida();
 
     await registrarCambioAuditado(tx, {
       entidad: "FacturaProveedor",
       entidadId: factura.id,
-      descripcion: `Recepción de la compra${factura.nroFactura ? ` ${factura.nroFactura}` : ""} confirmada en «${actor.sucursalNombre}» (sección «${seccion.nombre}», fecha de stock ${diaStock})`,
+      descripcion: `Recepción de la compra${factura.nroFactura ? ` ${factura.nroFactura}` : ""} confirmada en «${actor.sucursalNombre}» (${secciones.length === 1 ? `sección «${secciones[0]?.nombre ?? ""}»` : `secciones ${secciones.map((x) => `«${x?.nombre ?? ""}»`).join(", ")}`}, fecha de stock ${diaStock})`,
       campo: "recepcion",
       valorAnterior: "PENDIENTE",
       valorNuevo: "RECIBIDA",

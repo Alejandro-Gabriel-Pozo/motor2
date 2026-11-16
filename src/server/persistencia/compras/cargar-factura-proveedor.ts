@@ -123,13 +123,15 @@ export interface RenglonParaRecibir {
   precioPorUnidadStock: number;
   loteVencimiento: Date | null;
   detalle: string;
+  /** Decimales de la unidad de stock del producto (la precisión con que se puede fraccionar el renglón entre secciones). */
+  decimalesDeLaUnidad: number;
 }
 
 /** Compras, recepción separada (N3-a): los renglones de mercadería de la factura, en su orden, con lo que el Kardex necesita de cada uno (la parte única recibe el renglón ENTERO). Los renglones sin producto (gastos) no entran al stock. */
 export async function cargarRenglonesParaRecibir(tx: Db, facturaProveedorId: string): Promise<RenglonParaRecibir[]> {
   const filas = await tx.facturaProveedorRenglon.findMany({
     where: { facturaProveedorId, productoId: { not: null } },
-    select: { id: true, productoId: true, cantidadStock: true, precioTotal: true, precioPorUnidadStock: true, loteVencimiento: true, detalle: true, producto: { select: { nombre: true } } },
+    select: { id: true, productoId: true, cantidadStock: true, precioTotal: true, precioPorUnidadStock: true, loteVencimiento: true, detalle: true, producto: { select: { nombre: true, unidadStock: { select: { decimales: true } } } } },
     orderBy: { orden: "asc" },
   });
   return filas.map((r) => ({
@@ -141,7 +143,14 @@ export async function cargarRenglonesParaRecibir(tx: Db, facturaProveedorId: str
     precioPorUnidadStock: Number(r.precioPorUnidadStock ?? 0),
     loteVencimiento: r.loteVencimiento,
     detalle: r.detalle ?? "COMPRA",
+    decimalesDeLaUnidad: r.producto?.unidadStock.decimales ?? 4,
   }));
+}
+
+/** Compras, recepción separada (N3-b): los renglones de esa parte que ya tienen control (los ids de renglón). */
+export async function cargarRenglonesYaControlados(tx: Db, parteId: string): Promise<Set<string>> {
+  const filas = await tx.controlDeLineaDeRecepcion.findMany({ where: { facturaProveedorSucursalId: parteId }, select: { facturaProveedorRenglonId: true } });
+  return new Set(filas.map((f) => f.facturaProveedorRenglonId));
 }
 
 /** Las partes de la factura que se ven con el alcance del contexto (sucursal, nombre y su compra). */

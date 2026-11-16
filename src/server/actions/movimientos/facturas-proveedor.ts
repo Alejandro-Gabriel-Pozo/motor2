@@ -1,15 +1,17 @@
 "use server";
 
-import { guardComandoAceptarParteDeFactura, guardComandoAnularFacturaProveedor, guardComandoConfirmarRecepcionDeFactura, guardComandoCorregirFacturaProveedor, guardComandoRegistrarFacturaProveedor } from "@/core/features/compras/factura-proveedor.guard";
+import { guardComandoAceptarParteDeFactura, guardComandoAnularFacturaProveedor, guardComandoConfirmarRecepcionDeFactura, guardComandoCorregirFacturaProveedor, guardComandoRegistrarControlDeRecepcion, guardComandoRegistrarFacturaProveedor } from "@/core/features/compras/factura-proveedor.guard";
 import type { CabeceraVista as CabeceraVistaSchema, CorreccionCompraInput as CorreccionCompraInputSchema } from "@/core/features/compras/compra.schema";
-import type { DatosFacturaProveedorInput } from "@/core/features/compras/factura-proveedor.schema";
+import type { ControlDeLineaInput, DatosFacturaProveedorInput, EntradaDeRecepcionInput } from "@/core/features/compras/factura-proveedor.schema";
 import { aResultadoAccion } from "@/core/resultado-caso";
+import { azarDelProceso } from "@/lib/azar";
 import { conPermiso, exigirTambienPermisoDeEmpresa } from "../con-permiso";
 import { error, type ResultadoAccion } from "../tipos";
 import { aceptarPropuestaDeFacturaCasoDeUso } from "./casos-de-uso/aceptar-propuesta-de-factura";
 import { anularFacturaProveedorCasoDeUso } from "./casos-de-uso/anular-factura-proveedor";
 import { confirmarRecepcionDeFacturaCasoDeUso } from "./casos-de-uso/confirmar-recepcion-de-factura";
 import { corregirFacturaProveedorCasoDeUso } from "./casos-de-uso/corregir-factura-proveedor";
+import { registrarControlDeRecepcionCasoDeUso } from "./casos-de-uso/registrar-control-de-recepcion";
 import { registrarFacturaProveedorCasoDeUso } from "./casos-de-uso/registrar-factura-proveedor";
 
 /**
@@ -43,14 +45,27 @@ export async function aceptarPropuestaDeFactura(propuestaId: string, seccionId: 
 }
 
 /**
- * Compras, recepción separada (N3-a): «Confirmar recepción» de una compra cargada «pendiente de recibir». Permiso `compra_recibir` en la sucursal activa (módulo `recepcion_de_compras`, piso administrador: gerente y administrador, no el
- * operador); la parte tiene que ser de esa sucursal (lo verifica el caso de uso). El actor y la hora salen del servidor; el cliente solo manda la factura, la sección y el día de stock. Idempotente por estado: confirmar dos veces no carga stock de nuevo.
+ * Compras, recepción separada (N3-a y N3-b): «Confirmar recepción» de una compra cargada «pendiente de recibir». Permiso `compra_recibir` en la sucursal activa (módulo `recepcion_de_compras`, piso administrador: gerente y administrador, no el
+ * operador); la parte tiene que ser de esa sucursal (lo verifica el caso de uso). El actor y la hora salen del servidor; el cliente solo manda la factura, las entradas (renglón, sección y cantidad; un renglón se puede dividir entre secciones) y el día
+ * de stock. Idempotente por estado: confirmar dos veces no carga stock de nuevo.
  */
-export async function confirmarRecepcionDeFactura(facturaId: string, seccionId: string, fechaStock: Date): Promise<ResultadoAccion> {
+export async function confirmarRecepcionDeFactura(facturaId: string, entradas: EntradaDeRecepcionInput[], fechaStock: Date): Promise<ResultadoAccion> {
   return conPermiso("compra_recibir", async (ctx) => {
-    const comando = guardComandoConfirmarRecepcionDeFactura({ facturaId, seccionId, fechaStock }, ctx.ahora);
+    const comando = guardComandoConfirmarRecepcionDeFactura({ facturaId, entradas, fechaStock }, ctx.ahora);
     if (!comando.ok) return error(comando.mensaje);
     return aResultadoAccion(await confirmarRecepcionDeFacturaCasoDeUso(ctx, comando.valor));
+  });
+}
+
+/**
+ * Compras, recepción separada (N3-b): «Registrar el control» de las líneas de una compra pendiente de recibir (conforme, con observaciones o rechazada). Permiso `compra_controlar_recepcion` en la sucursal activa (módulo `recepcion_de_compras`,
+ * piso operario: lo registra «quien recibe», también el operador; confirmar sigue siendo del gerente y el administrador). Todo o nada; un renglón se controla una vez.
+ */
+export async function registrarControlDeRecepcion(facturaId: string, controles: ControlDeLineaInput[]): Promise<ResultadoAccion> {
+  return conPermiso("compra_controlar_recepcion", async (ctx) => {
+    const comando = guardComandoRegistrarControlDeRecepcion({ facturaId, controles });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await registrarControlDeRecepcionCasoDeUso(ctx, comando.valor, azarDelProceso));
   });
 }
 
