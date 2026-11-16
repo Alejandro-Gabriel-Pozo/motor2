@@ -146,6 +146,16 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 - **Estado:** ACEPTADA
 - **Cita del dueño:** «Los textos encargarte vos trata de reducir, textos, inventariar y empezar a reutilizar y que representen 1 sola cosa, definir primitivas e invariantes en texto igual que pedernal; Sí, confirmo esos límites (Recomendada)» — 2026-11-16 — chat del dueño con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, «Palabras literales del dueño» y «Respuesta literal del dueño»; la pantalla: «CONFIRMADA — Pantalla de Ocultar», mismo archivo); lote aceptado por el orquestador por delegación (2026-11-16)
 
+### DEC-0016
+- **Fecha:** 2026-11-16
+- **Quién:** la sesión Sonnet de los lotes de reducción del catálogo de textos (lote E); aceptación directa del dueño.
+- **Qué decidió:** siete rótulos de dinero de columnas de los reportes, escritos idénticos en varios archivos de `src/app/(app)/reportes/` (21 apariciones en 10 archivos), pasan a una clave `columna.<tema>` cada uno con EXACTAMENTE las mismas palabras: Importe (8), Cobrado (3), Margen (2), Food cost % (2), Costo unitario (2), A precio de lista (2) y Margen Real (cobrado) (2). El cliente no ve ningún cambio. «Margen» se mira uno por uno: en los dos reportes significa lo mismo (monto con su porcentaje entre paréntesis).
+- **Por qué:** el dueño pidió reducir, inventariar y reutilizar los textos para que cada uno represente una sola cosa; son rótulos de dinero y por eso él decidió que pasen con las mismas palabras (`docs/diseno-textos-en-datos-2026-11-16.md`, familia D-4).
+- **Costo de revertir:** bajo: volver a escribir la palabra en cada columna y borrar las siete entradas; no hay migración ni datos.
+- **Dónde:** `src/core/textos/catalogo.ts`, `test/arquitectura/guardas/catalogo-de-textos.ts`
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Sí, mismas palabras (Recomendada)» — 2026-11-16 — chat del dueño con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, «Textos: cuatro respuestas del dueño sobre la lista única»)
+
 ### DEC-0018
 - **Fecha:** 2026-11-16
 - **Quién:** la sesión Sonnet de los lotes del catálogo de textos (F1' de permisos); aceptación directa del dueño y forma aprobada por el orquestador.
