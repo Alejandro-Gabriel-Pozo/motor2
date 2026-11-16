@@ -19,11 +19,14 @@ export function ActivarDesactivarFila({
   activo,
   aviso,
   accion,
+  textoActivar,
 }: {
   activo: boolean;
   /** Qué implica desactivar; se muestra junto a la confirmación. */
   aviso: string;
   accion: () => Promise<ResultadoAccion>;
+  /** Texto del botón que vuelve a activar; sin él, «Activar». */
+  textoActivar?: string;
 }) {
   const router = useRouter();
   const [resultado, setResultado] = useState<ResultadoAccion | null>(null);
@@ -41,7 +44,7 @@ export function ActivarDesactivarFila({
 
   return (
     <div className="flex flex-col gap-1">
-      <BotonActivarDesactivar activo={activo} ocupado={pending} aviso={aviso} onCambiar={cambiar} />
+      <BotonActivarDesactivar activo={activo} ocupado={pending} aviso={aviso} onCambiar={cambiar} textoActivar={textoActivar} />
       {resultado && (
         <Aviso variante={resultado.ok ? "exito" : "error"} forma="en-linea">
           {resultado.mensaje}
