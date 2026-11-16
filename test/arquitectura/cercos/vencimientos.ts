@@ -59,6 +59,16 @@ export const VENCIMIENTOS_DE_LISTAS: readonly VencimientoDeLista[] = [
     aprobacion: { por: "dueño (pendiente de aprobar al mergear el PR)", referencia: "PR #234" },
     motivo: "Archivos de src/ que ya pasaban de 400 líneas al instalar el cerco: cada uno se parte por responsabilidad en un trabajo aparte (propuesta de plazo: 60 días; la corrige el dueño).",
   },
+  // Textos a mano (T2 del catálogo de textos, 2026-11-16): deuda que ya existía al instalar el cerco (textos escritos a mano en `src/` y `plataforma/src/`); se declara sin pagarla (migrarlos al catálogo
+  // `src/core/textos/` es el tramo T4/T7 del diseño, familia por familia), plazo máximo desde el 2026-11-16. La aprobación queda PENDIENTE de quien mergee el PR de T2 (T1 fue el PR #316).
+  {
+    regla: "textos-a-mano",
+    inicio: "2026-11-16",
+    vence: "2027-01-15",
+    responsable: "dueño",
+    aprobacion: { por: "dueño (pendiente de aprobar al mergear el PR)", referencia: "PR #316" },
+    motivo: "Textos que una persona lee y que ya estaban escritos a mano al instalar el cerco: cada familia pasa al catálogo de textos en los tramos T4 y T7 del diseño (propuesta de plazo: 60 días; la corrige el dueño).",
+  },
   // Estructura de pantalla (PR #219, 2026-11-09): las 90 pantallas se adoptan por etapas E-B…E-H (docs/diseno-estructura-de-pantalla-1366x768-2026-11-09.md, §12). Plazo máximo; se renueva con motivo si una etapa se atrasa.
   {
     regla: "pantallas-con-estructura",

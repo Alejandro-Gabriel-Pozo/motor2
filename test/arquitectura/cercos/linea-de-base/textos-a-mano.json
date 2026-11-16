@@ -1,0 +1,1572 @@
+{
+  "regla": "textos-a-mano",
+  "meta": "bajar hacia 0: cada texto que una persona lee sale del catálogo `src/core/textos/` (`textoDe`), con su fuente y sus usos; el texto nuevo no entra a mano",
+  "total": 3452,
+  "entradas": 426,
+  "porTipo": {
+    "atributo-aria-label": 167,
+    "atributo-label": 4,
+    "atributo-placeholder": 79,
+    "atributo-title": 52,
+    "jsx-texto": 2424,
+    "mensaje-error": 25,
+    "mensaje-exito": 272,
+    "mensaje-fracaso": 426,
+    "mensaje-ok": 3
+  },
+  "cuentas": {
+    "plataforma/src/app/instalaciones/[instalacion]/empresas/[id]/botones.tsx": {
+      "jsx-texto": 29
+    },
+    "plataforma/src/app/instalaciones/[instalacion]/empresas/[id]/confirmacion.tsx": {
+      "jsx-texto": 3
+    },
+    "plataforma/src/app/instalaciones/[instalacion]/empresas/[id]/modulos/page.tsx": {
+      "jsx-texto": 8
+    },
+    "plataforma/src/app/instalaciones/[instalacion]/empresas/[id]/page.tsx": {
+      "jsx-texto": 12
+    },
+    "plataforma/src/app/instalaciones/[instalacion]/empresas/nueva/formulario.tsx": {
+      "atributo-placeholder": 1,
+      "jsx-texto": 10
+    },
+    "plataforma/src/app/instalaciones/[instalacion]/empresas/page.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 16
+    },
+    "plataforma/src/app/instalaciones/[instalacion]/error.tsx": {
+      "jsx-texto": 5
+    },
+    "plataforma/src/app/instalaciones/[instalacion]/layout.tsx": {
+      "atributo-aria-label": 1
+    },
+    "plataforma/src/app/login/formulario.tsx": {
+      "jsx-texto": 10
+    },
+    "plataforma/src/app/page.tsx": {
+      "jsx-texto": 15
+    },
+    "src/app/(app)/administracion/auditoria/page.tsx": {
+      "jsx-texto": 4
+    },
+    "src/app/(app)/administracion/auditoria/tabla-auditoria.tsx": {
+      "jsx-texto": 1
+    },
+    "src/app/(app)/administracion/capacidades-sucursal/page.tsx": {
+      "atributo-aria-label": 2,
+      "jsx-texto": 5
+    },
+    "src/app/(app)/administracion/empresa/page.tsx": {
+      "jsx-texto": 3
+    },
+    "src/app/(app)/administracion/gerencia/page.tsx": {
+      "jsx-texto": 2
+    },
+    "src/app/(app)/administracion/gerencia/traspaso-gerencia.tsx": {
+      "jsx-texto": 5
+    },
+    "src/app/(app)/administracion/permisos/page.tsx": {
+      "jsx-texto": 1
+    },
+    "src/app/(app)/administracion/permisos/permisos-matriz.tsx": {
+      "atributo-aria-label": 6,
+      "atributo-title": 3,
+      "jsx-texto": 24
+    },
+    "src/app/(app)/administracion/roles/page.tsx": {
+      "jsx-texto": 1
+    },
+    "src/app/(app)/administracion/roles/roles-tabla.tsx": {
+      "atributo-aria-label": 4,
+      "atributo-placeholder": 1,
+      "atributo-title": 1,
+      "jsx-texto": 12
+    },
+    "src/app/(app)/administracion/sucursales/page.tsx": {
+      "atributo-aria-label": 4,
+      "atributo-placeholder": 2,
+      "jsx-texto": 9
+    },
+    "src/app/(app)/administracion/usuarios/page.tsx": {
+      "jsx-texto": 1
+    },
+    "src/app/(app)/administracion/usuarios/usuarios-tabla.tsx": {
+      "atributo-aria-label": 4,
+      "atributo-placeholder": 1,
+      "jsx-texto": 30
+    },
+    "src/app/(app)/carta/agregar-entrada-de-lugar.tsx": {
+      "jsx-texto": 33
+    },
+    "src/app/(app)/carta/agrupados/page.tsx": {
+      "atributo-placeholder": 2,
+      "jsx-texto": 49
+    },
+    "src/app/(app)/carta/mantenimiento-de-carta.tsx": {
+      "atributo-aria-label": 6,
+      "atributo-placeholder": 2,
+      "jsx-texto": 38
+    },
+    "src/app/(app)/carta/nombres-de-carta-pendientes.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 4
+    },
+    "src/app/(app)/carta/page.tsx": {
+      "jsx-texto": 11
+    },
+    "src/app/(app)/carta/parametrizacion/apariencia/page.tsx": {
+      "jsx-texto": 1
+    },
+    "src/app/(app)/carta/parametrizacion/formularios.tsx": {
+      "atributo-placeholder": 6,
+      "jsx-texto": 19
+    },
+    "src/app/(app)/carta/parametrizacion/generos/page.tsx": {
+      "jsx-texto": 12
+    },
+    "src/app/(app)/carta/parametrizacion/promociones/donde-se-ve.tsx": {
+      "jsx-texto": 5
+    },
+    "src/app/(app)/carta/parametrizacion/promociones/page.tsx": {
+      "jsx-texto": 42
+    },
+    "src/app/(app)/carta/parametrizacion/secciones/[id]/page.tsx": {
+      "jsx-texto": 9
+    },
+    "src/app/(app)/carta/parametrizacion/secciones/ordenar-secciones.tsx": {
+      "atributo-aria-label": 3,
+      "jsx-texto": 24
+    },
+    "src/app/(app)/carta/parametrizacion/secciones/page.tsx": {
+      "jsx-texto": 5
+    },
+    "src/app/(app)/carta/portal/page.tsx": {
+      "atributo-placeholder": 1,
+      "jsx-texto": 18
+    },
+    "src/app/(app)/carta/tema/page.tsx": {
+      "jsx-texto": 7
+    },
+    "src/app/(app)/catalogo/categorias/page.tsx": {
+      "atributo-aria-label": 1,
+      "atributo-placeholder": 1,
+      "jsx-texto": 5
+    },
+    "src/app/(app)/catalogo/clientes/page.tsx": {
+      "atributo-aria-label": 2,
+      "atributo-placeholder": 2,
+      "jsx-texto": 14
+    },
+    "src/app/(app)/catalogo/insumos-grupos/page.tsx": {
+      "atributo-aria-label": 2,
+      "atributo-placeholder": 2,
+      "jsx-texto": 30
+    },
+    "src/app/(app)/catalogo/margen-objetivo/page.tsx": {
+      "atributo-aria-label": 1,
+      "atributo-placeholder": 2,
+      "jsx-texto": 15
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/alta-de-opcion.tsx": {
+      "atributo-placeholder": 3,
+      "jsx-texto": 3
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/cambiar-precio.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 5
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/campo-se-lee-en-la-carta.tsx": {
+      "atributo-placeholder": 1,
+      "jsx-texto": 3
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/campos-de-version.tsx": {
+      "jsx-texto": 13
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/lectura-del-factor.tsx": {
+      "jsx-texto": 8
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/ordenar-opciones.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 12
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/page.tsx": {
+      "atributo-aria-label": 4,
+      "atributo-placeholder": 1,
+      "jsx-texto": 43
+    },
+    "src/app/(app)/catalogo/opciones/alta-de-grupo.tsx": {
+      "atributo-aria-label": 1,
+      "atributo-placeholder": 1,
+      "jsx-texto": 4
+    },
+    "src/app/(app)/catalogo/opciones/limpiar/limpiar-opciones.tsx": {
+      "jsx-texto": 21
+    },
+    "src/app/(app)/catalogo/opciones/limpiar/page.tsx": {
+      "jsx-texto": 3
+    },
+    "src/app/(app)/catalogo/opciones/page.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 8
+    },
+    "src/app/(app)/catalogo/productos/[id]/compra/page.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 4
+    },
+    "src/app/(app)/catalogo/productos/[id]/datos/page.tsx": {
+      "jsx-texto": 1
+    },
+    "src/app/(app)/catalogo/productos/[id]/en-la-carta/page.tsx": {
+      "jsx-texto": 8
+    },
+    "src/app/(app)/catalogo/productos/[id]/opciones/admision-de-grupo.tsx": {
+      "atributo-aria-label": 1,
+      "atributo-placeholder": 2,
+      "jsx-texto": 23
+    },
+    "src/app/(app)/catalogo/productos/[id]/opciones/page.tsx": {
+      "atributo-aria-label": 2,
+      "jsx-texto": 19
+    },
+    "src/app/(app)/catalogo/productos/[id]/page.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 33
+    },
+    "src/app/(app)/catalogo/productos/[id]/precios/page.tsx": {
+      "jsx-texto": 8
+    },
+    "src/app/(app)/catalogo/productos/campo-alicuota-iva.tsx": {
+      "jsx-texto": 4
+    },
+    "src/app/(app)/catalogo/productos/campo-nombre-de-cocina.tsx": {
+      "atributo-aria-label": 1,
+      "atributo-placeholder": 1
+    },
+    "src/app/(app)/catalogo/productos/nuevo/page.tsx": {
+      "jsx-texto": 2
+    },
+    "src/app/(app)/catalogo/productos/page.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 6
+    },
+    "src/app/(app)/catalogo/productos/producto-form.tsx": {
+      "atributo-aria-label": 2,
+      "atributo-placeholder": 7,
+      "atributo-title": 3,
+      "jsx-texto": 35
+    },
+    "src/app/(app)/catalogo/proveedores/[id]/editar/page.tsx": {
+      "jsx-texto": 1
+    },
+    "src/app/(app)/catalogo/proveedores/[id]/page.tsx": {
+      "jsx-texto": 20
+    },
+    "src/app/(app)/catalogo/proveedores/comparativa/page.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 7
+    },
+    "src/app/(app)/catalogo/proveedores/nuevo/page.tsx": {
+      "jsx-texto": 1
+    },
+    "src/app/(app)/catalogo/proveedores/page.tsx": {
+      "jsx-texto": 15
+    },
+    "src/app/(app)/catalogo/proveedores/proveedor-form.tsx": {
+      "atributo-aria-label": 6,
+      "atributo-placeholder": 7,
+      "jsx-texto": 8
+    },
+    "src/app/(app)/catalogo/recetas/[productoId]/ficha/page.tsx": {
+      "jsx-texto": 6
+    },
+    "src/app/(app)/catalogo/recetas/[productoId]/historial/page.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 16
+    },
+    "src/app/(app)/catalogo/recetas/[productoId]/page.tsx": {
+      "atributo-aria-label": 3,
+      "atributo-placeholder": 9,
+      "atributo-title": 1,
+      "jsx-texto": 67
+    },
+    "src/app/(app)/catalogo/recetas/[productoId]/receta-de-la-sucursal.tsx": {
+      "atributo-placeholder": 1,
+      "atributo-title": 1,
+      "jsx-texto": 35
+    },
+    "src/app/(app)/catalogo/recetas/nueva-receta.tsx": {
+      "atributo-title": 1,
+      "jsx-texto": 1
+    },
+    "src/app/(app)/catalogo/recetas/page.tsx": {
+      "jsx-texto": 14
+    },
+    "src/app/(app)/catalogo/unidades/page.tsx": {
+      "atributo-aria-label": 1,
+      "atributo-placeholder": 1,
+      "jsx-texto": 18
+    },
+    "src/app/(app)/error.tsx": {
+      "jsx-texto": 5
+    },
+    "src/app/(app)/inicio/page.tsx": {
+      "jsx-texto": 3
+    },
+    "src/app/(app)/movimientos/[proceso]/bandeja-para-aceptar.tsx": {
+      "jsx-texto": 9
+    },
+    "src/app/(app)/movimientos/[proceso]/bloque-de-reparto.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 8
+    },
+    "src/app/(app)/movimientos/[proceso]/page.tsx": {
+      "jsx-texto": 6
+    },
+    "src/app/(app)/movimientos/[proceso]/panel-compra-por-pasos.tsx": {
+      "atributo-aria-label": 1,
+      "atributo-placeholder": 2,
+      "jsx-texto": 39
+    },
+    "src/app/(app)/movimientos/[proceso]/panel-movimiento-form.tsx": {
+      "atributo-placeholder": 1,
+      "jsx-texto": 18
+    },
+    "src/app/(app)/movimientos/conteo-fisico/acciones-historial.tsx": {
+      "jsx-texto": 6
+    },
+    "src/app/(app)/movimientos/conteo-fisico/conteo-fisico-grid.tsx": {
+      "atributo-aria-label": 3,
+      "atributo-placeholder": 1,
+      "jsx-texto": 16
+    },
+    "src/app/(app)/movimientos/conteo-fisico/page.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 15
+    },
+    "src/app/(app)/movimientos/opciones-agotadas/opciones-agotadas.tsx": {
+      "atributo-placeholder": 1,
+      "atributo-title": 1,
+      "jsx-texto": 11
+    },
+    "src/app/(app)/movimientos/opciones-agotadas/page.tsx": {
+      "jsx-texto": 7
+    },
+    "src/app/(app)/movimientos/page.tsx": {
+      "jsx-texto": 3
+    },
+    "src/app/(app)/movimientos/precio-local/page.tsx": {
+      "atributo-aria-label": 2,
+      "jsx-texto": 30
+    },
+    "src/app/(app)/movimientos/precio-local/precio-local-form.tsx": {
+      "jsx-texto": 9
+    },
+    "src/app/(app)/movimientos/secciones/page.tsx": {
+      "atributo-aria-label": 3,
+      "atributo-placeholder": 1,
+      "jsx-texto": 18
+    },
+    "src/app/(app)/movimientos/venta/page.tsx": {
+      "jsx-texto": 1
+    },
+    "src/app/(app)/movimientos/venta/venta-form.tsx": {
+      "jsx-texto": 8
+    },
+    "src/app/(app)/reportes/categorias/page.tsx": {
+      "jsx-texto": 5
+    },
+    "src/app/(app)/reportes/compras/formulario-corregir-compra.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 9
+    },
+    "src/app/(app)/reportes/compras/page.tsx": {
+      "atributo-aria-label": 1,
+      "atributo-placeholder": 1,
+      "atributo-title": 5,
+      "jsx-texto": 27
+    },
+    "src/app/(app)/reportes/compras/pago-de-factura.tsx": {
+      "jsx-texto": 2
+    },
+    "src/app/(app)/reportes/consignacion/page.tsx": {
+      "jsx-texto": 8
+    },
+    "src/app/(app)/reportes/consignacion/registrar-pago-consignante.tsx": {
+      "atributo-title": 1,
+      "jsx-texto": 3
+    },
+    "src/app/(app)/reportes/consolidado/page.tsx": {
+      "jsx-texto": 13
+    },
+    "src/app/(app)/reportes/conteos/filtros-conteos.tsx": {
+      "jsx-texto": 4
+    },
+    "src/app/(app)/reportes/conteos/page.tsx": {
+      "jsx-texto": 3
+    },
+    "src/app/(app)/reportes/costos/page.tsx": {
+      "jsx-texto": 3
+    },
+    "src/app/(app)/reportes/descuentos-clientes/page.tsx": {
+      "jsx-texto": 6
+    },
+    "src/app/(app)/reportes/descuentos-clientes/tabla-descuentos-clientes.tsx": {
+      "jsx-texto": 2
+    },
+    "src/app/(app)/reportes/descuentos-productos/page.tsx": {
+      "jsx-texto": 6
+    },
+    "src/app/(app)/reportes/devoluciones/page.tsx": {
+      "jsx-texto": 9
+    },
+    "src/app/(app)/reportes/diferencias/page.tsx": {
+      "jsx-texto": 2
+    },
+    "src/app/(app)/reportes/diferencias/tabla-diferencias.tsx": {
+      "jsx-texto": 9
+    },
+    "src/app/(app)/reportes/historial/cartel-sin-stock-propio.tsx": {
+      "jsx-texto": 5
+    },
+    "src/app/(app)/reportes/historial/como-se-compro.tsx": {
+      "jsx-texto": 3
+    },
+    "src/app/(app)/reportes/historial/como-se-vendio.tsx": {
+      "jsx-texto": 3
+    },
+    "src/app/(app)/reportes/historial/grafico-saldo.tsx": {
+      "jsx-texto": 1
+    },
+    "src/app/(app)/reportes/historial/historial-filtros.tsx": {
+      "jsx-texto": 3
+    },
+    "src/app/(app)/reportes/historial/page.tsx": {
+      "jsx-texto": 12
+    },
+    "src/app/(app)/reportes/historial/tabla-historial.tsx": {
+      "atributo-title": 1,
+      "jsx-texto": 3
+    },
+    "src/app/(app)/reportes/huecos-catalogo/page.tsx": {
+      "jsx-texto": 8
+    },
+    "src/app/(app)/reportes/insumos-sin-receta/page.tsx": {
+      "jsx-texto": 2
+    },
+    "src/app/(app)/reportes/insumos-sin-receta/tabla-insumos-sin-receta.tsx": {
+      "jsx-texto": 1
+    },
+    "src/app/(app)/reportes/loading.tsx": {
+      "jsx-texto": 1
+    },
+    "src/app/(app)/reportes/margen-promociones/page.tsx": {
+      "jsx-texto": 6
+    },
+    "src/app/(app)/reportes/margen-promociones/tabla-margen-promociones.tsx": {
+      "jsx-texto": 3
+    },
+    "src/app/(app)/reportes/page.tsx": {
+      "jsx-texto": 28
+    },
+    "src/app/(app)/reportes/perdidas/page.tsx": {
+      "jsx-texto": 9
+    },
+    "src/app/(app)/reportes/perdidas/tabla-perdidas.tsx": {
+      "jsx-texto": 2
+    },
+    "src/app/(app)/reportes/periodo/comparativa-precios.tsx": {
+      "jsx-texto": 3
+    },
+    "src/app/(app)/reportes/periodo/digest-alertas.tsx": {
+      "jsx-texto": 1
+    },
+    "src/app/(app)/reportes/periodo/page.tsx": {
+      "jsx-texto": 33
+    },
+    "src/app/(app)/reportes/periodo/tabla-periodo.tsx": {
+      "atributo-title": 1,
+      "jsx-texto": 8
+    },
+    "src/app/(app)/reportes/rendimiento-recetas/fila-compartida.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 26
+    },
+    "src/app/(app)/reportes/rendimiento-recetas/fila-simple.tsx": {
+      "atributo-aria-label": 1,
+      "atributo-title": 2,
+      "jsx-texto": 32
+    },
+    "src/app/(app)/reportes/rendimiento-recetas/page.tsx": {
+      "atributo-title": 1,
+      "jsx-texto": 44
+    },
+    "src/app/(app)/reportes/rendimiento-recetas/por-sucursal/page.tsx": {
+      "jsx-texto": 6
+    },
+    "src/app/(app)/reportes/rendimiento-recetas/por-sucursal/tabla-por-sucursal.tsx": {
+      "atributo-title": 2,
+      "jsx-texto": 3
+    },
+    "src/app/(app)/reportes/rotacion-mesas/page.tsx": {
+      "atributo-aria-label": 2,
+      "jsx-texto": 32
+    },
+    "src/app/(app)/reportes/salud/page.tsx": {
+      "jsx-texto": 4
+    },
+    "src/app/(app)/reportes/sin-receta/page.tsx": {
+      "jsx-texto": 2
+    },
+    "src/app/(app)/reportes/tickets/page.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 21
+    },
+    "src/app/(app)/reportes/trazabilidad/boton-anular-venta.tsx": {
+      "jsx-texto": 5
+    },
+    "src/app/(app)/reportes/trazabilidad/page.tsx": {
+      "atributo-placeholder": 1,
+      "jsx-texto": 12
+    },
+    "src/app/(app)/reportes/trazabilidad/tabla-trazabilidad.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 3
+    },
+    "src/app/(app)/reportes/valuacion/page.tsx": {
+      "jsx-texto": 9
+    },
+    "src/app/(app)/reportes/vencimientos/page.tsx": {
+      "jsx-texto": 5
+    },
+    "src/app/(app)/reportes/ventas-por-seccion/page.tsx": {
+      "jsx-texto": 6
+    },
+    "src/app/(app)/stock/alertas/page.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 15
+    },
+    "src/app/(app)/stock/configuracion/page.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 18
+    },
+    "src/app/(app)/stock/consolidado/page.tsx": {
+      "jsx-texto": 18
+    },
+    "src/app/(app)/stock/conteo-frecuencia/conteo-frecuencia-form.tsx": {
+      "jsx-texto": 6
+    },
+    "src/app/(app)/stock/conteo-frecuencia/page.tsx": {
+      "jsx-texto": 12
+    },
+    "src/app/(app)/stock/minimo/page.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 7
+    },
+    "src/app/(app)/stock/minimo/stock-minimo-form.tsx": {
+      "jsx-texto": 9
+    },
+    "src/app/(app)/stock/por-familia/page.tsx": {
+      "atributo-title": 1,
+      "jsx-texto": 10
+    },
+    "src/app/(app)/stock/reclasificar/page.tsx": {
+      "jsx-texto": 2
+    },
+    "src/app/(app)/stock/reclasificar/reclasificar-form.tsx": {
+      "jsx-texto": 11
+    },
+    "src/app/(app)/stock/seccion-habitual/page.tsx": {
+      "jsx-texto": 8
+    },
+    "src/app/(app)/stock/seccion-habitual/seccion-habitual-form.tsx": {
+      "jsx-texto": 6
+    },
+    "src/app/(app)/traspasos/bandeja.tsx": {
+      "atributo-title": 3,
+      "jsx-texto": 32
+    },
+    "src/app/(app)/traspasos/enviar/enviar-form.tsx": {
+      "jsx-texto": 7
+    },
+    "src/app/(app)/traspasos/enviar/page.tsx": {
+      "jsx-texto": 2
+    },
+    "src/app/(app)/traspasos/page.tsx": {
+      "jsx-texto": 2
+    },
+    "src/app/(app)/traspasos/solicitar/page.tsx": {
+      "jsx-texto": 2
+    },
+    "src/app/(app)/traspasos/solicitar/solicitar-form.tsx": {
+      "jsx-texto": 6
+    },
+    "src/app/(carta-publica)/error.tsx": {
+      "jsx-texto": 4
+    },
+    "src/app/(carta-publica)/not-found.tsx": {
+      "jsx-texto": 2
+    },
+    "src/app/(pos)/error.tsx": {
+      "jsx-texto": 5
+    },
+    "src/app/(pos)/mesas/[mesaId]/abrir-cuenta-de-mostrador.tsx": {
+      "atributo-title": 1,
+      "jsx-texto": 2
+    },
+    "src/app/(pos)/mesas/[mesaId]/abrir-cuenta.tsx": {
+      "atributo-aria-label": 1,
+      "atributo-placeholder": 1,
+      "atributo-title": 1,
+      "jsx-texto": 5
+    },
+    "src/app/(pos)/mesas/[mesaId]/agregar-items.tsx": {
+      "atributo-aria-label": 11,
+      "atributo-placeholder": 1,
+      "atributo-title": 1,
+      "jsx-texto": 13
+    },
+    "src/app/(pos)/mesas/[mesaId]/anular-item.tsx": {
+      "atributo-aria-label": 1,
+      "atributo-title": 1,
+      "jsx-texto": 7
+    },
+    "src/app/(pos)/mesas/[mesaId]/anular-promo.tsx": {
+      "atributo-aria-label": 1,
+      "atributo-title": 1,
+      "jsx-texto": 5
+    },
+    "src/app/(pos)/mesas/[mesaId]/armar-promo-opciones.tsx": {
+      "atributo-aria-label": 3,
+      "jsx-texto": 3
+    },
+    "src/app/(pos)/mesas/[mesaId]/armar-promo.tsx": {
+      "atributo-aria-label": 2,
+      "atributo-title": 1,
+      "jsx-texto": 7
+    },
+    "src/app/(pos)/mesas/[mesaId]/cerrar-cuenta.tsx": {
+      "atributo-title": 1,
+      "jsx-texto": 9
+    },
+    "src/app/(pos)/mesas/[mesaId]/cliente-cuenta.tsx": {
+      "jsx-texto": 8
+    },
+    "src/app/(pos)/mesas/[mesaId]/comensales-cuenta.tsx": {
+      "jsx-texto": 7
+    },
+    "src/app/(pos)/mesas/[mesaId]/corregir-linea.tsx": {
+      "atributo-aria-label": 3,
+      "jsx-texto": 14
+    },
+    "src/app/(pos)/mesas/[mesaId]/cuentas-cerradas.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 6
+    },
+    "src/app/(pos)/mesas/[mesaId]/elegir-opciones.tsx": {
+      "atributo-aria-label": 5,
+      "jsx-texto": 8
+    },
+    "src/app/(pos)/mesas/[mesaId]/emitir-ticket-corregido.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 6
+    },
+    "src/app/(pos)/mesas/[mesaId]/imprimir.tsx": {
+      "atributo-aria-label": 1,
+      "atributo-title": 1,
+      "jsx-texto": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/liberar-mesa.tsx": {
+      "atributo-title": 2,
+      "jsx-texto": 4
+    },
+    "src/app/(pos)/mesas/[mesaId]/loading.tsx": {
+      "jsx-texto": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/otro-igual.tsx": {
+      "atributo-aria-label": 1,
+      "atributo-title": 1,
+      "jsx-texto": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/page.tsx": {
+      "jsx-texto": 4
+    },
+    "src/app/(pos)/mesas/[mesaId]/pantalla-del-puesto.tsx": {
+      "atributo-aria-label": 3,
+      "jsx-texto": 20
+    },
+    "src/app/(pos)/mesas/[mesaId]/selector-carta.tsx": {
+      "atributo-aria-label": 4,
+      "atributo-title": 3,
+      "jsx-texto": 4
+    },
+    "src/app/(pos)/mesas/[mesaId]/sin-enviar.tsx": {
+      "atributo-aria-label": 4,
+      "jsx-texto": 9
+    },
+    "src/app/(pos)/mesas/[mesaId]/ticket-cocina.tsx": {
+      "jsx-texto": 6
+    },
+    "src/app/(pos)/mesas/[mesaId]/ticket-cuenta.tsx": {
+      "jsx-texto": 11
+    },
+    "src/app/(pos)/mesas/mostrador/habilitar-mostrador.tsx": {
+      "atributo-title": 1,
+      "jsx-texto": 2
+    },
+    "src/app/(pos)/mesas/mostrador/page.tsx": {
+      "jsx-texto": 5
+    },
+    "src/app/(pos)/mesas/nueva-mesa.tsx": {
+      "atributo-title": 1,
+      "jsx-texto": 5
+    },
+    "src/app/(pos)/mesas/page.tsx": {
+      "atributo-aria-label": 5,
+      "atributo-label": 4,
+      "atributo-placeholder": 1,
+      "jsx-texto": 15
+    },
+    "src/app/global-error.tsx": {
+      "jsx-texto": 4
+    },
+    "src/app/invitacion/abrir-invitacion.tsx": {
+      "jsx-texto": 1
+    },
+    "src/app/invitacion/aceptar-de-usuario.tsx": {
+      "jsx-texto": 1
+    },
+    "src/app/invitacion/formulario-de-aceptacion.tsx": {
+      "jsx-texto": 7
+    },
+    "src/app/invitacion/page.tsx": {
+      "jsx-texto": 17
+    },
+    "src/app/login/page.tsx": {
+      "jsx-texto": 20
+    },
+    "src/components/agregar-colapsable.tsx": {
+      "jsx-texto": 1
+    },
+    "src/components/app-shell.tsx": {
+      "jsx-texto": 2
+    },
+    "src/components/aviso-con-deshacer.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 1
+    },
+    "src/components/avisos-de-accion.tsx": {
+      "jsx-texto": 1
+    },
+    "src/components/boton-activar-desactivar.tsx": {
+      "jsx-texto": 3
+    },
+    "src/components/campo-numero-de-comprobante.tsx": {
+      "jsx-texto": 2
+    },
+    "src/components/carta-publica/carta-vista.tsx": {
+      "jsx-texto": 1
+    },
+    "src/components/carta-publica/navegacion-carta.tsx": {
+      "atributo-aria-label": 4,
+      "jsx-texto": 1
+    },
+    "src/components/carta-publica/portal-vista.tsx": {
+      "jsx-texto": 3
+    },
+    "src/components/carta-publica/seccion.tsx": {
+      "atributo-aria-label": 2,
+      "jsx-texto": 6
+    },
+    "src/components/carta/campo-color.tsx": {
+      "atributo-aria-label": 1
+    },
+    "src/components/carta/contenido-del-producto.tsx": {
+      "atributo-placeholder": 1,
+      "jsx-texto": 26
+    },
+    "src/components/carta/copiar-carta-de-sucursal.tsx": {
+      "jsx-texto": 2
+    },
+    "src/components/carta/datos-solo-lectura.tsx": {
+      "jsx-texto": 1
+    },
+    "src/components/carta/editor-marca.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 17
+    },
+    "src/components/carta/editor-portal.tsx": {
+      "atributo-placeholder": 1,
+      "jsx-texto": 5
+    },
+    "src/components/carta/editor-tema.tsx": {
+      "atributo-placeholder": 1,
+      "jsx-texto": 8
+    },
+    "src/components/carta/reemplazar-carta-de-sucursal.tsx": {
+      "jsx-texto": 8
+    },
+    "src/components/carta/seccion-y-orden.tsx": {
+      "jsx-texto": 3
+    },
+    "src/components/carta/sincronizar-precio-grupo.tsx": {
+      "jsx-texto": 10
+    },
+    "src/components/catalogo/agregar-grupo-existente.tsx": {
+      "jsx-texto": 4
+    },
+    "src/components/catalogo/asistente-hermanar.tsx": {
+      "atributo-placeholder": 1,
+      "atributo-title": 1,
+      "jsx-texto": 15
+    },
+    "src/components/catalogo/aviso-solo-lectura.tsx": {
+      "jsx-texto": 2
+    },
+    "src/components/catalogo/campos-sensibles-solo-lectura.tsx": {
+      "jsx-texto": 6
+    },
+    "src/components/catalogo/consumo-de-opcion.tsx": {
+      "atributo-aria-label": 2,
+      "jsx-texto": 9
+    },
+    "src/components/catalogo/consumos-del-grupo.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 3
+    },
+    "src/components/catalogo/duplicar-producto.tsx": {
+      "jsx-texto": 18
+    },
+    "src/components/catalogo/editor-de-consumos.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 10
+    },
+    "src/components/catalogo/espacio-del-producto/marco.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 7
+    },
+    "src/components/catalogo/espacio-del-producto/precio-de-la-sucursal.tsx": {
+      "jsx-texto": 7
+    },
+    "src/components/catalogo/espacio-del-producto/vista-previa-de-la-carta.tsx": {
+      "jsx-texto": 6
+    },
+    "src/components/catalogo/ficha-de-cocina/boton-imprimir.tsx": {
+      "jsx-texto": 1
+    },
+    "src/components/catalogo/ficha-de-cocina/ficha-de-cocina-vista.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 14
+    },
+    "src/components/catalogo/filtros-de-la-lista-de-productos.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 4
+    },
+    "src/components/catalogo/form-renombrar-insumo.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 10
+    },
+    "src/components/catalogo/gestion-presentaciones.tsx": {
+      "atributo-aria-label": 1,
+      "jsx-texto": 13
+    },
+    "src/components/catalogo/nueva-opcion-en-el-grupo.tsx": {
+      "jsx-texto": 2
+    },
+    "src/components/catalogo/nuevo-grupo-en-el-producto.tsx": {
+      "atributo-placeholder": 2,
+      "jsx-texto": 8
+    },
+    "src/components/catalogo/quick-crear-producto.tsx": {
+      "atributo-title": 1,
+      "jsx-texto": 4
+    },
+    "src/components/catalogo/quick-crear.tsx": {
+      "jsx-texto": 2
+    },
+    "src/components/catalogo/resumen-de-opciones.tsx": {
+      "jsx-texto": 8
+    },
+    "src/components/en-dolares.tsx": {
+      "atributo-title": 1,
+      "jsx-texto": 2
+    },
+    "src/components/enlace-administracion.tsx": {
+      "jsx-texto": 1
+    },
+    "src/components/enlace-interno.tsx": {
+      "atributo-title": 1
+    },
+    "src/components/form-con-resultado.tsx": {
+      "jsx-texto": 3
+    },
+    "src/components/menu-celular.tsx": {
+      "atributo-aria-label": 5,
+      "atributo-placeholder": 1,
+      "jsx-texto": 1
+    },
+    "src/components/mesas/mesa-card.tsx": {
+      "jsx-texto": 14
+    },
+    "src/components/pos-shell.tsx": {
+      "jsx-texto": 2
+    },
+    "src/components/receta/lectura-de-cantidad.tsx": {
+      "jsx-texto": 1
+    },
+    "src/components/receta/materia-prima-y-cantidad.tsx": {
+      "atributo-placeholder": 3,
+      "jsx-texto": 3
+    },
+    "src/components/selector-empresa.tsx": {
+      "atributo-aria-label": 1
+    },
+    "src/components/selector-producto.tsx": {
+      "jsx-texto": 4
+    },
+    "src/components/selector-rango.tsx": {
+      "jsx-texto": 11
+    },
+    "src/components/selector-sucursal.tsx": {
+      "atributo-aria-label": 1
+    },
+    "src/components/sidebar-colapsable.tsx": {
+      "atributo-aria-label": 2,
+      "atributo-title": 2,
+      "jsx-texto": 1
+    },
+    "src/components/sidebar-nav.tsx": {
+      "atributo-aria-label": 1,
+      "atributo-title": 2,
+      "jsx-texto": 1
+    },
+    "src/components/stock/aviso-solo-lectura.tsx": {
+      "jsx-texto": 2
+    },
+    "src/components/stock/panel-de-maestro-simple.tsx": {
+      "atributo-aria-label": 2,
+      "atributo-placeholder": 1,
+      "jsx-texto": 8
+    },
+    "src/components/tabla-reporte.tsx": {
+      "jsx-texto": 3
+    },
+    "src/server/actions/auth/casos-de-uso/actualizar-activo-membresia.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/auth/casos-de-uso/actualizar-activo-sucursal.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 4
+    },
+    "src/server/actions/auth/casos-de-uso/actualizar-activo-usuario-en-empresa.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/auth/casos-de-uso/actualizar-notas-membresia.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/auth/casos-de-uso/agregar-o-actualizar-usuario.ts": {
+      "mensaje-exito": 4,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/auth/casos-de-uso/crear-sucursal-con-admin.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 3
+    },
+    "src/server/actions/auth/casos-de-uso/invitar-a-vincular.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 3
+    },
+    "src/server/actions/auth/casos-de-uso/reenviar-invitacion.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/auth/casos-de-uso/renombrar-sucursal.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/auth/casos-de-uso/revocar-invitacion.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/auth/casos-de-uso/transferir-gerencia.ts": {
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/auth/invitacion.ts": {
+      "mensaje-error": 2
+    },
+    "src/server/actions/auth/usuarios.ts": {
+      "mensaje-ok": 2
+    },
+    "src/server/actions/caja/casos-de-uso/abrir-sesion.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 4
+    },
+    "src/server/actions/caja/casos-de-uso/anular-movimiento.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 7
+    },
+    "src/server/actions/caja/casos-de-uso/cerrar-sesion.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 5
+    },
+    "src/server/actions/caja/casos-de-uso/cobrar-cuenta.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 12
+    },
+    "src/server/actions/caja/casos-de-uso/registrar-movimiento-manual.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 3
+    },
+    "src/server/actions/carta/casos-de-uso/actualizar-activa-entrada-de-cupo.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/carta/casos-de-uso/actualizar-activa-promo-carta-en-sucursal.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/carta/casos-de-uso/actualizar-activa-promo-carta.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/carta/casos-de-uso/actualizar-activa-seccion-carta.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/carta/casos-de-uso/actualizar-activo-genero-carta.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/carta/casos-de-uso/actualizar-activo-item-agrupado-carta.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/carta/casos-de-uso/actualizar-orden-opcion-item-agrupado-carta.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/carta/casos-de-uso/actualizar-visible-en-carta.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/carta/casos-de-uso/agregar-entrada-de-cupo.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 6
+    },
+    "src/server/actions/carta/casos-de-uso/agregar-opcion-item-agrupado-carta.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 8
+    },
+    "src/server/actions/carta/casos-de-uso/agregar-producto-a-la-carta.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 7
+    },
+    "src/server/actions/carta/casos-de-uso/agregar-sucursal-al-portal.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 3
+    },
+    "src/server/actions/carta/casos-de-uso/componentes-de-combo-en-tx.ts": {
+      "mensaje-fracaso": 6
+    },
+    "src/server/actions/carta/casos-de-uso/confirmar-nombre-en-carta.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 5
+    },
+    "src/server/actions/carta/casos-de-uso/copiar-carta-de-sucursal.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 3
+    },
+    "src/server/actions/carta/casos-de-uso/guardar-contenido-carta-producto.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 3
+    },
+    "src/server/actions/carta/casos-de-uso/guardar-cupos-promo-carta.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/carta/casos-de-uso/guardar-descuento-producto.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 3
+    },
+    "src/server/actions/carta/casos-de-uso/guardar-genero-carta.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/carta/casos-de-uso/guardar-item-agrupado-carta.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 4
+    },
+    "src/server/actions/carta/casos-de-uso/guardar-portal-empresa.ts": {
+      "mensaje-exito": 3
+    },
+    "src/server/actions/carta/casos-de-uso/guardar-precio-local-promo-carta.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/carta/casos-de-uso/guardar-promo-carta.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/carta/casos-de-uso/guardar-seccion-carta.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 4
+    },
+    "src/server/actions/carta/casos-de-uso/guardar-solo-salon-promo-carta.ts": {
+      "mensaje-exito": 5,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/carta/casos-de-uso/guardar-sucursal-publica.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 3
+    },
+    "src/server/actions/carta/casos-de-uso/guardar-tema-carta.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/carta/casos-de-uso/mover-sucursal-en-mapa.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/carta/casos-de-uso/ordenar-secciones-carta.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/carta/casos-de-uso/quitar-opcion-item-agrupado-carta.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/carta/casos-de-uso/quitar-producto-de-la-carta.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/carta/casos-de-uso/reemplazar-carta-de-sucursal.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/catalogo/casos-de-uso/actualizar-activa-categoria-producto.ts": {
+      "mensaje-exito": 3
+    },
+    "src/server/actions/catalogo/casos-de-uso/actualizar-activa-presentacion.ts": {
+      "mensaje-exito": 3
+    },
+    "src/server/actions/catalogo/casos-de-uso/actualizar-activa-proveedor.ts": {
+      "mensaje-exito": 3
+    },
+    "src/server/actions/catalogo/casos-de-uso/actualizar-activa-unidad.ts": {
+      "mensaje-exito": 3
+    },
+    "src/server/actions/catalogo/casos-de-uso/actualizar-activo-grupo.ts": {
+      "mensaje-exito": 3
+    },
+    "src/server/actions/catalogo/casos-de-uso/actualizar-activo-insumo.ts": {
+      "mensaje-exito": 3
+    },
+    "src/server/actions/catalogo/casos-de-uso/actualizar-decimales-unidad.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 3
+    },
+    "src/server/actions/catalogo/casos-de-uso/actualizar-disponibilidad-producto.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 6
+    },
+    "src/server/actions/catalogo/casos-de-uso/actualizar-grupo-de-insumo.ts": {
+      "mensaje-exito": 1
+    },
+    "src/server/actions/catalogo/casos-de-uso/actualizar-producto.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 9
+    },
+    "src/server/actions/catalogo/casos-de-uso/actualizar-proveedor.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 4
+    },
+    "src/server/actions/catalogo/casos-de-uso/agregar-presentacion-alternativa.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 5
+    },
+    "src/server/actions/catalogo/casos-de-uso/agregar-version-de-opcion.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 3
+    },
+    "src/server/actions/catalogo/casos-de-uso/alta-proveedor.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/catalogo/casos-de-uso/apagar-opcion-en-sucursal.ts": {
+      "mensaje-exito": 2
+    },
+    "src/server/actions/catalogo/casos-de-uso/archivar-opciones.ts": {
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/catalogo/casos-de-uso/asignar-insumo-a-producto.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/catalogo/casos-de-uso/crear-categoria-producto.ts": {
+      "mensaje-exito": 2
+    },
+    "src/server/actions/catalogo/casos-de-uso/crear-grupo-de-opciones.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/catalogo/casos-de-uso/crear-grupo-en-el-producto.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 5
+    },
+    "src/server/actions/catalogo/casos-de-uso/crear-insumo.ts": {
+      "mensaje-exito": 2
+    },
+    "src/server/actions/catalogo/casos-de-uso/crear-o-actualizar-grupo.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/catalogo/casos-de-uso/crear-opcion-de-grupo.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 5
+    },
+    "src/server/actions/catalogo/casos-de-uso/crear-opcion-en-el-producto.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 14
+    },
+    "src/server/actions/catalogo/casos-de-uso/crear-unidad.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/catalogo/casos-de-uso/dar-de-alta-producto-rapido.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/catalogo/casos-de-uso/dar-de-alta-producto.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/catalogo/casos-de-uso/duplicar-producto.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 15
+    },
+    "src/server/actions/catalogo/casos-de-uso/editar-grupo-de-opciones.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 4
+    },
+    "src/server/actions/catalogo/casos-de-uso/editar-opcion-de-grupo.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 3
+    },
+    "src/server/actions/catalogo/casos-de-uso/fijar-admision-de-grupo-en-producto.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 7
+    },
+    "src/server/actions/catalogo/casos-de-uso/fijar-disponibilidad-de-hoy.ts": {
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/catalogo/casos-de-uso/fijar-precio-local-de-opcion.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 3
+    },
+    "src/server/actions/catalogo/casos-de-uso/fijar-rendimiento-local.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 3
+    },
+    "src/server/actions/catalogo/casos-de-uso/guardar-version-de-receta.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 6
+    },
+    "src/server/actions/catalogo/casos-de-uso/ocultar-producto.ts": {
+      "mensaje-exito": 3
+    },
+    "src/server/actions/catalogo/casos-de-uso/renombrar-o-fusionar-insumo.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/catalogo/casos-de-uso/reordenar-opciones-de-grupo.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/catalogo/casos-de-uso/set-precio-local-producto.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 3
+    },
+    "src/server/actions/catalogo/casos-de-uso/sincronizar-precio-grupo-carta.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 3
+    },
+    "src/server/actions/catalogo/casos-de-uso/sincronizar-precio-local-grupo-carta.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/catalogo/casos-de-uso/vincular-grupo-en-producto.ts": {
+      "mensaje-exito": 4,
+      "mensaje-fracaso": 3
+    },
+    "src/server/actions/catalogo/casos-de-uso/volver-a-la-receta-central.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/catalogo/casos-de-uso/volver-al-rendimiento-central.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 3
+    },
+    "src/server/actions/catalogo/productos.ts": {
+      "mensaje-error": 2
+    },
+    "src/server/actions/catalogo/receta-sucursal.ts": {
+      "mensaje-error": 11
+    },
+    "src/server/actions/catalogo/recetas.ts": {
+      "mensaje-error": 5,
+      "mensaje-ok": 1
+    },
+    "src/server/actions/clientes/casos-de-uso/actualizar-activo-cliente.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/clientes/casos-de-uso/actualizar-cliente.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 3
+    },
+    "src/server/actions/clientes/casos-de-uso/alta-cliente.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/con-permiso.ts": {
+      "mensaje-error": 1
+    },
+    "src/server/actions/movimientos/casos-de-uso/aceptar-propuesta-de-factura.ts": {
+      "mensaje-fracaso": 5
+    },
+    "src/server/actions/movimientos/casos-de-uso/actualizar-activa-seccion.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/movimientos/casos-de-uso/actualizar-activo-destino-consumo.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/movimientos/casos-de-uso/actualizar-activo-motivo-merma.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/movimientos/casos-de-uso/actualizar-respaldo-seccion.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/movimientos/casos-de-uso/anular-factura-proveedor.ts": {
+      "mensaje-fracaso": 4
+    },
+    "src/server/actions/movimientos/casos-de-uso/anular-pago-de-factura-proveedor.ts": {
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/movimientos/casos-de-uso/anular-venta.ts": {
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/movimientos/casos-de-uso/cancelar-conteo-fisico.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 3
+    },
+    "src/server/actions/movimientos/casos-de-uso/corregir-factura-proveedor.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 4
+    },
+    "src/server/actions/movimientos/casos-de-uso/crear-destino-consumo.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/movimientos/casos-de-uso/crear-motivo-merma.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/movimientos/casos-de-uso/crear-seccion.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/movimientos/casos-de-uso/declarar-pago-de-factura-proveedor.ts": {
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/movimientos/casos-de-uso/reemplazar-venta-con-menos-unidades.ts": {
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/movimientos/casos-de-uso/registrar-conteo-fisico.ts": {
+      "mensaje-fracaso": 4
+    },
+    "src/server/actions/movimientos/casos-de-uso/registrar-factura-proveedor.ts": {
+      "mensaje-fracaso": 5
+    },
+    "src/server/actions/movimientos/casos-de-uso/registrar-movimiento.ts": {
+      "mensaje-fracaso": 9
+    },
+    "src/server/actions/movimientos/casos-de-uso/renombrar-seccion.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/movimientos/casos-de-uso/resolver-conteo-pendiente.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 3
+    },
+    "src/server/actions/movimientos/conteo-fisico.ts": {
+      "mensaje-error": 3
+    },
+    "src/server/actions/movimientos/movimientos.ts": {
+      "mensaje-error": 1
+    },
+    "src/server/actions/partes/casos-de-uso/alta-de-parte.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/partes/casos-de-uso/cambiar-estado-de-parte.ts": {
+      "mensaje-exito": 4,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/partes/casos-de-uso/editar-parte.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 4
+    },
+    "src/server/actions/permisos/casos-de-uso/actualizar-activo-rol.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/permisos/casos-de-uso/actualizar-capacidad.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/permisos/casos-de-uso/crear-rol.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/permisos/casos-de-uso/guardar-permisos.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 6
+    },
+    "src/server/actions/permisos/casos-de-uso/renombrar-rol.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 3
+    },
+    "src/server/actions/pos/casos-de-uso/abrir-cuenta-de-mostrador.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/pos/casos-de-uso/abrir-cuenta.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/pos/casos-de-uso/agregar-items.ts": {
+      "mensaje-fracaso": 11
+    },
+    "src/server/actions/pos/casos-de-uso/anular-item-enviado.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 8
+    },
+    "src/server/actions/pos/casos-de-uso/anular-promo-enviada.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 4
+    },
+    "src/server/actions/pos/casos-de-uso/asignar-cliente-a-cuenta.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/pos/casos-de-uso/cerrar-cuenta.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/pos/casos-de-uso/corregir-comensales.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/pos/casos-de-uso/corregir-linea-de-ticket.ts": {
+      "mensaje-fracaso": 5
+    },
+    "src/server/actions/pos/casos-de-uso/crear-mesa.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/pos/casos-de-uso/emitir-ticket-corregido.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 4
+    },
+    "src/server/actions/pos/casos-de-uso/enviar-a-cocina.ts": {
+      "mensaje-exito": 4
+    },
+    "src/server/actions/pos/casos-de-uso/habilitar-mostrador.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/pos/casos-de-uso/liberar-mesa.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 3
+    },
+    "src/server/actions/pos/casos-de-uso/quitar-item-sin-enviar.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/pos/casos-de-uso/quitar-promo-sin-enviar.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/pos/casos-de-uso/quitar-unidades-de-linea.ts": {
+      "mensaje-fracaso": 4
+    },
+    "src/server/actions/reportes/casos-de-uso/guardar-margen-objetivo.ts": {
+      "mensaje-exito": 4,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/reportes/casos-de-uso/registrar-pago-consignante.ts": {
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/stock/casos-de-uso/eliminar-frecuencia-conteo.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/stock/casos-de-uso/eliminar-seccion-habitual.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/stock/casos-de-uso/eliminar-stock-minimo.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/stock/casos-de-uso/reclasificar-stock.ts": {
+      "mensaje-fracaso": 7
+    },
+    "src/server/actions/stock/casos-de-uso/set-frecuencia-conteo.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/stock/casos-de-uso/set-seccion-habitual.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 4
+    },
+    "src/server/actions/stock/casos-de-uso/set-stock-minimo-producto.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 3
+    },
+    "src/server/actions/traspasos/casos-de-uso/aprobar-y-enviar-traspaso.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/traspasos/casos-de-uso/cancelar-solicitud-de-traspaso.ts": {
+      "mensaje-exito": 1
+    },
+    "src/server/actions/traspasos/casos-de-uso/crear-envio-directo-de-traspaso.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 2
+    },
+    "src/server/actions/traspasos/casos-de-uso/crear-solicitud-de-traspaso.ts": {
+      "mensaje-exito": 1,
+      "mensaje-fracaso": 1
+    },
+    "src/server/actions/traspasos/casos-de-uso/rechazar-envio-de-traspaso.ts": {
+      "mensaje-exito": 1
+    },
+    "src/server/actions/traspasos/casos-de-uso/rechazar-solicitud-de-traspaso.ts": {
+      "mensaje-exito": 1
+    },
+    "src/ui/componentes/estructura/apartado-de-planilla.tsx": {
+      "jsx-texto": 1
+    },
+    "src/ui/componentes/superposiciones/dialogo.tsx": {
+      "atributo-aria-label": 1
+    }
+  }
+}
