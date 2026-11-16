@@ -1,5 +1,5 @@
 -- INFORME DE SOLO LECTURA (frente 2, etapa A1): pares «materia prima + producto de venta» (la reventa de hoy), candidatos a unirse en un solo producto de reventa.
--- NO escribe nada, NO es una migración, NO cambia ningún dato. Crea UNA tabla temporal, pasa la transacción a SOLO LECTURA y termina con ROLLBACK: no deja nada.
+-- NO escribe nada, NO es una migración, NO cambia ningún dato. Crea UNA tabla temporal vacía, pasa la transacción a SOLO LECTURA ANTES de leer ninguna tabla del negocio y termina con ROLLBACK: no deja nada.
 -- Diseño: docs/diseno-clases-de-producto-como-pedernal-2026-11-15.md (§11.3.2 qué es un par, §11.3.9 consulta de recuento) y docs/diseno-unidades-y-clasificacion-paridad-pedernal-2026-11-16.md.
 --
 -- Un par candidato es un producto de venta (tipo PV, no «se produce») cuya receta VIGENTE central tiene UN SOLO ingrediente, y ese ingrediente es una materia prima (tipo MP, no «se produce»,
@@ -30,8 +30,13 @@ SET LOCAL statement_timeout = '60s';
 \endif
 SELECT set_config('informe.slug', :'slug', true) AS filtro_de_empresa \gset
 
--- Los candidatos, una sola vez, en una tabla TEMPORAL (vive solo en esta transacción). Después la transacción pasa a SOLO LECTURA.
-CREATE TEMP TABLE cand ON COMMIT DROP AS
+-- Los candidatos, una sola vez, en una tabla TEMPORAL (vive solo en esta transacción). Se CREA vacía antes de pasar a solo lectura (crear es DDL) y se LLENA después: Postgres permite
+-- escribir tablas temporales en una transacción de solo lectura, así que TODA lectura de las tablas del negocio ocurre ya con la transacción en solo lectura.
+CREATE TEMP TABLE cand ("empresaId" text, "productoId" text, "recetaVersionId" text, "materiaPrimaId" text, cantidad numeric, merma numeric, "unidadId" text, exacto boolean) ON COMMIT DROP;
+
+SET TRANSACTION READ ONLY;
+
+INSERT INTO cand
 WITH vigente AS (
   SELECT DISTINCT ON (r."empresaId", r."productoId") r.id, r."empresaId", r."productoId"
     FROM "RecetaVersion" r
@@ -43,13 +48,11 @@ WITH vigente AS (
     FROM vigente v JOIN "RecetaIngrediente" i ON i."recetaVersionId" = v.id AND i."empresaId" = v."empresaId"
    GROUP BY v."empresaId", v."productoId", v.id HAVING count(*) = 1
 )
-SELECT c.*, (c.cantidad = 1 AND c.merma = 0) AS exacto
+SELECT c."empresaId", c."productoId", c."recetaVersionId", c."materiaPrimaId", c.cantidad, c.merma, c."unidadId", (c.cantidad = 1 AND c.merma = 0)
   FROM un_solo c
   JOIN "Producto" pv ON pv.id = c."productoId" AND pv."empresaId" = c."empresaId" AND pv.tipo = 'PV' AND NOT pv."seProduce"
   JOIN "Producto" mp ON mp.id = c."materiaPrimaId" AND mp."empresaId" = c."empresaId" AND mp.tipo = 'MP' AND NOT mp."seProduce" AND NOT mp."esConsignacion"
  WHERE current_setting('informe.slug') = '' OR c."empresaId" IN (SELECT id FROM "Empresa" WHERE slug = current_setting('informe.slug'));
-
-SET TRANSACTION READ ONLY;
 
 \echo
 \echo '=== 1. RECUENTO POR EMPRESA: candidatos a par y cuántos son exactos 1 a 1 ==='

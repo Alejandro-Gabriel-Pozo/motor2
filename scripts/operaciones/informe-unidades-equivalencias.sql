@@ -1,5 +1,5 @@
 -- INFORME DE SOLO LECTURA (frente 2, etapa A1): unidades de medida de cada empresa contra las 14 de Pedernal.
--- NO escribe nada, NO es una migración, NO cambia ningún dato. Crea 4 objetos TEMPORALES (la lista de las 14, la regla y los productos comparables), pasa la transacción a SOLO LECTURA y termina con ROLLBACK: no deja nada.
+-- NO escribe nada, NO es una migración, NO cambia ningún dato. Crea 4 objetos TEMPORALES (la lista de las 14, la regla y los productos comparables), pasa la transacción a SOLO LECTURA ANTES de leer ninguna tabla del negocio (escribir en una temporal está permitido en solo lectura) y termina con ROLLBACK: no deja nada.
 -- Diseño: docs/diseno-unidades-de-medida-como-pedernal-2026-11-15.md (§6.2 regla de equivalencias, §9 consultas) y
 --         docs/diseno-unidades-y-clasificacion-paridad-pedernal-2026-11-16.md (etapa A1).
 --
@@ -75,10 +75,14 @@ SELECT g."empresaId", g.id, g.nombre, g.magnitud, g.decimales, g.activa,
   END AS situacion
 FROM regla g;
 
--- Productos con compra y stock comparables (bloque 4), también temporal.
-CREATE TEMP TABLE comparables ON COMMIT DROP AS
-SELECT pr."empresaId", pr.nombre AS producto, uc.nombre AS unidad_compra, us.nombre AS unidad_stock, pr."factorConversion" AS factor_cargado,
-       round(cc.factor::numeric / cs.factor::numeric, 4) AS factor_segun_tabla
+-- Productos con compra y stock comparables (bloque 4), también temporal: se CREA vacía acá (DDL) y se LLENA después de pasar a solo lectura (escribir una temporal está permitido en solo lectura).
+CREATE TEMP TABLE comparables ("empresaId" text, producto text, unidad_compra text, unidad_stock text, factor_cargado numeric, factor_segun_tabla numeric) ON COMMIT DROP;
+
+-- A partir de acá la transacción es SOLO LECTURA: las tablas y la vista de arriba son temporales (viven solo en esta transacción); cualquier INSERT/UPDATE/DELETE/CREATE posterior falla.
+SET TRANSACTION READ ONLY;
+
+INSERT INTO comparables
+SELECT pr."empresaId", pr.nombre, uc.nombre, us.nombre, pr."factorConversion", round(cc.factor::numeric / cs.factor::numeric, 4)
   FROM "Producto" pr
   JOIN propuesta pc ON pc."empresaId" = pr."empresaId" AND pc.id = pr."unidadCompraId" AND pc.situacion = 'EXACTA'
   JOIN propuesta ps ON ps."empresaId" = pr."empresaId" AND ps.id = pr."unidadStockId"  AND ps.situacion = 'EXACTA'
@@ -86,8 +90,6 @@ SELECT pr."empresaId", pr.nombre AS producto, uc.nombre AS unidad_compra, us.nom
   JOIN catorce cs ON cs.codigo = ps.codigo_propuesto AND cs.dimension = cc.dimension
   JOIN "Unidad" uc ON uc."empresaId" = pr."empresaId" AND uc.id = pr."unidadCompraId"
   JOIN "Unidad" us ON us."empresaId" = pr."empresaId" AND us.id = pr."unidadStockId";
--- A partir de acá la transacción es SOLO LECTURA: las tablas y la vista de arriba son temporales (viven solo en esta transacción); cualquier INSERT/UPDATE/DELETE/CREATE posterior falla.
-SET TRANSACTION READ ONLY;
 
 \echo
 \echo '=== 1. UNIDADES: qué equivalente de las 14 propondría la regla y cuántas filas dependen de cada una ==='

@@ -16,7 +16,7 @@ import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/bas
  * nada escrito); IDEMPOTENCIA (dos corridas dan la misma salida); CONCURRENCIA (un escritor con la transacción abierta no bloquea el informe, y el informe no ve lo no confirmado); AISLAMIENTO
  * (`-v slug=` limita a una empresa y no mezcla datos de la otra); y que el mapa de pasos en SQL da lo MISMO que la función pura `convertirPasoLibre` (src/core/catalogo/conversion-de-paso-libre.ts).
  *
- * Mutación: cambiar en `informe-pares-compra-venta.sql` `c.merma = 0` por `true` (en el cálculo de «exacto») pone en rojo el recuento de exactos 1 a 1 (la «Gaseosa cola» con 5 % de merma pasaría a exacta); sacar el `SET TRANSACTION READ ONLY` o el `BEGIN READ ONLY` de cualquier informe pone en rojo «solo lectura».
+ * Mutación (sacar el READ ONLY de cualquiera de los cuatro informes la prueba el caso «el control de solo lectura es sensible»): cambiar en `informe-pares-compra-venta.sql` `c.merma = 0` por `true` (en el cálculo de «exacto») pone en rojo el recuento de exactos 1 a 1 (la «Gaseosa cola» con 5 % de merma pasaría a exacta); sacar el `SET TRANSACTION READ ONLY` o el `BEGIN READ ONLY` de cualquier informe pone en rojo «solo lectura».
  */
 const RAIZ = join(__dirname, "../..");
 const SCRIPTS = {
@@ -190,6 +190,15 @@ describe("propiedades comunes de los cuatro informes", () => {
       expect(mutado).not.toBe(leer(clave)); // la mutación se aplicó
       await expect(correrTexto(mutado)).rejects.toThrow(/read-only transaction/);
       expect(await q(`SELECT count(*)::text AS n FROM "CategoriaProducto"`)).toEqual(antes);
+    });
+
+    conPsql(`${clave}: el control de solo lectura es sensible (sin la declaración READ ONLY, el mismo INSERT SÍ pasa; el ROLLBACK lo deshace)`, async () => {
+      const original = leer(clave);
+      const sinSoloLectura = original.replace(/^SET TRANSACTION READ ONLY;$/m, "-- (sin solo lectura)").replace(/^BEGIN READ ONLY;$/m, "BEGIN;");
+      expect(sinSoloLectura).not.toBe(original); // se sacó la declaración (una de las dos formas)
+      const conInsert = sinSoloLectura.replace(/\nROLLBACK;\s*$/, `\nINSERT INTO "CategoriaProducto"(id, nombre, "empresaId") VALUES ('x', 'x', 'ea');\nROLLBACK;\n`);
+      await expect(correrTexto(conInsert)).resolves.toBeTypeOf("string"); // pasa: el INSERT de arriba falla SOLO por el solo lectura
+      expect(await q(`SELECT count(*)::text AS n FROM "CategoriaProducto"`)).toEqual([{ n: "0" }]); // y el ROLLBACK no dejó nada
     });
 
     conPsql(`${clave}: idempotente (dos corridas dan la misma salida) y deja la base como estaba`, async () => {
