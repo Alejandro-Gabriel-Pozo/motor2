@@ -84,7 +84,8 @@ test("la descripción de una opción: se escribe en la administración, se ve en
     const filaPapas = admin.locator("[data-opcion='Papas fritas']");
     await filaPapas.getByLabel("Descripción en la carta de Papas fritas").fill("<b>crocantes</b>");
     await filaPapas.getByRole("button", { name: "Guardar la descripción de Papas fritas" }).click();
-    await expect(admin.getByRole("alert").filter({ hasText: "caracteres no permitidos" })).toBeVisible();
+    // Desde E-1c (2026-11-16) el rechazo de la ficha de Pedernal es el mensaje genérico, igual que en Pedernal (su «descripción inválida» cae en `CATALOGO_ACCION_NO_PERMITIDA`).
+    await expect(admin.getByRole("alert").filter({ hasText: "Esta acción no está permitida" })).toBeVisible();
     expect((await prisma.opcionDeGrupo.findUniqueOrThrow({ where: { id: guarnicion.opciones["Papas fritas"]!.opcionId }, select: { descripcionEnCarta: true } })).descripcionEnCarta).toBeNull();
 
     // Vaciarlas: el desplegable desaparece.
