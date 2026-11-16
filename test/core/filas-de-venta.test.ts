@@ -61,25 +61,35 @@ describe("filasDeUnaVenta: una venta simple", () => {
 });
 
 describe("filasDeUnaVenta: el arrastre de redondeo entre consumos", () => {
-  it("dos consumos de 0,5 del mismo bollo (unidad sin decimales) escriben 1 y 0, no 1 y 1 — y `cantidadExacta` solo donde difiere", () => {
-    const [primera, segunda] = filas(venta({ consumos: [consumo("mp-bollo", 0.5), consumo("mp-bollo", 0.5)] }), { "mp-bollo": bollo });
-    expect(primera).toMatchObject({ proceso: "CONSUMO", cantidad: -1, cantidadExacta: -0.5 });
-    expect(segunda).toMatchObject({ proceso: "CONSUMO", cantidadExacta: -0.5 });
+  // A1b 2026-11-16 («4 decimales fijos como Pedernal» + cuenta exacta): el stock se redondea a 4 decimales y NO a los de la unidad, así que el arrastre solo actúa con consumos de MÁS de 4 decimales.
+  // Estas pruebas conservan la intención del arrastre (no se pierde ni se duplica) con consumos de 0,00005: antes eran 0,5 con la unidad de 0 decimales.
+  it("dos consumos de 0,00005 del mismo bollo escriben 0,0001 y 0, no 0,0001 y 0,0001 — y `cantidadExacta` solo donde difiere", () => {
+    const [primera, segunda] = filas(venta({ consumos: [consumo("mp-bollo", 0.00005), consumo("mp-bollo", 0.00005)] }), { "mp-bollo": bollo });
+    expect(primera).toMatchObject({ proceso: "CONSUMO", cantidad: -0.0001, cantidadExacta: -0.00005 });
+    expect(segunda).toMatchObject({ proceso: "CONSUMO", cantidadExacta: -0.00005 });
     expect(segunda!.cantidad === 0).toBe(true);
+  });
+
+  it("dos consumos de 0,5 del mismo bollo (unidad sin decimales) ahora escriben −0,5 y −0,5 exactos, sin deuda ni `cantidadExacta` (A1b: antes 1 y 0)", () => {
+    const [primera, segunda] = filas(venta({ consumos: [consumo("mp-bollo", 0.5), consumo("mp-bollo", 0.5)] }), { "mp-bollo": bollo });
+    expect(primera).toMatchObject({ proceso: "CONSUMO", cantidad: -0.5 });
+    expect(segunda).toMatchObject({ proceso: "CONSUMO", cantidad: -0.5 });
+    expect(primera!.cantidadExacta ?? null).toBeNull();
+    expect(segunda!.cantidadExacta ?? null).toBeNull();
   });
 
   it("el arrastre recibido se MUTA: la deuda de una venta pasa a la siguiente con el mismo arrastre", () => {
     const arrastre = crearArrastreDeRedondeo();
     const productoDe = () => bollo;
-    const [a] = filasDeUnaVenta(venta({ consumos: [consumo("mp-bollo", 0.5)] }), "op-1", { detalle: undefined, productoDe, arrastre });
-    const [b] = filasDeUnaVenta(venta({ consumos: [consumo("mp-bollo", 0.5)] }), "op-2", { detalle: undefined, productoDe, arrastre });
-    expect(a!.cantidad).toBe(-1);
+    const [a] = filasDeUnaVenta(venta({ consumos: [consumo("mp-bollo", 0.00005)] }), "op-1", { detalle: undefined, productoDe, arrastre });
+    const [b] = filasDeUnaVenta(venta({ consumos: [consumo("mp-bollo", 0.00005)] }), "op-2", { detalle: undefined, productoDe, arrastre });
+    expect(a!.cantidad).toBe(-0.0001); // A1b: antes −1 con 0,5 y la unidad de 0 decimales
     expect(b!.cantidad === 0).toBe(true);
   });
 
-  it("un producto que no se encontró se redondea a 2 decimales", () => {
-    const [consumida] = filas(venta({ consumos: [consumo("mp-fantasma", 0.126)] }), { "mp-fantasma": null });
-    expect(consumida).toMatchObject({ cantidad: -0.13, cantidadExacta: -0.126 });
+  it("un producto que no se encontró se redondea a 4 decimales (A1b 2026-11-16: antes 2)", () => {
+    const [consumida] = filas(venta({ consumos: [consumo("mp-fantasma", 0.12345)] }), { "mp-fantasma": null });
+    expect(consumida).toMatchObject({ cantidad: -0.1235, cantidadExacta: -0.12345 });
   });
 });
 

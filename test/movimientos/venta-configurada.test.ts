@@ -102,14 +102,30 @@ describe("registrarVentaEnTx con una línea configurada (GO-2b)", () => {
     expect((await filasDe(r.operacionIds)).filter((f) => f.proceso === "CONSUMO").map((f) => [f.productoId, f.cantidad])).toEqual([[c.lecheId, -0.25]]);
   });
 
-  it("arrastre de redondeo entre dos ventas fraccionadas (kg con 2 decimales): 0,005 + 0,005 deja 0,01 en total, nunca dos ceros ni dos centésimas", async () => {
+  // A1b 2026-11-16: stock con 4 decimales fijos y cuenta exacta; antes «kg con 2 decimales»: 0,005 + 0,005 dejaba 0,01 en total (el
+  // arrastre actuaba con consumos de 3 decimales). Ahora 0,005 se escribe exacto y el arrastre solo actúa con más de 4 decimales: se usa
+  // un consumo de 0,00005 (5 decimales) → la primera venta escribe −0,0001 (el empate se aleja del cero) y la segunda, con la deuda, 0.
+  it("arrastre de redondeo entre dos ventas fraccionadas (4 decimales): 0,00005 + 0,00005 deja 0,0001 en total, nunca dos ceros ni dos 0,0001", async () => {
+    const venta = () => vender([{ productoId: c.cafeId, cantidadVendida: 1, precioUnitario: 1000, configurada: { tipo: "PRODUCTO", opciones: [medida(c.medianoId, 1), variante(c.vacaId, [consumo(c.granoId, 0.00005)])] } }]);
+    const a = await venta();
+    const b = await venta();
+    if (!a.ok || !b.ok) throw new Error("deberían venderse");
+    const grano = [...(await filasDe(a.operacionIds)), ...(await filasDe(b.operacionIds))].filter((f) => f.productoId === c.granoId);
+    expect(grano.map((f) => f.exacta)).toEqual([-0.00005, -0.00005]); // la cantidad exacta lleva el signo del consumo
+    expect(grano.map((f) => f.cantidad)).toEqual([-0.0001, 0]);
+    expect(Math.round(grano.reduce((suma, f) => suma + f.cantidad, 0) * 1e4) / 1e4).toBe(-0.0001);
+  });
+
+  // A1b 2026-11-16 (prueba nueva): el comportamiento que cambió de verdad. Un consumo de 0,005 de un kg (2 decimales) ya no se redondea
+  // a los decimales de la unidad: se escribe exacto, dos veces, y no hay deuda de redondeo (cantidadExacta nula).
+  it("un consumo de 0,005 en kg (2 decimales) se escribe exacto en cada venta (−0,005 y −0,005, sin deuda): 4 decimales fijos", async () => {
     const venta = () => vender([{ productoId: c.cafeId, cantidadVendida: 1, precioUnitario: 1000, configurada: { tipo: "PRODUCTO", opciones: [medida(c.medianoId, 1), variante(c.vacaId, [consumo(c.granoId, 0.005)])] } }]);
     const a = await venta();
     const b = await venta();
     if (!a.ok || !b.ok) throw new Error("deberían venderse");
     const grano = [...(await filasDe(a.operacionIds)), ...(await filasDe(b.operacionIds))].filter((f) => f.productoId === c.granoId);
-    expect(grano.map((f) => f.exacta)).toEqual([-0.005, -0.005]); // la cantidad exacta lleva el signo del consumo
-    expect(Math.round(grano.reduce((suma, f) => suma + f.cantidad, 0) * 100) / 100).toBe(-0.01);
+    expect(grano.map((f) => f.cantidad)).toEqual([-0.005, -0.005]);
+    expect(grano.map((f) => f.exacta)).toEqual([null, null]);
   });
 
   it("el adicional sin su producto en la venta (o colgado de otro adicional) se rechaza antes de escribir nada", async () => {

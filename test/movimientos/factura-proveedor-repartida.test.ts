@@ -178,11 +178,19 @@ describe("cargar factura", () => {
     await comoOp3();
     expect((await registrarFacturaProveedor(factura({ reparto: { modo: "IMPORTE", partes: [{ sucursalId: s3, valor: 2_000_000 }, { sucursalId: "no-existe", valor: 1_000_000 }] } }))).mensaje).toContain("No se encontró una de las sucursales");
     const indivisible = await registrarFacturaProveedor(factura({ items: [{ productoId: harina, cantidad: 1, precioTotal: 90, referenciaProveedor: REFERENCIA_DE_PRUEBA }], reparto: { modo: "PORCENTAJE", partes: [{ sucursalId: s3, valor: 33.33 }, { sucursalId: s4, valor: 33.33 }, { sucursalId: s6, valor: 33.34 }] } }));
-    // La harina es en kg con 2 decimales: 1 kg sí se parte (0,33 / 0,33 / 0,34). El indivisible se prueba con una unidad entera.
+    // La harina es en kg con 2 decimales: 1 kg sí se parte (0,33 / 0,33 / 0,34).
+    // A1b 2026-11-16: stock con 4 decimales fijos; antes «indivisible» era una unidad entera (1 bolsa en 3 partes: 0,33 → 0). Ahora 1 bolsa
+    // SÍ se parte (0,3333 / 0,3333 / 0,3334), así que el rechazo por «no se puede partir» se prueba con la menor cantidad de stock posible:
+    // 1 bolsa comprada que equivale a 0,0001 de la unidad de stock (factor 0,0001) ya no alcanza para tres sucursales (alguna se
+    // quedaría con plata y sin mercadería). El rechazo es el mismo, con el mismo mensaje y sin escribir nada.
     expect(indivisible.ok, indivisible.mensaje).toBe(true);
     const unidad = await prisma.unidad.create({ data: { nombre: "bolsa", magnitud: "CANTIDAD", decimales: 0 } });
     const insumo = await prisma.insumo.create({ data: { nombre: "Bolsa" } });
-    const bolsa = await prisma.producto.create({ data: { codigo: "MP_BOLSA", nombre: "Bolsa 25 kg", tipo: "MP", unidadStockId: unidad.id, insumoId: insumo.id } });
+    const bolsaEntera = await prisma.producto.create({ data: { codigo: "MP_BOLSA_ENTERA", nombre: "Bolsa entera", tipo: "MP", unidadStockId: unidad.id, insumoId: insumo.id } });
+    await prisma.disponibilidadProducto.create({ data: { sucursalId: s3, productoId: bolsaEntera.id, disponible: true } });
+    const entera = await registrarFacturaProveedor(factura({ nroFactura: "A-00001-00000087", items: [{ productoId: bolsaEntera.id, cantidad: 1, precioTotal: 90, referenciaProveedor: REFERENCIA_DE_PRUEBA }], reparto: { modo: "PORCENTAJE", partes: [{ sucursalId: s3, valor: 33.33 }, { sucursalId: s4, valor: 33.33 }, { sucursalId: s6, valor: 33.34 }] } }));
+    expect(entera.ok, entera.mensaje).toBe(true); // A1b: antes esta misma carga se rechazaba por indivisible
+    const bolsa = await prisma.producto.create({ data: { codigo: "MP_BOLSA", nombre: "Bolsa 25 kg", tipo: "MP", unidadStockId: unidad.id, insumoId: insumo.id, factorConversion: "0.0001" } });
     await prisma.disponibilidadProducto.create({ data: { sucursalId: s3, productoId: bolsa.id, disponible: true } });
     const r = await registrarFacturaProveedor(factura({ nroFactura: "A-00001-00000088", items: [{ productoId: bolsa.id, cantidad: 1, precioTotal: 90, referenciaProveedor: REFERENCIA_DE_PRUEBA }], reparto: { modo: "PORCENTAJE", partes: [{ sucursalId: s3, valor: 33.33 }, { sucursalId: s4, valor: 33.33 }, { sucursalId: s6, valor: 33.34 }] } }));
     expect(r.mensaje).toContain("«Bolsa 25 kg» no se puede partir");

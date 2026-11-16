@@ -26,6 +26,13 @@ import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
  * por separado (`Math.round(0,5)` redondea el medio hacia arriba). Con paso 0,25, el bug era al revés: cuatro cuartos consumían 0
  * bollos (`Math.round(0,25)` redondea hacia abajo). Este archivo prueba el arreglo (Paso 4 del plan): un arrastre de deuda por
  * (sucursal, producto) que hace que el TOTAL converja al consumo exacto.
+ *
+ * A1b 2026-11-16 («Pasar a cuenta exacta como Pedernal» y «4 decimales fijos como Pedernal»): el stock se guarda a 4 decimales fijos
+ * (ya no a los decimales de la unidad, bollo: 0) y el redondeo es en decimal exacto con el empate alejándose del cero. Con eso 0,5 de
+ * bollo se escribe exacto (−0,5), sin deuda: el arrastre solo actúa con consumos de MÁS de 4 decimales. Estas pruebas conservan su
+ * intención (el total converge al consumo exacto: no se pierde ni se duplica) con una receta de `CONSUMO_CHICO` = 0,0001 de bollo por
+ * unidad vendida: media pizza consume 0,00005 (5 decimales), que a 4 decimales es 0,0001 con resto 0,00005. El comportamiento nuevo
+ * (0,5 exacto, sin deuda) se prueba aparte, con la receta de 1 bollo de siempre.
  */
 describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (Task #27)", () => {
   let sucursalId: string;
@@ -44,15 +51,18 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
 
-  /** Un PV con receta de 1 bollo (sin merma) por unidad vendida, con el `pasoVenta` pedido. */
-  async function crearPizzaConBollo(pasoVenta: number, sufijo: string) {
+  // A1b 2026-11-16: consumo por unidad vendida de las pruebas del ARRASTRE (antes 1 bollo): con media pizza da 0,00005, que necesita 5 decimales.
+  const CONSUMO_CHICO = 0.0001;
+
+  /** Un PV con receta de `cantidadReceta` bollos (1 por defecto; sin merma) por unidad vendida, con el `pasoVenta` pedido. */
+  async function crearPizzaConBollo(pasoVenta: number, sufijo: string, cantidadReceta = 1) {
     const mp = await sembrarProductoDisponible({ codigo: `MP_BOLLO_${sufijo}`, nombre: `Bollo ${sufijo}`, tipo: "MP", unidadStockId: unidadBolloId }, sucursalId);
     const pv = await sembrarProductoDisponible(
       { codigo: `PV_PIZZA_${sufijo}`, nombre: `Pizza ${sufijo}`, tipo: "PV", unidadStockId: unidadBolloId, precioVenta: 12000, pasoVenta },
       sucursalId
     );
     await prisma.recetaVersion.create({
-      data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadBolloId, mermaPorcentaje: 0 }] } },
+      data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: cantidadReceta, unidadId: unidadBolloId, mermaPorcentaje: 0 }] } },
     });
     return { mp, pv };
   }
@@ -60,8 +70,23 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
   const consumosDe = (productoId: string) => prisma.movimientoStock.findMany({ where: { productoId, proceso: "CONSUMO" }, orderBy: { creadoEn: "asc" } });
   const sumaCantidad = (filas: { cantidad: unknown }[]) => filas.reduce((s, f) => s + Number(f.cantidad), 0);
 
-  it("mostrador: dos ventas separadas de 0,5 (dos Operaciones) consumen 1 bollo en total, no 2 — filas [-1, 0], enteras", async () => {
-    const { mp, pv } = await crearPizzaConBollo(0.5, "A");
+  // A1b 2026-11-16 (prueba nueva): el comportamiento que cambió de verdad. Con bollo de 0 decimales, dos ventas de 0,5 escribían −1 y 0 (el
+  // arrastre); ahora cada una escribe −0,5 exacto, el total es −1 sin ninguna deuda (cantidadExacta nula) y no hay filas que redondear.
+  it("mostrador: dos ventas separadas de 0,5 de un bollo de 0 decimales escriben −0,5 y −0,5 exactos, sin deuda (4 decimales fijos)", async () => {
+    const { mp, pv } = await crearPizzaConBollo(0.5, "A0");
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
+    for (let i = 0; i < 2; i++) {
+      const r = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 0.5 }] });
+      expect(r.ok, r.mensaje).toBe(true);
+    }
+    const filas = await consumosDe(mp.id);
+    expect(filas.map((f) => Number(f.cantidad))).toEqual([-0.5, -0.5]);
+    expect(filas.map((f) => f.cantidadExacta)).toEqual([null, null]);
+    expect(await calcularSaldoTotal(mp.id, seccionId, prisma)).toBe(9);
+  });
+
+  it("mostrador: dos ventas separadas de 0,00005 de consumo (dos Operaciones) consumen 0,0001 en total, no 0,0002 — filas [-0,0001, 0]", async () => {
+    const { mp, pv } = await crearPizzaConBollo(0.5, "A", CONSUMO_CHICO);
     await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const r1 = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 0.5 }] });
@@ -71,16 +96,15 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
 
     const filas = await consumosDe(mp.id);
     expect(filas).toHaveLength(2);
-    // Dos Operaciones distintas (una por venta), cada CONSUMO es un ENTERO (Pivote 4) y el total es -1, no -2.
+    // Dos Operaciones distintas (una por venta), cada CONSUMO tiene como máximo 4 decimales y el total es -0,0001, no -0,0002.
     expect(new Set(filas.map((f) => f.operacionId)).size).toBe(2);
-    for (const f of filas) expect(Number.isInteger(Number(f.cantidad))).toBe(true);
-    expect(filas.map((f) => Number(f.cantidad))).toEqual([-1, 0]);
-    expect(sumaCantidad(filas)).toBe(-1);
-    expect(await calcularSaldoTotal(mp.id, seccionId, prisma)).toBe(9);
+    expect(filas.map((f) => Number(f.cantidad))).toEqual([-0.0001, 0]);
+    expect(sumaCantidad(filas)).toBeCloseTo(-0.0001, 10);
+    expect(await calcularSaldoTotal(mp.id, seccionId, prisma)).toBe(9.9999);
   });
 
-  it("POS: dos mesas distintas, cada una con 0,5, cerradas con cerrarCuenta en momentos DISTINTOS — total -1", async () => {
-    const { mp, pv } = await crearPizzaConBollo(0.5, "B");
+  it("POS: dos mesas distintas, cada una con 0,5, cerradas con cerrarCuenta en momentos DISTINTOS — total -0,0001 (A1b: receta de 0,0001)", async () => {
+    const { mp, pv } = await crearPizzaConBollo(0.5, "B", CONSUMO_CHICO);
     await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const mesa1 = await prisma.mesa.create({ data: { sucursalId, numero: 1 } });
@@ -97,11 +121,11 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
     expect(cierre2.ok, cierre2.mensaje).toBe(true);
 
     const filas = await consumosDe(mp.id);
-    expect(filas.map((f) => Number(f.cantidad))).toEqual([-1, 0]);
-    expect(sumaCantidad(filas)).toBe(-1);
+    expect(filas.map((f) => Number(f.cantidad))).toEqual([-0.0001, 0]); // A1b 2026-11-16: antes [-1, 0] con receta de 1 bollo y unidad entera
+    expect(sumaCantidad(filas)).toBeCloseTo(-0.0001, 10);
   });
 
-  it("una sola cuenta con 0,5 de una pizza + 0,5 de otra, mismo bollo (mismo insumo compartido) — total -1 en UNA venta", async () => {
+  it("una sola cuenta con 0,5 de una pizza + 0,5 de otra, mismo bollo (mismo insumo compartido) — total -0,0001 en UNA venta (A1b: receta de 0,0001)", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_BOLLO_C", nombre: "Bollo C", tipo: "MP", unidadStockId: unidadBolloId }, sucursalId);
     const napolitana = await sembrarProductoDisponible(
       { codigo: "PV_NAPO", nombre: "Napolitana", tipo: "PV", unidadStockId: unidadBolloId, precioVenta: 12000, pasoVenta: 0.5 },
@@ -113,7 +137,7 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
     );
     for (const pv of [napolitana, muzzarella]) {
       await prisma.recetaVersion.create({
-        data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadBolloId, mermaPorcentaje: 0 }] } },
+        data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: CONSUMO_CHICO, unidadId: unidadBolloId, mermaPorcentaje: 0 }] } },
       });
     }
     await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
@@ -132,12 +156,15 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
     expect(filas).toHaveLength(2);
     // Ambas líneas son la MISMA Operacion? No — registrarVentaEnTx crea una Operacion por línea, pero es UNA sola llamada a
     // registrarVenta (una sola venta desde la perspectiva del mostrador/cuenta).
-    expect(sumaCantidad(filas)).toBe(-1);
-    for (const f of filas) expect(Number.isInteger(Number(f.cantidad))).toBe(true);
+    expect(sumaCantidad(filas)).toBeCloseTo(-0.0001, 10);
+    for (const f of filas) expect(Math.round(Number(f.cantidad) * 1e4) / 1e4).toBe(Number(f.cantidad)); // A1b: antes enteras; ahora máximo 4 decimales
   });
 
-  it("paso 0,25 × 4: total -1 (no 0 — Math.round(0,25) redondea hacia abajo sin el arrastre)", async () => {
-    const { mp, pv } = await crearPizzaConBollo(0.25, "D");
+  // A1b 2026-11-16: con receta de 0,0003 cada cuarto consume 0,000075 (5 decimales); redondeado por separado daría 4 × 0,0001 = 0,0004 (de más);
+  // con el arrastre el total converge al exacto, 0,0003. (No se usa 0,0001 como en las otras: un consumo menor a 0,00005 ni llega a
+  // asignarse al lote, `origen-venta.ts` descarta lo que a 4 decimales es 0; ver el informe.)
+  it("paso 0,25 × 4: total -0,0003 (no -0,0004: cada parte de 0,000075 redondea a 0,0001 sin el arrastre)", async () => {
+    const { mp, pv } = await crearPizzaConBollo(0.25, "D", 0.0003);
     await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     for (let i = 0; i < 4; i++) {
@@ -146,13 +173,13 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
     }
 
     const filas = await consumosDe(mp.id);
-    expect(filas.map((f) => Number(f.cantidad))).toEqual([0, -1, 0, 0]);
-    expect(sumaCantidad(filas)).toBe(-1);
-    expect(await calcularSaldoTotal(mp.id, seccionId, prisma)).toBe(9);
+    expect(filas.map((f) => Number(f.cantidad))).toEqual([-0.0001, -0.0001, 0, -0.0001]); // A1b 2026-11-16: antes [0, -1, 0, 0] con receta de 1 bollo y unidad entera
+    expect(sumaCantidad(filas)).toBeCloseTo(-0.0003, 10);
+    expect(await calcularSaldoTotal(mp.id, seccionId, prisma)).toBe(9.9997);
   });
 
-  it("anulación: vender 0,5, vender 0,5, anular la primera, vender 0,5 — saldo final 8 (2 medias vigentes = 1 bollo) y D vuelve a 0", async () => {
-    const { mp, pv } = await crearPizzaConBollo(0.5, "E");
+  it("anulación: vender 0,5, vender 0,5, anular la primera, vender 0,5 — saldo final 8,9999 (2 medias vigentes = 0,0001) y D vuelve a 0 (A1b: receta de 0,0001)", async () => {
+    const { mp, pv } = await crearPizzaConBollo(0.5, "E", CONSUMO_CHICO);
     await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 9, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const v1 = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 0.5 }] });
@@ -169,13 +196,13 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
     const v3 = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 0.5 }] });
     expect(v3.ok, v3.mensaje).toBe(true);
 
-    expect(await calcularSaldoTotal(mp.id, seccionId, prisma)).toBe(8);
+    expect(await calcularSaldoTotal(mp.id, seccionId, prisma)).toBe(8.9999); // A1b 2026-11-16: antes 8 (2 medias de 1 bollo = 1 bollo)
 
     // D = Σcantidad − ΣcantidadExacta sobre TODAS las filas con cantidadExacta no nulo (CONSUMO + su reversión AJUSTE) — tiene que
-    // volver a 0: las dos ventas vigentes (v2, v3) consumieron exactamente 1 bollo entre las dos, sin resto pendiente.
+    // volver a 0: las dos ventas vigentes (v2, v3) consumieron exactamente 0,0001 entre las dos, sin resto pendiente.
     const conArrastre = await prisma.movimientoStock.findMany({ where: { productoId: mp.id, cantidadExacta: { not: null } } });
     const deudaFinal = conArrastre.reduce((d, f) => d + Number(f.cantidad) - Number(f.cantidadExacta), 0);
-    expect(deudaFinal).toBe(0);
+    expect(deudaFinal).toBeCloseTo(0, 10);
   });
 
   it("dos sucursales: la deuda de redondeo es independiente entre ellas (mismo producto, misma unidad, ninguna se contamina)", async () => {
@@ -183,7 +210,7 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
     const seccion2 = await sembrarSeccion(sucursal2.id, "Depósito 2");
     const admin2 = await crearUsuarioConMembresia({ email: "admin2@test.com", sucursalId: sucursal2.id, rolId: (await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } })).id });
 
-    const { mp, pv } = await crearPizzaConBollo(0.5, "F");
+    const { mp, pv } = await crearPizzaConBollo(0.5, "F", CONSUMO_CHICO);
     // El mismo producto tiene que estar disponible (y comprado) en las DOS sucursales.
     await prisma.disponibilidadProducto.create({ data: { sucursalId: sucursal2.id, productoId: mp.id, disponible: true } });
     await prisma.disponibilidadProducto.create({ data: { sucursalId: sucursal2.id, productoId: pv.id, disponible: true } });
@@ -195,26 +222,28 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
     const compra2 = await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccion2.id, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     expect(compra2.ok, compra2.mensaje).toBe(true);
 
-    // Sucursal 1: una sola venta de 0,5 — escribe -1 (deuda queda en -0,5, sin nadie que la retire en este test). Vuelve a `admin`.
+    // Sucursal 1: una sola venta de 0,5 — escribe -0,0001 (deuda queda en -0,00005, sin nadie que la retire en este test). Vuelve a `admin`.
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
     const r1 = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 0.5 }] });
     expect(r1.ok, r1.mensaje).toBe(true);
 
-    // Sucursal 2: si compartiera la deuda de la Sucursal 1 (D=-0,5), esta venta de 0,5 escribiría 0 — la prueba real es que
-    // escribe -1, exactamente como si fuera la PRIMERA venta de este producto en cualquier sucursal (D=0 propio).
+    // Sucursal 2: si compartiera la deuda de la Sucursal 1 (D=-0,00005), esta venta de 0,5 escribiría 0 — la prueba real es que
+    // escribe -0,0001, exactamente como si fuera la PRIMERA venta de este producto en cualquier sucursal (D=0 propio).
     await mockearUsuarioActual({ id: admin2.id, email: admin2.email, nombre: null });
     const r2 = await registrarVenta({ fecha: new Date(), seccionId: seccion2.id, ventas: [{ productoId: pv.id, cantidadVendida: 0.5 }] });
     expect(r2.ok, r2.mensaje).toBe(true);
 
-    expect(await calcularSaldoTotal(mp.id, seccionId, prisma)).toBe(9);
-    expect(await calcularSaldoTotal(mp.id, seccion2.id, prisma)).toBe(9);
+    expect(await calcularSaldoTotal(mp.id, seccionId, prisma)).toBe(9.9999); // A1b 2026-11-16: antes 9 (receta de 1 bollo, unidad entera)
+    expect(await calcularSaldoTotal(mp.id, seccion2.id, prisma)).toBe(9.9999);
     const consumoSucursal1 = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: mp.id, seccionId, proceso: "CONSUMO" } });
     const consumoSucursal2 = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: mp.id, seccionId: seccion2.id, proceso: "CONSUMO" } });
-    expect(Number(consumoSucursal1.cantidad)).toBe(-1);
-    expect(Number(consumoSucursal2.cantidad)).toBe(-1);
+    expect(Number(consumoSucursal1.cantidad)).toBe(-0.0001);
+    expect(Number(consumoSucursal2.cantidad)).toBe(-0.0001);
   });
 
-  it("compatibilidad: la primera venta de 7 × 0,3 × 1,07 (caso existente «Contraste») sigue dando -2, sin cambios", async () => {
+  // A1b 2026-11-16: stock con 4 decimales fijos; antes 7 × 0,3 × 1,07 = 2,247 se redondeaba a −2 (unidad entera) con deuda de 0,247.
+  // Ahora 2,247 cabe en 4 decimales: se escribe −2,247 exacto, sin deuda (cantidadExacta nula).
+  it("compatibilidad: la primera venta de 7 × 0,3 × 1,07 (caso existente «Contraste») escribe -2,247 exacto, sin deuda (A1b)", async () => {
     const unidadEntera = await prisma.unidad.create({ data: { nombre: "unidad_entera_compat", magnitud: "CANTIDAD", decimales: 0 } });
     const mpInsumo = await sembrarProductoDisponible({ codigo: "MP_HUEVOS_COMPAT", nombre: "Huevos", tipo: "MP", unidadStockId: unidadEntera.id }, sucursalId);
     const pv = await sembrarProductoDisponible({ codigo: "PV_BUDIN_COMPAT", nombre: "Budín", tipo: "PV", unidadStockId: unidadEntera.id, precioVenta: 10 }, sucursalId);
@@ -227,11 +256,8 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
     expect(resultado.ok, resultado.mensaje).toBe(true);
 
     const mov = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: mpInsumo.id, proceso: "CONSUMO" } });
-    expect(Number.isInteger(Number(mov.cantidad))).toBe(true);
-    expect(Number(mov.cantidad)).toBe(-2); // redondearACantidadDeUnidad(2.247, 0) === 2 — SIN deuda previa, idéntico a hoy (invariante "Contraste").
-    // cantidadExacta SÍ se llena (columna nueva, sin invariante previo que romper): 2,247 ≠ 2 escrito, así que la deuda de esta MP
-    // queda en +0,247 (Σcantidad − ΣcantidadExacta = −2 − (−2,247) = 0,247), lista para la PRÓXIMA venta de este insumo.
-    expect(mov.cantidadExacta).not.toBeNull();
-    expect(Number(mov.cantidadExacta)).toBeCloseTo(-2.247, 8);
+    expect(Number(mov.cantidad)).toBe(-2.247); // A1b: antes -2 (redondearACantidadDeUnidad(2.247, 0)), con deuda de +0,247
+    // A1b: lo escrito ES lo exacto, así que no hay deuda y cantidadExacta queda nula (antes se llenaba con -2,247).
+    expect(mov.cantidadExacta).toBeNull();
   });
 });
