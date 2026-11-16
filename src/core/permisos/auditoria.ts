@@ -20,6 +20,13 @@ export const ENTIDADES_AUDITABLES = [
   // Caja y cobro C3: `CuentaDeCobro` (alta, edición, activar/desactivar; `entidadId` es el id, con `sucursalId` de la cuenta) y `MedioDePago` (alta, edición con los datos que pide, activar/desactivar; `sucursalId` null: es de la empresa). Nunca llevan datos personales ni el identificador externo.
   "CuentaDeCobro",
   "MedioDePago",
+  // Caja y cobro C2: `JornadaDeSucursal` (empezar, cancelar y cerrar el día; `entidadId` es el id de la jornada), `CorreccionDeMedio` (el medio de un cobro corregido durante el cierre), `DeclaracionDeTotal` y `ConformeDeJornada` (lo que se declara al cerrar el día) — con `sucursalId`. Nunca llevan datos personales.
+  "JornadaDeSucursal",
+  "CorreccionDeMedio",
+  "DeclaracionDeTotal",
+  // Caja y cobro C2b: `CierreDeCajaDeJornada` (la foto de la conciliación por medio que se congeló al cerrar el día; `entidadId` es el id de la cabecera), con `sucursalId`. Nunca lleva datos personales.
+  "ConformeDeJornada",
+  "CierreDeCajaDeJornada",
   "PermisoRol",
   "CapacidadSucursal",
   "Rol",
