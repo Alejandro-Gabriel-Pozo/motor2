@@ -13,6 +13,10 @@ export const ENTIDADES_AUDITABLES = [
   "DisponibilidadProducto",
   // "OcultamientoProducto": «Ocultar» / «Volver a mostrar» un producto en un local o en toda la empresa — `entidadId` es `${sucursalId | "EMPRESA"}:${productoId}`, `campo: "oculto"`, con `sucursalId` (nulo = toda la empresa).
   "OcultamientoProducto",
+  // Caja y cobro C1: `SesionCaja` (apertura con fondo y cierre con arqueo), `MovimientoCaja` (ingreso, egreso y anulación manual) y `Cobranza` (el cobro de una cuenta) — `entidadId` es el id de la fila, con `sucursalId`. Nunca llevan datos personales.
+  "SesionCaja",
+  "MovimientoCaja",
+  "Cobranza",
   "PermisoRol",
   "CapacidadSucursal",
   "Rol",
