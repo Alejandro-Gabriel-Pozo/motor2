@@ -22,7 +22,7 @@ import { nuevoDuplicadoId, sembrarElBife, type EscenarioDelBife } from "../setup
  *   1. Si pide la receta y no tiene `guardar_receta`: se rechaza el pedido ENTERO (nada se escribe), aunque también pida opciones.
  *   2. Si no (y pide las opciones sin tener `producto_opciones_admitidas`): se rechaza el pedido ENTERO.
  *   3. Si no, se crea el producto: con la receta (versión 1) si la pidió, con las dos filas de grupos y las tres de opciones si las pidió.
- *   4. El precio y la disponibilidad dependen SOLO de S: con la clave, el del original ($5.000) y disponible en las dos sucursales; sin ella, $0 y sin disponibilidad en ninguna.
+ *   4. El precio NO depende de S (decisión del dueño, 2026-11-16, como Pedernal): siempre el del original ($5.000). La disponibilidad sí depende SOLO de S: con la clave, disponible en las dos sucursales; sin ella, en ninguna (regla del alta).
  */
 type Resultado = "OK" | "RECHAZA_POR_FALTA_DE_GUARDAR_RECETA" | "RECHAZA_POR_FALTA_DE_PRODUCTO_OPCIONES_ADMITIDAS";
 
@@ -78,7 +78,7 @@ const DIMENSIONES_DEL_COMANDO: Readonly<Record<string, string>> = {
   copiarReceta: "AFECTA (permisos y stock): cR, arriba",
   copiarOpciones: "AFECTA (permisos y dinero: precios por opción): cO, arriba",
   sucursalDeLaRecetaId: "AFECTA qué receta se copia, no si se copia: la propia o la central de otra sucursal (S-07, probado en `duplicar-producto.test.ts`)",
-  precioVenta: "AFECTA (dinero): con S es el que se escribe, sin S solo vale 0 (probado en `duplicar-producto-permisos.test.ts`)",
+  precioVenta: "AFECTA (dinero): con S se puede editar, sin S el pedido no puede traerlo y el precio es el del original (probado en `duplicar-producto-permisos.test.ts`)",
 };
 /** Las claves de permiso que la Server Action consulta, y a qué dimensión corresponden. Una clave nueva en la acción sin declarar acá hace fallar el guardián de abajo. */
 const CLAVES_DE_LA_ACCION: Readonly<Record<string, string>> = {
@@ -120,7 +120,7 @@ describe("Duplicar producto: combinaciones (las 32, contra el oráculo)", () => 
         expect(await prisma.recetaVersion.count({ where: { productoId: nuevo.id } }), `${etiqueta}: receta`).toBe(cR ? 1 : 0);
         expect(await prisma.productoAdmiteGrupo.count({ where: { productoId: nuevo.id } }), `${etiqueta}: grupos`).toBe(cO ? 2 : 0);
         expect(await prisma.productoAdmiteOpcion.count({ where: { productoId: nuevo.id } }), `${etiqueta}: opciones`).toBe(cO ? 3 : 0);
-        expect(Number(nuevo.precioVenta), `${etiqueta}: precio`).toBe(S ? 5000 : 0);
+        expect(Number(nuevo.precioVenta), `${etiqueta}: precio (siempre el del original)`).toBe(5000);
         const disponibilidad = await prisma.disponibilidadProducto.findMany({ where: { productoId: nuevo.id } });
         expect(disponibilidad, `${etiqueta}: disponibilidad`).toHaveLength(2);
         expect(disponibilidad.every((d) => d.disponible === S), `${etiqueta}: disponible`).toBe(true);
