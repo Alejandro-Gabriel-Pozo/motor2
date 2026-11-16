@@ -13,7 +13,7 @@ export interface FilaCategoriaDeSeccion {
 const COLUMNAS: ColumnaReporte<FilaCategoriaDeSeccion>[] = [
   { clave: "categoria", etiqueta: textoDe("columna.categoria"), valor: (c) => c.categoria, render: (c) => c.categoria },
   { clave: "cantidad", etiqueta: textoDe("columna.cantidad"), alinear: "derecha", valor: (c) => c.cantidad, render: (c) => c.cantidad },
-  { clave: "importe", etiqueta: "Importe", alinear: "derecha", valor: (c) => c.importe, render: (c) => `${formatearMonto(c.importe)}` },
+  { clave: "importe", etiqueta: textoDe("columna.importe"), alinear: "derecha", valor: (c) => c.importe, render: (c) => `${formatearMonto(c.importe)}` },
 ];
 
 export function TablaCategoriasDeSeccion({ filas, nombreExport }: { filas: FilaCategoriaDeSeccion[]; nombreExport: string }) {

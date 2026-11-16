@@ -17,12 +17,12 @@ interface FilaStockBajo {
 
 const COLUMNAS_TOP_PRODUCTOS: ColumnaReporte<FilaTopImporte>[] = [
   { clave: "producto", etiqueta: textoDe("columna.producto"), valor: (p) => p.producto ?? "", render: (p) => p.producto },
-  { clave: "importe", etiqueta: "Importe", alinear: "derecha", valor: (p) => p.importe, render: (p) => `${formatearMonto(p.importe)}` },
+  { clave: "importe", etiqueta: textoDe("columna.importe"), alinear: "derecha", valor: (p) => p.importe, render: (p) => `${formatearMonto(p.importe)}` },
 ];
 
 const COLUMNAS_TOP_PROVEEDORES: ColumnaReporte<FilaTopImporte>[] = [
   { clave: "proveedor", etiqueta: textoDe("columna.proveedor"), valor: (p) => p.proveedor ?? "", render: (p) => p.proveedor },
-  { clave: "importe", etiqueta: "Importe", alinear: "derecha", valor: (p) => p.importe, render: (p) => `${formatearMonto(p.importe)}` },
+  { clave: "importe", etiqueta: textoDe("columna.importe"), alinear: "derecha", valor: (p) => p.importe, render: (p) => `${formatearMonto(p.importe)}` },
 ];
 
 const COLUMNAS_STOCK_BAJO: ColumnaReporte<FilaStockBajo>[] = [

@@ -9,6 +9,8 @@
 --   Empresa, ModuloEmpresa                 SELECT, INSERT, UPDATE   (alta, activación, política; el registro de módulos se actualiza)
 --   User, UsuarioEmpresa                   SELECT                   (S-35: solo lectura —el gerente de una empresa—; el primer gerente ya no se crea desde acá: llega por la
 --                                                                     invitación y lo incorpora la app. UsuarioSucursal: ningún privilegio. S-33: el actor de un cambio ya no es un User)
+--   Plan, VersionDePlan                    SELECT, INSERT, UPDATE   (planes versionados, M1: el borrador se edita; sin DELETE. La versión publicada la congela un trigger)
+--   PlanDeEmpresa                          SELECT, INSERT           (la asignación de plan solo se agrega)
 --   Accion, Rol, PermisoRol, Unidad, MotivoMerma, DestinoConsumo, Sucursal
 --                                          SELECT, INSERT           (siembra del alta)
 --   AuditoriaPlataforma                    SELECT, INSERT           (append-only; S-33: aquí quedan los cambios de módulos y de política hechos por script, a nombre del administrador.
@@ -90,7 +92,7 @@ $$;
 DO $$
 DECLARE t text;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['AdminPlataforma', 'CodigoDeIngresoPlataforma', 'CodigoDeRecuperacionPlataforma', 'SesionPlataforma', 'Invitacion'] LOOP
+  FOREACH t IN ARRAY ARRAY['AdminPlataforma', 'CodigoDeIngresoPlataforma', 'CodigoDeRecuperacionPlataforma', 'SesionPlataforma', 'Invitacion', 'Plan', 'VersionDePlan'] LOOP
     IF to_regclass(format('public.%I', t)) IS NOT NULL THEN
       EXECUTE format('GRANT SELECT, INSERT, UPDATE ON public.%I TO motor2_plataforma', t);
     END IF;
@@ -98,8 +100,13 @@ BEGIN
   IF to_regclass('public."AuditoriaPlataforma"') IS NOT NULL THEN
     GRANT SELECT, INSERT ON "AuditoriaPlataforma" TO motor2_plataforma;
   END IF;
+  -- Planes versionados (M1): `Plan` y `VersionDePlan` van en la lista de arriba; la asignación solo se agrega.
+  IF to_regclass('public."PlanDeEmpresa"') IS NOT NULL THEN
+    GRANT SELECT, INSERT ON "PlanDeEmpresa" TO motor2_plataforma;
+  END IF;
 END
 $$;
+
 
 -- M.1-C2: el recorte DENIEGA POR DEFECTO. No enumera lo que quita (REVOKE INSERT, UPDATE, DELETE dejaba TRUNCATE, REFERENCES, TRIGGER y lo que hubiera por columna): quita TODO a motor2_app
 -- sobre "Empresa" (el REVOKE de tabla también quita los privilegios por columna que ella tuviera), le da SOLO lectura y exige que no quede nada más. La aserción mira el privilegio EFECTIVO,

@@ -27,7 +27,7 @@ const COLUMNAS_CON_COSTO: ColumnaReporte<FilaValuacionInventario>[] = [
       </>
     ),
   },
-  { clave: "costoUnitario", etiqueta: "Costo unitario", alinear: "derecha", valor: (f) => f.costoUnitario, render: (f) => `${formatearMonto(f.costoUnitario!)}` },
+  { clave: "costoUnitario", etiqueta: textoDe("columna.costo_unitario"), alinear: "derecha", valor: (f) => f.costoUnitario, render: (f) => `${formatearMonto(f.costoUnitario!)}` },
   { clave: "valor", etiqueta: "Valor", alinear: "derecha", valor: (f) => f.valor, render: (f) => <span className="font-medium">{formatearMonto(f.valor!)}</span> },
   { clave: "proveedor", etiqueta: textoDe("columna.proveedor"), valor: (f) => f.proveedorNombre, render: (f) => f.proveedorNombre ?? "—" },
 ];

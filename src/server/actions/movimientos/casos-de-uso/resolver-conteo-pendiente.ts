@@ -4,6 +4,7 @@ import { redondearACantidadDeUnidad } from "@/core/movimientos/public";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { calcularSaldoPorLote, calcularSaldoTotal } from "@/server/lecturas/movimientos/saldos";
 import { exito, fracaso } from "@/core/resultado-caso";
+import { textoDe } from "@/core/textos/texto-de";
 import type { ComoResolverConteo, ResultadoResolverConteo } from "@/core/features/movimientos/resolver-conteo.schema";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { cargarConteoFisico } from "@/server/persistencia/movimientos/cargar-conteo-fisico";
@@ -42,7 +43,7 @@ export async function resolverConteoPendienteCasoDeUso(
 ): Promise<ResultadoResolverConteo> {
   return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoResolverConteo> => {
     const conteo = await cargarConteoFisico(tx, conteoId);
-    if (!conteo || conteo.sucursalId !== actor.sucursalId) return fracaso("CONTEO_NO_ENCONTRADO", "No se encontró ese conteo.");
+    if (!conteo || conteo.sucursalId !== actor.sucursalId) return fracaso("CONTEO_NO_ENCONTRADO", textoDe("rechazo.CONTEO_NO_ENCONTRADO"));
     if (conteo.estado !== "PENDIENTE") return fracaso("CONTEO_NO_PENDIENTE", "Ese conteo no está pendiente.");
 
     if (comoResolver === "resuelto") {

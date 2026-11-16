@@ -18,7 +18,7 @@ const COLUMNAS_VENTAS: ColumnaReporte<FilaMargenProducto>[] = [
     ),
   },
   { clave: "cantidad", etiqueta: textoDe("columna.cantidad"), alinear: "derecha", valor: (v) => v.cantidad, render: (v) => v.cantidad },
-  { clave: "importe", etiqueta: "Importe", alinear: "derecha", valor: (v) => v.ingreso, render: (v) => `${formatearMonto(v.ingreso)}` },
+  { clave: "importe", etiqueta: textoDe("columna.importe"), alinear: "derecha", valor: (v) => v.ingreso, render: (v) => `${formatearMonto(v.ingreso)}` },
   {
     clave: "margen",
     etiqueta: "Margen teórico",
@@ -68,7 +68,7 @@ function columnasCompras(desde?: string, hasta?: string): ColumnaReporte<FilaCom
     render: (p) => p.cantidadCompras,
     ayuda: "Cantidad de compras (facturas/remitos) distintas cargadas a este proveedor en el rango de fechas elegido.",
   },
-  { clave: "importe", etiqueta: "Importe", alinear: "derecha", valor: (p) => p.importe, render: (p) => `${formatearMonto(p.importe)}` },
+  { clave: "importe", etiqueta: textoDe("columna.importe"), alinear: "derecha", valor: (p) => p.importe, render: (p) => `${formatearMonto(p.importe)}` },
   ];
 }
 
@@ -87,7 +87,7 @@ const COLUMNAS_VENTAS_POR_OPCION: ColumnaReporte<FilaVentaPorOpcion>[] = [
   { clave: "grupo", etiqueta: "Grupo", valor: (f) => f.grupo, render: (f) => f.grupo },
   { clave: "opcion", etiqueta: "Opción", valor: (f) => f.opcion, render: (f) => f.opcion },
   { clave: "unidades", etiqueta: textoDe("columna.unidades"), alinear: "derecha", valor: (f) => f.unidades, render: (f) => formatearEntero(f.unidades) },
-  { clave: "importe", etiqueta: "Importe", alinear: "derecha", valor: (f) => f.importeCentavos / 100, render: (f) => pesos(f.importeCentavos) },
+  { clave: "importe", etiqueta: textoDe("columna.importe"), alinear: "derecha", valor: (f) => f.importeCentavos / 100, render: (f) => pesos(f.importeCentavos) },
   {
     clave: "costo",
     etiqueta: "Costo al vender",
@@ -99,7 +99,7 @@ const COLUMNAS_VENTAS_POR_OPCION: ColumnaReporte<FilaVentaPorOpcion>[] = [
   },
   {
     clave: "margen",
-    etiqueta: "Margen",
+    etiqueta: textoDe("columna.margen"),
     alinear: "derecha",
     valor: (f) => (f.margenCentavos === null ? null : f.margenCentavos / 100),
     render: (f) => (f.margenCentavos === null ? <span className="text-tinta-suave">—</span> : `${pesos(f.margenCentavos)}${f.margenPorcentaje !== null ? ` (${f.margenPorcentaje}%)` : ""}`),
@@ -280,7 +280,7 @@ const COLUMNAS_IMPACTO_RECETA: ColumnaReporte<FilaImpactoRecetaPorPeriodo>[] = [
   },
   {
     clave: "foodCost",
-    etiqueta: "Food cost %",
+    etiqueta: textoDe("columna.food_cost"),
     alinear: "derecha",
     valor: (f) => f.foodCostPctActual,
     render: (f) =>

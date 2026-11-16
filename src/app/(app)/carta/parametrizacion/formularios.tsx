@@ -1,4 +1,4 @@
-import { SUMAR_LUGAR_DE_LISTA_VISIBLE, type LugarDeCombo, type ProductoParaMantener } from "@/core/carta/public";
+import { ALTA_DE_SECCION_SOLO_NOMBRE, SUMAR_LUGAR_DE_LISTA_VISIBLE, type LugarDeCombo, type ProductoParaMantener } from "@/core/carta/public";
 import { CampoNumero } from "@/components/campo-numero";
 import { AreaDeTexto } from "@/ui/primitivas/area-de-texto";
 import { Campo } from "@/ui/primitivas/campo";
@@ -82,6 +82,20 @@ export function CamposSeccion({
         <CampoNumero tipo="entero" etiqueta="El orden" name="orden" defaultValue={String(valores?.orden ?? ordenSugerido)} permitirNegativo />
       </label>
     </>
+  );
+}
+
+/**
+ * Los campos del ALTA de una sección. Con `ALTA_DE_SECCION_SOLO_NOMBRE` (hoy): solo el nombre; el título, la descripción y la imagen se completan en la pantalla de la sección y el orden lo pone la página al
+ * guardar (cae al final, DA5: `ordenDeLaSeccionNueva`). Apagado: los cinco campos de siempre (`CamposSeccion`).
+ */
+export function CamposDeAltaDeSeccion({ ordenSugerido }: { ordenSugerido: number }) {
+  if (!ALTA_DE_SECCION_SOLO_NOMBRE) return <CamposSeccion ordenSugerido={ordenSugerido} />;
+  return (
+    <label className="flex flex-col gap-1 sm:col-span-2">
+      <span className="text-sm font-medium">Nombre</span>
+      <Campo nombradoPorFuera name="nombre" required placeholder="Platos Principales" />
+    </label>
   );
 }
 
