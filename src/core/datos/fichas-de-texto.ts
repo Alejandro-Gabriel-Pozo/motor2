@@ -9,6 +9,7 @@ import { textoDeUnaLineaDesdeTexto, type MotivoDeTextoInvalido, type ReglasDelTe
  *  · PRODUCTO: 1 a 120, con signos de catálogo, exige una letra. Único por empresa sin distinguir mayúsculas (`claveDeNombre`).
  *  · ELECCION (sección de la carta, grupo de opciones, opción y nodo de la clasificación comercial): 1 a 80, con signos de catálogo, NO exige letra
  *    («2x1» o «12» son nombres posibles de una opción).
+ *  · NOMBRE_DE_COCINA (cómo nombra la cocina un producto de venta en la comanda; Pedernal `nombre-de-cocina.ts`): 1 a 80, SIN signos de catálogo, exige una letra.
  *  · RAZON_SOCIAL (nombre o razón social de una persona o empresa: proveedor, cliente, receptor de un comprobante): 1 a 200, SIN signos de
  *    catálogo (viaja a un comprobante), exige una letra: eso también rechaza un CUIT escrito en el campo del nombre.
  * Qué dato de Motor2 usa cuál ficha, y qué no tiene ficha en Pedernal, está en el documento del recuento (todavía sin conectar).
@@ -17,6 +18,7 @@ export const FICHAS_DE_TEXTO = {
   PRODUCTO: { maximo: 120, exigirUnaLetra: true, conSignosDeCatalogo: true },
   ELECCION: { maximo: 80, exigirUnaLetra: false, conSignosDeCatalogo: true },
   RAZON_SOCIAL: { maximo: 200, exigirUnaLetra: true, conSignosDeCatalogo: false },
+  NOMBRE_DE_COCINA: { maximo: 80, exigirUnaLetra: true, conSignosDeCatalogo: false },
 } as const satisfies Record<string, ReglasDelTexto>;
 
 export type FichaDeTexto = keyof typeof FICHAS_DE_TEXTO;
@@ -33,6 +35,10 @@ export function nombreDeProductoDesdeTexto(texto: unknown): ResultadoDeRegla<str
 
 export function nombreDeEleccionDesdeTexto(texto: unknown): ResultadoDeRegla<string, MotivoDeTextoInvalido> {
   return textoDeFichaDesdeTexto("ELECCION", texto);
+}
+
+export function nombreDeCocinaDesdeTexto(texto: unknown): ResultadoDeRegla<string, MotivoDeTextoInvalido> {
+  return textoDeFichaDesdeTexto("NOMBRE_DE_COCINA", texto);
 }
 
 export function nombreODenominacionDesdeTexto(texto: unknown): ResultadoDeRegla<string, MotivoDeTextoInvalido> {

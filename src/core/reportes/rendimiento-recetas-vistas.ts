@@ -1,3 +1,4 @@
+import { factorDeMerma } from "@/core/catalogo/public";
 import { redondearMoneda } from "@/core/moneda";
 import { mediana } from "@/core/estadistica/mediana";
 
@@ -47,7 +48,7 @@ export function desvioEsNotable(desviacionPorcentaje: number | null): boolean {
 
 /** cantidad × (1 + merma%) — misma fórmula que descuenta el Kardex (venta.ts:85, movimientos.ts:100, costos.ts:63). */
 export function calcularCantidadTeoricaBruta(cantidadReceta: number, mermaPorcentaje: number): number {
-  return redondearCantidad(cantidadReceta * (1 + mermaPorcentaje / 100));
+  return redondearCantidad(cantidadReceta * factorDeMerma(mermaPorcentaje));
 }
 
 /**
@@ -58,7 +59,7 @@ export function calcularCantidadTeoricaBruta(cantidadReceta: number, mermaPorcen
  * línea con merma (plan §A5).
  */
 export function calcularCantidadEstimadaNeta(cantidadEstimadaBruta: number, mermaPorcentaje: number): number {
-  return redondearCantidad(cantidadEstimadaBruta / (1 + mermaPorcentaje / 100));
+  return redondearCantidad(cantidadEstimadaBruta / factorDeMerma(mermaPorcentaje));
 }
 
 /**

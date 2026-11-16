@@ -493,6 +493,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Regla de números del dueño (2026-11-09, «1.000,00»; SOLO FORMATO, no cambia ningún valor, redondeo ni efecto): el mensaje de cierre de cuenta del POS sale con 2 decimales («se registró la venta por $ 40.200» pasa a «$ 40.200,00»). Cambia 1 línea.",
       },
+      {
+        blob: "60e8ae96ac36510c91f6c8846139cf4c7fcf0b59",
+        // El commit PADRE de este (c17744e) es el último antes de la regeneración; el cambio es la columna nueva del nombre de cocina (migración 20261115170000_nombre_de_cocina, 2026-11-15).
+        commit: "c17744e",
+        motivo:
+          "Nombre de cocina (ADITIVO; migración 20261115170000_nombre_de_cocina; regenerado con REGENERAR_CARACTERIZACION_DE_VENTA_AMPLIADA=1): las líneas CUENTA_ITEM suman `nombreDeCocina=null` (nadie tiene nombre de cocina en este mundo). Verificado por programa: sin esa columna el contenido es IDÉNTICO al blob anterior.",
+      },
     ],
   },
   "test/reportes/caracterizacion/reportes-c0.golden.txt": {
@@ -695,6 +702,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Nombre público de la empresa en la carta, PR 1 (decisión del dueño 2026-11-14: «Configurable por empresa, como Pedernal (Recomendada)»; construir: «Sí, construí el nombre público»): el catálogo del portal suma la clave `portal_nombre_publico` (nace vacía) y la lectura de la carta pública la trae en `valores` del portal. Cambia SOLO eso: UNA línea con `\"\"` en el portal resuelto; ningún conteo de consultas ni ningún otro valor. Sin nombre cargado el portal se ve exactamente igual (lo prueba test/carta/marca-sin-cambio.test.ts con el portal real).",
       },
+      {
+        blob: "e8b8144ebe118f09528ef023316dcf8b459a9d17",
+        // El commit PADRE de este (22837e5) es el último antes de la regeneración; el cambio es la columna nueva del nombre de cocina (migración 20261115170000_nombre_de_cocina, 2026-11-15).
+        commit: "22837e5",
+        motivo:
+          "Nombre de cocina (ADITIVO; migración 20261115170000_nombre_de_cocina): la fila PRODUCTO de la lectura del estado de la receta propia suma `nombreDeCocina: null` (nadie tiene nombre de cocina en este mundo). Una sola línea agregada, a mano sobre el golden anterior: ningún otro campo ni conteo de consultas cambia.",
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {
@@ -730,6 +744,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "a8f5e55e",
         motivo:
           "Ticket del cliente con el nombre de la carta y sin lo oculto (ADITIVO; migración 20261105100000_ticket_nombre_y_oculto_en_carta; regenerado con REGENERAR_HUELLA_DEL_POS=1): las líneas ITEM suman `nombreEnTicket=null` (nadie tiene «Nombre en la carta» en este mundo) y las fotos de opción suman `ocultaEnCarta=false`. Verificado por programa: sin esas dos columnas el contenido es IDÉNTICO al blob anterior.",
+      },
+      {
+        blob: "74d74f9295ebe2f5e203b72a21f632a825a25d92",
+        // El commit PADRE de este (c17744e) es el último antes de la regeneración; el cambio es la columna nueva del nombre de cocina (migración 20261115170000_nombre_de_cocina, 2026-11-15).
+        commit: "c17744e",
+        motivo:
+          "Nombre de cocina (ADITIVO; migración 20261115170000_nombre_de_cocina; regenerado con REGENERAR_HUELLA_DEL_POS=1): las filas PRODUCTO y las líneas ITEM suman `nombreDeCocina=null` (nadie tiene nombre de cocina en este mundo). Verificado por programa: sin esa columna el contenido es IDÉNTICO al blob anterior.",
       },
     ],
   },
@@ -767,6 +788,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "58f066f2",
         motivo:
           "Regla de números del dueño (2026-11-09, «1.000,00»; SOLO FORMATO, no cambia ningún valor, redondeo, fila ni auditoría): el mensaje de cierre de cuenta del POS sale con 2 decimales («se registró la venta por $ 7.460 (con 10% de descuento…)» pasa a «$ 7.460,00»). Cambia 1 línea.",
+      },
+      {
+        blob: "c092855ee81d6334fe774d4dd97ea68c32155d4e",
+        // El commit PADRE de este (c17744e) es el último antes de la regeneración; el cambio es la columna nueva del nombre de cocina (migración 20261115170000_nombre_de_cocina, 2026-11-15).
+        commit: "c17744e",
+        motivo:
+          "Nombre de cocina (ADITIVO; migración 20261115170000_nombre_de_cocina; regenerado con REGENERAR_VENTA_CON_OPCIONES=1): las filas PRODUCTO y las líneas ITEM suman `nombreDeCocina=null` (nadie tiene nombre de cocina en este mundo). Verificado por programa: sin esa columna el contenido es IDÉNTICO al blob anterior.",
       },
     ],
   },
@@ -896,6 +924,20 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "aacfb7b2",
         motivo:
           "Regla del dueño (2026-11-10, dinero siempre con 2 decimales vía `formatearMonto`; SOLO FORMATO, no cambia ningún valor ni el rechazo): los 3 mensajes del piso de la promo («$0.02», «$0,01», «$0.03», «$0.1») salen como «$ 0,02», «$ 0,01», «$ 0,03», «$ 0,10». Cambian 7 líneas: las 3 del piso y las 4 de «Precio de … en esta sucursal: $7000.» (y $9000, $0.05), que pasan a «$ 7.000,00.», «$ 9.000,00.», «$ 0,05.»; regenerado con REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1 contra Postgres local.",
+      },
+      {
+        blob: "b371081ad4313f88b6c07b6fe312d8265c43db79",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, ed5fe754 (integra main en la rama de la presentación de compra por producto).
+        commit: "ed5fe754",
+        motivo:
+          "Presentación de compra por producto, etapa (a) (migración 20261115150000_presentacion_de_compra_por_producto; ADITIVO, no cambia comportamiento; precedente fb34499b): la huella vuelca las filas de Presentacion con todas sus columnas y las tres columnas nuevas (`nombre`, `pesoVariable`, `version`) aparecen con su valor por defecto (` nombre=null pesoVariable=false` y ` version=1`) en las 7 líneas PRESENTACION del paso de presentaciones. Verificado con `git diff`: quitando esas tres columnas de las líneas PRESENTACION, el contenido es IDÉNTICO al anterior (blob previo en el historial de esta entrada); ninguna otra línea cambia (la línea UNIDAD «litro» ya estaba en el golden, no es nueva); ningún importe, factor ni regla de dinero cambia.",
+      },
+      {
+        blob: "8f6cb4b9c333e90d216b92f93e74b72828bade6f",
+        // El commit PADRE de este es 499cc1f (main con la presentación de compra por producto, #304), el último antes del cambio; el cambio es la columna nueva del nombre de cocina (migración 20261115170000_nombre_de_cocina, 2026-11-15).
+        commit: "499cc1f",
+        motivo:
+          "Nombre de cocina (ADITIVO; migración 20261115170000_nombre_de_cocina; regenerado con REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1): las filas PRODUCTO y las líneas ITEM suman `nombreDeCocina=null` (nadie tiene nombre de cocina en este mundo). Verificado por programa: sin esa columna el contenido es IDÉNTICO al blob anterior.",
       },
     ],
   },

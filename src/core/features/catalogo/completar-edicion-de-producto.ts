@@ -28,6 +28,7 @@ export const TRATAMIENTO_DE_AUSENTE = {
   unidadStockId: "COMPLETA",
   factorConversion: "COMPLETA",
   observaciones: "COMPLETA",
+  nombreDeCocina: "COMPLETA",
   insumoId: "COMPLETA",
   precioVenta: "COMPLETA",
   pasoVenta: "COMPLETA",
@@ -55,6 +56,7 @@ export interface ProductoGuardado {
   unidadStockId: string;
   factorConversion: unknown;
   observaciones: string | null;
+  nombreDeCocina: string | null;
   insumoId: string | null;
   precioVenta: unknown;
   pasoVenta: unknown;
@@ -72,6 +74,7 @@ const LO_GUARDADO: { [K in CampoQueSeCompleta]: (guardado: ProductoGuardado) => 
   unidadStockId: (g) => g.unidadStockId,
   factorConversion: (g) => Number(g.factorConversion),
   observaciones: (g) => g.observaciones,
+  nombreDeCocina: (g) => g.nombreDeCocina,
   insumoId: (g) => g.insumoId,
   precioVenta: (g) => Number(g.precioVenta),
   pasoVenta: (g) => (g.pasoVenta === null || g.pasoVenta === undefined ? null : Number(g.pasoVenta)),

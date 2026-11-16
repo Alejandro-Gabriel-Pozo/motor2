@@ -73,7 +73,7 @@ import { formatearMonto } from "@/core/formato-de-numero";
  * @contract Deja el producto con los datos pedidos (sin cambiar su tipo, ni su unidad de stock si ya tiene historia, ni su consignante si ya tiene liquidaciones, ni su costo de consignación sin el permiso, ni su precio de venta, factor, unidades y modo de venta ni alícuota de IVA sin la clave fina, ni su precio de venta si cambió desde que se abrió el formulario o si se vende por opción, ni lo deja «por opción» sin cumplir la regla de la base, ni su alícuota de IVA si cambió desde que se abrió el formulario o no es de la lista cerrada y del tipo del producto) y una fila de auditoría por cada uno de sus valores de mayor impacto que cambió: todo o nada. Lo sensible que no viene queda como estaba.
  * @idempotency Optimista — el precio de venta visto y la alícuota vista se comparan dentro de la transacción cuando el precio o la alícuota cambian; repetir el mismo pedido no cambia nada (sin filas de auditoría nuevas), y con un precio visto viejo da `PRECIO_DESACTUALIZADO` y con una alícuota vista vieja, `ALICUOTA_DESACTUALIZADA`.
  * @transaction conTransaccionSerializable (SERIALIZABLE) sobre la base de verificación: la lectura del producto, la validación, la pregunta por su historia, el `update` y sus auditorías, todo junto.
- * @sideEffects registrarCambioAuditado (Producto.precioVenta, .precioConsignacion, .pasoVenta, .modoDeVenta, .alicuotaIvaVenta, .alicuotaIvaCompra, .factorConversion, .unidadStockId, .unidadCompraId, .seProduce, .esConsignacion y .proveedorConsignacionId, del anterior al nuevo), en la misma transacción. La revalidación de
+ * @sideEffects registrarCambioAuditado (Producto.precioVenta, .precioConsignacion, .pasoVenta, .modoDeVenta, .alicuotaIvaVenta, .alicuotaIvaCompra, .factorConversion, .unidadStockId, .unidadCompraId, .seProduce, .esConsignacion, .proveedorConsignacionId y .nombreDeCocina, del anterior al nuevo), en la misma transacción. La revalidación de
  *   la carta pública y el `sincronizable` los hace la Server Action.
  * @ficha permiso=producto_editar transaccion=SERIALIZABLE idempotencia=OPTIMISTA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
@@ -154,7 +154,7 @@ async function actualizarProductoEnTransaccion(
     const validado = await validarDatosDeProducto(tx, datos, productoId, puerta, existente.nombre);
     if ("error" in validado) return fracaso("DATOS_INVALIDOS", validado.error);
 
-    const nuevos = datosParaGuardar(datos, validado.numeros, validado.nombre);
+    const nuevos = datosParaGuardar(datos, validado.numeros, validado.nombre, validado.nombreDeCocina);
     const nombreActual = validado.nombre;
 
     // Alícuota de IVA (paso 13): lista cerrada y tipo contra campo (I1, I2), con el tipo GUARDADO (ya se comprobó que el formulario trae el mismo). Solo se escribe la del tipo del producto; un valor que no viene (`undefined`) queda como estaba.
@@ -212,7 +212,7 @@ async function actualizarProductoEnTransaccion(
       if (typeof visto !== "number" || !mismosCentavos(visto, precioGuardado)) {
         return fracaso(
           "PRECIO_DESACTUALIZADO",
-          `Alguien cambió el precio de venta de «${existente.nombre}» mientras lo editabas (ahora es ${formatearMonto(precioGuardado)}): no se guardó nada. Recargá la pantalla y volvé a hacer el cambio.`,
+          `El precio vigente ahora es ${formatearMonto(precioGuardado)}. Revisalo y volvé a intentar.`,
         );
       }
     }
@@ -307,8 +307,8 @@ async function auditarSignificadoDeProducto(
   datos: {
     productoId: string;
     nombre: string;
-    existente: { factorConversion: unknown; unidadStockId: string; unidadCompraId: string | null; seProduce: boolean; esConsignacion: boolean; proveedorConsignacionId: string | null };
-    nuevos: { factorConversion: number; unidadStockId: string; unidadCompraId: string | null; seProduce: boolean; esConsignacion: boolean; proveedorConsignacionId: string | null };
+    existente: { factorConversion: unknown; nombreDeCocina: string | null; unidadStockId: string; unidadCompraId: string | null; seProduce: boolean; esConsignacion: boolean; proveedorConsignacionId: string | null };
+    nuevos: { factorConversion: number; nombreDeCocina: string | null; unidadStockId: string; unidadCompraId: string | null; seProduce: boolean; esConsignacion: boolean; proveedorConsignacionId: string | null };
   },
 ): Promise<void> {
   const { existente, nuevos } = datos;
@@ -321,6 +321,8 @@ async function auditarSignificadoDeProducto(
   const nombreDe = (nombres: ReadonlyMap<string, string>, id: string | null) => (id === null ? "ninguna" : (nombres.get(id) ?? id));
 
   const cambios: { campo: string; descripcion: string; anterior: unknown; nuevo: unknown }[] = [
+    // Nombre de cocina (2026-11-15, invariante I11): cargarlo, cambiarlo o borrarlo deja su fila (del anterior al nuevo; `null` = sin nombre de cocina; no-op si no cambió).
+    { campo: "nombreDeCocina", descripcion: "nombre de cocina", anterior: existente.nombreDeCocina, nuevo: nuevos.nombreDeCocina },
     { campo: "factorConversion", descripcion: "factor de conversión", anterior: Number(existente.factorConversion), nuevo: nuevos.factorConversion },
     {
       campo: "unidadStockId",

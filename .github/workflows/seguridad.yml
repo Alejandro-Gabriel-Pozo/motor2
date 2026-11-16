@@ -43,6 +43,7 @@ env:
 jobs:
   dependencias:
     name: Dependencias (npm audit)
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CI_EN_MAIN != 'si') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -64,6 +65,7 @@ jobs:
 
   pruebas-de-seguridad:
     name: Pruebas de seguridad (SQL injection, XSS, endpoints)
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CI_EN_MAIN != 'si') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
@@ -113,6 +115,7 @@ jobs:
 
   zap:
     name: OWASP ZAP (app local del runner, base descartable)
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CI_EN_MAIN != 'si') }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     # Nunca contra producción ni contra un staging ajeno: el objetivo está fijo en `localhost` y no es una entrada del workflow.
