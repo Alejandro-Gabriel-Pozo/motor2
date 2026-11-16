@@ -1,5 +1,5 @@
 import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
-import { whereDisponibleEn } from "@/core/catalogo/public";
+import { whereDisponibleEn, whereNoOcultoEn } from "@/core/catalogo/public";
 import { GENERO_E_ITEM_AGRUPADO_VISIBLE, armarMenuCarta, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, whereCartaDeSucursal, wherePromoOfrecidaEn, type AudienciaDePromo, type CartaV1, type MenuArmado } from "@/core/carta/public";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { opcionesDeLosProductosDeLaCarta, type GrupoParaLaCarta } from "@/server/lecturas/carta/opciones";
@@ -57,7 +57,7 @@ export async function resolverMenuCartaConDiagnostico(
 
   const [productos, secciones, promosLeidas, agrupados] = await Promise.all([
     db.producto.findMany({
-      where: { empresaId, tipo: "PV", ...whereDisponibleEn(sucursalId), contenidosCarta: { some: { ...whereCartaDeSucursal(sucursalId), visibleEnCarta: true } }, ...(GENERO_E_ITEM_AGRUPADO_VISIBLE ? { opcionesItemAgrupadoCarta: { none: whereCartaDeSucursal(sucursalId) } } : {}) },
+      where: { empresaId, tipo: "PV", ...whereDisponibleEn(sucursalId), ...whereNoOcultoEn(sucursalId), contenidosCarta: { some: { ...whereCartaDeSucursal(sucursalId), visibleEnCarta: true } }, ...(GENERO_E_ITEM_AGRUPADO_VISIBLE ? { opcionesItemAgrupadoCarta: { none: whereCartaDeSucursal(sucursalId) } } : {}) },
       select: {
         id: true,
         nombre: true,
@@ -100,7 +100,7 @@ export async function resolverMenuCartaConDiagnostico(
         especial: true,
         orden: true,
         opciones: {
-          where: { producto: { tipo: "PV", ...whereDisponibleEn(sucursalId) } },
+          where: { producto: { tipo: "PV", ...whereDisponibleEn(sucursalId), ...whereNoOcultoEn(sucursalId) } },
           select: { orden: true, producto: { select: { id: true, nombre: true, precioVenta: true } } },
         },
       },

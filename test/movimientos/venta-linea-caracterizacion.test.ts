@@ -243,7 +243,7 @@ const ESPERADO = {
   C1: {
     resultado: { ok: false, mensaje: 'La materia prima de la receta de "PV_PIZZA" no está marcada como MP.' },
     lecturas: {
-      $queryRaw: 1, "capacidadSucursal.findMany": 1, "disponibilidadProducto.findMany": 1, "disponibilidadProducto.findUnique": 1, "grupo.findMany": 1, "precioLocalProducto.findMany": 1,
+      $queryRaw: 1, "ocultamientoProducto.findMany": 1, "capacidadSucursal.findMany": 1, "disponibilidadProducto.findMany": 1, "disponibilidadProducto.findUnique": 1, "grupo.findMany": 1, "precioLocalProducto.findMany": 1,
       "producto.findMany": 2, "producto.findUnique": 2, "recetaSucursal.findMany": 2, "recetaVersion.findFirst": 1, "recetaVersion.findMany": 1, "seccion.findUnique": 1,
     },
     escrituras: [],
@@ -251,7 +251,7 @@ const ESPERADO = {
   C2: {
     resultado: { ok: false, mensaje: "La receta de «PV_PAN» usa «MP_LEVADURA», que no está disponible en «Central»: activala acá o cambiá la receta." },
     lecturas: {
-      $queryRaw: 1, "capacidadSucursal.findMany": 1, "disponibilidadProducto.findMany": 1, "disponibilidadProducto.findUnique": 3, "grupo.findMany": 1, "precioLocalProducto.findMany": 1,
+      $queryRaw: 1, "ocultamientoProducto.findMany": 1, "capacidadSucursal.findMany": 1, "disponibilidadProducto.findMany": 1, "disponibilidadProducto.findUnique": 3, "grupo.findMany": 1, "precioLocalProducto.findMany": 1,
       "producto.findMany": 2, "producto.findUnique": 3, "recetaSucursal.findMany": 2, "recetaVersion.findFirst": 1, "recetaVersion.findMany": 1, "seccion.findUnique": 1,
     },
     escrituras: [],
@@ -267,7 +267,7 @@ const ESPERADO = {
   C4: {
     resultado: { ok: false, mensaje: '"MP_CON_PASO" no está habilitado para venta: solo se puede vender un PV (vinculado por receta a la materia prima que consume).' },
     lecturas: {
-      $queryRaw: 1, "capacidadSucursal.findMany": 1, "disponibilidadProducto.findMany": 1, "disponibilidadProducto.findUnique": 1, "grupo.findMany": 1, "precioLocalProducto.findMany": 1,
+      $queryRaw: 1, "ocultamientoProducto.findMany": 1, "capacidadSucursal.findMany": 1, "disponibilidadProducto.findMany": 1, "disponibilidadProducto.findUnique": 1, "grupo.findMany": 1, "precioLocalProducto.findMany": 1,
       "producto.findMany": 1, "producto.findUnique": 1, "recetaSucursal.findMany": 1, "recetaVersion.findMany": 1, "seccion.findUnique": 1,
     },
     escrituras: [],
@@ -283,7 +283,7 @@ const ESPERADO = {
   C6: {
     resultado: { ok: false, mensaje: "La cantidad vendida no es un número válido." },
     lecturas: {
-      $queryRaw: 1, "capacidadSucursal.findMany": 2, "disponibilidadProducto.findMany": 1, "disponibilidadProducto.findUnique": 2, "grupo.findMany": 1, "precioLocalProducto.findMany": 2,
+      $queryRaw: 1, "ocultamientoProducto.findMany": 1, "capacidadSucursal.findMany": 2, "disponibilidadProducto.findMany": 1, "disponibilidadProducto.findUnique": 2, "grupo.findMany": 1, "precioLocalProducto.findMany": 2,
       "producto.findMany": 2, "producto.findUnique": 2, "recetaSucursal.findMany": 2, "recetaVersion.findFirst": 1, "recetaVersion.findMany": 1, "seccion.findUnique": 1,
     },
     escrituras: [],
@@ -291,7 +291,7 @@ const ESPERADO = {
   C7: {
     resultado: { ok: true, mensaje: "Se registraron 1 venta(s) correctamente.", operaciones: 1, avisos: 0 },
     lecturas: {
-      $queryRaw: 1, "capacidadSucursal.findMany": 2, "disponibilidadProducto.findMany": 1, "disponibilidadProducto.findUnique": 3, "grupo.findMany": 1, "movimientoStock.groupBy": 2, "precioLocalProducto.findMany": 2,
+      $queryRaw: 1, "ocultamientoProducto.findMany": 1, "capacidadSucursal.findMany": 2, "disponibilidadProducto.findMany": 1, "disponibilidadProducto.findUnique": 3, "grupo.findMany": 1, "movimientoStock.groupBy": 2, "precioLocalProducto.findMany": 2,
       "producto.findMany": 3, "producto.findUnique": 2, "recetaSucursal.findMany": 2, "recetaVersion.findFirst": 1, "recetaVersion.findMany": 1, "seccion.findUnique": 1,
     },
     escrituras: ["operacion.create", "movimientoStock.createMany"],
@@ -306,7 +306,7 @@ const ESPERADO = {
   C8: {
     resultado: { ok: true, mensaje: "Se registraron 1 venta(s) correctamente.", operaciones: 1, avisos: 0 },
     lecturas: {
-      $queryRaw: 1, "capacidadSucursal.findMany": 2, "disponibilidadProducto.findMany": 1, "disponibilidadProducto.findUnique": 1, "grupo.findMany": 1, "movimientoStock.groupBy": 1, "precioLocalProducto.findMany": 2,
+      $queryRaw: 1, "ocultamientoProducto.findMany": 1, "capacidadSucursal.findMany": 2, "disponibilidadProducto.findMany": 1, "disponibilidadProducto.findUnique": 1, "grupo.findMany": 1, "movimientoStock.groupBy": 1, "precioLocalProducto.findMany": 2,
       "producto.findMany": 2, "producto.findUnique": 1, "recetaSucursal.findMany": 1, "recetaVersion.findMany": 1, "seccion.findUnique": 1,
     },
     escrituras: ["operacion.create", "movimientoStock.createMany"],
@@ -314,7 +314,7 @@ const ESPERADO = {
   C9: {
     resultado: { ok: true, mensaje: "Se registraron 1 venta(s) correctamente.", operaciones: 1, avisos: 0 },
     lecturas: {
-      $queryRaw: 1, "capacidadSucursal.findMany": 2, "disponibilidadProducto.findMany": 1, "disponibilidadProducto.findUnique": 2, "grupo.findMany": 1, "movimientoStock.groupBy": 2, "precioLocalProducto.findMany": 2,
+      $queryRaw: 1, "ocultamientoProducto.findMany": 1, "capacidadSucursal.findMany": 2, "disponibilidadProducto.findMany": 1, "disponibilidadProducto.findUnique": 2, "grupo.findMany": 1, "movimientoStock.groupBy": 2, "precioLocalProducto.findMany": 2,
       "producto.findMany": 3, "producto.findUnique": 2, "recetaSucursal.findMany": 2, "recetaVersion.findFirst": 1, "recetaVersion.findMany": 1, "seccion.findUnique": 1,
     },
     escrituras: ["operacion.create", "movimientoStock.createMany"],

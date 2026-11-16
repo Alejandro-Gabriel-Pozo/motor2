@@ -17,6 +17,8 @@ import { CODIGO_PRODUCTO_REQUIERE_OPCIONES, rechazoPorOpcionesObligatorias } fro
 import { cargarOpcionesParaVender } from "@/server/lecturas/opciones/opciones-para-vender";
 import type { GrupoPermitido } from "@/core/opciones/public";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
+import { productoOcultoEn } from "@/server/lecturas/catalogo/ocultamiento";
+import { MENSAJE_PRODUCTO_OCULTO } from "@/core/catalogo/public";
 import { seccionesConStock } from "@/server/lecturas/movimientos/saldos";
 import { cargarDeudaDeRedondeo } from "@/server/lecturas/movimientos/deuda-de-redondeo";
 import { faltantesDe } from "@/core/movimientos/origen-venta";
@@ -101,6 +103,7 @@ async function armarLinea(
   obtenerProducto: Obtener,
   costoUnitarioPorProducto: Map<string, number | null>,
   costoDeInsumo: (productoId: string) => number | null,
+  permitirOcultosYaCargados: boolean,
   gruposAdmitidosDe: GruposAdmitidosDe
 ): Promise<{ ok: true; linea: LineaArmada | null } | { ok: false; mensaje: string; codigo?: typeof CODIGO_PRODUCTO_SIN_RECETA | typeof CODIGO_PRODUCTO_REQUIERE_OPCIONES }> {
   // Las reglas (qué cantidad saltea la línea, cuál es un error, qué mensaje gana) son puras y viven en `core/movimientos/linea-de-venta.ts`; acá queda el ORDEN: cada una se llama
@@ -119,6 +122,8 @@ async function armarLinea(
   if (!esAnclaVerificada && !(await productoDisponibleEn(sucursalId, producto.id, tx))) {
     return { ok: false, mensaje: mensajeNoDisponibleEnSucursal(producto.nombre, sucursalNombre) };
   }
+  // «Ocultar» (diseño 2026-11-15): una línea NUEVA de un producto oculto (la venta directa) se rechaza; el cierre de una cuenta cobra lo ya cargado (`permitirOcultosYaCargados`). Después de «no disponible»: gana el desactivado.
+  if (!esAnclaVerificada && !permitirOcultosYaCargados && (await productoOcultoEn(sucursalId, producto.id, tx))) return { ok: false, mensaje: MENSAJE_PRODUCTO_OCULTO };
   const rechazo = rechazoDelProductoVendido({ nombre: producto.nombre, tipo: producto.tipo, pasoVenta: producto.pasoVenta === null ? null : Number(producto.pasoVenta) }, cantidad);
   if (rechazo !== null) return { ok: false, mensaje: rechazo };
   if (configurada?.tipo === "ADICIONAL" && !esAnclaVerificada) return { ok: false, mensaje: `«${producto.nombre}» no es el producto que respalda ese adicional.` };
@@ -236,7 +241,7 @@ export async function registrarVentaEnTx(
   const indiceEnLineas = new Map<number, number>();
   const gruposAdmitidosDe = crearLectorDeGruposAdmitidos(tx, actor.sucursalId, datos.lineas);
   for (const [i, item] of datos.lineas.entries()) {
-    const armado = await armarLinea(item, actor.sucursalId, actor.sucursalNombre, tx, obtenerProducto, costoUnitarioPorProducto, costoDeInsumo, gruposAdmitidosDe);
+    const armado = await armarLinea(item, actor.sucursalId, actor.sucursalNombre, tx, obtenerProducto, costoUnitarioPorProducto, costoDeInsumo, opciones.permitirOcultosYaCargados === true, gruposAdmitidosDe);
     if (!armado.ok) return armado.codigo ? { ok: false, codigo: armado.codigo, mensaje: armado.mensaje } : fallo(armado.mensaje);
     if (!armado.linea) continue;
     let padre: number | null = null;

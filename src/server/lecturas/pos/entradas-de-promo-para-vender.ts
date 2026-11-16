@@ -1,7 +1,7 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { precioDeCarta } from "@/core/carta/public";
-import { whereDisponibleEn } from "@/core/catalogo/public";
+import { whereDisponibleEn, whereNoOcultoEn } from "@/core/catalogo/public";
 import { redondearMoneda } from "@/core/moneda";
 import { claveDeComponente, configuracionMinimaDeGruposEfectivos, opcionesPermitidasEfectivas, rechazoDeComponenteDeCombo, type ComponenteConAlicuota, type CupoDeEntradasDefinicion, type EntradaElegibleDeCupo, type LineaConfigurada } from "@/core/pos/public";
 import { armarLineaConfigurada, type EntradaAElegirLeida } from "@/core/pos/public-servidor";
@@ -68,7 +68,7 @@ export async function cargarEntradasDePromoParaVender(
   const productoIds = [...new Set(entradas.map((e) => e.productoId))];
   const [productos, disponibles, locales] = await Promise.all([
     cargarProductosComoComponentes(tx, { sucursalId: args.sucursalId, productoIds }),
-    productoIds.length ? tx.producto.findMany({ where: { id: { in: productoIds }, ...whereDisponibleEn(args.sucursalId) }, select: { id: true } }) : Promise.resolve([]),
+    productoIds.length ? tx.producto.findMany({ where: { id: { in: productoIds }, ...whereDisponibleEn(args.sucursalId), ...whereNoOcultoEn(args.sucursalId) }, select: { id: true } }) : Promise.resolve([]),
     preciosLocalesVigentes(args.sucursalId, tx, productoIds, args.precioLocalActivo),
   ]);
   const disponible = new Set(disponibles.map((p) => p.id));
