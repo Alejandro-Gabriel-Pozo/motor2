@@ -88,3 +88,38 @@ export async function listarPropuestasEnviadas(sucursalId: string, db: Db, limit
 export async function listarOtrasSucursalesParaReparto(sucursalId: string, db: Db): Promise<{ id: string; nombre: string }[]> {
   return db.sucursal.findMany({ where: { activo: true, NOT: { id: sucursalId } }, select: { id: true, nombre: true }, orderBy: { nombre: "asc" } });
 }
+
+export interface CompraPorRecibir {
+  facturaId: string;
+  proveedorNombre: string;
+  nroFactura: string | null;
+  /** Fecha de la factura (mediodía argentino del día elegido por quien la cargó). */
+  fechaFactura: Date;
+  importeTotal: number;
+  cantidadDeRenglones: number;
+  cargadaEn: Date;
+}
+
+/**
+ * Compras, recepción separada (N3-a): «Por recibir», las compras de ESTA sucursal cuya parte está PENDIENTE (sin stock todavía) y cuya factura no está anulada, de la más vieja a la más nueva. Trae el importe: solo la ve quien tiene `compra_recibir` (piso
+ * administrador, que ya ve los importes de las compras); la página lo verifica antes de llamar. Sin guarda de permiso adentro (la página la pide). La RLS por sucursal deja ver la parte solo a su sucursal.
+ */
+export async function listarComprasPorRecibir(sucursalId: string, db: Db): Promise<CompraPorRecibir[]> {
+  const filas = await db.facturaProveedorSucursal.findMany({
+    where: { sucursalId, estadoRecepcion: "PENDIENTE", facturaProveedor: { anuladaEn: null } },
+    select: {
+      creadoEn: true,
+      facturaProveedor: { select: { id: true, nroFactura: true, fecha: true, importeTotal: true, proveedor: { select: { nombre: true } }, _count: { select: { renglones: true } } } },
+    },
+    orderBy: { creadoEn: "asc" },
+  });
+  return filas.map((f) => ({
+    facturaId: f.facturaProveedor.id,
+    proveedorNombre: f.facturaProveedor.proveedor.nombre,
+    nroFactura: f.facturaProveedor.nroFactura,
+    fechaFactura: f.facturaProveedor.fecha,
+    importeTotal: Number(f.facturaProveedor.importeTotal),
+    cantidadDeRenglones: f.facturaProveedor._count.renglones,
+    cargadaEn: f.creadoEn,
+  }));
+}

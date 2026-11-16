@@ -1,6 +1,6 @@
 "use server";
 
-import { guardComandoAceptarParteDeFactura, guardComandoAnularFacturaProveedor, guardComandoCorregirFacturaProveedor, guardComandoRegistrarFacturaProveedor } from "@/core/features/compras/factura-proveedor.guard";
+import { guardComandoAceptarParteDeFactura, guardComandoAnularFacturaProveedor, guardComandoConfirmarRecepcionDeFactura, guardComandoCorregirFacturaProveedor, guardComandoRegistrarFacturaProveedor } from "@/core/features/compras/factura-proveedor.guard";
 import type { CabeceraVista as CabeceraVistaSchema, CorreccionCompraInput as CorreccionCompraInputSchema } from "@/core/features/compras/compra.schema";
 import type { DatosFacturaProveedorInput } from "@/core/features/compras/factura-proveedor.schema";
 import { aResultadoAccion } from "@/core/resultado-caso";
@@ -8,11 +8,12 @@ import { conPermiso, exigirTambienPermisoDeEmpresa } from "../con-permiso";
 import { error, type ResultadoAccion } from "../tipos";
 import { aceptarPropuestaDeFacturaCasoDeUso } from "./casos-de-uso/aceptar-propuesta-de-factura";
 import { anularFacturaProveedorCasoDeUso } from "./casos-de-uso/anular-factura-proveedor";
+import { confirmarRecepcionDeFacturaCasoDeUso } from "./casos-de-uso/confirmar-recepcion-de-factura";
 import { corregirFacturaProveedorCasoDeUso } from "./casos-de-uso/corregir-factura-proveedor";
 import { registrarFacturaProveedorCasoDeUso } from "./casos-de-uso/registrar-factura-proveedor";
 
 /**
- * E3a (ADR-041; docs/diseno-factura-de-proveedor-e3a-2026-10-27.md): las tres Server Actions de la factura de proveedor repartida entre sucursales por PROPUESTA y ACEPTACIÓN. Adaptadores finos: permiso →
+ * E3a (ADR-041; docs/diseno-factura-de-proveedor-e3a-2026-10-27.md): las Server Actions de la factura de proveedor repartida entre sucursales por PROPUESTA y ACEPTACIÓN. Adaptadores finos: permiso →
  * formato → caso de uso → `aResultadoAccion`. Ninguna refresca la vista: quien llama es un componente de cliente que pide el `router.refresh()` él mismo.
  */
 
@@ -38,6 +39,18 @@ export async function aceptarPropuestaDeFactura(propuestaId: string, seccionId: 
     const comando = guardComandoAceptarParteDeFactura({ propuestaId, seccionId, fechaStock, claveIdempotencia }, ctx.ahora);
     if (!comando.ok) return error(comando.mensaje);
     return aResultadoAccion(await aceptarPropuestaDeFacturaCasoDeUso(ctx, comando.valor));
+  });
+}
+
+/**
+ * Compras, recepción separada (N3-a): «Confirmar recepción» de una compra cargada «pendiente de recibir». Permiso `compra_recibir` en la sucursal activa (módulo `recepcion_de_compras`, piso administrador: gerente y administrador, no el
+ * operador); la parte tiene que ser de esa sucursal (lo verifica el caso de uso). El actor y la hora salen del servidor; el cliente solo manda la factura, la sección y el día de stock. Idempotente por estado: confirmar dos veces no carga stock de nuevo.
+ */
+export async function confirmarRecepcionDeFactura(facturaId: string, seccionId: string, fechaStock: Date): Promise<ResultadoAccion> {
+  return conPermiso("compra_recibir", async (ctx) => {
+    const comando = guardComandoConfirmarRecepcionDeFactura({ facturaId, seccionId, fechaStock }, ctx.ahora);
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await confirmarRecepcionDeFacturaCasoDeUso(ctx, comando.valor));
   });
 }
 

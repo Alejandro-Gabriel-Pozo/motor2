@@ -7,7 +7,7 @@ import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { LARGO_MAXIMO_DETALLE, MAXIMO_LINEAS_POR_OPERACION, validarTextoLibre, validarTopeDeLista } from "@/core/datos/limites";
 import { esCondicionDePago, esMedioDePago } from "@/core/compras/public";
 import { ZONA_ARGENTINA, diaDeCalendario, esDiaISOReal } from "@/core/tiempo/zona-horaria";
-import type { ComandoAceptarParteDeFactura, ComandoAnularFacturaProveedor, ComandoAnularPagoDeFactura, ComandoCorregirFacturaProveedor, ComandoDeclararPagoDeFactura, DatosFacturaProveedorInput } from "./factura-proveedor.schema";
+import type { ComandoAceptarParteDeFactura, ComandoAnularFacturaProveedor, ComandoAnularPagoDeFactura, ComandoConfirmarRecepcionDeFactura, ComandoCorregirFacturaProveedor, ComandoDeclararPagoDeFactura, DatosFacturaProveedorInput } from "./factura-proveedor.schema";
 
 /**
  * E3a: guards de formato de los tres comandos de la factura de proveedor (docs/diseno-factura-de-proveedor-e3a-2026-10-27.md). Puros, sin base ni permisos: corren dentro de
@@ -80,6 +80,16 @@ export function guardComandoAceptarParteDeFactura(entrada: unknown, ahora: Date)
   const clave = claveObligatoria(e.claveIdempotencia);
   if (!clave.ok) return rechazar(clave.codigo, clave.mensaje);
   return aceptar(entrada as ComandoAceptarParteDeFactura);
+}
+
+/** «Confirmar recepción» (Compras N3-a): la factura, la sección y la fecha de stock (formato; el rango contra la fecha de la factura lo mira el caso de uso, que la conoce). Sin clave de reintento: es idempotente por estado. */
+export function guardComandoConfirmarRecepcionDeFactura(entrada: unknown, ahora: Date): ResultadoDato<ComandoConfirmarRecepcionDeFactura> {
+  const e = (entrada ?? {}) as Partial<Record<keyof ComandoConfirmarRecepcionDeFactura, unknown>>;
+  if (typeof e.facturaId !== "string" || !texto(e.facturaId)) return rechazar("vacio", "No se encontró la compra a recibir.");
+  if (typeof e.seccionId !== "string" || !texto(e.seccionId)) return rechazar("vacio", "Elegí la sección donde entra la mercadería.");
+  const fecha = validarFechaDeCompra(e.fechaStock, ahora);
+  if (!fecha.ok) return rechazar(fecha.codigo, fecha.mensaje);
+  return aceptar({ facturaId: texto(e.facturaId), seccionId: texto(e.seccionId), fechaStock: e.fechaStock as Date });
 }
 
 /** «Anular factura»: la factura y el motivo (obligatorio, 1 a 200 caracteres). */

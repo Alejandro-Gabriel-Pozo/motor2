@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
-import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/server/acceso/gate";
+import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/server/acceso/gate";
 import { ACCION_POR_PROCESO, PROCESOS_DEL_SELECTOR, obtenerConfigProceso } from "@/core/movimientos/public";
 import { listarProveedoresParaSelector } from "@/server/actions/catalogo/proveedores";
 import { listarUnidadesActivas } from "@/server/actions/catalogo/unidades";
@@ -13,11 +13,11 @@ import { obtenerMovimientoACorregir } from "@/server/consultas/movimientos/movim
 import { detalleDeCorreccionDeMovimiento } from "@/core/reportes/public";
 import { seccionesDesactivadas } from "@/server/consultas/movimientos/secciones-desactivadas";
 import { FilaDeMovimientos } from "@/components/fila-de-movimientos";
-import { listarOtrasSucursalesParaReparto, listarPropuestasEnviadas, listarPropuestasParaAceptar } from "@/server/consultas/movimientos/facturas-proveedor";
+import { listarComprasPorRecibir, listarOtrasSucursalesParaReparto, listarPropuestasEnviadas, listarPropuestasParaAceptar } from "@/server/consultas/movimientos/facturas-proveedor";
 import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
 import { PanelMovimientoForm } from "./panel-movimiento-form";
 import { PanelCompraPorPasos } from "./panel-compra-por-pasos";
-import { BandejaParaAceptar } from "./bandeja-para-aceptar";
+import { BandejaParaAceptar, BandejaPorRecibir } from "./bandeja-para-aceptar";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 const PROCESOS_QUE_SACAN_DE_UNA_SECCION_DADA_DE_BAJA: ReadonlySet<string> = new Set(["CONSUMO", "MERMA", "TRANSFERENCIA"]);
@@ -77,6 +77,10 @@ export default async function MovimientoPage({
         obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "compra_repartir", ctx.db),
       ])
     : [[], [], [], { ver: false, editar: false }];
+  // Compras N3-a (recepción separada): «Por recibir», las compras de esta sucursal cargadas pendientes de recibir. Solo para quien tiene `compra_recibir` (gerente o administrador; la acción es del módulo `recepcion_de_compras`: con el
+  // módulo apagado el nivel da «ni ver» y no se consulta nada). El permiso se vuelve a exigir en el servidor al confirmar.
+  const puedeRecibir = esCompra ? (await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "compra_recibir", ctx.db)).editar : false;
+  const porRecibir = puedeRecibir ? await listarComprasPorRecibir(ctx.sucursalId, ctx.db) : [];
   const dia = (f: Date) => diaDeCalendario(f, ZONA_ARGENTINA);
   // La sección del original solo se precarga si sigue activa en esta sucursal (si no, la persona elige: nunca se adivina).
   const seccionInicialId = aCorregir && secciones.some((s) => s.id === aCorregir.seccionId) ? aCorregir.seccionId : undefined;
@@ -91,6 +95,20 @@ export default async function MovimientoPage({
     <div className="flex max-w-4xl flex-col gap-4">
       <h1 className="text-xl font-semibold">{delSelector ? `Registrar movimiento · ${delSelector.etiquetaCorta}` : config.titulo}</h1>
       {delSelector && <FilaDeMovimientos ctx={ctx} actual={delSelector.href} />}
+      {puedeRecibir && (
+        <BandejaPorRecibir
+          secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}
+          compras={porRecibir.map((c) => ({
+            facturaId: c.facturaId,
+            proveedorNombre: c.proveedorNombre,
+            nroFactura: c.nroFactura,
+            diaFactura: dia(c.fechaFactura),
+            importeTotal: c.importeTotal,
+            cantidadDeRenglones: c.cantidadDeRenglones,
+            antiguedadDias: diasEntre(dia(c.cargadaEn), hoy),
+          }))}
+        />
+      )}
       {esCompra && (
         <BandejaParaAceptar
           secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}

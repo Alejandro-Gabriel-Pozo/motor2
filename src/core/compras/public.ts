@@ -26,7 +26,7 @@ export {
   estadoInicialDeLaParte,
   mensajeFechaDeStockFueraDeRango,
 } from "./recepcion";
-export type { CodigoDeRechazoDeRecepcion, DecisionDeConfirmacionDeRecepcion, EntradaDeConfirmacionDeRecepcion, EstadoDeRecepcion, SeccionParaRecibir } from "./recepcion";
+export type { CodigoDeRechazoDeRecepcion, EntradaDeConfirmacionDeRecepcion, SeccionParaRecibir } from "./recepcion";
 export {
   ETIQUETA_DE_MEDIO_DE_PAGO,
   MEDIOS_DE_PAGO,

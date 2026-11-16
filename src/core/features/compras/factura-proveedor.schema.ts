@@ -1,6 +1,6 @@
 import type { ResultadoCaso } from "@/core/resultado-caso";
 import type { ItemMovimientoInput } from "@/core/features/movimientos/movimiento.schema";
-import type { CondicionDePago, MedioDePago } from "@/core/compras/public";
+import type { CodigoDeRechazoDeRecepcion, CondicionDePago, MedioDePago } from "@/core/compras/public";
 import type { CabeceraVista, CorreccionCompraInput } from "./compra.schema";
 
 /**
@@ -79,6 +79,23 @@ export type CodigoAceptarParteDeFactura =
 export type DatosAceptarParteDeFactura = { repetida: true; operacionId: null } | { repetida: false; operacionId: string };
 
 export type ResultadoAceptarParteDeFactura = ResultadoCaso<DatosAceptarParteDeFactura, CodigoAceptarParteDeFactura>;
+
+/**
+ * Compras, recepción separada (N3-a) — «Confirmar recepción»: un gerente o administrador confirma que llegó la mercadería de una compra cargada «pendiente de recibir» y elige la sección (depósito) y la fecha de stock (entre la fecha de la
+ * factura y hoy, en hora argentina). Sin clave de reintento: es idempotente por estado (confirmar dos veces = la segunda devuelve «ya recibida», sin stock nuevo).
+ */
+export interface ComandoConfirmarRecepcionDeFactura {
+  facturaId: string;
+  seccionId: string;
+  /** El mediodía argentino del día de stock elegido. */
+  fechaStock: Date;
+}
+
+export type CodigoConfirmarRecepcionDeFactura = "NO_ENCONTRADA" | CodigoDeRechazoDeRecepcion | "PRODUCTO_NO_DISPONIBLE" | "SIN_LINEAS";
+
+export type DatosConfirmarRecepcionDeFactura = { operacionId: string; movimientos: number };
+
+export type ResultadoConfirmarRecepcionDeFactura = ResultadoCaso<DatosConfirmarRecepcionDeFactura, CodigoConfirmarRecepcionDeFactura>;
 
 /** «Anular factura» (administrador): entera y atómica, con motivo. */
 export interface ComandoAnularFacturaProveedor {

@@ -6,6 +6,7 @@ import { mensajeReferenciaProveedorObligatoria } from "@/core/features/compras/c
 import {
   DIAS_DE_VENTANA_DE_DUPLICADO,
   avisoDePosibleDuplicado,
+  estadoInicialDeLaParte,
   normalizarNumeroDeComprobante,
   posiblesDuplicados,
   repartirFactura,
@@ -28,6 +29,7 @@ import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { sucursalesDondeElUsuarioPuedeVer } from "@/server/acceso/gate";
+import { modulosEfectivosDeEmpresa } from "@/server/acceso/modulos-de-empresa";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
@@ -41,6 +43,7 @@ import { hayComprobanteVigenteEnLaEmpresa } from "@/server/persistencia/compras/
 import {
   escribirCabeceraDeFactura,
   escribirParteRecibida,
+  escribirPartePendiente,
   escribirPropuesta,
   escribirRenglonesDeFactura,
   registrarResultadoDeFactura,
@@ -55,12 +58,15 @@ import { armarLineaMovimiento, type LineaCalculada } from "./armar-linea-de-movi
  * `import "server-only"` y SIN `"use server"`: no chequea permisos (la Server Action pidió `proceso_compra` en la sucursal activa y, si hay partes de otras sucursales, también `compra_repartir`) ni el formato
  * (`guardComandoRegistrarFacturaProveedor`).
  *
+ * Compras N3-a (recepción separada): con el módulo `recepcion_de_compras` encendido en la empresa y una factura de UNA sola parte propia, la parte nace PENDIENTE de recibir (sin `Operacion` ni `MovimientoStock`, la sección se ignora): el stock
+ * entra cuando un gerente o administrador la confirma (`confirmar-recepcion-de-factura.ts`). Una repartida, o sin el módulo, sigue como siempre.
+ *
  * Pasos:
  *  1. (fuera de la transacción) la sección de la parte propia es de esta sucursal; el número normalizado. Ya NO hay caminos rápidos de factura repetida: el rechazo vive adentro, después de la idempotencia;
  *  2. dentro de UNA transacción SERIALIZABLE, abierta con la base de verificación (lectura en toda la empresa, escritura como estaba): I3 (la clave y la huella viven en la cabecera); el número no está cargado en la empresa
  *     (`hayComprobanteVigenteEnLaEmpresa`: otra factura repartida o una compra simple de CUALQUIER sucursal; mensaje único sin fecha ni sucursal); proveedor activo; sección activa; las sucursales destino existen en la empresa y están activas; cada renglón se arma como
  *     una línea de compra (`armarLineaMovimiento`: producto, conversión, precio y referencia del proveedor); el reparto exacto (`repartirFactura`, los importes tipeados son los pesos) y sus sumas verificadas;
- *  3. escribe la cabecera CONFIRMADA, los renglones, la compra de la parte propia (Operacion + Kardex con el renglón) y su parte RECIBIDA, una propuesta PENDIENTE con sus renglones por cada otra sucursal, el
+ *  3. escribe la cabecera CONFIRMADA, los renglones, la compra de la parte propia (Operacion + Kardex con el renglón) y su parte RECIBIDA (o solo la parte PENDIENTE, ver arriba), una propuesta PENDIENTE con sus renglones por cada otra sucursal, el
  *     vínculo proveedor↔producto (comando de Catálogo) y la auditoría; guarda el mensaje para la idempotencia.
  *  Choques: el número repetido en la empresa (`FacturaProveedor_unica_vigente_key`) o como compra en esta sucursal (segunda barrera) → «factura duplicada», con el mismo mensaje; la clave tomada por otro pedido → conflicto o repetida.
  *
@@ -78,8 +84,14 @@ export async function registrarFacturaProveedorCasoDeUso(
   const propia = partes.find((p) => p.sucursalId === actor.sucursalId) ?? null;
   const ajenas = partes.filter((p) => p.sucursalId !== actor.sucursalId);
 
-  const seccion = propia ? await obtenerSeccionPropia(datos.seccionId as string, actor.sucursalId, actor.db) : null;
-  if (propia && !seccion) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección.");
+  // Compras N3-a (recepción separada): con el módulo `recepcion_de_compras` encendido en la empresa y una factura de UNA sola parte propia, la parte nace PENDIENTE de recibir: no entra stock ni se escribe `Operacion` ni
+  // `MovimientoStock`; la sección (donde entraría) se ignora —la elige quien confirma la recepción—. Sin el módulo, o con partes de otras sucursales, todo sigue como siempre (la parte propia entra al stock al cargar).
+  // El registro de módulos se lee por el único lector (`modulos-de-empresa`), una vez por carga.
+  const moduloEncendido = propia ? (await modulosEfectivosDeEmpresa(actor.empresaId, actor.db)).has("recepcion_de_compras") : false;
+  const pendienteDeRecibir = propia ? estadoInicialDeLaParte({ moduloEncendido, hayPartesAjenas: ajenas.length > 0 }) === "PENDIENTE" : false;
+
+  const seccion = propia && !pendienteDeRecibir ? await obtenerSeccionPropia(datos.seccionId as string, actor.sucursalId, actor.db) : null;
+  if (propia && !pendienteDeRecibir && !seccion) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección.");
 
   const payloadHash = calcularPayloadHash("FACTURA_PROVEEDOR", actor.sucursalId, { ...datos, claveIdempotencia: undefined });
   // Un reenvío de una carga que YA se hizo tiene que devolver su mensaje, no el «ya hay una factura con ese número» (la factura repetida es ella misma). El chequeo que vale es el de adentro de la
@@ -187,7 +199,10 @@ export async function registrarFacturaProveedorCasoDeUso(
     let operacionPropiaId: string | null = null;
     for (const [j, parte] of partes.entries()) {
       const celdas = reparto.celdas.map((fila, i) => ({ i, celda: fila[j]! })).filter(({ celda }) => celda.cantidadStock > 0);
-      if (parte.sucursalId === actor.sucursalId) {
+      if (parte.sucursalId === actor.sucursalId && pendienteDeRecibir) {
+        // Pendiente de recibir: solo la parte, sin compra ni stock (lo crea `confirmarRecepcionDeFacturaCasoDeUso`).
+        await escribirPartePendiente(tx, { facturaProveedorId: factura.id, sucursalId: actor.sucursalId, porcentajeDeclaradoBp: reparto.partes[j]!.porcentajeDeclaradoBp });
+      } else if (parte.sucursalId === actor.sucursalId) {
         const operacion = await escribirOperacionDeStock(tx, {
           sucursalId: actor.sucursalId,
           proceso: "COMPRA",
@@ -258,7 +273,7 @@ export async function registrarFacturaProveedorCasoDeUso(
       descripcion: `Factura de proveedor${nroFactura ? ` ${nroFactura}` : ""} cargada en «${actor.sucursalNombre}»${partes.length > 1 ? " y repartida" : ""}`,
       campo: "reparto",
       valorAnterior: null,
-      valorNuevo: partes.map((p, j) => ({ sucursal: nombres.get(p.sucursalId) ?? p.sucursalId, importe: reparto.partes[j]!.importe, porcentajeDeclaradoBp: reparto.partes[j]!.porcentajeDeclaradoBp, estado: p.sucursalId === actor.sucursalId ? "RECIBIDA" : "PROPUESTA" })),
+      valorNuevo: partes.map((p, j) => ({ sucursal: nombres.get(p.sucursalId) ?? p.sucursalId, importe: reparto.partes[j]!.importe, porcentajeDeclaradoBp: reparto.partes[j]!.porcentajeDeclaradoBp, estado: p.sucursalId === actor.sucursalId ? (pendienteDeRecibir ? "PENDIENTE" : "RECIBIDA") : "PROPUESTA" })),
       actorId: actor.usuarioId,
       sucursalId: actor.sucursalId,
     });
@@ -274,6 +289,7 @@ export async function registrarFacturaProveedorCasoDeUso(
       unaSolaParte: partes.length === 1 && Boolean(propia),
       avisoConversion,
       avisoDuplicado: aviso ? ` ${aviso}` : "",
+      pendienteDeRecibir,
     });
     await registrarResultadoDeFactura(tx, factura.id, mensaje);
     return exito(mensaje, { repetida: false, facturaId: factura.id, operacionPropiaId, movimientosPropios });
@@ -304,8 +320,10 @@ function verificarSumas(reparto: Extract<RepartoDeFactura, { ok: true }>, renglo
  * El mensaje de la carga. Una factura de UNA sola parte (la compra de una sucursal) conserva el texto de siempre de la compra: «Se guardaron N movimiento(s).» más los avisos (conversión de unidad, posible repetida y,
  * si quedó pendiente, cómo declarar el pago). Una repartida dice qué entró acá y qué partes quedan para aceptar en cada destino.
  */
-function mensajeDeCarga(m: { movimientosPropios: number; destinos: readonly string[]; pendienteDePago: boolean; unaSolaParte: boolean; avisoConversion: string; avisoDuplicado: string }): string {
+function mensajeDeCarga(m: { movimientosPropios: number; destinos: readonly string[]; pendienteDePago: boolean; unaSolaParte: boolean; avisoConversion: string; avisoDuplicado: string; pendienteDeRecibir: boolean }): string {
   const pendiente = m.pendienteDePago ? " Quedó pendiente de pago: declaralo desde «Compras registradas» cuando se pague." : "";
+  // Compras N3-a: la parte nació pendiente de recibir (módulo `recepcion_de_compras` encendido): no entró stock; entra cuando un gerente o administrador confirma la recepción.
+  if (m.pendienteDeRecibir) return `Factura cargada: queda pendiente de recibir. El stock entra cuando un gerente o administrador la confirma.${m.avisoConversion}${pendiente}${m.avisoDuplicado}`;
   if (m.unaSolaParte && !m.destinos.length) return `Se guardaron ${m.movimientosPropios} movimiento(s).${m.avisoConversion}${pendiente}${m.avisoDuplicado}`;
   const propia = (m.movimientosPropios ? `Factura cargada: ${m.movimientosPropios} movimiento(s) entraron al stock de esta sucursal.` : "Factura cargada.") + pendiente;
   if (!m.destinos.length) return `${propia}${m.avisoDuplicado}`;

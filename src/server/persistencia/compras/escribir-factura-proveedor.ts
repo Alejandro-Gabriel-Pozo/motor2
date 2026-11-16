@@ -73,7 +73,7 @@ export async function escribirRenglonesDeFactura(tx: Prisma.TransactionClient, f
   return ids;
 }
 
-/** La parte de una sucursal, siempre RECIBIDA y con su compra (la de la sucursal que carga, al cargar; la de cada destino, al aceptar). */
+/** La parte de una sucursal RECIBIDA y con su compra (la de la sucursal que carga, al cargar; la de cada destino, al aceptar). Con la recepción separada (N3-a) la de una factura de una sola parte puede nacer PENDIENTE: `escribirPartePendiente`. */
 export async function escribirParteRecibida(
   tx: Prisma.TransactionClient,
   p: { facturaProveedorId: string; sucursalId: string; porcentajeDeclaradoBp: number; operacionId: string; recibidaEn: Date; recibidaPorId: string }
@@ -82,6 +82,29 @@ export async function escribirParteRecibida(
     data: { facturaProveedorId: p.facturaProveedorId, sucursalId: p.sucursalId, porcentajeDeclaradoBp: p.porcentajeDeclaradoBp, operacionId: p.operacionId, estadoRecepcion: "RECIBIDA", recibidaEn: p.recibidaEn, recibidaPorId: p.recibidaPorId },
     select: { id: true },
   });
+}
+
+/**
+ * Compras, recepción separada (N3-a): la parte de la sucursal que carga, PENDIENTE de recibir: sin compra (`operacionId` NULL) ni fecha ni persona de recepción. No hay stock ni costo ni gasto hasta que `confirmarParteRecibida` la pasa a RECIBIDA.
+ * Solo la escribe «cargar factura» con el módulo `recepcion_de_compras` encendido y una factura de una sola parte.
+ */
+export async function escribirPartePendiente(tx: Prisma.TransactionClient, p: { facturaProveedorId: string; sucursalId: string; porcentajeDeclaradoBp: number }): Promise<{ id: string }> {
+  return tx.facturaProveedorSucursal.create({
+    data: { facturaProveedorId: p.facturaProveedorId, sucursalId: p.sucursalId, porcentajeDeclaradoBp: p.porcentajeDeclaradoBp, operacionId: null, estadoRecepcion: "PENDIENTE", recibidaEn: null, recibidaPorId: null },
+    select: { id: true },
+  });
+}
+
+/**
+ * Compras, recepción separada (N3-a): confirma la recepción de una parte PENDIENTE y le fija su compra, en UN solo UPDATE. La guarda es el `WHERE "estadoRecepcion" = 'PENDIENTE'`: devuelve cuántas filas tocó (0 = otra confirmación ganó, o la parte
+ * ya estaba recibida; el caso de uso aborta la transacción y no queda stock). La base solo deja actualizar estas cuatro columnas y el disparador solo admite el paso de PENDIENTE a RECIBIDA (migraciones 20261016101500 y 20261117120000).
+ */
+export async function confirmarParteRecibida(tx: Prisma.TransactionClient, p: { parteId: string; operacionId: string; recibidaEn: Date; recibidaPorId: string }): Promise<number> {
+  const r = await tx.facturaProveedorSucursal.updateMany({
+    where: { id: p.parteId, estadoRecepcion: "PENDIENTE" },
+    data: { operacionId: p.operacionId, estadoRecepcion: "RECIBIDA", recibidaEn: p.recibidaEn, recibidaPorId: p.recibidaPorId },
+  });
+  return r.count;
 }
 
 /** La propuesta de la parte de una sucursal destino, PENDIENTE, con sus renglones (cantidad > 0). */
