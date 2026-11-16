@@ -138,6 +138,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Parte P1 (ADITIVO; claves nuevas, semilla solo `admin`, todo nace cerrado): `ACCIONES 130 a 133` y las filas `PERMISO` de `partes_ver`, `partes_editar` y `partes_desactivar` (admin ver=true editar=true; operador sin Ver ni Editar). Revisado con `git diff`: solo se suman esas claves a las listas de cada bloque; ningún otro permiso ni rol cambia.",
       },
+      {
+        blob: "abc39c511c44b317c67981a6c20dfedd2753a876",
+        // El commit PADRE de la regeneración es `66bb76e5` (el punto de partida de la rama en `origin/main`, ya publicado).
+        commit: "66bb76e5",
+        motivo:
+          "compra_recibir pasa al módulo recepcion_de_compras y a piso administrador (Compras N3-a, recepción separada)",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
