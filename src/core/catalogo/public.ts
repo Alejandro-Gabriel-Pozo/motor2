@@ -95,3 +95,4 @@ export { PENDIENTE, armarFichaDeCocina } from "./ficha-de-cocina";
 export type { FichaDeCocina, RecetaParaFicha } from "./ficha-de-cocina";
 // «Duplicar producto» (E4, docs/diseno-duplicar-producto-2026-11-12.md): lo que el diálogo de la ficha dice que no se copia (puro; las demás reglas las lee el caso de uso).
 export { LO_QUE_NO_SE_COPIA } from "./duplicar-producto";
+export { OPCIONES_AGOTADAS_AYUDAS_VISIBLES } from "./opciones-agotadas-ayudas-visibles";

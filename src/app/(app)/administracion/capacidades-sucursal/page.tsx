@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import { MATRICES_AYUDAS_VISIBLES } from "@/core/permisos/matrices-ayudas-visibles";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
@@ -22,9 +23,9 @@ export default async function CapacidadesSucursalPage() {
   return (
     <AvisosDeAccion className="space-y-4">
       <h1 className="text-xl font-semibold">Capacidades por sucursal (matriz de la Central)</h1>
-      <p className="text-xs text-tinta-tenue">
+      {MATRICES_AYUDAS_VISIBLES && (<p className="text-xs text-tinta-tenue">
         Columna &quot;Default&quot; = comportamiento para cualquier sucursal sin fila propia. Sin ninguna fila, la acción está habilitada. Una sucursal sin fila propia toma el valor del Default: la casilla muestra ese valor y lo marca con «hereda del Default».
-      </p>
+      </p>)}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -56,7 +57,7 @@ export default async function CapacidadesSucursalPage() {
                         >
                           <button type="submit" aria-pressed={habilitado} aria-label={`${a.clave}: ${sucursalId ? (sucursales.find((s) => s.id === sucursalId)?.nombre ?? "sucursal") : "valor por defecto"}`}>{habilitado ? "✅" : "⛔"}</button>
                         </FormConAviso>
-                        {heredaDelDefault && <div className="text-xs text-tinta-tenue">hereda del Default</div>}
+                        {heredaDelDefault && <div className={MATRICES_AYUDAS_VISIBLES ? "text-xs text-tinta-tenue" : "sr-only"}>hereda del Default</div>}
                       </td>
                     </Fragment>
                   );
