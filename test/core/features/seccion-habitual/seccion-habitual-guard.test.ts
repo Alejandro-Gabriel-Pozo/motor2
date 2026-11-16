@@ -29,7 +29,7 @@ describe("guardComandoEliminarSeccionHabitual", () => {
 
   it("un id que no es texto es «no encontrada» (sin leer la base)", () => {
     for (const id of [undefined, null, 42, {}]) {
-      expect(guardComandoEliminarSeccionHabitual({ id })).toEqual({ ok: false, codigo: "formato", mensaje: "No se encontró ese depósito habitual." });
+      expect(guardComandoEliminarSeccionHabitual({ id })).toEqual({ ok: false, codigo: "formato", mensaje: "No se encontró el depósito habitual." });
     }
   });
 });

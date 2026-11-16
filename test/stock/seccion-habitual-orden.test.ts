@@ -46,8 +46,8 @@ describe("sección habitual: orden de los rechazos", () => {
 
   it("quitar: un id que no es texto es «no encontrada» y no borra nada; no refresca", async () => {
     await setSeccionHabitual(pizzaId, cocinaId);
-    expect(await eliminarSeccionHabitual(42 as unknown as string)).toEqual({ ok: false, mensaje: "No se encontró ese depósito habitual." });
-    expect(await eliminarSeccionHabitual("cnoexiste000000000000000")).toEqual({ ok: false, mensaje: "No se encontró ese depósito habitual." });
+    expect(await eliminarSeccionHabitual(42 as unknown as string)).toEqual({ ok: false, mensaje: "No se encontró el depósito habitual." });
+    expect(await eliminarSeccionHabitual("cnoexiste000000000000000")).toEqual({ ok: false, mensaje: "No se encontró el depósito habitual." });
     expect(await prisma.seccionHabitualProducto.count()).toBe(1);
     expect(vi.mocked(refresh)).not.toHaveBeenCalled();
   });
