@@ -2645,6 +2645,7 @@
               "unidadStockId": "un-kg",
               "factorConversion": "<decimal 1>",
               "observaciones": null,
+              "nombreDeCocina": null,
               "insumoId": "ins-queso",
               "precioVenta": "<decimal 0>",
               "modoDeVenta": "DIRECTO",

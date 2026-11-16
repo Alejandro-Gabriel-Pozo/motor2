@@ -30,6 +30,8 @@ interface CamposDeProducto {
   proveedorConsignacionId?: string | null;
   precioConsignacion?: number;
   observaciones?: string | null;
+  /** Cómo nombra la cocina este producto en la comanda (solo un PV; `null` = sin nombre de cocina; CHECK `Producto_nombre_de_cocina_chk`). */
+  nombreDeCocina?: string | null;
   /** Paso 13 (alícuota de IVA del producto): una de `ALICUOTAS_IVA` o `null` («sin declarar»; CHECK de la base). La de venta solo en un PV, la de compra solo en una MP (lo decide el caso de uso). Ausente = no se escribe. */
   alicuotaIvaVenta?: string | null;
   alicuotaIvaCompra?: string | null;
@@ -94,20 +96,26 @@ export async function fijarInsumoDeProducto(db: Prisma.TransactionClient, args: 
   await db.producto.update({ where: { id: args.id }, data: { insumoId: args.insumoId } });
 }
 
+/** Las presentaciones (máximo 2: alcanza para saber si hay una o más de una) de ese producto con esa unidad de compra, sin importar si están activas. Ya no hay único (producto, unidad): se lee por id. */
+export async function presentacionesDeLaUnidad(db: Prisma.TransactionClient, args: { productoId: string; unidadCompraId: string }): Promise<{ id: string; factorConversion: Prisma.Decimal }[]> {
+  return db.presentacion.findMany({ where: { productoId: args.productoId, unidadCompraId: args.unidadCompraId }, select: { id: true, factorConversion: true }, orderBy: { id: "asc" }, take: 2 });
+}
+
 /**
- * Crea la presentación de compra (producto, unidad de compra) con ese factor, o si ya existía le pone el factor nuevo y la reactiva. Devuelve el id de la fila
- * (para la auditoría del factor). M.2: con `reescribirElFactor: false` (quien no tiene `producto_campos_sensibles`: solo puede reactivar con el MISMO factor) una presentación que ya existía solo se reactiva, sin
- * volver a escribir el factor: lo que otra persona haya cambiado entre la lectura y esta escritura no se pisa.
+ * Crea la presentación de compra (producto, unidad de compra) con ese factor, o si ya existía (`existenteId`, leída con `presentacionesDeLaUnidad` DESPUÉS de `tomarFilaDeProducto` en la misma transacción) le pone el factor
+ * nuevo y la reactiva. Devuelve el id de la fila (para la auditoría del factor). M.2: con `reescribirElFactor: false` (quien no tiene `producto_campos_sensibles`: solo puede reactivar con el MISMO factor) una presentación
+ * que ya existía solo se reactiva, sin volver a escribir el factor: lo que otra persona haya cambiado entre la lectura y esta escritura no se pisa. La unicidad de (producto, unidad) ya no la impone la base: la sostiene
+ * el bloqueo de la fila del producto que toma el caso de uso antes de leer.
  */
 export async function guardarPresentacion(
   db: Prisma.TransactionClient,
-  args: { productoId: string; unidadCompraId: string; factorConversion: number; reescribirElFactor: boolean },
+  args: { productoId: string; unidadCompraId: string; factorConversion: number; reescribirElFactor: boolean; existenteId: string | null },
 ): Promise<{ id: string }> {
-  const fila = await db.presentacion.upsert({
-    where: { productoId_unidadCompraId: { productoId: args.productoId, unidadCompraId: args.unidadCompraId } },
-    update: args.reescribirElFactor ? { factorConversion: args.factorConversion, activa: true } : { activa: true },
-    create: { productoId: args.productoId, unidadCompraId: args.unidadCompraId, factorConversion: args.factorConversion },
-  });
+  if (args.existenteId !== null) {
+    await db.presentacion.update({ where: { id: args.existenteId }, data: args.reescribirElFactor ? { factorConversion: args.factorConversion, activa: true } : { activa: true } });
+    return { id: args.existenteId };
+  }
+  const fila = await db.presentacion.create({ data: { productoId: args.productoId, unidadCompraId: args.unidadCompraId, factorConversion: args.factorConversion } });
   return { id: fila.id };
 }
 

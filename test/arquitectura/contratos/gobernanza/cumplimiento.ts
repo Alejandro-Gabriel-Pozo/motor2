@@ -211,12 +211,15 @@ const PASOS_DE_LOS_GUARDIANES: readonly { job: string; descripcion: string; corr
   { job: "integracion", descripcion: "npm test", corre: (run) => /^npm test(\s|$)/.test(run) },
 ];
 
+/** La perilla `CI_EN_MAIN` (docs/ci-perilla-ci-en-main-2026-11-15.md): la ÚNICA situación en que un job pesado puede omitirse: push a main con la variable distinta de «si». En pull_request, ci/** y workflow_dispatch nunca. */
+const PERILLA_APAGADA = "github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CI_EN_MAIN != 'si'";
+
 /**
  * Las ÚNICAS condiciones `if:` que el workflow puede tener, cada una con su motivo. Un `if` fuera de esta lista es un hallazgo; los dos pasos de los guardianes no admiten ninguno.
  * Agregar una entrada es cambiar este archivo, que está congelado por hash (`aprobaciones.ts`).
  */
 const CONDICIONES_PERMITIDAS: { job: string; paso: string | null; condicion: string; motivo: string }[] = [
-  { job: "gate", paso: null, condicion: "always()", motivo: "el gate corre siempre y falla él si algún job no terminó en verde (un job omitido también lo hace fallar)" },
+  { job: "gate", paso: null, condicion: `\${{ always() && !(${PERILLA_APAGADA}) }}`, motivo: "el gate corre siempre y falla él si algún job no terminó en verde (un job omitido también lo hace fallar); solo se omite con la perilla CI_EN_MAIN apagada en un push a main" },
   { job: "integracion", paso: "Tests que fallaron (resumen al final del log)", condicion: "failure()", motivo: "resumen de lo que falló, solo si npm test falló" },
   { job: "integracion", paso: "Resultado de Vitest de esta parte (artefacto)", condicion: "always()", motivo: "sube el resultado de la parte aunque falle, para que el conteo la vea" },
   { job: "e2e", paso: "Resultado de Playwright (artefacto)", condicion: "always()", motivo: "sube el resultado aunque falle" },
@@ -226,6 +229,7 @@ const CONDICIONES_PERMITIDAS: { job: string; paso: string | null; condicion: str
 /** Los pasos del gate que arman y corren los dos conteos (Vitest y E2E): solo corren si integracion y e2e dieron success (si algo ya falló no aportan; el primer paso del gate ya falló por eso). */
 const CONDICION_DE_LOS_CONTEOS = "${{ needs.integracion.result == 'success' && needs.e2e.result == 'success' }}";
 const PASOS_DE_LOS_CONTEOS = ["Checkout", "Node", "npm ci", "Resultados de Vitest (todas las partes)", "Conteo de tests (todas las partes)", "Resultados de Playwright (todas las partes)", "Lista de specs de la suite entera (sin correr nada)", "Conteo de E2E (todas las partes)"];
+for (const job of ["estatico", "build", "integracion", "e2e"]) CONDICIONES_PERMITIDAS.push({ job, paso: null, condicion: `\${{ !(${PERILLA_APAGADA}) }}`, motivo: "perilla CI_EN_MAIN: el job se omite solo en un push a main con la perilla apagada; nunca en pull_request, ci/** ni workflow_dispatch" });
 for (const paso of PASOS_DE_LOS_CONTEOS) CONDICIONES_PERMITIDAS.push({ job: "gate", paso, condicion: CONDICION_DE_LOS_CONTEOS, motivo: "paso del conteo del reparto de Vitest o de Playwright dentro del gate: corre solo si integracion y e2e dieron success" });
 
 /**

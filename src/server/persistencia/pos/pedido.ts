@@ -67,6 +67,8 @@ export async function escribirLineaConfigurada(
       huellaOpciones: string | null;
       /** El «Nombre en la carta» de la sucursal al vender (congelado para el ticket del cliente), o `null` si el producto no lo tiene. */
       nombreEnTicket?: string | null;
+      /** El «Nombre de cocina» del producto al vender (congelado para la comanda), o `null` si no lo tiene (la comanda usa el nombre interno). */
+      nombreDeCocina?: string | null;
       fotos: readonly FotoAEscribir[];
       /** GO-3b: la PromoCuenta de la que la línea es componente (un combo con una entrada configurada). */
       promoCuentaId?: string;
@@ -84,6 +86,7 @@ export async function escribirLineaConfigurada(
       precioCartaUnitario: linea.precioCartaUnitario,
       huellaOpciones: linea.huellaOpciones,
       nombreEnTicket: linea.nombreEnTicket ?? null,
+      nombreDeCocina: linea.nombreDeCocina ?? null,
       numeroEnvio: null,
       creadoPorId,
       ...(linea.promoCuentaId ? { promoCuentaId: linea.promoCuentaId } : {}),

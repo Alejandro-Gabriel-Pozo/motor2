@@ -43,6 +43,7 @@ export async function cargarEdicionDelProducto(
     id: p.id,
     codigo: p.codigo,
     nombre: p.nombre,
+    nombreDeCocina: p.nombreDeCocina,
     tipo: p.tipo,
     categoriaId: p.categoriaId,
     unidadCompraId: p.unidadCompraId,

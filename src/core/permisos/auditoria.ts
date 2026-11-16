@@ -11,6 +11,8 @@ export const ENTIDADES_AUDITABLES = [
   "Producto",
   "PrecioLocalProducto",
   "DisponibilidadProducto",
+  // "OcultamientoProducto": «Ocultar» / «Volver a mostrar» un producto en un local o en toda la empresa — `entidadId` es `${sucursalId | "EMPRESA"}:${productoId}`, `campo: "oculto"`, con `sucursalId` (nulo = toda la empresa).
+  "OcultamientoProducto",
   "PermisoRol",
   "CapacidadSucursal",
   "Rol",

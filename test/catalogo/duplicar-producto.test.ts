@@ -70,6 +70,8 @@ describe("duplicarProducto: el bife con chimichurri", () => {
   });
 
   it("copia la ficha, el precio, las opciones y la receta como versión 1, con el nombre y el código propios", async () => {
+    // El nombre de cocina (2026-11-15) es una columna «se copia»: con valor en el original, el duplicado nace con el mismo.
+    await prisma.producto.update({ where: { id: e.bifeId }, data: { nombreDeCocina: "Medallón de bife" } });
     const r = await entre(duplicar());
     const origen = await prisma.producto.findUniqueOrThrow({ where: { id: e.bifeId } });
     const nuevo = await prisma.producto.findUniqueOrThrow({ where: { id: r.id } });
@@ -87,7 +89,7 @@ describe("duplicarProducto: el bife con chimichurri", () => {
       const b = (nuevo as Record<string, unknown>)[columna];
       expect(String(b), `Producto.${columna}`).toBe(String(a));
     }
-    expect(nuevo).toMatchObject({ tipo: "PV", categoriaId: e.categoriaId, unidadStockId: e.kgId, observaciones: "Se sirve a punto", alicuotaIvaVenta: "IVA_21", modoDeVenta: "DIRECTO", seProduce: false });
+    expect(nuevo).toMatchObject({ tipo: "PV", categoriaId: e.categoriaId, unidadStockId: e.kgId, observaciones: "Se sirve a punto", alicuotaIvaVenta: "IVA_21", modoDeVenta: "DIRECTO", seProduce: false, nombreDeCocina: "Medallón de bife" });
     expect([Number(nuevo.precioVenta), Number(nuevo.pasoVenta), Number(nuevo.factorConversion)]).toEqual([5000, 0.5, 1]);
 
     // La disponibilidad nace con la regla del alta (con la clave: disponible en todas las sucursales), no copiada tal cual.
