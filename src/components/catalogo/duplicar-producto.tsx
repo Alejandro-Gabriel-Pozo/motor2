@@ -182,7 +182,7 @@ export function DuplicarProducto({ origen, tieneReceta, opciones, puedeCopiarRec
                 />
               ) : (
                 <Aviso variante="advertencia">
-                  No tenés el permiso «campos sensibles del producto» (producto_campos_sensibles): el producto nuevo nace con precio $0 y sin disponibilidad para vender, hasta que alguien con ese permiso le cargue el precio y lo active.
+                  No tenés el permiso «campos sensibles del producto» (producto_campos_sensibles): el producto nuevo nace sin disponibilidad para vender, hasta que alguien con ese permiso le cargue el precio y lo active.
                 </Aviso>
               )
             ) : null}

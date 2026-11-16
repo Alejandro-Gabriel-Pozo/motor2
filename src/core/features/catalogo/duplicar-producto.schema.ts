@@ -49,11 +49,10 @@ export interface OpcionesDuplicadas {
 }
 
 /**
- * Con qué precio nació el producto nuevo: el del original (`COPIADO`), otro que se escribió al duplicar (`EDITADO`), o en 0 porque quien duplica no tiene `producto_campos_sensibles`: `EN_CERO_Y_APAGADO` en un producto
- * de venta (queda sin disponibilidad hasta que alguien con la clave le cargue el precio y lo active, regla M.2-A4 del alta) y `EN_CERO` en una materia prima (que no se vende). `POR_OPCION`: el original se vende por opción,
+ * Con qué precio nació el producto nuevo: el del original (`COPIADO`; con o sin `producto_campos_sensibles`, decisión del dueño 2026-11-16) u otro que se escribió al duplicar (`EDITADO`, solo con la clave). `POR_OPCION`: el original se vende por opción,
  * su precio guardado no se cobra (el precio final está en cada opción, que se copió) y el producto nuevo lo guarda en 0.
  */
-export type PrecioDelDuplicado = "COPIADO" | "EDITADO" | "EN_CERO" | "EN_CERO_Y_APAGADO" | "POR_OPCION";
+export type PrecioDelDuplicado = "COPIADO" | "EDITADO" | "POR_OPCION";
 
 export interface DatosProductoDuplicado {
   productoId: string;

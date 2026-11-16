@@ -341,12 +341,8 @@ function mensajeDeExito(c: { codigo: string; nombre: string; origenNombre: strin
     if (gruposArchivados > 0) partes.push(gruposArchivados === 1 ? "1 grupo archivado en la biblioteca no se copió." : `${gruposArchivados} grupos archivados en la biblioteca no se copiaron.`);
     if (opcionesArchivadas > 0) partes.push(opcionesArchivadas === 1 ? "1 opción archivada en la biblioteca no se copió." : `${opcionesArchivadas} opciones archivadas en la biblioteca no se copiaron.`);
   }
-  if (c.precio === "EN_CERO_Y_APAGADO") {
-    partes.push("Nació con precio $0 y sin disponibilidad: no podés fijar el precio sin el permiso «campos sensibles del producto» (producto_campos_sensibles). Quien lo tenga le carga el precio y lo activa.");
-  } else if (c.precio === "POR_OPCION") {
+  if (c.precio === "POR_OPCION") {
     partes.push("Se vende por opción: su precio guardado no se cobra, el precio final de cada opción es el que se copió con ellas.");
-  } else if (c.precio === "EN_CERO") {
-    partes.push("Nació con precio $0: no podés fijar el precio sin el permiso «campos sensibles del producto» (producto_campos_sensibles).");
   }
   partes.push("«En la carta» queda pendiente de completar.");
   if (c.receta?.pasosParaRevisar) partes.push(AVISO_PASOS_PARA_REVISAR);
