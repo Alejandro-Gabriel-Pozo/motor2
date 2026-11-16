@@ -1,7 +1,7 @@
 import "server-only";
 import { centavosDeImporte, conciliarJornada, controlesDelDia, ordenarControles } from "@/core/caja/public";
 import type { ControlDelDia, DatosParaLosControles } from "@/core/caja/public";
-import { calcularPayloadHash } from "@/core/movimientos/public-servidor";
+import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import {
   cargarAjustesQueCorrigen,
@@ -21,7 +21,7 @@ import { horaDeCorteDeColumna } from "@/server/persistencia/caja/jornada";
 import { cargarCuentaParaCobrar } from "@/server/persistencia/caja/total-de-cuenta";
 
 /**
- * Los controles de una jornada y su HUELLA (etapa C2, docs/diseno-caja-c2-jornada-y-cierre-del-dia-2026-11-16.md, niveles 5 y 9). LECTURA COMPARTIDA entre la pantalla del cierre (que mostrará los controles y pedirá cerrar con su huella) y `cerrarJornada` (que
+ * Los controles de una jornada y su HUELLA (etapa C2, docs/diseno-caja-c2-jornada-y-cierre-del-dia-2026-11-16.md, niveles 5 y 9). Helper COMPARTIDO por los casos de uso del cierre y la futura consulta de la pantalla (vive en `casos-de-uso/` porque la capa de persistencia solo la usan los casos de uso del dominio); es la lectura que usan la pantalla del cierre que mostrará los controles y pedirá cerrar con su huella y `cerrarJornada` (que
  * los recalcula dentro de su transacción y compara): si cada uno los calculara por su lado, lo que se muestra y lo que se cierra podrían diferir. Todo el cálculo es de `src/core/caja/` (`conciliarJornada`, `controlesDelDia`); acá solo se lee y se junta.
  * Determinista: con los mismos datos, la misma huella (sin reloj ni azar: `ahora` solo entra al recalcular el total vigente del ticket, que no depende de él).
  *
@@ -76,6 +76,6 @@ export async function leerControlesDeLaJornada(
     cuentasAbiertas: await cargarCuentasAbiertas(db, empresaId, sucursalId),
     cuentasPorCobrar: await cargarCuentasPorCobrar(db, { empresaId, sucursalId, fecha: fechaDeNegocio, zonaHoraria: args.zonaHoraria, horaDeCorte: horaDeCorteDeColumna(sucursal.horaDeCorte) }),
   });
-  const huella = calcularPayloadHash("HUELLA_DE_CONTROLES_DE_JORNADA", empresaId, { sucursalId, fechaDeNegocio, controles: ordenarControles(controles).map((c) => [c.clave, c.severidad, c.cantidad, c.detalle]) });
+  const huella = createHash("sha256").update(JSON.stringify(["HUELLA_DE_CONTROLES_DE_JORNADA", empresaId, sucursalId, fechaDeNegocio, ordenarControles(controles).map((c) => [c.clave, c.severidad, c.cantidad, c.detalle])])).digest("hex");
   return { controles, huella };
 }

@@ -35,7 +35,7 @@ export function impideCerrar(control: Pick<ControlDelDia, "severidad" | "cantida
 }
 
 /** Lo que hay que reconocer para cerrar: `RECONOCIBLE` con hallazgos. */
-export function pideReconocimiento(control: Pick<ControlDelDia, "severidad" | "cantidad">): boolean {
+function pideReconocimiento(control: Pick<ControlDelDia, "severidad" | "cantidad">): boolean {
   return control.severidad === "RECONOCIBLE" && control.cantidad > 0;
 }
 

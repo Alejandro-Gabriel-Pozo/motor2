@@ -8,7 +8,7 @@ import { esDiaISOReal } from "@/core/tiempo/zona-horaria";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
-import { leerControlesDeLaJornada } from "@/server/lecturas/caja/controles-de-la-jornada";
+import { leerControlesDeLaJornada } from "./controles-de-la-jornada";
 import { bloquearJornadaParaCambiar, cargarControlesGuardados, cerrarJornadaEnBase, insertarControles } from "@/server/persistencia/caja/jornada";
 
 /** Un control como lo ve quien cierra (sin el detalle ni las referencias: el detalle lo da la consulta de cada control). */

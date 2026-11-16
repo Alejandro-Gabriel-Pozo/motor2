@@ -6,7 +6,7 @@ import { esDiaISOReal } from "@/core/tiempo/zona-horaria";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
-import { leerControlesDeLaJornada } from "@/server/lecturas/caja/controles-de-la-jornada";
+import { leerControlesDeLaJornada } from "./controles-de-la-jornada";
 import { bloquearJornadaParaCambiar, iniciarAuditoriaEnBase } from "@/server/persistencia/caja/jornada";
 
 /**

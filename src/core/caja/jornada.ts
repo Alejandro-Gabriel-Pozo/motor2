@@ -5,9 +5,6 @@
 export const ESTADOS_DE_JORNADA = ["ABIERTA", "EN_AUDITORIA", "CERRADA"] as const;
 export type EstadoDeJornada = (typeof ESTADOS_DE_JORNADA)[number];
 
-/** `SIN_ACTIVIDAD`: nadie registró nada ese día, así que la jornada todavía no existe (la crea quien tiene la primera actividad). */
-export type EstadoConsultado = EstadoDeJornada | "SIN_ACTIVIDAD";
-
 /** Las transiciones que permite el dominio. La base impone EXACTAMENTE las mismas (`JornadaDeSucursal_validar_cambio`): una prueba recorre todos los pares y exige que coincidan. */
 export const TRANSICIONES_DE_JORNADA: Readonly<Record<EstadoDeJornada, readonly EstadoDeJornada[]>> = {
   ABIERTA: ["EN_AUDITORIA"],
