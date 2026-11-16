@@ -38,6 +38,12 @@ const FK_CON_DISCRIMINADOR: Readonly<Record<string, string>> = {
     "Paquete 4, M6.1: (empresaId, línea, lineaAdmiteDevolucion) → NotaCreditoProveedorLinea(empresaId, id, admiteDevolucion): solo una línea de mercadería sobre factura admite una devolución (más el CHECK de la devolución).",
   ControlDeLineaDeRecepcion_renglon_fkey:
     "Compras N3-b: (empresaId, facturaProveedorId, renglón) → FacturaProveedorRenglon(empresaId, facturaProveedorId, id): el renglón que se controla es de LA factura que dice el control (más el disparador, que exige que la parte sea de esa misma factura).",
+  SaldoDeLineaDeOrden_linea_fkey:
+    "Compras, orden de compra: (empresaId, orden, línea) → LineaDeOrdenDeCompra(empresaId, ordenId, numero): el saldo es de una línea de ESA orden (el número de línea solo es único dentro de su orden).",
+  VinculoDeRenglonConOrden_renglon_fkey:
+    "Compras, orden de compra: (empresaId, facturaProveedorId, renglón) → FacturaProveedorRenglon(empresaId, facturaProveedorId, id): el renglón vinculado es de LA factura que dice el vínculo (más el disparador, que exige que la parte sea de esa misma factura).",
+  VinculoDeRenglonConOrden_lineaDeOrden_fkey:
+    "Compras, orden de compra: (empresaId, orden, línea) → LineaDeOrdenDeCompra(empresaId, ordenId, numero): la línea vinculada es de ESA orden (el número de línea solo es único dentro de su orden).",
   CentroDeCostos_empresaId_planDeCostosId_centroPadreId_fkey:
     "Paquete 5, M7.1: (empresaId, planDeCostosId, centroPadreId) → CentroDeCostos(empresaId, planDeCostosId, id): el padre de un centro es del MISMO plan (en la v1 `centroPadreId` es siempre NULL por CHECK; la clave queda lista para los sub-centros).",
   DistribucionCostoLinea_empresaId_distribucionCostoVersionI_fkey:

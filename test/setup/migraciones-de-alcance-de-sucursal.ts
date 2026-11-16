@@ -64,6 +64,8 @@ export const MIGRACIONES_DE_POLITICAS_POSTERIORES: readonly { readonly migracion
   { migracion: "20261117111000_rls_sucursal_caja_c1", tablas: ["Caja", "SesionCaja", "MovimientoCaja", "Cobranza", "Cobro", "ArqueoCaja", "ArqueoBillete"] },
   // Compras N3-b: el control por línea de una compra pendiente de recibir, de la sucursal de su parte (HEREDADA de `FacturaProveedorSucursal`).
   { migracion: "20261117120110_rls_sucursal_control_de_linea_de_recepcion", tablas: ["ControlDeLineaDeRecepcion"] },
+  // Compras, orden de compra: la orden (PROPIA_O_EMPRESA por su sucursal destino opcional), sus líneas y saldos (HEREDADA de la orden) y el vínculo de un renglón de una compra pendiente con una línea de orden (HEREDADA de la parte).
+  { migracion: "20261117130100_rls_sucursal_orden_de_compra", tablas: ["OrdenDeCompra", "LineaDeOrdenDeCompra", "SaldoDeLineaDeOrden", "VinculoDeRenglonConOrden"] },
 ];
 
 /** Las migraciones previas que la prueba de subir/bajar/subir baja DESPUÉS de B1 (en este orden: P3 y después M.2). Ambas reversas son destructivas. */

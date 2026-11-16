@@ -143,6 +143,11 @@ Una fila por modelo de `prisma/schema.prisma` (112 modelos, 18 primitivas o grup
 | `PagoDeFacturaProveedor` | Compras (factura de proveedor, pagos y notas de crédito) |
 | `AnulacionDePagoDeFacturaProveedor` | Compras (factura de proveedor, pagos y notas de crédito) |
 | `ControlDeLineaDeRecepcion` | Compras (factura de proveedor, pagos y notas de crédito) |
+| `OrdenDeCompra` | Compras (factura de proveedor, pagos y notas de crédito) |
+| `LineaDeOrdenDeCompra` | Compras (factura de proveedor, pagos y notas de crédito) |
+| `SaldoDeLineaDeOrden` | Compras (factura de proveedor, pagos y notas de crédito) |
+| `VinculoDeRenglonConOrden` | Compras (factura de proveedor, pagos y notas de crédito) |
+| `NivelDeControl` | Compras (factura de proveedor, pagos y notas de crédito) |
 | `FacturaProveedorTributo` | Compras (factura de proveedor, pagos y notas de crédito) |
 | `NotaCreditoProveedor` | Compras (factura de proveedor, pagos y notas de crédito) |
 | `NotaCreditoProveedorLinea` | Compras (factura de proveedor, pagos y notas de crédito) |

@@ -31,7 +31,7 @@ export { prismaDuenioSinEmpresa } from "./cliente-duenio";
  * Postgres no deja truncar `Operacion` si otra tabla la referencia, aunque esté vacía: `FacturaProveedorSucursal` (M3b) la referencia con `operacionId` (y a la parte la referencia la propuesta de E3a, con sus renglones), `NotaCreditoProveedorImputacion` (M6) con `operacionDevolucionId` y `OpcionElegidaEnLinea` (GO-1d) y `CombinacionEnLinea` (GO-3a) referencian a `CuentaItem`, así que van en el mismo `TRUNCATE`.
  */
 export async function vaciarOperacionesPorVolumen() {
-  await prismaAdmin.$executeRawUnsafe('TRUNCATE TABLE "OpcionElegidaEnLinea", "CombinacionEnLinea", "MovimientoStock", "CuentaItem", "FacturaProveedorPropuestaRenglon", "FacturaProveedorPropuesta", "ControlDeLineaDeRecepcion", "FacturaProveedorSucursal", "NotaCreditoProveedorImputacion", "Operacion"');
+  await prismaAdmin.$executeRawUnsafe('TRUNCATE TABLE "OpcionElegidaEnLinea", "CombinacionEnLinea", "MovimientoStock", "CuentaItem", "FacturaProveedorPropuestaRenglon", "FacturaProveedorPropuesta", "ControlDeLineaDeRecepcion", "VinculoDeRenglonConOrden", "FacturaProveedorSucursal", "NotaCreditoProveedorImputacion", "Operacion"');
 }
 
 /**
@@ -123,6 +123,12 @@ export async function limpiarBaseDeTest() {
   // E3a (ADR-041): los renglones de la propuesta referencian a la propuesta y al renglón, y la propuesta a la parte que la aceptó (RESTRICT): antes de las partes.
   await prismaAdmin.facturaProveedorPropuestaRenglon.deleteMany();
   await prismaAdmin.facturaProveedorPropuesta.deleteMany();
+  // Compras, orden de compra: el vínculo referencia al renglón, a la parte y a la línea de la orden; el saldo a la línea; la línea a la orden (todo RESTRICT): vínculos, saldos, líneas, órdenes y niveles, antes de las partes.
+  await prismaAdmin.vinculoDeRenglonConOrden.deleteMany();
+  await prismaAdmin.saldoDeLineaDeOrden.deleteMany();
+  await prismaAdmin.lineaDeOrdenDeCompra.deleteMany();
+  await prismaAdmin.ordenDeCompra.deleteMany();
+  await prismaAdmin.nivelDeControl.deleteMany();
   await prismaAdmin.controlDeLineaDeRecepcion.deleteMany();
   await prismaAdmin.facturaProveedorSucursal.deleteMany();
   // Los centros de costos (M7): las líneas de distribución referencian a su versión y al centro, la versión a la imputación, al plan y al User, la aplicabilidad al plan y a la sucursal, y el centro al plan (todo RESTRICT):

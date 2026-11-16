@@ -20,11 +20,11 @@ export type ClaseDeTabla = "POR_EMPRESA" | "DE_EMPRESA_ESCRITA_POR_LA_PLATAFORMA
 const POR_EMPRESA = [
   "ArqueoBillete", "ArqueoCaja", "Caja", "Cobranza", "Cobro", "MedioDePago", "MovimientoCaja", "SesionCaja",
   "AgregadoDeCuenta", "CapacidadSucursal", "CategoriaProducto", "CentroDeCostos", "Cliente", "CombinacionDeProducto", "CombinacionEnLinea", "ConceptoDeGasto", "ConsumoDeOpcion", "ContenidoCartaProducto", "ConteoFisico", "ControlDeLineaDeRecepcion", "Cuenta", "CuentaItem", "DescuentoProductoSucursal", "DestinoConsumo", "DisponibilidadProducto", "DistribucionCostoLinea", "DistribucionCostoVersion",
-  "AnulacionDeFacturaProveedor", "AnulacionDePagoDeFacturaProveedor", "EjemplarTicket", "EntradaDeCupo", "EntradaDelDiaDeCupo", "FacturaProveedor", "FacturaProveedorPropuesta", "FacturaProveedorPropuestaRenglon", "FacturaProveedorRenglon", "FacturaProveedorSucursal", "FacturaProveedorTributo", "FrecuenciaConteoProducto", "GeneroCarta", "Grupo", "GrupoDeOpciones", "GrupoDePrecio", "ImputacionDeGasto", "Insumo", "InvitacionSucursal", "ItemAgrupadoCarta", "MargenObjetivo", "Mesa", "MotivoMerma", "MovimientoStock",
-  "NotaCreditoProveedor", "NotaCreditoProveedorImputacion", "NotaCreditoProveedorLinea", "NotaCreditoProveedorTributo", "OcultamientoProducto", "OpcionApagadaEnSucursal", "OpcionDeEntradaDeCupo", "OpcionDeGrupo", "OpcionElegidaEnLinea", "OpcionItemAgrupadoCarta", "Operacion", "PagoConsignante", "PagoDeFacturaProveedor", "Parte", "PermisoRol", "PlanDeCostos", "PlanDeCostosSucursal", "PortalCartaEmpresa", "PrecioLocalDeCombinacion", "PrecioLocalDeOpcion", "PrecioLocalProducto", "Presentacion", "Producto", "ProductoAdmiteGrupo", "ProductoAdmiteOpcion", "PromoCarta", "PromoCartaCupo",
+  "AnulacionDeFacturaProveedor", "AnulacionDePagoDeFacturaProveedor", "EjemplarTicket", "EntradaDeCupo", "EntradaDelDiaDeCupo", "FacturaProveedor", "FacturaProveedorPropuesta", "FacturaProveedorPropuestaRenglon", "FacturaProveedorRenglon", "FacturaProveedorSucursal", "FacturaProveedorTributo", "FrecuenciaConteoProducto", "GeneroCarta", "Grupo", "GrupoDeOpciones", "GrupoDePrecio", "ImputacionDeGasto", "Insumo", "InvitacionSucursal", "ItemAgrupadoCarta", "LineaDeOrdenDeCompra", "MargenObjetivo", "Mesa", "MotivoMerma", "MovimientoStock",
+  "NivelDeControl", "NotaCreditoProveedor", "NotaCreditoProveedorImputacion", "NotaCreditoProveedorLinea", "NotaCreditoProveedorTributo", "OcultamientoProducto", "OpcionApagadaEnSucursal", "OpcionDeEntradaDeCupo", "OpcionDeGrupo", "OpcionElegidaEnLinea", "OpcionItemAgrupadoCarta", "Operacion", "OrdenDeCompra", "PagoConsignante", "PagoDeFacturaProveedor", "Parte", "PermisoRol", "PlanDeCostos", "PlanDeCostosSucursal", "PortalCartaEmpresa", "PrecioLocalDeCombinacion", "PrecioLocalDeOpcion", "PrecioLocalProducto", "Presentacion", "Producto", "ProductoAdmiteGrupo", "ProductoAdmiteOpcion", "PromoCarta", "PromoCartaCupo",
   "PromoCartaSucursal", "PromoCuenta", "Proveedor", "ProveedorPorProducto", "PuntoDeVentaDeProveedor", "RecetaDeCombinacionIngrediente", "RecetaDeCombinacionVersion", "RecetaIngrediente", "RecetaPaso", "RecetaPasoIngrediente", "RecetaSucursal", "RecetaVersion", "ReclasificacionRenglon", "RegistroAuditoria",
-  "RendimientoLocalIngrediente", "Rol", "Seccion", "SeccionCarta", "SeccionHabitualProducto", "StockMinimoProducto", "Sucursal", "SucursalPublica", "SustitutoRecetaIngrediente",
-  "TemaCartaSucursal", "TraspasoSucursal", "Unidad", "UsuarioSucursal", "Venta", "VersionDeOpcion",
+  "RendimientoLocalIngrediente", "Rol", "SaldoDeLineaDeOrden", "Seccion", "SeccionCarta", "SeccionHabitualProducto", "StockMinimoProducto", "Sucursal", "SucursalPublica", "SustitutoRecetaIngrediente",
+  "TemaCartaSucursal", "TraspasoSucursal", "Unidad", "UsuarioSucursal", "Venta", "VersionDeOpcion", "VinculoDeRenglonConOrden",
 ] as const;
 
 /** Con `empresaId`, pero escritas por la plataforma (ModuloEmpresa, Invitacion) o con una política de lectura propia del usuario (UsuarioEmpresa): sus políticas son las de `POLITICAS_ESPECIALES`. */
@@ -134,7 +134,7 @@ const ALCANCE_PROPIA = [
 ] as const;
 
 /** `sucursalId` NULLABLE: NULL = de la empresa entera. */
-const ALCANCE_PROPIA_O_EMPRESA = ["OcultamientoProducto", "RecetaVersion", "RegistroAuditoria"] as const;
+const ALCANCE_PROPIA_O_EMPRESA = ["OcultamientoProducto", "OrdenDeCompra", "RecetaVersion", "RegistroAuditoria"] as const;
 
 /** Sin `sucursalId`: la sucursal sale de la FK obligatoria `columna` hacia `padre`. */
 const ALCANCE_HEREDADA: Readonly<Record<string, { padre: string; columna: string }>> = {
@@ -152,6 +152,11 @@ const ALCANCE_HEREDADA: Readonly<Record<string, { padre: string; columna: string
   RecetaPaso: { padre: "RecetaVersion", columna: "recetaVersionId" },
   RecetaPasoIngrediente: { padre: "RecetaPaso", columna: "recetaPasoId" },
   SustitutoRecetaIngrediente: { padre: "RecetaIngrediente", columna: "recetaIngredienteId" },
+  // Compras, orden de compra: el vínculo de un renglón de una compra pendiente con una línea de orden es de la sucursal de su parte.
+  VinculoDeRenglonConOrden: { padre: "FacturaProveedorSucursal", columna: "facturaProveedorSucursalId" },
+  // Compras, orden de compra: las líneas y los saldos de una orden son de la sucursal de su orden (o de la empresa si la orden no tiene destino).
+  LineaDeOrdenDeCompra: { padre: "OrdenDeCompra", columna: "ordenId" },
+  SaldoDeLineaDeOrden: { padre: "OrdenDeCompra", columna: "ordenId" },
 };
 
 /** Fila de dos sucursales: visible y escribible desde cualquiera de las dos puntas. */
@@ -173,6 +178,7 @@ const ALCANCE_GOBIERNO: Readonly<Record<string, string>> = {
 
 const ALCANCE_DE_EMPRESA = [
   "MedioDePago",
+  "NivelDeControl",
   "AnulacionDeFacturaProveedor", "AnulacionDePagoDeFacturaProveedor", "CategoriaProducto", "CentroDeCostos", "Cliente", "CombinacionDeProducto", "ConceptoDeGasto", "ConsumoDeOpcion", "DestinoConsumo", "EntradaDeCupo", "FacturaProveedor", "FacturaProveedorRenglon", "FacturaProveedorTributo", "Grupo", "GrupoDeOpciones", "GrupoDePrecio", "Insumo", "Invitacion", "MargenObjetivo", "ModuloEmpresa", "MotivoMerma", "NotaCreditoProveedor", "NotaCreditoProveedorLinea", "NotaCreditoProveedorTributo", "OpcionDeEntradaDeCupo", "OpcionDeGrupo", "PagoDeFacturaProveedor", "PermisoRol", "PlanDeCostos", "PortalCartaEmpresa", "Presentacion", "Producto", "ProductoAdmiteGrupo", "ProductoAdmiteOpcion",
   "PromoCarta", "PromoCartaCupo", "Parte", "Proveedor", "ProveedorPorProducto", "PuntoDeVentaDeProveedor", "RecetaDeCombinacionIngrediente", "RecetaDeCombinacionVersion", "ReclasificacionRenglon", "Rol", "SeccionCarta", "Unidad", "UsuarioEmpresa", "VersionDeOpcion",
 ] as const;

@@ -44,6 +44,12 @@ model User {
   entradasDelDiaActualizadas EntradaDelDiaDeCupo[]
   ocultamientosActualizados  OcultamientoProducto[]
   controlesDeLineaRegistrados ControlDeLineaDeRecepcion[] @relation("ControlDeLineaRegistradoPor")
+  ordenesDeCompraCreadas     OrdenDeCompra[]        @relation("OrdenDeCompraCreadaPor")
+  ordenesDeCompraPedidas     OrdenDeCompra[]        @relation("OrdenDeCompraPedidaPor")
+  ordenesDeCompraCerradas    OrdenDeCompra[]        @relation("OrdenDeCompraCerradaPor")
+  ordenesDeCompraAnuladas    OrdenDeCompra[]        @relation("OrdenDeCompraAnuladaPor")
+  vinculosDeOrdenRegistrados VinculoDeRenglonConOrden[] @relation("VinculoDeOrdenRegistradoPor")
+  nivelesDeControlActualizados NivelDeControl[]     @relation("NivelDeControlActualizadoPor")
   sesionesDeCajaAbiertas     SesionCaja[]           @relation("SesionCajaAbiertaPor")
   sesionesDeCajaCerradas     SesionCaja[]           @relation("SesionCajaCerradaPor")
   movimientosDeCaja          MovimientoCaja[]       @relation("MovimientoCajaCreadoPor")
@@ -139,6 +145,8 @@ model Sucursal {
   nombre    String
   activo    Boolean  @default(true)
   creadoEn  DateTime @default(now())
+  /// Orden de compra: las órdenes destinadas a esta sucursal (informativo).
+  ordenesDeCompra OrdenDeCompra[]
 
   /// Sin uso desde 2026-10-29 (decisión del dueño); el borrado de la columna es una migración destructiva pendiente de autorización expresa. Era el cupo de mesas ABIERTAS a la vez en esta sucursal
   /// (docs/plan-comensales-y-limite-mesas-2026-09-26.md §2, retirado): el código ya no la lee ni la escribe y producción nunca la usó (`null` en todas las sucursales).
@@ -369,6 +377,8 @@ model Producto {
   id        String       @id @default(cuid())
   empresaId String       @default(dbgenerated("app_empresa_actual()"))
   empresa   Empresa      @relation(fields: [empresaId], references: [id])
+  /// Orden de compra: las líneas de orden que piden este producto.
+  lineasDeOrdenDeCompra LineaDeOrdenDeCompra[]
   /// Clave real, fija desde el alta. Autogenerada como `${tipo}_<uuid6>` si
   /// no se pasa a mano (Catalogo.js:1151) — ver src/core/catalogo/generar-codigo.ts.
   codigo    String
@@ -721,6 +731,7 @@ model Proveedor {
   facturasProveedor    FacturaProveedor[]
   notasDeCredito       NotaCreditoProveedor[]
   puntosDeVenta        PuntoDeVentaDeProveedor[]
+  ordenesDeCompra      OrdenDeCompra[]
 
   @@unique([empresaId, codigo])
   @@unique([empresaId, nombre])
@@ -2738,6 +2749,11 @@ model Empresa {
   recetaDeCombinacionIngredienteRel RecetaDeCombinacionIngrediente[]
   combinacionEnLineaRel          CombinacionEnLinea[]
   controlesDeLineaDeRecepcion ControlDeLineaDeRecepcion[]
+  ordenesDeCompra            OrdenDeCompra[]
+  lineasDeOrdenDeCompra      LineaDeOrdenDeCompra[]
+  saldosDeLineaDeOrden       SaldoDeLineaDeOrden[]
+  vinculosDeRenglonConOrden  VinculoDeRenglonConOrden[]
+  nivelesDeControl           NivelDeControl[]
 }
 
 enum EstadoModulo {
@@ -3003,6 +3019,8 @@ model FacturaProveedorRenglon {
   enPropuestas FacturaProveedorPropuestaRenglon[]
   /// N3-b: el control de la recepción de este renglón (a lo sumo uno por parte).
   controlesDeRecepcion ControlDeLineaDeRecepcion[]
+  /// Orden de compra: el vínculo de este renglón con una línea de orden (a lo sumo uno por parte).
+  vinculosConOrden VinculoDeRenglonConOrden[]
 
   @@unique([empresaId, id])
   /// M6: el destino de la clave foránea de pertenencia de la línea de nota de crédito: la línea acredita un renglón de LA factura de su nota.
@@ -3036,6 +3054,8 @@ model FacturaProveedorSucursal {
   propuesta             FacturaProveedorPropuesta?
   /// N3-b: los controles por línea registrados mientras estaba pendiente.
   controlesDeLinea      ControlDeLineaDeRecepcion[]
+  /// Orden de compra: los vínculos de sus renglones con líneas de orden.
+  vinculosConOrden      VinculoDeRenglonConOrden[]
   creadoEn              DateTime         @default(now())
 
   @@unique([empresaId, id])
@@ -3069,6 +3089,139 @@ model ControlDeLineaDeRecepcion {
   /// Índice único de la migración (nombre propio): un control por renglón de cada parte.
   @@unique([empresaId, facturaProveedorSucursalId, facturaProveedorRenglonId], map: "ControlDeLineaDeRecepcion_parte_renglon_key")
   @@index([facturaProveedorRenglonId])
+}
+
+/// Compras, orden de compra (migración 20261117130000; docs/diseno-compras-n3b-n4-etapas-2026-11-16.md §«Etapa OC», corregido por docs/diseno-compras-contraste-sql-pedernal-2026-11-16.md; referencia: Pedernal `0066_compras_ordenes.sql`): la orden al proveedor.
+/// `BORRADOR` -> `PEDIDA` -> `CERRADA` | `ANULADA` (CHECK y disparador). «Recibida parcial» o «recibida» NO se guardan: se calculan del saldo. Sin cierre automático ni reemplazo de órdenes (como Pedernal). `numero` lo fija la base al pedir (candado por empresa, max+1;
+/// único por empresa); un borrador no lo tiene. `sucursalDestinoId` es informativo y OPCIONAL. `claveIdempotencia` es única global (ADR-028) con su huella. Desde PEDIDA es inmutable salvo el cambio de estado (disparador). `cierreMotivo` (COMPLETA | CON_SALDO) lo calcula la base.
+/// Los CHECK (estado, motivo, clave, huella, pedido, cierre, anulación) y los disparadores los declara solo la migración (Prisma no los modela). El `id` lo manda la aplicación (uuid). La app no tiene DELETE.
+model OrdenDeCompra {
+  id                     String    @id @db.Uuid
+  empresaId              String    @default(dbgenerated("app_empresa_actual()"))
+  empresa                Empresa   @relation(fields: [empresaId], references: [id])
+  numero                 Int?
+  proveedorId            String
+  proveedor              Proveedor @relation(fields: [empresaId, proveedorId], references: [empresaId, id], map: "OrdenDeCompra_proveedor_fkey")
+  /// La sucursal destino (informativa y OPCIONAL, como Pedernal); NULL = toda la empresa (alcance PROPIA_O_EMPRESA: una orden destinada a una sucursal solo se ve desde ella).
+  sucursalId             String?
+  sucursal               Sucursal? @relation(fields: [empresaId, sucursalId], references: [empresaId, id], map: "OrdenDeCompra_sucursal_fkey")
+  /// Fecha civil (día de Argentina).
+  fechaDeEntregaPrevista DateTime? @db.Date
+  estado                 String    @default("BORRADOR")
+  cierreMotivo           String?
+  claveIdempotencia      String    @unique
+  payloadHash            String
+  creadoPorId            String
+  creadoPor              User      @relation("OrdenDeCompraCreadaPor", fields: [creadoPorId], references: [id], onDelete: Restrict)
+  creadoEn               DateTime  @default(now()) @db.Timestamptz(3)
+  pedidaPorId            String?
+  pedidaPor              User?     @relation("OrdenDeCompraPedidaPor", fields: [pedidaPorId], references: [id], onDelete: Restrict)
+  pedidaEn               DateTime? @db.Timestamptz(3)
+  /// La jornada (día de Argentina) del pedido.
+  fechaDeNegocio         DateTime? @db.Date
+  cerradaPorId           String?
+  cerradaPor             User?     @relation("OrdenDeCompraCerradaPor", fields: [cerradaPorId], references: [id], onDelete: Restrict)
+  cerradaEn              DateTime? @db.Timestamptz(3)
+  anuladaPorId           String?
+  anuladaPor             User?     @relation("OrdenDeCompraAnuladaPor", fields: [anuladaPorId], references: [id], onDelete: Restrict)
+  anuladaEn              DateTime? @db.Timestamptz(3)
+  motivoDeAnulacion      String?
+  actualizadoEn          DateTime  @default(now()) @db.Timestamptz(3)
+  version                Int       @default(1)
+
+  lineas   LineaDeOrdenDeCompra[]
+  saldos   SaldoDeLineaDeOrden[]
+  vinculos VinculoDeRenglonConOrden[]
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, numero])
+  @@index([empresaId, proveedorId, estado])
+}
+
+/// Compras, orden de compra: una línea de la orden. `numero` desde 1, único por orden. Cantidad en la unidad de STOCK del producto (> 0); `precioPorUnidadStock` >= 0 o NULL = «sin precio» (como Pedernal: acepta cero). En BORRADOR se edita (`retirada` retira sin
+/// borrar); desde PEDIDA no se toca (disparador). La app no tiene DELETE.
+model LineaDeOrdenDeCompra {
+  id                   String        @id @db.Uuid
+  empresaId            String        @default(dbgenerated("app_empresa_actual()"))
+  empresa              Empresa       @relation(fields: [empresaId], references: [id])
+  ordenId              String        @db.Uuid
+  orden                OrdenDeCompra @relation(fields: [empresaId, ordenId], references: [empresaId, id], map: "LineaDeOrdenDeCompra_orden_fkey")
+  numero               Int
+  productoId           String
+  producto             Producto      @relation(fields: [empresaId, productoId], references: [empresaId, id], map: "LineaDeOrdenDeCompra_producto_fkey")
+  cantidadPedida       Decimal       @db.Decimal(14, 4)
+  precioPorUnidadStock Decimal?      @db.Decimal(14, 4)
+  retirada             Boolean       @default(false)
+
+  saldo    SaldoDeLineaDeOrden?
+  vinculos VinculoDeRenglonConOrden[]
+
+  @@unique([empresaId, id])
+  /// El destino de las claves foráneas del saldo y del vínculo: (empresa, orden, número de línea).
+  @@unique([empresaId, ordenId, numero])
+  @@index([productoId])
+}
+
+/// Compras, orden de compra: lo recibido contra cada línea pedida (unidad de stock). Nace al pedir y SOLO lo mueven disparadores anidados (`pg_trigger_depth() >= 2`): abrir saldos al pedir, sumar al confirmar la recepción (con el tope en el WHERE según el nivel del
+/// control de exceso) y devolver al anular la factura. La app no escribe esta tabla directamente.
+model SaldoDeLineaDeOrden {
+  id               String               @id @db.Uuid
+  empresaId        String               @default(dbgenerated("app_empresa_actual()"))
+  empresa          Empresa              @relation(fields: [empresaId], references: [id])
+  ordenId          String               @db.Uuid
+  orden            OrdenDeCompra        @relation(fields: [empresaId, ordenId], references: [empresaId, id], map: "SaldoDeLineaDeOrden_orden_fkey")
+  linea            Int
+  lineaDeOrden     LineaDeOrdenDeCompra @relation(fields: [empresaId, ordenId, linea], references: [empresaId, ordenId, numero], map: "SaldoDeLineaDeOrden_linea_fkey")
+  cantidadPedida   Decimal              @db.Decimal(14, 4)
+  cantidadRecibida Decimal              @default(0) @db.Decimal(14, 4)
+  actualizadoEn    DateTime             @default(now()) @db.Timestamptz(3)
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, ordenId, linea])
+}
+
+/// Compras, orden de compra: «este renglón de la compra pendiente es contra esta línea de la orden» (por renglón, como `linea_de_recepcion_de_orden` de Pedernal). SOLO INSERCIÓN. El renglón es de la factura que dice la fila (FK compuesta); el disparador exige que la parte
+/// sea de esa factura y siga PENDIENTE, que la orden esté PEDIDA y sea del mismo proveedor, que el producto coincida y que la línea no esté retirada, y avisa temprano si ya se pasa del tope. `confirmoExceso`: la confirmación explícita cuando el control está en AVISAR.
+model VinculoDeRenglonConOrden {
+  id                         String                   @id @db.Uuid
+  empresaId                  String                   @default(dbgenerated("app_empresa_actual()"))
+  empresa                    Empresa                  @relation(fields: [empresaId], references: [id])
+  facturaProveedorId         String
+  facturaProveedorSucursalId String
+  parte                      FacturaProveedorSucursal @relation(fields: [empresaId, facturaProveedorSucursalId], references: [empresaId, id], map: "VinculoDeRenglonConOrden_parte_fkey")
+  facturaProveedorRenglonId  String
+  renglon                    FacturaProveedorRenglon  @relation(fields: [empresaId, facturaProveedorId, facturaProveedorRenglonId], references: [empresaId, facturaProveedorId, id], map: "VinculoDeRenglonConOrden_renglon_fkey")
+  ordenId                    String                   @db.Uuid
+  orden                      OrdenDeCompra            @relation(fields: [empresaId, ordenId], references: [empresaId, id], map: "VinculoDeRenglonConOrden_orden_fkey")
+  lineaDeOrden               Int
+  lineaDeLaOrden             LineaDeOrdenDeCompra     @relation(fields: [empresaId, ordenId, lineaDeOrden], references: [empresaId, ordenId, numero], map: "VinculoDeRenglonConOrden_lineaDeOrden_fkey")
+  confirmoExceso             Boolean                  @default(false)
+  registradoPorId            String
+  registradoPor              User                     @relation("VinculoDeOrdenRegistradoPor", fields: [registradoPorId], references: [id], onDelete: Restrict)
+  registradoEn               DateTime                 @default(now()) @db.Timestamptz(3)
+
+  @@unique([empresaId, id])
+  /// Índice único de la migración (nombre propio): un vínculo por renglón de cada parte.
+  @@unique([empresaId, facturaProveedorSucursalId, facturaProveedorRenglonId], map: "VinculoDeRenglonConOrden_parte_renglon_key")
+  @@index([empresaId, ordenId, lineaDeOrden])
+  @@index([facturaProveedorRenglonId])
+}
+
+/// Compras, orden de compra: el nivel de un control de la empresa. Hoy un solo control, `compras.recepcion_excede_la_orden` (CHECK): PERMITIR | AVISAR | BLOQUEAR. SIN FILA = PERMITIR (como Pedernal: el exceso pasa). Solo la escribe quien tiene `compras_configurar`
+/// (gerente o administrador); cada cambio se audita. A diferencia de Pedernal no lleva sucursal (allá solo se lee la fila de toda la empresa).
+model NivelDeControl {
+  id               String   @id @db.Uuid
+  empresaId        String   @default(dbgenerated("app_empresa_actual()"))
+  empresa          Empresa  @relation(fields: [empresaId], references: [id])
+  control          String
+  nivel            String
+  actualizadoPorId String
+  actualizadoPor   User     @relation("NivelDeControlActualizadoPor", fields: [actualizadoPorId], references: [id], onDelete: Restrict)
+  actualizadoEn    DateTime @default(now()) @db.Timestamptz(3)
+  version          Int      @default(1)
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, control])
 }
 
 /// E3a (ADR-041, migración 20261028100000): la PROPUESTA de la parte de una sucursal DESTINO en una factura repartida. La crea la sucursal que carga la factura (`origenSucursalId`) y la ACEPTA la destino
