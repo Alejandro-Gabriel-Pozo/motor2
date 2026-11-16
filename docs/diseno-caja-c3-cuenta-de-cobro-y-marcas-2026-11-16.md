@@ -169,7 +169,7 @@ Privilegios: la app lee y agrega `CuentaDeCobro` (UPDATE por columna: nombre, id
 ## 7. Pruebas, migración y operación (nivel 10)
 
 - Núcleo: `test/caja/nucleo-de-cuentas-y-datos.test.ts`. Oráculo: arriba. Casos de uso contra Postgres real, con concurrencia e idempotencia: `test/caja/caja-c3-casos-de-uso.test.ts`. Subir/bajar/subir: `test/aislamiento/caja-c3-subir-bajar-subir.test.ts` (y la lista de `m1-mostrador-subir-bajar-subir`). Los tests de C1 siguen pasando.
-- Aplicar en una base real: **no** (congelado). Cuando se autorice: `verificacion-previa.sql`, respaldo, ensayo en rama de Neon, `migrate deploy`, y `solo_pruebas` del rol de pruebas en bases locales.
+- Aplicar en una base real: **no** (congelado). Cuando se autorice: `verificacion-previa.sql`, respaldo, ensayo en rama de Neon, `migrate deploy`,.
 
 ## 8. Preguntas abiertas para el dueño (no se asumió nada)
 
