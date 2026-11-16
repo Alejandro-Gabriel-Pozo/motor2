@@ -152,7 +152,9 @@ describe("base real: los disparadores dan lo mismo que el oráculo", () => {
     cuentaPosId = cuenta.id;
     const caja = await prismaAdmin.caja.create({ data: { id: randomUUID(), sucursalId: s.sucursalId, nombre: "Caja 1" } });
     sesionId = randomUUID();
-    await prismaAdmin.sesionCaja.create({ data: { id: sesionId, sucursalId: s.sucursalId, cajaId: caja.id, estado: "ABIERTA", fechaDeNegocio: new Date("2026-01-15"), zonaHoraria: "America/Argentina/Buenos_Aires", abiertaPorId: s.admin.id, claveIdempotencia: randomUUID(), huella: "a".repeat(64) } });
+    // C2: la sesión cuelga de la jornada ABIERTA de su sucursal y su fecha de negocio sale de `abiertaEn` (15:00Z = 12:00 en Argentina).
+    await prismaAdmin.jornadaDeSucursal.create({ data: { id: randomUUID(), sucursalId: s.sucursalId, fechaDeNegocio: new Date("2026-01-15") } });
+    await prismaAdmin.sesionCaja.create({ data: { id: sesionId, sucursalId: s.sucursalId, cajaId: caja.id, estado: "ABIERTA", fechaDeNegocio: new Date("2026-01-15"), abiertaEn: new Date("2026-01-15T15:00:00Z"), zonaHoraria: "America/Argentina/Buenos_Aires", abiertaPorId: s.admin.id, claveIdempotencia: randomUUID(), huella: "a".repeat(64) } });
     medios = {} as Record<Tipo, string>;
     for (const t of TIPOS) medios[t] = (await prismaAdmin.medioDePago.create({ data: { id: randomUUID(), tipo: t } })).id;
     const crear = async (tipo: TipoDeCuenta, opciones: { activa?: boolean; sucursalId?: string }) =>
