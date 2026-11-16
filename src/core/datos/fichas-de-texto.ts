@@ -12,6 +12,7 @@ import { textoDeUnaLineaDesdeTexto, type MotivoDeTextoInvalido, type ReglasDelTe
  *  · NOMBRE_DE_COCINA (cómo nombra la cocina un producto de venta en la comanda; Pedernal `nombre-de-cocina.ts`): 1 a 80, SIN signos de catálogo, exige una letra.
  *  · NOMBRE_DE_SUCURSAL (nombre de una sucursal; dueño, 2026-11-16, «Sí, así (Recomendada)», `motor2-docs` «Caja y Datos»): 1 a 80, SIN signos de catálogo (se imprime en el ticket), exige una letra. DIFERENCIA con Pedernal declarada:
  *    Pedernal valida el nombre de sucursal con una regla propia (1 a 100, rechaza solo los caracteres de control: una lista de prohibidos); acá rige la lista de permitidos común («todo nace cerrado») y se mantiene el largo de 80 de Motor2.
+ *  · NOMBRE_DE_ROL (nombre de un rol de la empresa; mismo dueño, 2026-11-16, «Sí, así (Recomendada)»): 1 a 80, SIN signos de catálogo, exige una letra. Pedernal no tiene roles con nombre libre (sus tres roles son fijos): sin equivalente que copiar.
  *  · RAZON_SOCIAL (nombre o razón social de una persona o empresa: proveedor, cliente, receptor de un comprobante): 1 a 200, SIN signos de
  *    catálogo (viaja a un comprobante), exige una letra: eso también rechaza un CUIT escrito en el campo del nombre.
  * Qué dato de Motor2 usa cuál ficha, y qué no tiene ficha en Pedernal, está en el documento del recuento (todavía sin conectar).
@@ -22,6 +23,7 @@ export const FICHAS_DE_TEXTO = {
   RAZON_SOCIAL: { maximo: 200, exigirUnaLetra: true, conSignosDeCatalogo: false },
   NOMBRE_DE_COCINA: { maximo: 80, exigirUnaLetra: true, conSignosDeCatalogo: false },
   NOMBRE_DE_SUCURSAL: { maximo: 80, exigirUnaLetra: true, conSignosDeCatalogo: false },
+  NOMBRE_DE_ROL: { maximo: 80, exigirUnaLetra: true, conSignosDeCatalogo: false },
 } as const satisfies Record<string, ReglasDelTexto>;
 
 export type FichaDeTexto = keyof typeof FICHAS_DE_TEXTO;
@@ -46,6 +48,10 @@ export function nombreDeCocinaDesdeTexto(texto: unknown): ResultadoDeRegla<strin
 
 export function nombreDeSucursalDesdeTexto(texto: unknown): ResultadoDeRegla<string, MotivoDeTextoInvalido> {
   return textoDeFichaDesdeTexto("NOMBRE_DE_SUCURSAL", texto);
+}
+
+export function nombreDeRolDesdeTexto(texto: unknown): ResultadoDeRegla<string, MotivoDeTextoInvalido> {
+  return textoDeFichaDesdeTexto("NOMBRE_DE_ROL", texto);
 }
 
 export function nombreODenominacionDesdeTexto(texto: unknown): ResultadoDeRegla<string, MotivoDeTextoInvalido> {

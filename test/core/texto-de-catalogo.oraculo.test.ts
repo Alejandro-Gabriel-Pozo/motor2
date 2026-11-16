@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { FICHAS_DE_TEXTO, claveDeNombre, nombreDeCocinaDesdeTexto, nombreDeEleccionDesdeTexto, nombreDeProductoDesdeTexto, nombreDeSucursalDesdeTexto, nombreODenominacionDesdeTexto, textoDeFichaDesdeTexto } from "@/core/datos/fichas-de-texto";
+import { FICHAS_DE_TEXTO, claveDeNombre, nombreDeCocinaDesdeTexto, nombreDeEleccionDesdeTexto, nombreDeProductoDesdeTexto, nombreDeRolDesdeTexto, nombreDeSucursalDesdeTexto, nombreODenominacionDesdeTexto, textoDeFichaDesdeTexto } from "@/core/datos/fichas-de-texto";
 import { textoDeUnaLineaDesdeTexto } from "@/core/datos/texto-de-catalogo";
 import {
   ACEPTADOS_POR_NORMALIZACION,
@@ -37,6 +37,7 @@ const FUNCION_DE: Readonly<Record<Ficha, (t: unknown) => ReturnType<typeof nombr
   RAZON_SOCIAL: nombreODenominacionDesdeTexto,
   NOMBRE_DE_COCINA: nombreDeCocinaDesdeTexto,
   NOMBRE_DE_SUCURSAL: nombreDeSucursalDesdeTexto,
+  NOMBRE_DE_ROL: nombreDeRolDesdeTexto,
 };
 
 describe("oráculo · cada fila × cada ficha", () => {
