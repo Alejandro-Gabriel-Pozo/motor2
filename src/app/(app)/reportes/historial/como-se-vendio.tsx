@@ -3,6 +3,7 @@
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaVentaPorDia } from "@/core/reportes/public";
 import { formatearMonto } from "@/core/formato-de-numero";
+import { textoDe } from "@/core/textos/texto-de";
 
 /** Tope defensivo (§4): un rango sin acotar (ej. "Todo el historial") no debería poder inflar esta tabla sin límite. */
 const TOPE_DIAS = 180;
@@ -14,7 +15,7 @@ function columnas(mostrarDinero: boolean): ColumnaReporte<FilaVentaPorDia>[] {
   ];
   if (mostrarDinero) {
     base.push(
-      { clave: "importe", etiqueta: "Importe", alinear: "derecha", valor: (f) => f.importe, render: (f) => `${formatearMonto(f.importe)}` },
+      { clave: "importe", etiqueta: textoDe("columna.importe"), alinear: "derecha", valor: (f) => f.importe, render: (f) => `${formatearMonto(f.importe)}` },
       { clave: "precioPromedio", etiqueta: "Precio promedio", alinear: "derecha", valor: (f) => f.precioPromedio, render: (f) => (f.precioPromedio !== null ? `${formatearMonto(f.precioPromedio)}` : "—") }
     );
   }
