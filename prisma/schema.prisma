@@ -43,6 +43,7 @@ model User {
   opcionesApagadasEnSucursal OpcionApagadaEnSucursal[]
   entradasDelDiaActualizadas EntradaDelDiaDeCupo[]
   ocultamientosActualizados  OcultamientoProducto[]
+  controlesDeLineaRegistrados ControlDeLineaDeRecepcion[] @relation("ControlDeLineaRegistradoPor")
   recetasDeCombinacionCreadas RecetaDeCombinacionVersion[]
   ventas                     Venta[]
   facturasProvCreadas        FacturaProveedor[]   @relation("FacturaProveedorCreadaPor")
@@ -2715,6 +2716,7 @@ model Empresa {
   recetaDeCombinacionVersionRel  RecetaDeCombinacionVersion[]
   recetaDeCombinacionIngredienteRel RecetaDeCombinacionIngrediente[]
   combinacionEnLineaRel          CombinacionEnLinea[]
+  controlesDeLineaDeRecepcion ControlDeLineaDeRecepcion[]
 }
 
 enum EstadoModulo {
@@ -2978,6 +2980,8 @@ model FacturaProveedorRenglon {
   lineasDeNotaCreditoPorNaturaleza NotaCreditoProveedorLinea[] @relation("LineaDeNotaPorNaturaleza")
   /// E3a (ADR-041): cuánto de este renglón le toca a cada sucursal destino de una propuesta.
   enPropuestas FacturaProveedorPropuestaRenglon[]
+  /// N3-b: el control de la recepción de este renglón (a lo sumo uno por parte).
+  controlesDeRecepcion ControlDeLineaDeRecepcion[]
 
   @@unique([empresaId, id])
   /// M6: el destino de la clave foránea de pertenencia de la línea de nota de crédito: la línea acredita un renglón de LA factura de su nota.
@@ -3009,12 +3013,41 @@ model FacturaProveedorSucursal {
   recibidaPor           User?            @relation("FacturaProveedorParteRecibidaPor", fields: [recibidaPorId], references: [id], onDelete: Restrict)
   /// E3a (ADR-041): la propuesta que esta parte aceptó (si nació de una aceptación).
   propuesta             FacturaProveedorPropuesta?
+  /// N3-b: los controles por línea registrados mientras estaba pendiente.
+  controlesDeLinea      ControlDeLineaDeRecepcion[]
   creadoEn              DateTime         @default(now())
 
   @@unique([empresaId, id])
   @@unique([facturaProveedorId, sucursalId])
   @@unique([empresaId, operacionId])
   @@index([sucursalId])
+}
+
+/// Compras, recepción separada N3-b (migración 20261117120100; docs/diseno-compras-n3b-n4-etapas-2026-11-16.md): el CONTROL de un renglón de una compra pendiente de recibir, registrado por quien recibe ANTES de confirmar. SOLO INSERCIÓN (la app
+/// no tiene UPDATE, DELETE ni TRUNCATE). Sin fila = «no se constató» (nunca un CONFORME por defecto). `condicion` CONFORME | CON_OBSERVACIONES | RECHAZADA (CHECK); `observacion` obligatoria si no es CONFORME (CHECK, lista de permitidos, hasta 500);
+/// `cantidadSegunRemito` opcional (> 0). Único por (parte, renglón). El renglón es de la factura que dice la fila (FK compuesta) y la parte es de esa factura y está PENDIENTE (disparador). `id` lo manda la aplicación (uuid).
+/// La condición NO cambia cuánto stock entra (decisión 2026-11-16: una línea RECHAZADA entra igual en la sección elegida); la temperatura no entra (nadie la pidió).
+model ControlDeLineaDeRecepcion {
+  id                         String                   @id @db.Uuid
+  empresaId                  String                   @default(dbgenerated("app_empresa_actual()"))
+  empresa                    Empresa                  @relation(fields: [empresaId], references: [id])
+  facturaProveedorId         String
+  facturaProveedorSucursalId String
+  parte                      FacturaProveedorSucursal @relation(fields: [empresaId, facturaProveedorSucursalId], references: [empresaId, id], map: "ControlDeLineaDeRecepcion_parte_fkey")
+  facturaProveedorRenglonId  String
+  renglon                    FacturaProveedorRenglon  @relation(fields: [empresaId, facturaProveedorId, facturaProveedorRenglonId], references: [empresaId, facturaProveedorId, id], map: "ControlDeLineaDeRecepcion_renglon_fkey")
+  /// `CONFORME` | `CON_OBSERVACIONES` | `RECHAZADA`
+  condicion                  String
+  observacion                String?
+  cantidadSegunRemito        Decimal?                 @db.Decimal(14, 4)
+  registradoPorId            String
+  registradoPor              User                     @relation("ControlDeLineaRegistradoPor", fields: [registradoPorId], references: [id], onDelete: Restrict)
+  registradoEn               DateTime                 @default(now()) @db.Timestamptz(3)
+
+  @@unique([empresaId, id])
+  /// Índice único de la migración (nombre propio): un control por renglón de cada parte.
+  @@unique([empresaId, facturaProveedorSucursalId, facturaProveedorRenglonId], map: "ControlDeLineaDeRecepcion_parte_renglon_key")
+  @@index([facturaProveedorRenglonId])
 }
 
 /// E3a (ADR-041, migración 20261028100000): la PROPUESTA de la parte de una sucursal DESTINO en una factura repartida. La crea la sucursal que carga la factura (`origenSucursalId`) y la ACEPTA la destino
