@@ -68,6 +68,8 @@ describe("catálogo de textos: cada regla con su violación inyectada", () => {
   it("C1: clave mal formada, y dos claves que solo difieren en mayúsculas", () => {
     expect(dicen({ ...base(), "rechazo.no_hay": base()["rechazo.NO_HAY_STOCK"]! })).toContain("C1");
     expect(dicen({ ...base(), "Aviso.saludo": base()["aviso.saludo"]! })).toContain("C1");
+    expect(dicen({ ...base(), "columna.Producto": { ...base()["aviso.saludo"]!, porDefecto: "Chau {nombre}" } })).toContain("C1");
+    expect(revisarCatalogo({ ...base(), "columna.producto": { ...base()["aviso.saludo"]!, porDefecto: "Chau {nombre}" } }, contexto()).filter((p) => p.includes("C1"))).toEqual([]);
     expect(dicen({ ...base(), "aviso.Saludo": { ...base()["aviso.saludo"]!, porDefecto: "Chau {nombre}" } })).toContain("C1");
     // una clave bien formada y distinta no dispara C1
     expect(revisarCatalogo({ ...base(), "aviso.otro": { ...base()["aviso.saludo"]!, porDefecto: "Chau {nombre}" } }, contexto()).filter((p) => p.includes("C1"))).toEqual([]);

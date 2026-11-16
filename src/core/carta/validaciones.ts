@@ -1,4 +1,5 @@
-import { texto, validarLargoTexto, validarTextoCatalogo } from "@/core/texto";
+import { nombreDeFicha } from "@/core/datos/nombre-de-ficha";
+import { texto, validarLargoTexto } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
 import { IMPORTE_MAXIMO } from "@/core/datos/importe";
 import { numeroDeFormulario, tieneALoSumoDecimales } from "@/core/datos/numero-tecleado";
@@ -80,20 +81,14 @@ export function validarTextoLibreCarta(valor: unknown, etiqueta: string, maximo:
 
 /** Nombre obligatorio de un ítem agrupado de la carta ("Gaseosa 500 CC"; docs/plan-agrupacion-items-carta-2026-09-24.md, M5). */
 export function validarNombreItemAgrupadoCarta(valor: unknown): Resultado<string> {
-  const v = texto(valor);
-  if (!v) return { ok: false, mensaje: "El nombre del ítem agrupado no puede estar vacío." };
-  const invalido = validarTextoCatalogo(v, "El nombre del ítem agrupado");
-  if (invalido) return { ok: false, mensaje: invalido };
-  return { ok: true, valor: v };
+  const nombre = nombreDeFicha(valor, "ELECCION", "El nombre del ítem agrupado no puede estar vacío.");
+  return nombre.ok ? { ok: true, valor: nombre.valor } : { ok: false, mensaje: nombre.mensaje };
 }
 
-/** Nombre obligatorio de un género de carta ("Cerveza"; docs/plan-genero-carta-2026-09-26.md). Mismo charset que el resto. */
+/** Nombre obligatorio de un género de carta ("Cerveza"; docs/plan-genero-carta-2026-09-26.md). Con la ficha ELECCION de Pedernal, igual que el nombre del ítem agrupado (E-1c, 2026-11-16). */
 export function validarNombreGeneroCarta(valor: unknown): Resultado<string> {
-  const v = texto(valor);
-  if (!v) return { ok: false, mensaje: "El nombre del género no puede estar vacío." };
-  const invalido = validarTextoCatalogo(v, "El nombre del género");
-  if (invalido) return { ok: false, mensaje: invalido };
-  return { ok: true, valor: v };
+  const nombre = nombreDeFicha(valor, "ELECCION", "El nombre del género no puede estar vacío.");
+  return nombre.ok ? { ok: true, valor: nombre.valor } : { ok: false, mensaje: nombre.mensaje };
 }
 
 /** Orden: entero (puede ser negativo, para subir algo sin renumerar), vacío → 0. */

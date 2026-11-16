@@ -33,7 +33,7 @@ export function guardComandoRenombrarOFusionarInsumo(entrada: { insumoId: string
 
 /** Guard del comando «crear un grupo, o cambiarle el padre si ya existe»: solo el nombre (el ciclo lo mira el caso de uso, contra la base). */
 export function guardComandoCrearOActualizarGrupo(entrada: { nombre: unknown; grupoPadreId: string | null }): ResultadoDato<ComandoCrearOActualizarGrupo> {
-  const nombre = nombreDeCatalogo(entrada.nombre, "El nombre del grupo no puede estar vacío.", "El nombre del grupo");
+  const nombre = nombreDeCatalogo(entrada.nombre, "El nombre del grupo no puede estar vacío.");
   if (!nombre.ok) return rechazar(nombre.codigo, nombre.mensaje);
   return aceptar({ nombre: nombre.valor, grupoPadreId: entrada.grupoPadreId });
 }

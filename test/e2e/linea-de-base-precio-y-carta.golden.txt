@@ -636,14 +636,6 @@
   ### Nueva sección de carta
   Nombre
   [campo: vacío, ayuda «Platos Principales»]
-  Título (opcional, si no se usa el nombre)
-  [campo: vacío, ayuda «Del fuego»]
-  Descripción (opcional)
-  [campo: vacío]
-  Imagen (URL https, opcional)
-  [campo: vacío, ayuda «https://…»]
-  Orden
-  [campo: (depende de la base)]
   [botón: Crear sección]
 
 ## ADMINISTRACIÓN a 375 px: Carta › Parametrización › Secciones (/carta/parametrizacion/secciones)
@@ -673,12 +665,4 @@
   ### Nueva sección de carta
   Nombre
   [campo: vacío, ayuda «Platos Principales»]
-  Título (opcional, si no se usa el nombre)
-  [campo: vacío, ayuda «Del fuego»]
-  Descripción (opcional)
-  [campo: vacío]
-  Imagen (URL https, opcional)
-  [campo: vacío, ayuda «https://…»]
-  Orden
-  [campo: (depende de la base)]
   [botón: Crear sección]
