@@ -266,7 +266,7 @@ describe("cerrar con arqueo", () => {
     const a = await abrir(0);
     if (!a.ok) throw new Error("no abrió");
     expect(await cerrar(a.datos.sesionId, { 100: -1 })).toMatchObject({ ok: false, codigo: "CONTEO_INVALIDO" });
-    expect(await cerrar(a.datos.sesionId, { 50: 1 })).toMatchObject({ ok: false, codigo: "CONTEO_INVALIDO" });
+    expect(await cerrar(a.datos.sesionId, { 5: 1 })).toMatchObject({ ok: false, codigo: "CONTEO_INVALIDO" });
     expect((await prismaAdmin.sesionCaja.findUniqueOrThrow({ where: { id: a.datos.sesionId } })).estado).toBe("ABIERTA");
   });
 
