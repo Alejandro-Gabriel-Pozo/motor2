@@ -170,14 +170,14 @@ const ALCANCE_GOBIERNO: Readonly<Record<string, string>> = {
 };
 
 const ALCANCE_DE_EMPRESA = [
-  "AnulacionDeFacturaProveedor", "AnulacionDePagoDeFacturaProveedor", "CategoriaProducto", "CentroDeCostos", "Cliente", "CombinacionDeProducto", "ConceptoDeGasto", "ConsumoDeOpcion", "DestinoConsumo", "EntradaDeCupo", "FacturaProveedor", "FacturaProveedorRenglon", "FacturaProveedorTributo", "Grupo", "GrupoDeOpciones", "GrupoDePrecio", "Insumo", "Invitacion", "MargenObjetivo", "ModuloEmpresa", "MotivoMerma", "NotaCreditoProveedor", "NotaCreditoProveedorLinea", "NotaCreditoProveedorTributo", "OpcionDeEntradaDeCupo", "OpcionDeGrupo", "PagoDeFacturaProveedor", "PermisoRol", "PlanDeCostos", "PortalCartaEmpresa", "Presentacion", "Producto", "ProductoAdmiteGrupo", "ProductoAdmiteOpcion",
+  "AnulacionDeFacturaProveedor", "AnulacionDePagoDeFacturaProveedor", "CategoriaProducto", "CentroDeCostos", "Cliente", "CombinacionDeProducto", "ConceptoDeGasto", "ConsumoDeOpcion", "DestinoConsumo", "EntradaDeCupo", "FacturaProveedor", "FacturaProveedorRenglon", "FacturaProveedorTributo", "Grupo", "GrupoDeOpciones", "GrupoDePrecio", "Insumo", "Invitacion", "MargenObjetivo", "ModuloEmpresa", "MotivoMerma", "NotaCreditoProveedor", "NotaCreditoProveedorLinea", "NotaCreditoProveedorTributo", "OpcionDeEntradaDeCupo", "OpcionDeGrupo", "PagoDeFacturaProveedor", "PermisoRol", "PlanDeCostos", "PlanDeEmpresa", "PortalCartaEmpresa", "Presentacion", "Producto", "ProductoAdmiteGrupo", "ProductoAdmiteOpcion",
   "PromoCarta", "PromoCartaCupo", "Parte", "Proveedor", "ProveedorPorProducto", "PuntoDeVentaDeProveedor", "RecetaDeCombinacionIngrediente", "RecetaDeCombinacionVersion", "ReclasificacionRenglon", "Rol", "SeccionCarta", "Unidad", "UsuarioEmpresa", "VersionDeOpcion",
 ] as const;
 
 /** Declarada a mano (no derivada de `GLOBALES`/`CONSOLA`) a propósito: el guard cruza las dos listas y se pone en rojo si no coinciden. */
 const ALCANCE_SIN_EMPRESA = [
-  "Account", "Accion", "AdminPlataforma", "AuditoriaPlataforma", "CodigoDeIngresoPlataforma", "CodigoDeRecuperacionPlataforma", "CotizacionDolar", "Empresa", "IndicePrecio", "SesionPlataforma",
-  "Session", "User", "VerificationToken",
+  "Account", "Accion", "AdminPlataforma", "AuditoriaPlataforma", "CodigoDeIngresoPlataforma", "CodigoDeRecuperacionPlataforma", "CotizacionDolar", "Empresa", "IndicePrecio", "Plan", "SesionPlataforma",
+  "Session", "User", "VerificationToken", "VersionDePlan",
 ] as const;
 
 export const ALCANCE_DE_TABLAS: Readonly<Record<string, DeclaracionDeAlcance>> = Object.freeze({

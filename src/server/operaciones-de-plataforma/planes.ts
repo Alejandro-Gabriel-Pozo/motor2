@@ -13,6 +13,7 @@ import {
   type EstadoDelModuloEnElPlan,
 } from "@/core/features/empresa/planes";
 import { azarDelProceso } from "@/lib/azar";
+import { modulosActivosDelRegistro } from "./cambiar-modulos-de-empresa";
 import { auditarCambioDePlataforma, type AutorDeCambioDePlataforma } from "./auditar-cambio-de-plataforma";
 
 /**
@@ -213,8 +214,7 @@ export async function asignarPlanAEmpresa(db: Db, pedido: PedidoDeAsignar, autor
       if (empresa.estado === "DELETING") throw new PlanesError("Una empresa en baja no cambia de plan.", "ESTADO_INVALIDO");
       await tx.$executeRaw`SELECT set_config('app.empresa_id', ${empresa.id}, true)`;
 
-      const registro = await tx.moduloEmpresa.findMany({ where: { empresaId: empresa.id, estado: "ACTIVO" }, select: { modulo: true } });
-      const activos = registro.map((f) => f.modulo);
+      const activos = await modulosActivosDelRegistro(tx, empresa.id);
 
       const previa = await tx.planDeEmpresa.findUnique({ where: { claveIdempotencia: clave }, select: { id: true, numero: true, empresaId: true, payloadHash: true, versionDePlan: { select: { modulos: true } } } });
       if (previa) {

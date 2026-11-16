@@ -16,8 +16,9 @@ export class PlanesError extends Error {
 }
 
 const FORMA_DEL_CODIGO = /^[a-z][a-z0-9-]{1,39}$/;
-const FORMA_DEL_MOTIVO = /^[^\p{C}]{1,500}$/u;
-const FORMA_DEL_NOMBRE = /^[^\p{C}]{1,80}$/u;
+// Lo que se PERMITE en un texto libre: letras, dígitos, puntuación, símbolos y el espacio común (nada de controles, tabulaciones ni invisibles).
+const FORMA_DEL_MOTIVO = /^[\p{L}\p{N}\p{P}\p{S} ]{1,500}$/u;
+const FORMA_DEL_NOMBRE = /^[\p{L}\p{N}\p{P}\p{S} ]{1,80}$/u;
 /** Lo único que se acepta como clave de reintento: un UUID (lo genera quien llama; repetir la misma clave repite el mismo pedido). */
 const FORMA_DE_LA_CLAVE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 

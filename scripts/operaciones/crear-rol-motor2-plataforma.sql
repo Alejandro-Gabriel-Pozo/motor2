@@ -9,6 +9,8 @@
 --   Empresa, ModuloEmpresa                 SELECT, INSERT, UPDATE   (alta, activación, política; el registro de módulos se actualiza)
 --   User, UsuarioEmpresa                   SELECT                   (S-35: solo lectura —el gerente de una empresa—; el primer gerente ya no se crea desde acá: llega por la
 --                                                                     invitación y lo incorpora la app. UsuarioSucursal: ningún privilegio. S-33: el actor de un cambio ya no es un User)
+--   Plan, VersionDePlan                    SELECT, INSERT, UPDATE   (planes versionados, M1: el borrador se edita; sin DELETE. La versión publicada la congela un trigger)
+--   PlanDeEmpresa                          SELECT, INSERT           (la asignación de plan solo se agrega)
 --   Accion, Rol, PermisoRol, Unidad, MotivoMerma, DestinoConsumo, Sucursal
 --                                          SELECT, INSERT           (siembra del alta)
 --   AuditoriaPlataforma                    SELECT, INSERT           (append-only; S-33: aquí quedan los cambios de módulos y de política hechos por script, a nombre del administrador.
@@ -97,6 +99,21 @@ BEGIN
   END LOOP;
   IF to_regclass('public."AuditoriaPlataforma"') IS NOT NULL THEN
     GRANT SELECT, INSERT ON "AuditoriaPlataforma" TO motor2_plataforma;
+  END IF;
+END
+$$;
+
+-- Planes versionados (M1): solo si ya los creó la migración 20261117100000 (si no, la migración da el permiso al crearse).
+DO $$
+DECLARE t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['Plan', 'VersionDePlan'] LOOP
+    IF to_regclass(format('public.%I', t)) IS NOT NULL THEN
+      EXECUTE format('GRANT SELECT, INSERT, UPDATE ON public.%I TO motor2_plataforma', t);
+    END IF;
+  END LOOP;
+  IF to_regclass('public."PlanDeEmpresa"') IS NOT NULL THEN
+    GRANT SELECT, INSERT ON "PlanDeEmpresa" TO motor2_plataforma;
   END IF;
 END
 $$;
