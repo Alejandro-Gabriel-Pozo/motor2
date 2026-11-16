@@ -1,5 +1,6 @@
 import "server-only";
-import { fechaDeNegocio, textoDeCentavos } from "@/core/caja/public";
+import { textoDeCentavos } from "@/core/caja/public";
+import { fechaDeNegocio } from "@/core/tiempo/fecha-de-negocio";
 import type { ComandoAbrirSesion, ResultadoAbrirSesion } from "@/core/features/caja/caja.schema";
 import { calcularPayloadHash } from "@/core/movimientos/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";

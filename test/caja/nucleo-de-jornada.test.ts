@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { CONTROLES_DEL_DIA, ESTADOS_DE_JORNADA, TOPE_EN_CENTAVOS, TRANSICIONES_DE_JORNADA, conciliarJornada, controlesDelDia, decidirAjuste, decidirCancelar, decidirCierre, decidirCorreccionDeMedio, decidirDeclaracion, decidirIniciar, explicacionDesdeTexto, fechaDeNegocio, medioVigenteDelCobro, ordenarControles, reconocimientosValidos, repiteElCierre } from "@/core/caja/public";
+import { CONTROLES_DEL_DIA, ESTADOS_DE_JORNADA, TOPE_EN_CENTAVOS, TRANSICIONES_DE_JORNADA, conciliarJornada, controlesDelDia, decidirAjuste, decidirCancelar, decidirCierre, decidirCorreccionDeMedio, decidirDeclaracion, decidirIniciar, explicacionDesdeTexto, medioVigenteDelCobro, ordenarControles, reconocimientosValidos, repiteElCierre } from "@/core/caja/public";
 import type { ControlDelDia } from "@/core/caja/public";
+import { fechaDeNegocio } from "@/core/tiempo/fecha-de-negocio";
 import { ESTADO_DEL_EFECTIVO, ORACULO_DE_AJUSTE, ORACULO_DE_CONTEO, ORACULO_DE_CONTROLES, ORACULO_DE_FECHA_DE_NEGOCIO, ORACULO_DE_SEVERIDAD } from "./oraculo-de-jornada";
 
 /**

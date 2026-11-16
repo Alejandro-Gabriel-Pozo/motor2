@@ -171,14 +171,16 @@ Privilegios: la app lee y agrega `CuentaDeCobro` (UPDATE por columna: nombre, id
 - Núcleo: `test/caja/nucleo-de-cuentas-y-datos.test.ts`. Oráculo: arriba. Casos de uso contra Postgres real, con concurrencia e idempotencia: `test/caja/caja-c3-casos-de-uso.test.ts`. Subir/bajar/subir: `test/aislamiento/caja-c3-subir-bajar-subir.test.ts` (y la lista de `m1-mostrador-subir-bajar-subir`). Los tests de C1 siguen pasando.
 - Aplicar en una base real: **no** (congelado). Cuando se autorice: `verificacion-previa.sql`, respaldo, ensayo en rama de Neon, `migrate deploy`,.
 
-## 8. Preguntas abiertas para el dueño (no se asumió nada)
+## 8. Preguntas para el dueño: estado de cada una (sincronizado con «Decisiones del dueño asentadas», abajo)
+
+El texto de cada pregunta es el original; el estado vigente es el de la tabla de decisiones asentadas: Q-C3-2, 3, 4, 5 y 7 CONFIRMADAS con su cita literal; Q-C3-1 y Q-C3-6 siguen PENDIENTES (ver sus renglones).
 
 - **Q-C3-1 — Lista de caracteres de los nombres.** Hoy letras, números, tildes de uso común, espacio y `. _ / -` (la de C1). Pedernal permite además signos como `, ; : ! ? ¿ ¡ ( ) % $ # & ' " ° + *`. ¿Querés la de Pedernal? (PROPUESTA: dejar la de C1.)
 - **Q-C3-2 — Valores iniciales de las marcas.** Se sembraron los de ejemplo de Pedernal (Visa, Mastercard, American Express, Cabal, Naranja X y «Otra»); Pedernal tampoco los tiene confirmados por su dueño. ¿Son estos?
 - **Q-C3-3 — Quién carga la lista de marcas hasta que exista la consola.** Hoy solo el dueño de la base puede escribirla (por migración).
 - **Q-C3-4 — Tope de 36 cuotas** (supuesto del ingeniero de Pedernal, sin cita del dueño). Cambiarlo es una constante y un CHECK.
 - **Q-C3-5 — Cupón.** Pedernal endureció la regla escrita (sin espacios, sin tramos de 13 dígitos): Motor2 la copia. ¿Confirmás?
-- **Q-C3-6 — Una cuenta en todas las sucursales.** Hoy una sola sucursal (como Pedernal, supuesto suyo).
+- **Q-C3-6 — Una cuenta en todas las sucursales.** Hoy una sola sucursal (como Pedernal, supuesto suyo). **PENDIENTE de aclarar (2026-11-16, observación del verificador):** la respuesta «Una cuenta por sucursal» puede leerse como «cada cuenta pertenece a UNA sola sucursal» (lo que hace el código hoy: una cuenta tiene una `sucursalId`) o como «cada sucursal tiene UNA sola cuenta» (límite de una por sucursal, que el código NO impone: hoy se pueden crear varias por sucursal). No se agrega ningún único hasta que el dueño responda; la pregunta se la hace el orquestador general.
 - **Q-C3-7 — Quién ve los datos guardados del cobro** (DNI, últimos 4): hoy solo se leen con las lecturas que se construyan; no hay pantalla ni permiso.
 
 ## 9. Mensajes nuevos para el catálogo de textos (clave sugerida, texto, uso)
@@ -208,9 +210,9 @@ Privilegios: la app lee y agrega `CuentaDeCobro` (UPDATE por columna: nombre, id
 | Pregunta | Respuesta literal | Estado |
 |---|---|---|
 | Q-C3-7 quién ve DNI y últimos 4 | «También quien cobra» | **CONFIRMADA:** el operador que cobró lo ve, además de gerente y administrador. Son datos personales: lectura solo dentro de su empresa y sucursal (RLS); nunca en listados ni con su valor en la auditoría (solo los nombres de los datos). La Server Action de lectura (PR-B) lo hace cumplir. |
-| Q-C3-6 una cuenta de cobro por sucursal | «Una cuenta por sucursal (Recomendada)» | **CONFIRMADA** |
+| Q-C3-6 una cuenta de cobro por sucursal | «Una cuenta por sucursal (Recomendada)» | **CONFIRMADA solo en la lectura «cada cuenta pertenece a una sola sucursal»** (lo que el código hace); la lectura «una sola cuenta por sucursal» está **PENDIENTE** (ver §8) |
 | Q-C3-4/5 cuotas y cupón | «Sí, como Pedernal (Recomendada)» | **CONFIRMADA:** tope de 36 cuotas y cupón sin espacios ni 13 dígitos seguidos |
 | Q-C3-2/3 marcas iniciales | «Esas seis (Recomendada)» | **CONFIRMADA:** Visa, Mastercard, American Express, Cabal, Naranja X y «Otra»; una marca nueva la agrega la plataforma y, hasta que exista su pantalla, se carga con un cambio técnico avisando antes al dueño |
-| Q-C3-1 caracteres de los nombres | cubierta por la lista de nombres confirmada | **CONFIRMADA** |
+| Q-C3-1 caracteres de los nombres | (sin cita literal del dueño: se buscó en `motor2-docs` y no hay una respuesta suya sobre los nombres de cuentas de cobro) | **PENDIENTE** (regla I1: sin cita literal no hay confirmación). Mientras tanto rige la lista de C1, la más cerrada |
 
 **Orden de migraciones (decisión del orquestador, 2026-11-16):** esta etapa va como `20261117112000` y `20261117113000`; C2 va después (`20261117114000` y `20261117115000`) y fusiona la función `"MovimientoCaja_validar"` partiendo de la de esta etapa.

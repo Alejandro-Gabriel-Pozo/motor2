@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { fechaDeNegocio } from "../../src/core/caja/public";
+import { fechaDeNegocio } from "../../src/core/tiempo/fecha-de-negocio";
 import { fechaDeColumnaDate } from "../../src/core/tiempo/zona-horaria";
 import { azarDelProceso } from "../../src/lib/azar";
 import { abrirSesionCasoDeUso } from "../../src/server/actions/caja/casos-de-uso/abrir-sesion";

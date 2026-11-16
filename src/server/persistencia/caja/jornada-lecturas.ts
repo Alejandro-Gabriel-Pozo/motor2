@@ -1,6 +1,6 @@
 import "server-only";
 import type { CierreDeCajaDelMedio } from "@/core/caja/public";
-import { fechaDeNegocio } from "@/core/caja/public";
+import { fechaDeNegocio } from "@/core/tiempo/fecha-de-negocio";
 import { diaDeColumnaDate, fechaDeColumnaDate, sumarDias, inicioDelDia } from "@/core/tiempo/zona-horaria";
 import type { Prisma } from "@prisma/client";
 import { centavosDeDecimal } from "./caja";
