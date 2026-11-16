@@ -31,7 +31,7 @@ describe("M.2: quien no tiene la clave fina no pisa lo que otra persona cambió 
   /** La base con el alcance que tiene en producción quien opera en `sucursalId`: SOLO su sucursal activa (ADR-028). */
   const baseDeSucursal = () => baseDeTest({ lectura: [sucursalId], escritura: [sucursalId] });
 
-  /** Un contexto cuya transacción, tras la PRIMERA lectura `findUnique` de `tabla`, espera a `entreLecturaYEscritura` (la barrera: otra conexión cambia la fila y confirma). */
+  /** Un contexto cuya transacción, tras la PRIMERA lectura (`findUnique`, o `findMany` ahora que (producto, unidad) ya no es único) de `tabla`, espera a `entreLecturaYEscritura` (la barrera: otra conexión cambia la fila y confirma). */
   function actorConBarrera(tabla: "producto" | "presentacion", entreLecturaYEscritura: () => Promise<void>) {
     let disparada = false;
     const transaccion: Transaccion = (async (fn: Parameters<Transaccion>[0], opciones?: Parameters<Transaccion>[1]) =>
@@ -40,7 +40,7 @@ describe("M.2: quien no tiene la clave fina no pisa lo que otra persona cambió 
         const delegadoConBarrera = new Proxy(delegado, {
           get(objetivo, propiedad) {
             const valor = objetivo[propiedad as string];
-            if (propiedad === "findUnique" && typeof valor === "function") {
+            if ((propiedad === "findUnique" || propiedad === "findMany") && typeof valor === "function") {
               return async (...argumentos: unknown[]) => {
                 const leido = await (valor as (...a: unknown[]) => Promise<unknown>).apply(objetivo, argumentos);
                 if (!disparada) {
@@ -98,9 +98,9 @@ describe("M.2: quien no tiene la clave fina no pisa lo que otra persona cambió 
   });
 
   it("EL DEFECTO (presentación): el operador sin la clave reactiva una presentación con el MISMO factor mientras un administrador le cambia el factor → el factor del administrador NO se pisa", async () => {
-    await prisma.presentacion.create({ data: { productoId, unidadCompraId: kgId, factorConversion: 20, activa: false } });
+    const sembrada = await prisma.presentacion.create({ data: { productoId, unidadCompraId: kgId, factorConversion: 20, activa: false } });
     const actor = actorConBarrera("presentacion", async () => {
-      await prismaAdmin.presentacion.update({ where: { productoId_unidadCompraId: { productoId, unidadCompraId: kgId } }, data: { factorConversion: 30 } });
+      await prismaAdmin.presentacion.update({ where: { id: sembrada.id }, data: { factorConversion: 30 } });
     });
     // El producto tiene como unidad de compra por defecto `g`, así que la presentación alternativa en `kg` es válida.
     const r = await agregarPresentacionAlternativaCasoDeUso(actor, {
@@ -111,7 +111,7 @@ describe("M.2: quien no tiene la clave fina no pisa lo que otra persona cambió 
       puedeEditarCamposSensibles: false,
     });
     expect(r.ok, r.mensaje).toBe(true);
-    const fila = await prisma.presentacion.findUniqueOrThrow({ where: { productoId_unidadCompraId: { productoId, unidadCompraId: kgId } } });
+    const fila = await prisma.presentacion.findUniqueOrThrow({ where: { id: sembrada.id } });
     expect(fila.activa).toBe(true); // lo que el operador SÍ podía hacer: reactivarla
     expect(Number(fila.factorConversion)).toBe(30); // el factor del administrador, intacto
   });

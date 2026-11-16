@@ -111,7 +111,8 @@ testAutenticado("catalogo/categorias: sin violaciones de axe", async ({ paginaAu
   try {
     await page.goto("/catalogo/categorias");
     await conTitulo(page, /Categorías/);
-    await expect(page.getByText(nombre)).toBeVisible();
+    // La tabla de escritorio y las tarjetas del celular traen el nombre; solo una de las dos presentaciones se ve.
+    await expect(page.getByText(nombre).filter({ visible: true })).toHaveCount(1);
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   } finally {
     await prisma.categoriaProducto.deleteMany({ where: { nombre } });

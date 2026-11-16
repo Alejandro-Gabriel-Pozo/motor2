@@ -190,3 +190,14 @@ export function decidirSobreProducto(entrada: EntradaDeDecision): Decision {
   }
   return decidirDeProducto(entrada.hechos, entrada.operacion as OperacionDeProducto);
 }
+
+/**
+ * ¿Quien pide es «administración con alcance total» (O-10: «Solo administración»), o sea, puede ocultar un producto en TODA la empresa? UNA sola definición, fácil de cambiar: hoy es
+ * administrador (por la clave de su rol) en TODAS las sucursales activas de la empresa; si falta una sola, o no hay ninguna, no. La acción (etapa d) la calcula con las membresías de la sesión y
+ * las sucursales activas de la empresa y le pasa el resultado al caso de uso (`puedeEnLaEmpresa`). DEFINICIÓN PENDIENTE DE CONFIRMAR POR EL DUEÑO (la consulta el orquestador): cambia permisos.
+ */
+export function esAdministracionConAlcanceTotal(membresias: readonly { readonly sucursalId: string; readonly esAdmin: boolean }[], sucursalesActivasDeLaEmpresa: readonly string[]): boolean {
+  if (sucursalesActivasDeLaEmpresa.length === 0) return false;
+  const admin = new Set(membresias.filter((m) => m.esAdmin).map((m) => m.sucursalId));
+  return sucursalesActivasDeLaEmpresa.every((id) => admin.has(id));
+}

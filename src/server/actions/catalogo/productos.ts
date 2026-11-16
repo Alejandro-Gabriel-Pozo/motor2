@@ -290,7 +290,7 @@ export async function listarProductosPagina(cursor?: string, termino?: string, f
   };
 }
 
-export interface DatosProducto extends Pick<EntradaProducto, "alicuotaIvaVenta" | "alicuotaIvaCompra"> {
+export interface DatosProducto extends Pick<EntradaProducto, "alicuotaIvaVenta" | "alicuotaIvaCompra" | "nombreDeCocina"> {
   codigo?: string;
   nombre: string;
   tipo: TipoProducto;

@@ -257,6 +257,8 @@ export interface ItemDeCuenta {
   promoTitulo: string | null;
   /** El nombre compuesto de la línea con opciones («Café solo chico») y su renglón de detalle (lo incluido): lo que se MUESTRA y se comanda. `productoNombre` sigue siendo el del producto (identifica el ítem). Ausentes sin opciones. */
   nombreDeLinea?: string;
+  /** El nombre con que la COMANDA nombra la línea (2026-11-15): el «Nombre de cocina» congelado en lugar del nombre del producto, con las mismas partes de opciones. Ausente = la comanda de siempre (`nombreDeLinea ?? productoNombre`). Solo la comanda lo lee: la pantalla, el ticket y los reportes siguen con sus nombres. */
+  nombreParaLaCocina?: string;
   detalleDeLinea?: string;
   /** GO-2b: `true` SOLO en un adicional (cuelga de la línea de su producto: no lleva descuento de cliente y no se anula solo). */
   esAdicional?: true;
@@ -320,6 +322,8 @@ export interface MesaConCuentaLeida {
       /** GO-2b: el padre de un adicional y la foto de lo elegido (opcionales: sin ellos, el detalle de siempre). */
       lineaPadreId?: string | null;
       opcionesElegidas?: (FotoParaElNombre & { opcionId?: string })[];
+      /** El «Nombre de cocina» congelado al agregar la línea (`CuentaItem.nombreDeCocina`); ausente o `null` = la comanda usa el nombre interno. */
+      nombreDeCocina?: string | null;
     }[];
   }[];
 }
@@ -355,6 +359,8 @@ export function armarDetalleDeMesa(mesa: MesaConCuentaLeida | null, ahora: Date)
     promoCuentaId: i.promoCuenta?.id ?? null,
     promoTitulo: i.promoCuenta?.titulo ?? null,
     ...(fotos.some((f) => f.tipoGrupo !== "ADICIONAL") ? { nombreDeLinea: nombre } : {}),
+    // Nombre de cocina congelado: reemplaza SOLO el nombre del producto (en una base configurable gana el de la medida, como hoy); un adicional conserva el suyo.
+    ...(i.nombreDeCocina && !i.lineaPadreId ? { nombreParaLaCocina: nombreDeLineaConfigurada(i.nombreDeCocina, esBaseConfigurable(i.producto.modoDeVenta), fotos).nombre } : {}),
     ...(detalle ? { detalleDeLinea: detalle } : {}),
     ...(i.lineaPadreId ? { esAdicional: true as const } : {}),
     ...(i.lineaPadreId ? { lineaPadreId: i.lineaPadreId } : {}),

@@ -41,6 +41,24 @@ function cuantos(arbol: ReactNode, tipo: unknown): number {
   return n;
 }
 
+/**
+ * Los formularios que arman las CELDAS de una `TablaDeDatos` (p. ej. el «Activar/Desactivar» de cada fila): viven en funciones `celda(fila)` de las columnas, que el árbol de la página no ejecuta (la tabla las
+ * llama al dibujarse), así que `cuantos` no los ve. Acá se llama cada celda con cada fila y se cuenta lo que arma. Una tabla se dibuja una vez en cada presentación (tarjeta y tabla): se cuenta UNA vez por fila.
+ */
+function formulariosDeLasCeldas(arbol: ReactNode): number {
+  let n = 0;
+  const recorrer = (nodo: ReactNode) => {
+    if (Array.isArray(nodo)) return nodo.forEach(recorrer);
+    if (!nodo || typeof nodo !== "object" || !("props" in nodo)) return;
+    const el = nodo as ReactElement<{ children?: ReactNode; columnas?: { celda: (fila: unknown) => ReactNode }[]; filas?: unknown[] }>;
+    const { columnas, filas } = el.props;
+    if (Array.isArray(columnas) && Array.isArray(filas)) for (const fila of filas) for (const c of columnas) n += cuantos(c.celda(fila), FormConResultado);
+    recorrer(el.props.children);
+  };
+  recorrer(arbol);
+  return n;
+}
+
 /** Busca un texto en las hojas del árbol (los `<Link>` y botones dejan su texto como hijo). */
 function tieneTexto(arbol: ReactNode, texto: string): boolean {
   let hallado = false;
@@ -83,8 +101,8 @@ describe("Catálogo: ver una pantalla no es poder escribir en ella (DEC-33)", ()
     await prisma.cliente.create({ data: { nombre: "Club del Barrio", descuentoPorcentaje: 10 } });
   });
 
-  const casos: { pantalla: string; pagina: () => Promise<ReactNode>; claves: AccionClave[]; formularios: number }[] = [
-    { pantalla: "Categorías", pagina: () => CategoriasPage(), claves: ["categorias", "categoria_alta"], formularios: 2 },
+  const casos: { pantalla: string; pagina: () => Promise<ReactNode>; claves: AccionClave[]; formularios: number; conCeldas?: boolean }[] = [
+    { pantalla: "Categorías", pagina: () => CategoriasPage(), claves: ["categorias", "categoria_alta"], formularios: 2, conCeldas: true },
     { pantalla: "Unidades", pagina: () => UnidadesPage(), claves: ["unidades"], formularios: 5 },
     { pantalla: "Margen objetivo", pagina: () => MargenObjetivoPage(), claves: ["margen_objetivo_editar"], formularios: 2 },
     { pantalla: "Insumos", pagina: () => InsumosGruposPage(), claves: ["grupos_familia", "insumo_alta", "insumo_renombrar_fusionar"], formularios: 4 },
@@ -92,16 +110,16 @@ describe("Catálogo: ver una pantalla no es poder escribir en ella (DEC-33)", ()
     { pantalla: "Proveedores", pagina: () => ProveedoresPage(), claves: ["proveedores", "proveedor_alta"], formularios: 1 },
   ];
 
-  it.each(casos)("$pantalla: con «Editar» arma sus formularios y no muestra el aviso", async ({ pagina, formularios }) => {
+  it.each(casos)("$pantalla: con «Editar» arma sus formularios y no muestra el aviso", async ({ pagina, formularios, conCeldas }) => {
     const arbol = await pagina();
-    expect(cuantos(arbol, FormConResultado)).toBe(formularios);
+    expect(cuantos(arbol, FormConResultado) + (conCeldas ? formulariosDeLasCeldas(arbol) : 0)).toBe(formularios);
     expect(cuantos(arbol, AvisoSoloLecturaDeCatalogo)).toBe(0);
   });
 
-  it.each(casos)("$pantalla: con solo «Ver» no arma ningún formulario y muestra el aviso", async ({ pagina, claves }) => {
+  it.each(casos)("$pantalla: con solo «Ver» no arma ningún formulario y muestra el aviso", async ({ pagina, claves, conCeldas }) => {
     await soloVer(...claves);
     const arbol = await pagina();
-    expect(cuantos(arbol, FormConResultado)).toBe(0);
+    expect(cuantos(arbol, FormConResultado) + (conCeldas ? formulariosDeLasCeldas(arbol) : 0)).toBe(0);
     expect(cuantos(arbol, AvisoSoloLecturaDeCatalogo)).toBe(1);
   });
 

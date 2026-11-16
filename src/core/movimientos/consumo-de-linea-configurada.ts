@@ -1,5 +1,5 @@
 import { Decimal } from "decimal.js";
-import { rendimientoEfectivo } from "@/core/catalogo/public";
+import { factorDeMermaExacto, rendimientoEfectivo } from "@/core/catalogo/public";
 import { CANTIDAD_MAXIMA_DE_OPCION, FACTOR_DE_ESCALA_MAXIMO, type EfectoDeConsumoDeOpcion } from "@/core/opciones/public";
 import { pedidoDeIngrediente, type IngredienteParaVender } from "./linea-de-venta";
 
@@ -130,7 +130,7 @@ function validarConsumos(consumos: readonly ConsumoDeOpcionParaVender[], nombre:
 
 /** Unidades vendidas × unidades de la opción × cantidad del consumo × (1 + merma/100), en decimal exacto y entregado como `number`. */
 function pedidoDeConsumo(c: ConsumoDeOpcionParaVender, unidades: Decimal.Value, factor: Decimal.Value): Pedido {
-  const cantidad = new D(unidades).times(c.cantidad).times(factor).times(new D(1).plus(new D(c.mermaPorcentaje).dividedBy(100)));
+  const cantidad = new D(unidades).times(c.cantidad).times(factor).times(factorDeMermaExacto(c.mermaPorcentaje));
   return { productoId: c.insumoProductoId, cantidad: cantidad.toNumber(), insumoSustitutoIds: [], unidadStockId: c.unidadStockId };
 }
 
@@ -138,7 +138,7 @@ function pedidoDeConsumo(c: ConsumoDeOpcionParaVender, unidades: Decimal.Value, 
 function pedidoDeBaseEscalado(cantidad: number, factor: number, base: IngredienteDeBase, sucursalId: string): Pedido {
   const ing = base.ingrediente;
   const ef = rendimientoEfectivo({ cantidad: ing.cantidad, mermaPorcentaje: ing.mermaPorcentaje }, ing.rendimientosLocales, sucursalId);
-  const consumo = new D(cantidad).times(factor).times(ef.cantidad).times(new D(1).plus(new D(ef.mermaPorcentaje).dividedBy(100)));
+  const consumo = new D(cantidad).times(factor).times(ef.cantidad).times(factorDeMermaExacto(ef.mermaPorcentaje));
   return { productoId: ing.insumoProductoId, cantidad: consumo.toNumber(), insumoSustitutoIds: ing.insumoSustitutoIds, unidadStockId: base.unidadStockId };
 }
 

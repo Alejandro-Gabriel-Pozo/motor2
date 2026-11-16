@@ -5,7 +5,7 @@ import { LARGO_MAXIMO_NOTAS, validarTextoLibre } from "@/core/datos/limites";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { ALICUOTAS_IVA, type AlicuotaIva } from "@/core/fiscal/public";
 import { esNumeroEstricto } from "@/core/numero";
-import { nombreDeFicha, nombreMinimoDeFicha } from "@/core/datos/nombre-de-ficha";
+import { nombreDeCocinaDeProducto, nombreDeFicha, nombreMinimoDeFicha } from "@/core/datos/nombre-de-ficha";
 import type { ComandoDarDeAltaProductoRapido, ComandoSincronizarPrecioGrupoCarta, PuertaDeDatosDeProducto } from "./productos.schema";
 
 /**
@@ -84,6 +84,7 @@ export function guardComandoDatosDeProducto(entrada: { datos: unknown; modo?: "A
     nombre?: unknown;
     tipo?: unknown;
     observaciones?: unknown;
+    nombreDeCocina?: unknown;
     unidadStockId?: unknown;
     factorConversion?: unknown;
     precioVenta?: unknown;
@@ -103,6 +104,10 @@ export function guardComandoDatosDeProducto(entrada: { datos: unknown; modo?: "A
     if (!nombre.ok) return rechazar(nombre.codigo === "vacio" ? "vacio" : "formato", nombre.mensaje);
     const observaciones = validarTextoLibre(d.observaciones, "Las observaciones", LARGO_MAXIMO_NOTAS);
     if (!observaciones.ok) return rechazar("largo", observaciones.mensaje);
+    // Nombre de cocina (2026-11-15): opcional; con dato, la ficha NOMBRE_DE_COCINA y solo en un PV. Estricto en el alta Y en la edición (la columna es nueva: no hay nombre viejo que bloquear). En una edición
+    // parcial el `tipo` puede venir ausente: entonces la acción completa con lo guardado y VUELVE a calcular esta puerta con el tipo real (hayAusentes), así que el rechazo de acá (falla cerrado) no es el último.
+    const nombreDeCocina = nombreDeCocinaDeProducto(d.nombreDeCocina, d.tipo);
+    if (!nombreDeCocina.ok) return rechazar("formato", nombreDeCocina.mensaje);
     if (typeof d.unidadStockId !== "string" || !d.unidadStockId) return rechazar("vacio", "La unidad de stock es obligatoria.");
     return aceptar(null);
   })();

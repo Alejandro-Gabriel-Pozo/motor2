@@ -69,6 +69,7 @@ const IMPORTE_DE_NOTA = "Importe con IVA incluido de un comprobante de proveedor
 /** `Modelo.columna` → qué afecta y por qué. Cada motivo sale del comentario del esquema o de un guardián existente; lo que no tiene certeza no está acá. */
 export const DECLARACIONES: Readonly<Record<string, Declaracion>> = {
   // Producto y disponibilidad
+  "Producto.nombreDeCocina": d("visibilidad", "Cómo nombra la cocina al producto de venta en la comanda (2026-11-15; NULL = usa el nombre interno): cambia lo que lee la cocina; no toca precio, stock ni ticket del cliente."),
   "Producto.seProduce": d("stock", "Elegibilidad de receta: una materia prima solo se puede producir si seProduce = true (decide qué se fabrica y qué insumos se descuentan)."),
   "Producto.esConsignacion": d("dinero", "Marca el producto como de consignación: cambia el significado de la deuda con el consignante (columna de significado en escrituras-auditadas)."),
   "Producto.modoDeVenta": d("dinero", "Decide si se cobra el precio guardado del producto (DIRECTO) o el de cada opción (BASE_CONFIGURABLE), ADR-035."),
@@ -228,6 +229,7 @@ export const DECLARACIONES: Readonly<Record<string, Declaracion>> = {
   "Venta.fecha": d("ninguna", "Instante de la venta de la cabecera (UTC): sin escritor ni lector en src/ (la tabla Venta no se escribe todavía, Etapa C); los reportes usan Operacion.fecha."),
   "Cuenta.abiertaEn": d("ninguna", "Instante de apertura de la cuenta: solo ordena y acota períodos de lectura (rotación de mesas, tickets emitidos, detalle de mesa); no cambia lo que se cobra, se ve en la carta ni el stock."),
   "CuentaItem.huellaOpciones": d("dinero", "Huella (SHA-256) de las opciones que van dentro del precio de la línea, inmutable: dos líneas del mismo producto con distinta huella son líneas distintas al cerrar la cuenta (cerrar-cuenta)."),
+  "CuentaItem.nombreDeCocina": d("visibilidad", "Nombre con que la comanda de cocina nombra la línea, congelado al agregarla (2026-11-15): cambia lo que lee la cocina; no toca precio, stock ni ticket del cliente."),
   "CuentaItem.lineaPadreId": d("dinero", "Línea padre de un ADICIONAL (otra línea de la misma cuenta; inmutable; el adicional lleva precio de 0,01 o más, CHECK): decide a qué producto se suma el cobro y qué se anula junto."),
   "OpcionElegidaEnLinea.cantidad": d("dinero", "Foto de lo cobrado: unidades de la opción elegida por unidad vendida (1 a 10, CHECK; una MEDIDA siempre 1); el nombre de la línea las muestra como «×N»."),
   "OpcionElegidaEnLinea.porcentaje": d("dinero", "Foto de lo cobrado: el porcentaje de la diferencia cuando tipoDeDiferencia es PORCENTAJE (-100 < p <= 999,9999, CHECK)."),

@@ -33,6 +33,7 @@ const ORACULO: Record<string, Fila_Oraculo> = {
   unidadStockId: { producto: "MP", actualiza: { enviar: (i) => ({ unidadStockId: i.unidadG }), esperado: (i) => ({ unidadStockId: i.unidadG }) } },
   factorConversion: { producto: "MP", actualiza: { enviar: () => ({ factorConversion: 2 }), esperado: () => ({ factorConversion: 2 }) } },
   observaciones: { producto: "MP", borra: { enviar: () => ({ observaciones: null }), esperado: () => ({ observaciones: null }) }, actualiza: { enviar: () => ({ observaciones: "Otra nota" }), esperado: () => ({ observaciones: "Otra nota" }) } },
+  nombreDeCocina: { producto: "PV", borra: { enviar: () => ({ nombreDeCocina: null }), esperado: () => ({ nombreDeCocina: null }) }, actualiza: { enviar: () => ({ nombreDeCocina: "Medallón de bife" }), esperado: () => ({ nombreDeCocina: "Medallón de bife" }) } },
   insumoId: { producto: "MP", borra: { enviar: () => ({ insumoId: null }), esperado: () => ({ insumoId: null }) }, actualiza: { enviar: (i) => ({ insumoId: i.insumoB }), esperado: (i) => ({ insumoId: i.insumoB }) } },
   precioVenta: { producto: "PV", actualiza: { enviar: () => ({ precioVenta: 2000, precioVentaVisto: 1500 }), esperado: () => ({ precioVenta: 2000 }) } },
   pasoVenta: { producto: "PV", borra: { enviar: () => ({ pasoVenta: null }), esperado: () => ({ pasoVenta: null }) }, actualiza: { enviar: () => ({ pasoVenta: 0.25 }), esperado: () => ({ pasoVenta: 0.25 }) } },
@@ -42,7 +43,7 @@ const ORACULO: Record<string, Fila_Oraculo> = {
   precioConsignacion: { producto: "MP", actualiza: { enviar: () => ({ precioConsignacion: 80 }), esperado: () => ({ precioConsignacion: 80 }) } },
 };
 
-const COLUMNAS = ["nombre", "tipo", "categoriaId", "unidadCompraId", "unidadStockId", "factorConversion", "observaciones", "insumoId", "precioVenta", "pasoVenta", "seProduce", "esConsignacion", "proveedorConsignacionId", "precioConsignacion"] as const;
+const COLUMNAS = ["nombre", "tipo", "categoriaId", "unidadCompraId", "unidadStockId", "factorConversion", "observaciones", "nombreDeCocina", "insumoId", "precioVenta", "pasoVenta", "seProduce", "esConsignacion", "proveedorConsignacionId", "precioConsignacion"] as const;
 const comoNumero = new Set(["factorConversion", "precioVenta", "pasoVenta", "precioConsignacion"]);
 
 describe("edición parcial del producto (decisión 0356 de Pedernal)", () => {
@@ -72,7 +73,7 @@ describe("edición parcial del producto (decisión 0356 de Pedernal)", () => {
       base.sucursal.id,
     );
     const pv = await sembrarProductoDisponible(
-      { codigo: `PV_EP_${n++}`, nombre: "Pizza", tipo: "PV", unidadStockId: kg.id, factorConversion: 1, categoriaId: categoriaA.id, precioVenta: 1500, pasoVenta: 0.5, seProduce: true, observaciones: "Otra nota" },
+      { codigo: `PV_EP_${n++}`, nombre: "Pizza", tipo: "PV", unidadStockId: kg.id, factorConversion: 1, categoriaId: categoriaA.id, precioVenta: 1500, pasoVenta: 0.5, seProduce: true, observaciones: "Otra nota", nombreDeCocina: "Pizza de la casa" },
       base.sucursal.id,
     );
     ids = { unidadKg: kg.id, unidadG: g.id, categoriaA: categoriaA.id, categoriaB: categoriaB.id, insumoA: insumoA.id, insumoB: insumoB.id, proveedorA: proveedorA.id, proveedorB: proveedorB.id, mp: mp.id, pv: pv.id };
@@ -162,7 +163,7 @@ describe("edición parcial del producto (decisión 0356 de Pedernal)", () => {
     expect([a.ok, b.ok].filter(Boolean)).toHaveLength(1);
     const rechazada = a.ok ? b : a;
     expect(rechazada.ok).toBe(false);
-    expect(!rechazada.ok && rechazada.mensaje).toContain("mientras lo editabas");
+    expect(!rechazada.ok && rechazada.mensaje).toContain("El precio vigente ahora es");
     expect([1800, 1900]).toContain((await leer(ids.pv)).precioVenta);
   });
 });
