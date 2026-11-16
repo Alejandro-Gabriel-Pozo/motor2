@@ -1091,12 +1091,11 @@ testAutenticado("carta: sin violaciones de axe, con formularios abiertos y «Fue
     await page.goto("/carta/parametrizacion");
     expect((await new AxeBuilder({ page }).analyze()).violations, "carta: Parametrización").toEqual([]);
     await page.goto("/carta/parametrizacion/secciones");
-    await page.locator(`[data-seccion-carta="${seccion.nombre}"] summary`).click();
-    await page.locator(`[data-grupo-de-la-carta="${seccion.nombre}"] > summary`).click();
-    await page.locator(`[data-contenido-carta="${conContenido.nombre}"] summary`).click();
-    await expect(page.locator(`[data-contenido-carta="${conContenido.nombre}"]`).getByLabel("Especial (★)")).toBeChecked();
-    await expect(page.locator(`[data-contenido-carta="${conContenido.nombre}"]`).getByLabel(/^Sección de carta/)).toHaveValue(seccion.id);
-    expect((await new AxeBuilder({ page }).analyze()).violations, "carta: Parametrización › Secciones").toEqual([]);
+    expect((await new AxeBuilder({ page }).analyze()).violations, "carta: Parametrización › Secciones (lista)").toEqual([]);
+    await page.locator(`[data-seccion-orden="${seccion.nombre}"]`).getByRole("link", { name: seccion.nombre }).click();
+    await expect(page.locator(`[data-seccion-carta="${seccion.nombre}"]`)).toBeVisible();
+    await expect(page.locator(`[data-producto-de-la-seccion="${conContenido.nombre}"]`)).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "carta: Parametrización › Una sección").toEqual([]);
     await page.goto("/carta/parametrizacion/promociones");
     await page.locator(`[data-promo-carta="${promo.titulo}"] summary`).click();
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
