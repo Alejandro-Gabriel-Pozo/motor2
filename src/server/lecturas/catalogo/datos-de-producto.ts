@@ -3,7 +3,7 @@ import { whereDisponibleEnAlguna, validarPasoVenta } from "@/core/catalogo/publi
 import { validarCantidad } from "@/core/datos/cantidad";
 import type { EntradaProducto, PuertaDeDatosDeProducto } from "@/core/features/catalogo/productos.schema";
 import { tieneStockReal } from "@/core/movimientos/public";
-import { nombreDeFicha, nombreDeFichaSiCambio } from "@/core/datos/nombre-de-ficha";
+import { nombreDeCocinaDeProducto, nombreDeFicha, nombreDeFichaSiCambio } from "@/core/datos/nombre-de-ficha";
 import type { Db } from "@/lib/db-tipos";
 import { validarUnidadInsumo } from "./unidad-de-insumo";
 
@@ -27,7 +27,7 @@ interface NumerosValidados {
  * `nombreVigente`: en una EDICIÓN, el nombre que tiene guardado el producto (lo lee el caso de uso, nunca viene del formulario): la regla de nombre de Pedernal se aplica entonces solo si el nombre
  * CAMBIA. En el alta (sin `nombreVigente`) se aplica siempre. Devuelve además el `nombre` canónico que se guarda.
  */
-export async function validarDatosDeProducto(db: Db, datos: EntradaProducto, productoIdExcluir: string | undefined, puerta: PuertaDeDatosDeProducto, nombreVigente?: string): Promise<{ error: string } | { numeros: NumerosValidados; nombre: string }> {
+export async function validarDatosDeProducto(db: Db, datos: EntradaProducto, productoIdExcluir: string | undefined, puerta: PuertaDeDatosDeProducto, nombreVigente?: string): Promise<{ error: string } | { numeros: NumerosValidados; nombre: string; nombreDeCocina: string | null }> {
   // S-52: el formato y el rango de lo que no depende de la base los decidió `guardComandoDatosDeProducto` (la acción lo calculó con lo que mandó el cliente), por etapa; cada rechazo se
   // aplica ACÁ, en el lugar donde antes vivía su chequeo, así que el orden de los mensajes es el de siempre: el nombre, las observaciones y la unidad presente; LEER la unidad; el
   // factor; el precio de venta; la consignación; el paso de venta; el nombre libre; el insumo.
@@ -37,6 +37,9 @@ export async function validarDatosDeProducto(db: Db, datos: EntradaProducto, pro
     : nombreDeFichaSiCambio(datos.nombre, nombreVigente, "PRODUCTO", "El nombre no puede estar vacío.");
   if (!pedido.ok) return { error: pedido.mensaje };
   const nombre = pedido.valor;
+  // Nombre de cocina: lo decidió el guard (`antesDeLaUnidad`); acá se obtiene el canónico que se guarda (recortado, NFC, espacios colapsados) o `null` (sin nombre de cocina).
+  const cocina = nombreDeCocinaDeProducto(datos.nombreDeCocina, datos.tipo);
+  if (!cocina.ok) return { error: cocina.mensaje };
   // Unidad de stock, una sola vez: `factorConversion` son "unidades de stock por unidad de compra" (Catalogo.js:1083/1095,
   // prisma/schema.prisma) — sus decimales son los de ESA unidad, igual que `pasoVenta` (R3, validarPasoVenta) más abajo.
   const unidadStock = await db.unidad.findUnique({ where: { id: datos.unidadStockId }, select: { nombre: true, decimales: true } });
@@ -71,13 +74,15 @@ export async function validarDatosDeProducto(db: Db, datos: EntradaProducto, pro
 
   const errorInsumo = await validarUnidadInsumo(datos.insumoId, datos.unidadStockId, productoIdExcluir, db);
   if (errorInsumo) return { error: errorInsumo };
-  return { numeros: { factorConversion: factorConversion.valor!, precioVenta: precioVenta.valor ?? 0, precioConsignacion: precioConsignacion ?? 0, pasoVenta }, nombre };
+  return { numeros: { factorConversion: factorConversion.valor!, precioVenta: precioVenta.valor ?? 0, precioConsignacion: precioConsignacion ?? 0, pasoVenta }, nombre, nombreDeCocina: cocina.valor };
 }
 
 /** Lo que se guarda de un producto (alta y edición), con los números ya validados. Sin `tipo` a propósito: la edición no lo cambia, y el alta lo pone aparte. */
-export function datosParaGuardar(datos: EntradaProducto, numeros: NumerosValidados, nombre: string) {
+export function datosParaGuardar(datos: EntradaProducto, numeros: NumerosValidados, nombre: string, nombreDeCocina: string | null) {
   return {
     nombre,
+    // Siempre se escribe (el alta y la edición mandan la entrada ENTERA: lo ausente en una edición ya se completó con lo guardado); `null` = sin nombre de cocina.
+    nombreDeCocina,
     categoriaId: datos.categoriaId || null,
     unidadCompraId: datos.unidadCompraId || null,
     unidadStockId: datos.unidadStockId,

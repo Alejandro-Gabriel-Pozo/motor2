@@ -30,6 +30,8 @@ interface CamposDeProducto {
   proveedorConsignacionId?: string | null;
   precioConsignacion?: number;
   observaciones?: string | null;
+  /** Cómo nombra la cocina este producto en la comanda (solo un PV; `null` = sin nombre de cocina; CHECK `Producto_nombre_de_cocina_chk`). */
+  nombreDeCocina?: string | null;
   /** Paso 13 (alícuota de IVA del producto): una de `ALICUOTAS_IVA` o `null` («sin declarar»; CHECK de la base). La de venta solo en un PV, la de compra solo en una MP (lo decide el caso de uso). Ausente = no se escribe. */
   alicuotaIvaVenta?: string | null;
   alicuotaIvaCompra?: string | null;

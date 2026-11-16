@@ -6,14 +6,15 @@
  * texto (carácter permitido o no, normalización, `+`/`-` inicial, largo, letra). `test/arquitectura/texto-de-catalogo-declarado.test.ts` falla si aparece una
  * ficha, una opción de las reglas, un motivo o una función exportada que no esté declarada acá.
  */
-export type Ficha = "PRODUCTO" | "ELECCION" | "RAZON_SOCIAL";
-export const FICHAS: readonly Ficha[] = ["PRODUCTO", "ELECCION", "RAZON_SOCIAL"];
+export type Ficha = "PRODUCTO" | "ELECCION" | "RAZON_SOCIAL" | "NOMBRE_DE_COCINA";
+export const FICHAS: readonly Ficha[] = ["PRODUCTO", "ELECCION", "RAZON_SOCIAL", "NOMBRE_DE_COCINA"];
 
 /** Lo que cada ficha declara (Pedernal: `nombre-de-producto.ts`, `nombre-de-eleccion.ts`, `nombre-o-razon-social.ts`). */
 export const DECLARACION_DE_FICHAS: Readonly<Record<Ficha, Readonly<{ maximo: number; exigirUnaLetra: boolean; conSignosDeCatalogo: boolean }>>> = {
   PRODUCTO: { maximo: 120, exigirUnaLetra: true, conSignosDeCatalogo: true },
   ELECCION: { maximo: 80, exigirUnaLetra: false, conSignosDeCatalogo: true },
   RAZON_SOCIAL: { maximo: 200, exigirUnaLetra: true, conSignosDeCatalogo: false },
+  NOMBRE_DE_COCINA: { maximo: 80, exigirUnaLetra: true, conSignosDeCatalogo: false },
 };
 
 /** Las funciones con nombre de `fichas-de-texto.ts` y la ficha a la que responde cada una. */
@@ -21,6 +22,7 @@ export const FUNCIONES_POR_FICHA: Readonly<Record<string, Ficha>> = {
   nombreDeProductoDesdeTexto: "PRODUCTO",
   nombreDeEleccionDesdeTexto: "ELECCION",
   nombreODenominacionDesdeTexto: "RAZON_SOCIAL",
+  nombreDeCocinaDesdeTexto: "NOMBRE_DE_COCINA",
 };
 
 /** Las otras funciones exportadas de `fichas-de-texto.ts`, declaradas para que una nueva no pase sin mirar. */
@@ -78,9 +80,10 @@ export const ACEPTADOS_POR_NORMALIZACION: ReadonlyArray<Readonly<{ caracter: str
 export type Esperado = string;
 export type Fila = Readonly<{ texto: string; esperado: Readonly<Record<Ficha, Esperado>> }>;
 
-const fila = (texto: string, producto: Esperado, eleccion: Esperado = producto, razon: Esperado = eleccion): Fila => ({
+// El nombre de cocina se comporta como la razón social en cada fila (exige una letra y NO admite `¿ ¡ ? ! % $`); solo cambia el largo máximo (80), que está en los casos de largo.
+const fila = (texto: string, producto: Esperado, eleccion: Esperado = producto, razon: Esperado = eleccion, cocina: Esperado = razon): Fila => ({
   texto,
-  esperado: { PRODUCTO: producto, ELECCION: eleccion, RAZON_SOCIAL: razon },
+  esperado: { PRODUCTO: producto, ELECCION: eleccion, RAZON_SOCIAL: razon, NOMBRE_DE_COCINA: cocina },
 });
 
 export const FILAS: readonly Fila[] = [

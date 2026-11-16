@@ -28,6 +28,7 @@ const SELECT_DEL_ORIGEN = {
   alicuotaIvaVenta: true,
   alicuotaIvaCompra: true,
   pasoVenta: true,
+  nombreDeCocina: true,
   seProduce: true,
   opcionQueRespalda: { select: { id: true } },
 } satisfies Prisma.ProductoSelect;
@@ -71,6 +72,7 @@ export interface ProductoDuplicadoNuevo {
   alicuotaIvaVenta: string | null;
   alicuotaIvaCompra: string | null;
   pasoVenta: Prisma.Decimal | number | null;
+  nombreDeCocina: string | null;
   seProduce: boolean;
 }
 
@@ -95,6 +97,7 @@ export async function crearProductoDuplicado(tx: Prisma.TransactionClient, produ
       alicuotaIvaVenta: producto.alicuotaIvaVenta,
       alicuotaIvaCompra: producto.alicuotaIvaCompra,
       pasoVenta: producto.pasoVenta,
+      nombreDeCocina: producto.nombreDeCocina,
       seProduce: producto.seProduce,
     },
   });
