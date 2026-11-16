@@ -29,7 +29,7 @@
 | **E2** | Perilla `ventaPorFraccionesYPeso` (columna de **empresa**, no de plan) y freno del paso libre, **después** de E1b | Aditiva | Cambia comportamiento | Q2 CONFIRMADA; **coordinar con el frente 4** (perillas) |
 | **E3** | Congelar el paso en la línea vendida | Aditiva (`CuentaItem`) | No | **Comparte `CuentaItem` con E3 de clasificación**: un solo turno de `schema.prisma` para ambas columnas |
 | **E4** | Podar el «Paso de venta» libre (interruptor, luego borrado con aviso) | No | Borra | Con aviso al dueño |
-| **E5 (nueva)** | **Unidad de venta separada de la de stock** (kilo ↔ gramo, con conversión de precios como Pedernal) | **Sí**, aditiva (`Producto.unidadDeVentaId`) | Conversión de precios | **PENDIENTE: contradice Q3** (ver §4). Depende de las 14 unidades (U1b y U2) |
+| **E5 (nueva)** | **Unidad de venta separada de la de stock** (kilo ↔ gramo, con conversión de precios todo o nada, como Pedernal): `Producto.unidadDeVentaId` | **Sí**, aditiva | Conversión de precios | **CONFIRMADA (b)** (dueño, 2026-11-16: «También en otra unidad, como Pedernal»); **corrige FR Q3** (15/11: la más nueva manda). Va **después de las 14 unidades** (U1b y U2) y **«requiere autorización expresa por base, con respaldo y ensayo»** para convertir precios existentes |
 
 **Lo más barato para empezar a usarlo:** E1 sin perilla (solo porciones 2/4/8 en productos por unidad). El peso y la unidad separada esperan la respuesta de §4.
 
@@ -38,19 +38,19 @@
 | Nivel | Qué | Estado |
 |---|---|---|
 | 1 Propósito | Motor2 vende por mitad, cuarto u octavo, solo 2, 4 y 8 (una o varias a la vez), igual a Pedernal. Cita: «Sí, como Pedernal (2, 4 y 8)» (2026-11-16) y «Necesitamos ser iguales en todo…» (2026-11-13) | **CONFIRMADA** |
-| 1 Propósito | Unidad de venta separada de la de stock | **CONFIRMADA como pedido**; **PENDIENTE** su alcance (§4): FR Q3 había dicho lo contrario |
+| 1 Propósito | Unidad de venta separada de la de stock (kilo ↔ gramo, con conversión de precios) | **CONFIRMADA**: «También en otra unidad, como Pedernal» (2026-11-16); corrige FR Q3 |
 | 2 Actores | Quien cambia la forma de venta: gerente y administrador (`productos.editar` + `productos.cambiar_precio` en Pedernal). En Motor2 las claves de hoy: **NO VERIFICADO** el mapa exacto (el diseño FR §10 lo resuelve al implementar; sin clave nueva) | PROPUESTA |
-| 3 Casos de uso | Elegir las fracciones ofrecidas; ver el paso derivado; vender ½ ¼ ⅛ (stock = consumo × cantidad, con el arrastre de redondeo ya construido, Task #27); escribir «1/2» en papel; (E5) cambiar la unidad de venta convirtiendo precios todo o nada | PROPUESTA (E5 PENDIENTE) |
+| 3 Casos de uso | Elegir las fracciones ofrecidas; ver el paso derivado; vender ½ ¼ ⅛ (stock = consumo × cantidad, con el arrastre de redondeo ya construido, Task #27); escribir «1/2» en papel; (E5) cambiar la unidad de venta convirtiendo precios todo o nada | PROPUESTA (E5 CONFIRMADA) |
 | 4 Conceptos | Porciones = lista de {2,4,8} ordenada y sin repetir; paso = 1 ÷ la más fina (2 y 8 → 0,125; así ⅛ + ⅛ = ¼ vale aunque ¼ no se ofrezca); solo productos «por unidad» de clase vendible o reventa | **CONFIRMADA** (Pedernal, 12 y 14/11; Motor2 por el «Sí, como Pedernal») |
 | 5 Invariantes | Todo nace cerrado: lista de **permitidos**; cantidad y paso en enteros de diezmilésimos, **sin coma flotante** (ya así en `fracciones-y-peso.ts`; la regla vigente `venta-fraccionada.ts` usa coma flotante con tolerancia y convive hasta E1); múltiplo del paso se **rechaza**, nunca se redondea; la unidad de conteo se valida en el servidor y luego con disparador (un `CHECK` no mira otra tabla); «1 ÷ paso entero» se conserva en el peso (diferencia declarada, FR §15) | PROPUESTA |
 
-## 4. Pregunta al dueño (la primera, una sola)
+## 4. Unidad de venta separada: RESPONDIDA (b)
 
-**Unidad de venta separada vs. FR Q3.** FR §13 Q3 (dueño, 2026-11-15, relatada): «Sí, siempre en la unidad de stock (Recomendada)» → **sin unidad de venta aparte**, ni conversión de precios. Hoy el dueño dijo «Sí, como Pedernal (2, 4 y 8)» a «porciones **y** unidad de venta separada». Pedernal **sí** permite vender en otra unidad de la misma dimensión (kilo ↔ gramo) y convierte los precios (`cambiarFormaDeVenta`, **V**). Las dos respuestas chocan, y la diferencia **cambia el modelo de datos y el dinero** (una columna nueva en `Producto` y conversión de precios):
-
-> Para los productos **por peso**: ¿se venden **siempre en la unidad en que se guarda su stock** (como respondiste el 15/11) o **también en otra unidad** (por ejemplo, stock en kilos y venta en gramos, convirtiendo los precios, como Pedernal)?
-> **(a)** Siempre en la unidad de stock **(recomendada: la más barata, no agrega columna ni conversión; las fracciones ½ ¼ ⅛ funcionan igual)**; **(b)** también en otra unidad, como Pedernal (etapa E5, después de las 14 unidades).
-> Si no se responde: (a).
+Dueño, 2026-11-16: «También en otra unidad, como Pedernal» (registrada en `motor2-docs`, «cuarta tanda»; la cita llega por el orquestador general). **CONFIRMADA la opción (b):** la unidad de venta puede ser otra que la de stock (misma dimensión; kilo ↔ gramo), convirtiendo los precios **todo o nada** (si algo no convierte exacto, el producto queda en «precio abierto», sin error), como `cambiarFormaDeVenta` de Pedernal. **Corrige FR §13 Q3** («Sí, siempre en la unidad de stock», 2026-11-15): la respuesta más nueva manda. Consecuencias:
+- Hace falta `Producto.unidadDeVentaId` (columna aditiva) y la regla «misma dimensión, conversión exacta»; **depende de las 14 unidades** (U1b y U2): sin equivalencia declarada no hay dimensión ni factor. **No se construye antes.**
+- Los precios (`Producto.precioVenta`, precios locales, recargos de opciones) y el paso se convierten juntos; es **dinero**: todo en enteros, sin coma flotante, y la conversión de lo ya cargado **«requiere autorización expresa por base, con respaldo y ensayo»**.
+- La diferencia con Pedernal que FR §15 declaraba («Sin unidad de venta aparte») **se retira**.
+- No hay pregunta nueva al dueño por esto.
 
 ## 5. «¿Qué pasa si…?» de lo nuevo
 
@@ -59,15 +59,15 @@
 | **Cambiar fracciones ofrecidas** (E1) | misma forma → `SIN_CAMBIOS`, sin escribir ni auditar | `FOR UPDATE` del producto + versión esperada: dos editores, gana el primero y el otro ve `VERSION_DESACTUALIZADA` | rige desde el guardado; lo vendido no cambia (E3 congela el paso) | lista inválida o paso a mano **y** porciones a la vez → rechazo, nunca se adivina | idempotente por la forma pedida | **una transacción**: forma, paso y auditoría juntos | producto sin unidad por conteo → `FORMA_DE_VENTA_INVALIDA` | `productos.editar` y la del precio, en el servidor; perilla apagada → `FORMA_DE_VENTA_NO_SOPORTADA` |
 | **Convertir pasos libres** (E1b) | segunda corrida: no cambia nada (conserva el paso original) | una transacción por base; ventas en curso usan el paso que lee su transacción | histórico intacto | lo que no cae exacto queda «pendiente de completar», **no se redondea** | idempotente | todo o nada por base | paso nulo → no se toca | autorización expresa por base; el script corre como dueño |
 | **Vender una fracción** | la clave de la venta ya es idempotente | el stock usa el arrastre de redondeo (dos medias = 1 bollo) | paso vigente al vender (E3: el de la línea) | cantidad no múltiplo → rechazo | idéntico | venta y stock en una transacción (ya así) | producto sin paso → entero | permiso de venta de hoy |
-| **Cambiar la unidad de venta** (E5, si (b)) | misma unidad → `SIN_CAMBIOS` | bloqueo del producto | los precios vigentes se convierten **todos o ninguno** | si algo no convierte exacto → «precio abierto» (sin error) | idempotente | todo o nada | sin precios → solo cambia la unidad | `productos.editar` + `productos.cambiar_precio` |
+| **Cambiar la unidad de venta** (E5) | misma unidad → `SIN_CAMBIOS` | bloqueo del producto | los precios vigentes se convierten **todos o ninguno** | si algo no convierte exacto → «precio abierto» (sin error) | idempotente | todo o nada | sin precios → solo cambia la unidad | `productos.editar` + `productos.cambiar_precio` |
 
 ## 6. Migraciones de esta etapa (inventario)
 
-Ninguna existe como archivo. **E1** y **E3**: aditivas con `down.sql` (E3: la reversión destruye lo congelado). **E1b**: reescribe datos → **autorización expresa por base, con respaldo y ensayo**. **E2**: aditiva, pero **cambia comportamiento** (frena el paso libre) → misma autorización por base. **E5**: aditiva + conversión de precios → **autorización expresa**, y solo si el dueño elige (b).
+Ninguna existe como archivo. **E1** y **E3**: aditivas con `down.sql` (E3: la reversión destruye lo congelado). **E1b**: reescribe datos → **autorización expresa por base, con respaldo y ensayo**. **E2**: aditiva, pero **cambia comportamiento** (frena el paso libre) → misma autorización por base. **E5** (confirmada): aditiva + conversión de precios → **autorización expresa por base**.
 
 ## 7. Carril y dependencias de esta etapa
 
-- **Mío (Fase 2):** `src/core/catalogo/fracciones-y-peso.ts`, `venta-fraccionada.ts`, `conversion-de-paso-libre.ts`, el caso de uso nuevo de forma de venta y su guard; modelo `Producto` (**`porcionesOfrecidas`; y, si (b), `unidadDeVentaId`**, por turno: `Producto` también lo tocan Ocultar y clases).
+- **Mío (Fase 2):** `src/core/catalogo/fracciones-y-peso.ts`, `venta-fraccionada.ts`, `conversion-de-paso-libre.ts`, el caso de uso nuevo de forma de venta y su guard; modelo `Producto` (**`porcionesOfrecidas`; y `unidadDeVentaId` (E5)**, por turno: `Producto` también lo tocan Ocultar y clases).
 - **Por turno:** `CuentaItem` (E3, **junto con** el camino de clasificación) y `Empresa` o la tabla de perillas (E2, **frente 4**).
 - **Consumidores que cambian de resultado y no son míos:** venta de mostrador (`src/core/movimientos/linea-de-venta.ts:49`), POS (`src/core/pos/cantidad-pedido.ts`), comanda y ticket («1/2»): se avisa al frente 1 (caja) y al 6 (pantallas) antes de E1; **NO VERIFICADO** quién es dueño de cada uno.
 - **Pantalla «Cómo se vende»:** frente 6; los textos, el frente de Textos.
