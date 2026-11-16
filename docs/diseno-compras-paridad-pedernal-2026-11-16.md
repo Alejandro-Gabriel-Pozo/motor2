@@ -88,11 +88,12 @@ Nada: este PR es solo documentos. Todo lo de las etapas es PROPUESTA hasta que e
 
 ## Preguntas al dueño (una por vez; solo las que cambian modelo, dinero o permisos)
 
-**Pregunta 1 (la que se hace ahora) — modelo de datos.** En Pedernal existe comprar y recibir **sin factura** (nivel simple). En Motor2 hoy toda compra es una factura (decisión del 2026-11-06). Para la recepción separada: **A) Motor2 mantiene «toda compra lleva factura»**; la recepción separada es esa misma factura con la mercadería «pendiente de recibir» hasta que gerente o administrador la confirma (cambio mínimo, la base ya lo soporta). **B) Motor2 agrega también la compra sin factura** (remito solo), con tablas nuevas de recepción como Pedernal. Recomendación: **A**.
+**Pregunta 1 — RESPONDIDA (2026-11-16):** «Toda compra sigue llevando factura (Recomendada)», fuente `motor2-docs`, «segunda tanda». Opción A **CONFIRMADA**: la recepción separada es la misma factura con la mercadería pendiente hasta que gerente o administrador la confirma; N3-a sin migración en la primera etapa; la regla del 2026-11-06 se mantiene. Se retira la opción B.
+
+**Pregunta 2 (la que se hace ahora) — permisos y planes.** ¿Querés empezar a usar la recepción separada ya, con un interruptor que prendés vos empresa por empresa, o esperás a que estén las perillas de planes?
 
 Cola de preguntas (no se hacen todavía):
-2. Pago: ¿el pago pasa a llevar **importe** (y pagos parciales) o sigue siendo «toda la factura»? Cambia dinero. Depende del frente 1.
-3. Hasta que el frente 4 entregue las perillas: ¿N3 detrás de un interruptor por empresa que enciende solo el dueño? Cambia permisos/planes.
+3. Pago: ¿el pago pasa a llevar **importe** (y pagos parciales) o sigue siendo «toda la factura»? Cambia dinero. Depende del frente 1.
 4. Notas de crédito: ¿se reutilizan las tablas `NotaCreditoProveedor*` que ya existen (recomendado) o se descartan y se arman las de Pedernal? Cambia el modelo.
 5. Saldo a favor: ¿se espera a que se lea el «libro común de saldos» de Pedernal antes de decidir su forma? Cambia el modelo.
 6. Permisos: ¿gerente **y administrador** destinan saldo, pagan y corrigen, como en Pedernal? Hoy en Motor2 `anular_compra`/`corregir_compra` son piso administrador y `declarar_pago_compra` piso operario (de empresa).
