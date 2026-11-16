@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { MATRICES_AYUDAS_VISIBLES } from "@/core/permisos/matrices-ayudas-visibles";
 import { Fragment, useEffect, useMemo, useState, useTransition } from "react";
 import { guardarPermisos } from "@/server/actions/permisos/permisos";
-import { nivelMinimoDeAccion, claveEnCatalogo, esAccionSoloVer } from "@/core/permisos/acciones";
+import { moduloDeAccion, nivelMinimoDeAccion, claveEnCatalogo, esAccionSoloVer } from "@/core/permisos/acciones";
+import { moduloDelCatalogo } from "@/core/modulos/catalogo";
 import { etiquetaDelPiso } from "@/core/permisos/jerarquia";
 import {
   esCeldaFija,
@@ -50,6 +51,19 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [editando, setEditando] = useState(false);
+  // Propuesta (Frente 6): las acciones agrupadas por módulo, plegadas en la lectura; en la edición se muestran todas.
+  const [abiertos, setAbiertos] = useState<Set<string>>(new Set());
+  const alternar = (id: string) => setAbiertos((prev) => { const s = new Set(prev); if (s.has(id)) s.delete(id); else s.add(id); return s; });
+  const grupos = useMemo(() => {
+    const porModulo = new Map<string, { id: string; nombre: string; acciones: Accion[] }>();
+    for (const a of acciones) {
+      const id = claveEnCatalogo(a.clave) ? moduloDeAccion(a.clave) : "otras";
+      const g = porModulo.get(id) ?? { id, nombre: id === "otras" ? "Otras" : moduloDelCatalogo(id).nombre, acciones: [] };
+      g.acciones.push(a);
+      porModulo.set(id, g);
+    }
+    return [...porModulo.values()];
+  }, [acciones]);
   const [revisando, setRevisando] = useState(false);
   // `conflicto`: otra persona cambió lo que se editaba → hay que RECARGAR. `reintentable`: el guardado chocó con otro en curso y no se guardó nada,
   // los cambios siguen marcados → hay que REINTENTAR. Son estados distintos con la acción correctiva opuesta, por eso no se mezclan.
@@ -216,7 +230,17 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
             </tr>
           </thead>
           <tbody>
-            {acciones.map((a) => (
+            {grupos.map((g) => (
+              <Fragment key={g.id}>
+                <tr className="border-b bg-superficie-suave" data-modulo-de-permisos={g.id}>
+                  <td colSpan={1 + 2 * roles.length} className="py-1">
+                    <button type="button" aria-expanded={editando || abiertos.has(g.id)} className="min-h-11 w-full text-left font-medium md:min-h-0" onClick={() => alternar(g.id)}>
+                      {editando || abiertos.has(g.id) ? "▾" : "▸"} {g.nombre} · {g.acciones.length}
+                    </button>
+                  </td>
+                </tr>
+                {(editando || abiertos.has(g.id)) &&
+                  g.acciones.map((a) => (
               <tr key={a.clave} className="border-b">
                 <td className="py-2 pr-4">
                   <div className="font-medium">{a.clave}</div>
@@ -267,6 +291,8 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
                   );
                 })}
               </tr>
+                  ))}
+              </Fragment>
             ))}
           </tbody>
         </table>
