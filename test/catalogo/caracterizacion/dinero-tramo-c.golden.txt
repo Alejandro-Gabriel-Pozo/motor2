@@ -403,7 +403,7 @@
   AUDITORIA actorId=admin campo=nombre descripcion=Cliente "Fulano": nombre empresaId=empresa entidad=Cliente entidadId=cliente1 sucursalId=null valorAnterior=null valorNuevo=Fulano
   AUDITORIA actorId=admin campo=descuentoPorcentaje descripcion=Cliente "Fulano": % de descuento empresaId=empresa entidad=Cliente entidadId=cliente1 sucursalId=null valorAnterior=null valorNuevo=10
 ### cliente: alta repetida
-  resultado: {"ok":false,"mensaje":"Ya existe un cliente llamado \"Fulano\"."}
+  resultado: {"ok":false,"mensaje":"Ya existe un cliente llamado «Fulano». Elegí otro nombre."}
   efectos: revalidarCartasPublicas=0 refrescar=0
 ### cliente: % inválido
   resultado: {"ok":false,"mensaje":"El % de descuento tiene que ser menor que 100 %."}

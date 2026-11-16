@@ -45,7 +45,7 @@ export async function actualizarClienteCasoDeUso(
   const pct = { valor: comando.datos.valor.descuentoPorcentaje };
 
   const dup = await actor.db.cliente.findFirst({ where: { id: { not: clienteId }, nombre: { equals: n, mode: "insensitive" } } });
-  if (dup) return fracaso("NOMBRE_REPETIDO", `Ya existe un cliente llamado "${dup.nombre}".`);
+  if (dup) return fracaso("NOMBRE_REPETIDO", textoDe("rechazo.NOMBRE_REPETIDO", { entidad: ENTIDADES.cliente, nombre: dup.nombre }));
 
   // Carrera: el índice único sobre lower(nombre) deja pasar un solo cambio de nombre a la vez; el que pierde se rechaza (la transacción se deshace entera, con su auditoría).
   try {
@@ -55,7 +55,7 @@ export async function actualizarClienteCasoDeUso(
       await registrarCambioAuditado(tx, cambioDeCliente(actor.usuarioId, clienteId, n, "descuentoPorcentaje", Number(cliente.descuentoPorcentaje), pct.valor));
     });
   } catch (e) {
-    if (esChoqueDeIndiceUnico(e)) return fracaso("NOMBRE_REPETIDO", `Ya existe un cliente llamado "${n}".`);
+    if (esChoqueDeIndiceUnico(e)) return fracaso("NOMBRE_REPETIDO", textoDe("rechazo.NOMBRE_REPETIDO", { entidad: ENTIDADES.cliente, nombre: n }));
     throw e;
   }
   return exito(`Cliente "${n}" actualizado.`, null);
