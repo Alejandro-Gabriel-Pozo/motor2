@@ -82,6 +82,7 @@ const IDS: Readonly<Record<string, (k: Kit) => unknown>> = {
   unidadCompraId: (k) => k.unidad2Id,
   presentacionId: (k) => k.presentacionId,
   proveedorId: (k) => k.proveedorId,
+  parteId: (k) => k.parteId,
   clienteId: (k) => k.clienteId,
   rolId: (k) => k.rolId,
   motivoId: (k) => k.motivoId,

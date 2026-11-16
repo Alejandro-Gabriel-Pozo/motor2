@@ -204,6 +204,9 @@ export async function limpiarBaseDeTest() {
   // InvitacionSucursal (E8) referencia a la invitación, la sucursal, el rol y el User (RESTRICT): antes que ellos.
   await prismaAdmin.invitacionSucursal.deleteMany();
   await prismaAdmin.invitacion.deleteMany();
+  // La ficha de parte (Parte P1) la referencia el proveedor y ella referencia a quien la creó (User, RESTRICT): se suelta el proveedor y se borra antes que el User.
+  await prismaAdmin.proveedor.updateMany({ where: { parteId: { not: null } }, data: { parteId: null } });
+  await prismaAdmin.parte.deleteMany();
   await prismaAdmin.user.deleteMany();
   await prismaAdmin.rol.deleteMany();
   await prismaAdmin.accion.deleteMany();
@@ -224,7 +227,6 @@ export async function limpiarBaseDeTest() {
   // Los puntos de venta del proveedor (M3e) lo referencian (RESTRICT): antes que él.
   await prismaAdmin.puntoDeVentaDeProveedor.deleteMany();
   await prismaAdmin.proveedor.deleteMany();
-  await prismaAdmin.parte.deleteMany();
 
   // Plataforma (ADR-007, A2): `empresaId` tiene default `app_empresa_actual()` (la ÚNICA empresa ACTIVE), así que la base de test
   // tiene que terminar con exactamente la empresa por defecto de la migración, en pie y ACTIVE, sea lo que sea que un test haya tocado.
