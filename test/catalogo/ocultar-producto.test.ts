@@ -1,7 +1,10 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   decidirSobreProducto,
-  esAdministracionConAlcanceTotal,
+  esGerenteOAdministradorConAlcanceTotal,
+  QUIENES,
   marcasDeOcultar,
   MOTIVOS_DE_RECHAZO,
   OPERACIONES_DE_ADMINISTRACION,
@@ -27,7 +30,7 @@ const D2: MarcasDeOcultar[] = [
 ];
 const D3: Saldo[] = ["cero", "positivo", "negativo"];
 const BOOL = [false, true];
-const D7: Quien[] = ["operador_de_este_local", "operador_de_otro_local", "admin_alcance_total", "sin_permiso"];
+const D7: readonly Quien[] = ["operador_de_este_local", "operador_de_otro_local", "gerencia_alcance_total", "sin_permiso"];
 const ALCANCES: AlcanceDeOcultar[] = ["local", "empresa"];
 
 function* todasLasHechos(): Generator<HechosDelProducto> {
@@ -136,20 +139,45 @@ describe("ocultoPor y marcasDeOcultar (I-3, I-2)", () => {
   });
 });
 
-describe("esAdministracionConAlcanceTotal (O-10: solo administración puede ocultar en toda la empresa)", () => {
-  const admin = (sucursalId: string) => ({ sucursalId, esAdmin: true });
-  const operador = (sucursalId: string) => ({ sucursalId, esAdmin: false });
-  it("administrador en TODAS las sucursales activas: sí", () => {
-    expect(esAdministracionConAlcanceTotal([admin("s1"), admin("s2")], ["s1", "s2"])).toBe(true);
+describe("esGerenteOAdministradorConAlcanceTotal (O-13: gerente y administrador pueden ocultar en toda la empresa; el operador no)", () => {
+  const miembro = (sucursalId: string, esAdmin: boolean) => ({ sucursalId, esAdmin });
+  const activas = ["s1", "s2"];
+  /** El oráculo de la tabla rol × alcance, escrito aparte de la función: quién entra (true) y quién no. */
+  const TABLA: readonly { rol: "operador" | "administrador" | "gerente"; alcance: "todos los locales" | "algunos locales" | "ninguno"; entra: boolean }[] = [
+    { rol: "operador", alcance: "todos los locales", entra: false },
+    { rol: "operador", alcance: "algunos locales", entra: false },
+    { rol: "operador", alcance: "ninguno", entra: false },
+    { rol: "administrador", alcance: "todos los locales", entra: true },
+    { rol: "administrador", alcance: "algunos locales", entra: false },
+    { rol: "administrador", alcance: "ninguno", entra: false },
+    { rol: "gerente", alcance: "todos los locales", entra: true },
+    { rol: "gerente", alcance: "algunos locales", entra: false },
+    { rol: "gerente", alcance: "ninguno", entra: false },
+  ];
+  const armar = (rol: "operador" | "administrador" | "gerente", alcance: "todos los locales" | "algunos locales" | "ninguno") => {
+    const donde = alcance === "todos los locales" ? activas : alcance === "algunos locales" ? ["s1"] : [];
+    // El gerente tiene en cada sucursal el rol que sea (acá, operador): lo que lo habilita es `rolEmpresa`, no su rol de sucursal.
+    return esGerenteOAdministradorConAlcanceTotal(donde.map((id) => miembro(id, rol === "administrador")), activas, rol === "gerente");
+  };
+  it("recorre TODAS las combinaciones de rol × alcance contra la tabla escrita aparte", () => {
+    for (const fila of TABLA) expect(armar(fila.rol, fila.alcance), `${fila.rol} con ${fila.alcance}`).toBe(fila.entra);
   });
-  it("administrador en una y operador en otra: no", () => {
-    expect(esAdministracionConAlcanceTotal([admin("s1"), operador("s2")], ["s1", "s2"])).toBe(false);
+  it("un administrador en una sucursal y operador en otra no entra; un gerente con membresía en todas entra aunque su rol de sucursal sea operador", () => {
+    expect(esGerenteOAdministradorConAlcanceTotal([miembro("s1", true), miembro("s2", false)], activas, false)).toBe(false);
+    expect(esGerenteOAdministradorConAlcanceTotal([miembro("s1", false), miembro("s2", false)], activas, true)).toBe(true);
   });
-  it("administrador solo en algunas de las sucursales de la empresa (le falta una): no", () => {
-    expect(esAdministracionConAlcanceTotal([admin("s1")], ["s1", "s2"])).toBe(false);
+  it("sin sucursales activas o sin membresías: no (falla cerrado), sea quien sea", () => {
+    expect(esGerenteOAdministradorConAlcanceTotal([miembro("s1", true)], [], false)).toBe(false);
+    expect(esGerenteOAdministradorConAlcanceTotal([miembro("s1", true)], [], true)).toBe(false);
+    expect(esGerenteOAdministradorConAlcanceTotal([], ["s1"], true)).toBe(false);
   });
-  it("sin sucursales activas o sin membresías: no (falla cerrado)", () => {
-    expect(esAdministracionConAlcanceTotal([admin("s1")], [])).toBe(false);
-    expect(esAdministracionConAlcanceTotal([], ["s1"])).toBe(false);
+  it("GUARDIÁN: si aparece un nivel de persona nuevo en `NivelDePersona` (jerarquía de permisos) sin declarar acá si puede ocultar en la empresa, esto falla", () => {
+    const fuente = readFileSync(join(__dirname, "../../src/core/permisos/jerarquia.ts"), "utf8");
+    const niveles = (fuente.match(/export type NivelDePersona = ([^;]+);/)?.[1] ?? "").split("|").map((n) => n.trim().replace(/"/g, "")).sort();
+    // Cada nivel de persona está declarado (con qué entra) en la tabla de arriba: operador↔operario, administrador, gerente.
+    const declarados = ["administrador", "gerente", "operario"];
+    expect(niveles, "un nivel de persona nuevo: declaralo en TABLA (¿puede ocultar en toda la empresa?) y acá").toEqual(declarados);
+    const quienes = [...QUIENES].sort();
+    expect(quienes, "un valor nuevo de «quién» en el núcleo: declaralo en el oráculo (test/catalogo/ocultar-producto-oraculo.ts) y en D7").toEqual([...D7].sort());
   });
 });

@@ -18,7 +18,7 @@ export interface ComandoOcultarProducto {
   oculto: boolean;
   /** Id (uuid) de la marca si hubiera que crearla: lo genera quien llama, así un reintento del mismo pedido no puede crear dos. */
   marcaId: string;
-  /** Lo calcula la acción con el gate, no el caso de uso: ¿quien pide es administración con alcance sobre TODAS las sucursales (O-10)? Solo se mira con `alcance: "EMPRESA"`. */
+  /** Lo calcula la acción con el gate, no el caso de uso: ¿quien pide es gerente o administrador con alcance sobre TODAS las sucursales (O-10 y O-13; `esGerenteOAdministradorConAlcanceTotal`)? Solo se mira con `alcance: "EMPRESA"`. */
   puedeEnLaEmpresa: boolean;
 }
 
@@ -63,7 +63,7 @@ function codigoDe(motivo: MotivoDeRechazo): CodigoDeOcultar {
  * (no escribe ni audita) → MOSTRAR: un local no muestra lo que la empresa oculta → la marca se ESCRIBE → OCULTAR: recién entonces se mira la existencia del alcance (como Pedernal: si stock suma a la vez,
  * ve la marca); con existencia distinta de cero (también negativa) el rechazo DESHACE la transacción, la marca y la auditoría no quedan → auditoría. «Oculto» y «desactivado» son independientes: no toca `DisponibilidadProducto`.
  *
- * Permisos (O-10): en el local, quien tiene `producto_disponibilidad` EDITAR en la sucursal activa (lo verifica la acción); en toda la empresa, solo administración con alcance total (`puedeEnLaEmpresa`, calculado por la
+ * Permisos (O-10): en el local, quien tiene `producto_disponibilidad` EDITAR en la sucursal activa (lo verifica la acción); en toda la empresa, solo gerente y administrador con alcance total (`puedeEnLaEmpresa`, calculado por la
  * acción, que además ensancha la transacción a toda la empresa: sin eso la existencia de otras sucursales no se vería). Sin ello, `SIN_PERMISO` y no se toca nada. Escribe en `actor.sucursalId` (nunca una que llegue por parámetro).
  *
  * Todavía NO bloquea nada en ventas ni en stock (etapa c) ni tiene pantalla (etapa d): solo guarda la marca.
@@ -81,7 +81,7 @@ export async function ocultarProductoCasoDeUso(
   if (!comando.productoId || !ES_UUID.test(comando.marcaId)) return fracaso("DATOS_INVALIDOS", "DATOS_INVALIDOS");
   const operacion = comando.oculto ? "ocultar" : "mostrar";
   const alcance = comando.alcance === "EMPRESA" ? "empresa" : "local";
-  const quien: Quien = comando.alcance === "EMPRESA" ? (comando.puedeEnLaEmpresa ? "admin_alcance_total" : "sin_permiso") : "operador_de_este_local";
+  const quien: Quien = comando.alcance === "EMPRESA" ? (comando.puedeEnLaEmpresa ? "gerencia_alcance_total" : "sin_permiso") : "operador_de_este_local";
   const sucursalDeLaMarca = comando.alcance === "EMPRESA" ? null : actor.sucursalId;
   const sinHechos = { desactivar: "activo", ocultar: { empresa: false, local: false }, saldo: "cero", conteoSinResolver: false, enRecetaVigente: false } as const;
   // El permiso se decide ANTES de tocar la base.

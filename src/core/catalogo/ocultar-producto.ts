@@ -31,7 +31,8 @@ export interface MarcasDeOcultar {
 export type Saldo = "cero" | "positivo" | "negativo";
 
 /** D7. Quién pide una operación de administración. */
-export type Quien = "operador_de_este_local" | "operador_de_otro_local" | "admin_alcance_total" | "sin_permiso";
+export const QUIENES = ["operador_de_este_local", "operador_de_otro_local", "gerencia_alcance_total", "sin_permiso"] as const;
+export type Quien = (typeof QUIENES)[number];
 
 /** Alcance de un ocultar / volver a mostrar. */
 export type AlcanceDeOcultar = "local" | "empresa";
@@ -114,10 +115,10 @@ export function marcasDeOcultar(filas: readonly { readonly sucursalId: string | 
 
 const estaOculto = (m: MarcasDeOcultar): boolean => m.empresa || m.local;
 
-/** Permiso y alcance de ocultar / mostrar (CU-1 a CU-3; O-10: la empresa, solo administración; el operador, solo en su local). */
+/** Permiso y alcance de ocultar / mostrar (CU-1 a CU-3; O-10 y O-13: la empresa, solo gerente y administrador con alcance total; el operador, solo en su local). */
 function permisoDeOcultar(quien: Quien, alcance: AlcanceDeOcultar): Decision {
   if (quien === "sin_permiso") return rechazo("SIN_PERMISO");
-  if (alcance === "empresa") return quien === "admin_alcance_total" ? PERMITIDO : rechazo("SIN_PERMISO");
+  if (alcance === "empresa") return quien === "gerencia_alcance_total" ? PERMITIDO : rechazo("SIN_PERMISO");
   return quien === "operador_de_otro_local" ? rechazo("FUERA_DE_ALCANCE") : PERMITIDO;
 }
 
@@ -192,12 +193,19 @@ export function decidirSobreProducto(entrada: EntradaDeDecision): Decision {
 }
 
 /**
- * ¿Quien pide es «administración con alcance total» (O-10: «Solo administración»), o sea, puede ocultar un producto en TODA la empresa? UNA sola definición, fácil de cambiar: hoy es
- * administrador (por la clave de su rol) en TODAS las sucursales activas de la empresa; si falta una sola, o no hay ninguna, no. La acción (etapa d) la calcula con las membresías de la sesión y
- * las sucursales activas de la empresa y le pasa el resultado al caso de uso (`puedeEnLaEmpresa`). DEFINICIÓN PENDIENTE DE CONFIRMAR POR EL DUEÑO (la consulta el orquestador): cambia permisos.
+ * ¿Quien pide puede ocultar un producto en TODA la empresa? (O-13, decisión del dueño del 2026-11-16, que reemplaza a O-10: «gerente y administrador, en lugar de solo administrador»; como Pedernal.) UNA sola definición, fácil
+ * de cambiar. Con ella: el GERENTE de la empresa (`UsuarioEmpresa.rolEmpresa`, `esGerenteDeEmpresa`) o un ADMINISTRADOR (por la clave de su rol) en cada sucursal, y SIEMPRE con membresía en TODAS las sucursales activas de la
+ * empresa («con todos los locales», O-10, que sigue vigente para el alcance); si falta una sola, o no hay ninguna, no. El operador nunca. La acción (etapa d) la calcula con las membresías de la sesión, `rolEmpresa` y las sucursales
+ * activas de la empresa, y le pasa el resultado al caso de uso (`puedeEnLaEmpresa`): la autorización sigue siendo del servidor. Que el gerente entre con la misma condición de alcance que el administrador es una PROPUESTA del
+ * orquestador (el dueño la corrige).
  */
-export function esAdministracionConAlcanceTotal(membresias: readonly { readonly sucursalId: string; readonly esAdmin: boolean }[], sucursalesActivasDeLaEmpresa: readonly string[]): boolean {
+export function esGerenteOAdministradorConAlcanceTotal(
+  membresias: readonly { readonly sucursalId: string; readonly esAdmin: boolean }[],
+  sucursalesActivasDeLaEmpresa: readonly string[],
+  esGerenteDeLaEmpresa: boolean,
+): boolean {
   if (sucursalesActivasDeLaEmpresa.length === 0) return false;
+  const conMembresia = new Set(membresias.map((m) => m.sucursalId));
   const admin = new Set(membresias.filter((m) => m.esAdmin).map((m) => m.sucursalId));
-  return sucursalesActivasDeLaEmpresa.every((id) => admin.has(id));
+  return sucursalesActivasDeLaEmpresa.every((id) => conMembresia.has(id) && (esGerenteDeLaEmpresa || admin.has(id)));
 }

@@ -34,7 +34,8 @@ Fotos: Motor2 `origin/main` `e327b8f` (2026-11-15). Pedernal: código `ZuluHub-E
 | O-7 | 2026-11-13 | «Necesitamos ser iguales en todo. Por la salvedad de que nosotros usamos Prisma… el resultado tiene que ser el mismo y sobre todo de las mismas formas, salvo porque nosotros usamos Prisma.» | `AGENTS.md`, «Paridad con Pedernal» | Mismo resultado y misma forma; toda diferencia con motivo | **CONFIRMADA** |
 | O-8 | 2026-11-15 | «Y mientras las autorizaciones tengan down.sql, vamos…» | mismo archivo de decisiones | Migraciones **aditivas y reversibles** de etapas ratificadas: se escriben y llevan a `main` sin pedir una por una; **aplicar en bases reales sigue congelado** | **CONFIRMADA** (lectura del orquestador, a corregir por el dueño) |
 | O-9 | 2026-11-11 | «yo creo una promoción y nace sin ninguna sección tildada… Esto me asegura de que toda decisión sea adrede. Lo mismo con el código» | `AGENTS.md`, «Todo nace cerrado» | Denegar por defecto: ante duda o error el sistema cierra | **CONFIRMADA** |
-| O-10 | 2026-11-15 | «Solo administración (Recomendada)» | chat del dueño con el orquestador (relatado por el orquestador; respuesta a P-1) | Ocultar en toda la empresa: solo administración (`admin`); el operador solo en sus sucursales | **CONFIRMADA** |
+| O-10 | 2026-11-15 | «Solo administración (Recomendada)» | chat del dueño con el orquestador (relatado por el orquestador; respuesta a P-1) | Ocultar en toda la empresa: solo administración (`admin`); el operador solo en sus sucursales | **CONFIRMADA** (en quién puede, **reemplazada por O-13**, 2026-11-16; vale todavía lo del alcance «con todos los locales») |
+| O-13 | 2026-11-16 | «Si querés alinear Ocultar en toda la empresa con Pedernal (gerente y administrador, en lugar de solo administrador)» → «Si» | chat del dueño con el orquestador (relatado por el orquestador) | **REEMPLAZA a O-10 en quién puede**: ocultar y mostrar en TODA la empresa lo pueden hacer **gerente y administrador** (como Pedernal); ocultar en un local lo siguen pudiendo los tres roles; el **operador** nunca para la empresa. **PROPUESTA** (el dueño la corrige): el gerente entra con la misma condición de alcance que el administrador («con todos los locales», O-10 en lo del alcance); nada más se afloja | **CONFIRMADA** (quién); PROPUESTA (alcance del gerente) |
 | O-11 | 2026-11-15 | «Permitir, igual que Pedernal (Recomendada)» | ídem (respuesta a P-2; es la opción B de este documento) | Anular una venta con producto **Desactivado** se sigue permitiendo; **solo** se rechaza cuando el producto está **Oculto**. El hueco de desactivado **no se cierra** | **CONFIRMADA** |
 | O-12 | 2026-11-15 | «Sigue con Desactivar por ahora (Recomendada)» | ídem (respuesta a P-3) | La pantalla de mantenimiento de la carta («Sin stock hoy») sigue usando Desactivar | **CONFIRMADA** («por ahora»: pasar a Ocultar sería otro pedido) |
 
@@ -93,7 +94,7 @@ Fotos: Motor2 `origin/main` `e327b8f` (2026-11-15). Pedernal: código `ZuluHub-E
 | Actor | Qué hace | Contexto | Estado |
 |---|---|---|---|
 | Operador | Oculta y vuelve a mostrar **en las sucursales donde trabaja** | Sucursal activa | PROPUESTA de mapa: reutiliza `producto_disponibilidad` (Editar). Pedernal: `vidrieras.marcar_disponibilidad` para los tres roles. **CONFIRMADA en dirección** (O-2) |
-| Administrador (`admin`) | Oculta y muestra en **cualquier sucursal** y **en toda la empresa** | Empresa | **CONFIRMADA en dirección** (O-2); **CONFIRMADA** (O-10: solo `admin`) |
+| Gerente y administrador (`admin`) | Ocultan y muestran en **cualquier sucursal** y **en toda la empresa** (con acceso a todos los locales) | Empresa | **CONFIRMADA en dirección** (O-2); **CONFIRMADA** (O-13, 2026-11-16, que reemplaza a O-10: gerente y administrador) |
 | Mozo / cajero | Solo **sufre** la marca: no ve el producto en el selector; una línea nueva se rechaza con un mensaje claro | Sucursal | CONFIRMADA (O-3) |
 | Sistema (movimientos de stock, conteos, anulación, carta pública) | Lee la marca y rechaza o filtra | Servidor | CONFIRMADA (O-3, O-5) |
 | Cliente final (carta pública) | No ve el producto oculto; sin aviso de «oculto» | Público | CONFIRMADA (O-4) |
@@ -157,7 +158,7 @@ Fotos: Motor2 `origin/main` `e327b8f` (2026-11-15). Pedernal: código `ZuluHub-E
 | I-8 | **Fijar un estado, no alternar:** dos veces seguidas da el mismo resultado (`yaEstaba`), sin escribir ni auditar | CONFIRMADA (Pedernal, regla de idempotencia del usuario) |
 | I-9 | **Toda escritura deja rastro:** quién (persona), cuándo (reloj inyectado), qué cambió (antes/después, alcance); no se borra la fila: «mostrar» pone `oculto = no` | CONFIRMADA (O-9, trazabilidad) |
 | I-10 | **Aislamiento:** un producto o sucursal de otra empresa nunca se ve ni se escribe; una sucursal fuera del alcance del operador tampoco | CONFIRMADA (regla permanente) |
-| I-11 | **Quién oculta para toda la empresa:** solo `admin` con alcance total; el operador solo en sus sucursales | **CONFIRMADA** (O-2, O-10) |
+| I-11 | **Quién oculta para toda la empresa:** gerente y administrador (`admin`) con alcance total («con todos los locales»); el operador solo en sus sucursales | **CONFIRMADA** (O-2, O-13, que reemplaza a O-10; alcance del gerente: PROPUESTA) |
 | I-12 | **Una sola definición de «oculto en esta sucursal»** en el código (un lector, un filtro Prisma, un guardián que prohíba escribirlo a mano), igual que `whereDisponibleEn` | PROPUESTA (patrón existente del proyecto) |
 | I-13 | **Falla cerrado:** si la lectura de la marca falla, no se agrega la línea ni se suma existencia (no se asume «visible») | PROPUESTA (O-9) |
 | I-14 | **Desactivar no cambia** (reglas, mensajes de bloqueo, permisos, auditoría, D4, ancla, base) salvo el **nombre visible** | CONFIRMADA (O-1) |
@@ -234,7 +235,7 @@ Lo que el esquema Prisma **no** puede expresar y va a mano en la migración (pre
 
 ## Nivel 8 — Acceso e interfaces
 
-**8.1 Permisos (mapa PROPUESTA; la regla «solo administración para la empresa» está CONFIRMADA, O-10).** Pedernal usa dos acciones; Motor2 tiene su propio catálogo. **Primero la opción más barata:** reutilizar `producto_disponibilidad` (Editar) para ocultar y mostrar **en una sucursal** (operador y admin, como hoy para Desactivar); y para **toda la empresa** exigir, además de esa clave, el **rol de gerencia con alcance total** (hoy `admin`). Una clave nueva (por ejemplo para «ocultar en toda la empresa») sería una migración de datos (como `20261104111000_permiso_declarar_pago_compra`) y se evita (O-10: solo `admin`, sin permiso nuevo).
+**8.1 Permisos (mapa PROPUESTA; la regla «solo gerente y administrador para la empresa» está CONFIRMADA, O-13 (que reemplaza a O-10: «solo administración»)).** Pedernal usa dos acciones; Motor2 tiene su propio catálogo. **Primero la opción más barata:** reutilizar `producto_disponibilidad` (Editar) para ocultar y mostrar **en una sucursal** (operador y admin, como hoy para Desactivar); y para **toda la empresa** exigir, además de esa clave, el **rol de gerencia con alcance total** (hoy `admin`). Una clave nueva (por ejemplo para «ocultar en toda la empresa») sería una migración de datos (como `20261104111000_permiso_declarar_pago_compra`) y se evita (O-10: solo `admin`, sin permiso nuevo).
 
 **8.2 Dónde está el botón (PROPUESTA, la opción más barata).** En la **ficha del producto**, en la misma tabla por sucursal donde hoy están «Disponible: Sí/No» y el botón Activar/Desactivar (`src/app/(app)/catalogo/productos/[id]/page.tsx`): la columna «Disponible» pasa a **«Activo»** y se suma **«Oculto»** con su botón «Ocultar / Volver a mostrar»; una fila o un bloque «Toda la empresa» para el alcance de empresa. Una sucursal que ve «oculto en toda la empresa» no tiene botón para mostrar. **Pantalla propia o integración en la carta: no** (no se pidió). Maqueta: por regla del 2026-11-05 se arma con la pantalla real sobre una base descartable cuando llegue el código.
 
@@ -295,7 +296,7 @@ E1 y E2 se pueden hacer **antes** de tener la tabla y no migran. La única migra
 | D4. Conteo registrado sin resolver (solo si se verifica §4.6) | no / sí |
 | D5. Receta vigente de un plato disponible que lo usa | no / sí |
 | D6. Operación | agregar línea nueva en salón · agregar línea nueva en cuenta de mostrador · venta directa de mostrador · cobrar línea ya cargada · anular venta · entrada que suma · salida que resta · corregir un negativo hasta cero · contar · carta pública · selector del POS · ocultar · mostrar · desactivar · activar |
-| D7. Quién | operador de ese local / operador de otro local / admin con alcance total / sin permiso |
+| D7. Quién | operador de ese local / operador de otro local / gerencia (gerente o administrador) con alcance total / sin permiso |
 
 Recorrido: 2 × 4 × 3 × 2 × 2 × 15 = **1.440 combinaciones** de D1 a D6 (más D7 por operación): **exhaustivo** sobre la función pura (milisegundos); en la base real, una **muestra por pares** y los casos de las pruebas de integración (no se corre el producto cartesiano contra la base).
 
@@ -315,7 +316,7 @@ Recorrido: 2 × 4 × 3 × 2 × 2 × 15 = **1.440 combinaciones** de D1 a D6 (má
 | R-10 | Contar | D2 ≠ ninguno | Rechazo; no aparece en la lista |
 | R-11 | Ocultar | D3 ≠ cero en el alcance | Rechazo por existencia; no queda fila |
 | R-12 | Ocultar | D3 = cero | Se oculta (con permiso) |
-| R-13 | Ocultar en la empresa | D7 ≠ admin con alcance total | Rechazo por permiso |
+| R-13 | Ocultar en la empresa | D7 ≠ gerencia (gerente o administrador) con alcance total | Rechazo por permiso |
 | R-14 | Ocultar en un local | D7 = operador de otro local | Rechazo por alcance |
 | R-15 | Mostrar | cualquiera | Permitido; si la empresa lo oculta, un local no puede mostrar |
 | R-16 | Desactivar | D3 ≠ cero **o** D5 = sí | Bloqueo (**como hoy**, no cambia) |
@@ -376,7 +377,7 @@ Recorrido: 2 × 4 × 3 × 2 × 2 × 15 = **1.440 combinaciones** de D1 a D6 (má
 
 Las tres preguntas que este documento dejó abiertas quedaron **respondidas el 2026-11-15** (chat del dueño con el orquestador; opciones elegidas; relatado por el orquestador):
 
-- **P-1 (permisos de empresa):** «Solo administración (Recomendada)». **CONFIRMADA** (O-10): solo `admin` oculta en toda la empresa; el operador, solo en sus sucursales; sin permiso nuevo.
+- **P-1 (permisos de empresa):** «Solo administración (Recomendada)». **CONFIRMADA** (O-10) el 2026-11-15, y **REEMPLAZADA el 2026-11-16 por O-13** («Si querés alinear Ocultar en toda la empresa con Pedernal (gerente y administrador, en lugar de solo administrador)» → «Si»): gerente y administrador ocultan en toda la empresa; el operador, solo en sus sucursales; sin permiso nuevo. La función única es `esGerenteOAdministradorConAlcanceTotal` (`src/core/catalogo/ocultar-producto.ts`).
 - **P-2 (anular con producto Desactivado):** «Permitir, igual que Pedernal (Recomendada)». **CONFIRMADA** (O-11). Es la opción B del borrador de este documento: solo se bloquea anular cuando el producto está **Oculto**; el hueco de desactivado **no se cierra** (la etapa E1b queda sin efecto).
 - **P-3 (pantalla «Sin stock hoy»):** «Sigue con Desactivar por ahora (Recomendada)». **CONFIRMADA** (O-12).
 
