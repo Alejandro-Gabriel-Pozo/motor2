@@ -426,7 +426,7 @@ CREATE TRIGGER "Cobro_validar" BEFORE INSERT ON "Cobro" FOR EACH ROW EXECUTE FUN
 CREATE FUNCTION "Cobranza_cuadra"() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE v_cobranza uuid; v_total numeric; v_suma numeric;
 BEGIN
-  v_cobranza := CASE TG_TABLE_NAME WHEN 'Cobranza' THEN NEW."id" ELSE NEW."cobranzaId" END;
+  IF TG_TABLE_NAME = 'Cobranza' THEN v_cobranza := NEW."id"; ELSE v_cobranza := NEW."cobranzaId"; END IF;
   SELECT c."total" INTO v_total FROM "Cobranza" c WHERE c."empresaId" = NEW."empresaId" AND c."id" = v_cobranza;
   SELECT COALESCE(sum(r."importe"), 0) INTO v_suma FROM "Cobro" r WHERE r."empresaId" = NEW."empresaId" AND r."cobranzaId" = v_cobranza;
   IF v_suma <> v_total THEN RAISE EXCEPTION 'cobranza_no_cuadra' USING ERRCODE = '23514'; END IF;
