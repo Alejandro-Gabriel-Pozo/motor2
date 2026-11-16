@@ -8,6 +8,8 @@ import { CAMPO_DE_AUDITORIA_DEL_MAIL_DE_INVITACION, MENSAJE_DE_CUPO_DE_CORREO_PO
 import { esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
 import { cupoDeCorreoDeEmpresa } from "@/server/lecturas/auth/cupo-de-correo";
 import { anotarInvitacionEnviada } from "@/server/persistencia/invitaciones/anotar-invitacion-enviada";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 import {
   crearInvitacion,
   refirmarSucursalesDeInvitacion,
@@ -137,7 +139,7 @@ export async function asegurarInvitacionDeVinculacion(tx: Tx, entrada: { empresa
 export async function rotarInvitacionPendiente(tx: Tx, entrada: { empresaId: string; invitacionId: string; actorId: string } & Reloj): Promise<ResultadoDeInvitacion> {
   const generar = entrada.generarToken ?? (() => generarTokenOpaco(entrada.azar));
   const inv = await tx.invitacion.findFirst({ where: { id: entrada.invitacionId, empresaId: entrada.empresaId, estado: "PENDIENTE", rolEmpresa: { in: ["usuario", "vinculacion"] } } });
-  if (!inv) return { ok: false, mensaje: "No se encontró esa invitación pendiente." };
+  if (!inv) return { ok: false, mensaje: textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.invitacion_pendiente }) };
   const token = generar();
   await renovarTokenDeInvitacion(tx, { invitacionId: inv.id, hashToken: hashDeToken(token), venceEn: vencimientoDeInvitacion(entrada.ahora), invitadoPorId: entrada.actorId });
   await refirmarSucursalesDeInvitacion(tx, { invitacionId: inv.id, invitadoPorId: entrada.actorId });

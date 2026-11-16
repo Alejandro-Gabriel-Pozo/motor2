@@ -4,6 +4,8 @@ import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { conGobierno } from "../../con-gobierno";
 import { invitacionGestionable, type ActorDeInvitacion } from "./invitacion-gestionable";
 import { revocarInvitacionPendiente } from "./invitaciones-de-usuario-en-tx";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 
 type ResultadoRevocarInvitacion = ResultadoCaso<null, "INVITACION_NO_GESTIONABLE" | "INVITACION_NO_ENCONTRADA" | "INVARIANTE_DE_GOBIERNO">;
 
@@ -37,7 +39,7 @@ export async function revocarInvitacionCasoDeUso(
       const g = await invitacionGestionable(actor, tx, invitacionId);
       if (!g.ok) return fracaso("INVITACION_NO_GESTIONABLE", g.mensaje);
       const revocada = await revocarInvitacionPendiente(tx, { empresaId: actor.empresaId, invitacionId, actorId: actor.usuarioId, ahora: actor.ahora });
-      return revocada ? exito(`Invitación a "${g.invitacion.email}" revocada.`, null) : fracaso("INVITACION_NO_ENCONTRADA", "No se encontró esa invitación pendiente.");
+      return revocada ? exito(`Invitación a "${g.invitacion.email}" revocada.`, null) : fracaso("INVITACION_NO_ENCONTRADA", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.invitacion_pendiente }));
     },
     (mensaje) => fracaso("INVARIANTE_DE_GOBIERNO", mensaje),
   );
