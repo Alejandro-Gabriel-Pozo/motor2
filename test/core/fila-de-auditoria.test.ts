@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { describe, expect, it } from "vitest";
-import { filaDeAuditoria, type CambioAuditable } from "../../src/core/permisos/auditoria";
+import { filaDeAuditoria, TEXTO_DE_VALOR_NO_SERIALIZABLE, type CambioAuditable } from "../../src/core/permisos/auditoria";
 
 /**
  * `filaDeAuditoria` (Hito 5, pieza 5.4, B4 de `docs/plan-hito-5-pureza.md`): lo PURO del escritor de la auditoría —los valores a texto, el «no cambió» y el `null` del `sucursalId`—,
@@ -94,5 +94,79 @@ describe("filaDeAuditoria", () => {
       actorId: "otro-usuario",
       sucursalId: "suc-1",
     });
+  });
+});
+
+/**
+ * Objetos y arreglos (defecto de trazabilidad): antes `String({...})` dejaba «[object Object]» y la fila era ilegible. Ahora un objeto plano o un arreglo se guarda como JSON compacto con las
+ * claves ordenadas (mismo contenido, mismo texto); lo demás —texto, número, booleano, `Date`, `Decimal`, `null`— sigue EXACTAMENTE como antes (lo fija el resto de este archivo).
+ * Un valor circular no corta el cambio que se audita: queda un texto fijo, sin contenido (falla cerrada, sin volcar nada).
+ */
+describe("filaDeAuditoria: objetos y arreglos como JSON legible", () => {
+  const nuevo = (valorNuevo: unknown) => fila({ valorAnterior: "previo", valorNuevo })!.valorNuevo;
+
+  it("un objeto plano: JSON compacto, sin «[object Object]»", () => {
+    expect(nuevo({ fechaPago: "2026-10-01", medio: "EFECTIVO" })).toBe('{"fechaPago":"2026-10-01","medio":"EFECTIVO"}');
+  });
+
+  it("un arreglo de objetos (la carga repartida de una factura)", () => {
+    expect(nuevo([{ sucursal: "Central", importe: 320, porcentajeDeclaradoBp: 10000, estado: "RECIBIDA" }])).toBe('[{"estado":"RECIBIDA","importe":320,"porcentajeDeclaradoBp":10000,"sucursal":"Central"}]');
+  });
+
+  it("el orden de las claves no cambia el texto (en todos los niveles); el orden de un arreglo sí se conserva", () => {
+    expect(nuevo({ b: 1, a: { d: 1, c: 2 } })).toBe(nuevo({ a: { c: 2, d: 1 }, b: 1 }));
+    expect(nuevo({ b: 1, a: { d: 1, c: 2 } })).toBe('{"a":{"c":2,"d":1},"b":1}');
+    expect(nuevo([2, 1])).toBe("[2,1]");
+  });
+
+  it("anidado: objetos dentro de arreglos y arreglos dentro de objetos", () => {
+    expect(nuevo({ partes: [{ z: 1, y: [3, { b: 1, a: 2 }] }] })).toBe('{"partes":[{"y":[3,{"a":2,"b":1}],"z":1}]}');
+  });
+
+  it("una `Date` y un `Decimal` dentro de un objeto van como texto (ISO la fecha, sin ceros de más el decimal)", () => {
+    expect(nuevo({ cuando: new Date("2026-10-01T15:30:00.000Z"), monto: new Prisma.Decimal("1.50") })).toBe('{"cuando":"2026-10-01T15:30:00.000Z","monto":"1.5"}');
+  });
+
+  it("un `bigint` dentro de un objeto no rompe: va como texto", () => {
+    expect(nuevo({ n: BigInt(7) })).toBe('{"n":"7"}');
+  });
+
+  it("`undefined` dentro de un objeto se omite y dentro de un arreglo es `null` (JSON estándar); `null` se conserva", () => {
+    expect(nuevo({ a: undefined, b: null })).toBe('{"b":null}');
+    expect(nuevo([undefined, null])).toBe("[null,null]");
+  });
+
+  it("objeto y arreglo vacíos", () => {
+    expect(nuevo({})).toBe("{}");
+    expect(nuevo([])).toBe("[]");
+  });
+
+  it("el «no cambió» también vale para objetos: mismo contenido en otro orden no da fila; distinto contenido sí", () => {
+    expect(fila({ valorAnterior: { a: 1, b: 2 }, valorNuevo: { b: 2, a: 1 } })).toBeNull();
+    expect(fila({ valorAnterior: { a: 1 }, valorNuevo: { a: 2 } })).not.toBeNull();
+  });
+
+  it("un valor circular no explota ni vuelca contenido: queda el texto fijo", () => {
+    const circular: Record<string, unknown> = { nombre: "dato" };
+    circular.yo = circular;
+    expect(nuevo(circular)).toBe(TEXTO_DE_VALOR_NO_SERIALIZABLE);
+    const arreglo: unknown[] = [1];
+    arreglo.push(arreglo);
+    expect(nuevo(arreglo)).toBe(TEXTO_DE_VALOR_NO_SERIALIZABLE);
+  });
+
+  it("un `getter` que falla tampoco corta el cambio", () => {
+    expect(nuevo({ get roto(): string { throw new Error("no"); } })).toBe(TEXTO_DE_VALOR_NO_SERIALIZABLE);
+  });
+
+  it("los primitivos, `Date` y `Decimal` de primer nivel siguen EXACTAMENTE como antes (sin comillas ni JSON)", () => {
+    expect(nuevo("texto")).toBe("texto");
+    expect(nuevo(120)).toBe("120");
+    expect(nuevo(true)).toBe("true");
+    expect(nuevo(false)).toBe("false");
+    expect(nuevo(new Date("2026-10-01T15:30:00.000Z"))).toBe(String(new Date("2026-10-01T15:30:00.000Z")));
+    expect(nuevo(new Prisma.Decimal("1.50"))).toBe("1.5");
+    expect(nuevo(null)).toBeNull();
+    expect(nuevo(undefined)).toBeNull();
   });
 });

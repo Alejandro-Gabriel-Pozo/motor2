@@ -90,6 +90,7 @@ export type { EntradaPortalCarta } from "./portal";
 export { ESTA_BIEN_ASI_VISIBLE, MENSAJE_ESTA_BIEN_ASI_APAGADO } from "./esta-bien-asi";
 // Poda 2026-11-06: el interruptor de género de carta e ítem agrupado (ver `genero-e-item-agrupado.ts`).
 export { GENERO_E_ITEM_AGRUPADO_VISIBLE, MENSAJE_GENERO_E_ITEM_AGRUPADO_APAGADO } from "./genero-e-item-agrupado";
+export { ALTA_DE_SECCION_SOLO_NOMBRE } from "./alta-de-seccion-solo-nombre";
 // Fase 7, DEC-24: el grupo Carta del menú (tres entradas), sus filas de pestañas y las rutas que cuelgan de cada entrada.
 export {
   NAV_CARTA,

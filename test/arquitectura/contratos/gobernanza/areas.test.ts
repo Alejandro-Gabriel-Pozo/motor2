@@ -58,9 +58,9 @@ describe("áreas y contratos declarados (repo real)", () => {
     expect(r.areas.length).toBeGreaterThan(0);
   });
 
-  it("las 22 áreas del núcleo salen de .dependency-cruiser-dominios.cjs, más los archivos sueltos de la raíz de core", () => {
+  it("las 23 áreas del núcleo salen de .dependency-cruiser-dominios.cjs, más los archivos sueltos de la raíz de core", () => {
     const dominios = carpetasDeNucleo(RAIZ_DEL_REPO);
-    expect(dominios).toHaveLength(22);
+    expect(dominios).toHaveLength(23);
     const delNucleo = real().areas.filter((a) => a.tipo === "nucleo").map((a) => a.nombre);
     expect(delNucleo.filter((n) => n !== "core").sort()).toEqual(dominios.map((d) => `core/${d}`).sort());
     expect(delNucleo).toContain("core");

@@ -549,6 +549,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "«Ocultar» como Pedernal, E3c2 (docs/diseno-ocultar-como-pedernal-2026-11-15.md, O-5 y R-8; CAMBIA SOLO LA LÍNEA `lecturas` de los 5 pasos de anulación y conteo): anular una venta lee ahora `ocultamientoProducto.findMany` ×1 antes de escribir (para rechazar devolver existencia a un producto oculto). Verificado línea por línea: cada una de las 5 líneas gana ese único token y su contador sube en 1; ni un resultado, ni una fila, ni una escritura, ni un mensaje cambian.",
       },
+      {
+        blob: "0bd0ea83eec52d1b38a5873f0b9157226b18a8ed",
+        // El commit PADRE de este (3967f844) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "3967f844",
+        motivo:
+          "Auditoría legible (CAMBIA SOLO el texto guardado en `valorNuevo` de la auditoría `campo=reparto` de la carga de una factura de proveedor, en 115 líneas AUDITORIA): `registrarCambioAuditado` guardaba un arreglo de objetos con `String(valor)` («[object Object]», ilegible); ahora un objeto plano o un arreglo se guarda como JSON compacto con las claves ordenadas, p. ej. `[{\"estado\":\"RECIBIDA\",\"importe\":320,\"porcentajeDeclaradoBp\":10000,\"sucursal\":\"Central\"}]`. Verificado: quitando `valorNuevo=…` de esas líneas, idéntico al anterior; ninguna otra línea cambia.",
+      },
     ],
   },
   "test/reportes/caracterizacion/reportes-c0.golden.txt": {
@@ -1269,6 +1276,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "4b8db032",
         motivo:
           "Frente 6, Secciones como lista simple (cambio de texto de ADMINISTRACIÓN, no de la carta pública; dueño, 2026-11-16: «Lista simple como Pedernal (Recomendada)»; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). En «Carta › Parametrización › Secciones» (a 1280 y a 375 px): los nombres de las secciones pasan a ser enlaces `[enlace: …]` a la pantalla de cada sección (`/carta/parametrizacion/secciones/[id]`), la ayuda suma «Tocá una sección para ver sus datos y sus productos.» y salen de esta pantalla «Datos de cada sección» (el formulario de cada sección, con las mismas acciones) y «Productos de cada sección» (la ficha de cada producto, que ya vivía en `/catalogo/productos/[id]/en-la-carta`): pasan a la pantalla de cada sección y a la ficha del producto. 10 líneas agregadas, 504 quitadas, todas de esa pantalla (revisado con git diff); la carta pública, el catálogo de opciones y el resto quedan idénticos.",
+      },
+      {
+        blob: "1cd6dc26fb5fe32d834278dffb5360ea74b7accf",
+        // El commit PADRE de este (d7a3dcc0) es el último antes de la regeneración; el texto lo cambió el commit que agrega esta entrada (Frente 6, «Nueva sección» con solo el nombre).
+        commit: "d7a3dcc0",
+        motivo:
+          "Frente 6, «Nueva sección de carta» con solo el nombre (cambio de texto de ADMINISTRACIÓN, no de la carta pública; dueño, 2026-11-16: «Sí, ese orden (Recomendada)», paso 1 «nueva sección con solo el nombre»; interruptor `ALTA_DE_SECCION_SOLO_NOMBRE`; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). En «Carta › Parametrización › Secciones» (a 1280 y a 375 px) el alta deja de mostrar «Título (opcional, si no se usa el nombre)», «Descripción (opcional)», «Imagen (URL https, opcional)» y «Orden» (el orden viaja escondido con el valor sugerido; los otros datos se completan en la pantalla de la sección). 16 líneas quitadas, ninguna agregada, todas de ese formulario (revisado con git diff); la carta pública y el resto quedan idénticos.",
       },
     ],
   },

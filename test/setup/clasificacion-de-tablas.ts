@@ -18,6 +18,7 @@ import { join } from "node:path";
 export type ClaseDeTabla = "POR_EMPRESA" | "DE_EMPRESA_ESCRITA_POR_LA_PLATAFORMA" | "GLOBAL" | "EMPRESA" | "CONSOLA";
 
 const POR_EMPRESA = [
+  "ArqueoBillete", "ArqueoCaja", "Caja", "Cobranza", "Cobro", "CuentaDeCobro", "MedioDePago", "MovimientoCaja", "SesionCaja",
   "AgregadoDeCuenta", "CapacidadSucursal", "CategoriaProducto", "CentroDeCostos", "Cliente", "CombinacionDeProducto", "CombinacionEnLinea", "ConceptoDeGasto", "ConsumoDeOpcion", "ContenidoCartaProducto", "ConteoFisico", "Cuenta", "CuentaItem", "DescuentoProductoSucursal", "DestinoConsumo", "DisponibilidadProducto", "DistribucionCostoLinea", "DistribucionCostoVersion",
   "AnulacionDeFacturaProveedor", "AnulacionDePagoDeFacturaProveedor", "EjemplarTicket", "EntradaDeCupo", "EntradaDelDiaDeCupo", "FacturaProveedor", "FacturaProveedorPropuesta", "FacturaProveedorPropuestaRenglon", "FacturaProveedorRenglon", "FacturaProveedorSucursal", "FacturaProveedorTributo", "FrecuenciaConteoProducto", "GeneroCarta", "Grupo", "GrupoDeOpciones", "GrupoDePrecio", "ImputacionDeGasto", "Insumo", "InvitacionSucursal", "ItemAgrupadoCarta", "MargenObjetivo", "Mesa", "MotivoMerma", "MovimientoStock",
   "NotaCreditoProveedor", "NotaCreditoProveedorImputacion", "NotaCreditoProveedorLinea", "NotaCreditoProveedorTributo", "OcultamientoProducto", "OpcionApagadaEnSucursal", "OpcionDeEntradaDeCupo", "OpcionDeGrupo", "OpcionElegidaEnLinea", "OpcionItemAgrupadoCarta", "Operacion", "PagoConsignante", "PagoDeFacturaProveedor", "Parte", "PermisoRol", "PlanDeCostos", "PlanDeCostosSucursal", "PortalCartaEmpresa", "PrecioLocalDeCombinacion", "PrecioLocalDeOpcion", "PrecioLocalProducto", "Presentacion", "Producto", "ProductoAdmiteGrupo", "ProductoAdmiteOpcion", "PromoCarta", "PromoCartaCupo",
@@ -29,7 +30,7 @@ const POR_EMPRESA = [
 /** Con `empresaId`, pero escritas por la plataforma (ModuloEmpresa, Invitacion) o con una política de lectura propia del usuario (UsuarioEmpresa): sus políticas son las de `POLITICAS_ESPECIALES`. */
 const DE_EMPRESA_ESCRITA_POR_LA_PLATAFORMA = ["Invitacion", "ModuloEmpresa", "UsuarioEmpresa"] as const;
 
-const GLOBALES = ["Account", "Accion", "CotizacionDolar", "IndicePrecio", "Session", "User", "VerificationToken"] as const;
+const GLOBALES = ["Account", "Accion", "CotizacionDolar", "IndicePrecio", "Session", "User", "ValorDeLista", "VerificationToken"] as const;
 
 const CONSOLA = ["AdminPlataforma", "AuditoriaPlataforma", "CodigoDeIngresoPlataforma", "CodigoDeRecuperacionPlataforma", "SesionPlataforma"] as const;
 
@@ -126,6 +127,7 @@ export type DeclaracionDeAlcance =
 
 /** `sucursalId` NOT NULL con FK a `Sucursal`: la fila es de una sola sucursal. */
 const ALCANCE_PROPIA = [
+  "ArqueoBillete", "ArqueoCaja", "Caja", "Cobranza", "Cobro", "CuentaDeCobro", "MovimientoCaja", "SesionCaja",
   "ConteoFisico", "ContenidoCartaProducto", "DescuentoProductoSucursal", "DisponibilidadProducto", "EjemplarTicket", "EntradaDelDiaDeCupo", "FacturaProveedorSucursal", "FrecuenciaConteoProducto", "GeneroCarta", "ImputacionDeGasto", "ItemAgrupadoCarta", "Mesa",
   "NotaCreditoProveedorImputacion", "Operacion", "OpcionApagadaEnSucursal", "OpcionItemAgrupadoCarta", "PagoConsignante", "PlanDeCostosSucursal", "PrecioLocalDeCombinacion", "PrecioLocalDeOpcion", "PrecioLocalProducto", "PromoCartaSucursal", "RecetaSucursal", "RendimientoLocalIngrediente", "Seccion", "SeccionHabitualProducto",
   "StockMinimoProducto", "TemaCartaSucursal", "Venta",
@@ -169,6 +171,7 @@ const ALCANCE_GOBIERNO: Readonly<Record<string, string>> = {
 };
 
 const ALCANCE_DE_EMPRESA = [
+  "MedioDePago",
   "AnulacionDeFacturaProveedor", "AnulacionDePagoDeFacturaProveedor", "CategoriaProducto", "CentroDeCostos", "Cliente", "CombinacionDeProducto", "ConceptoDeGasto", "ConsumoDeOpcion", "DestinoConsumo", "EntradaDeCupo", "FacturaProveedor", "FacturaProveedorRenglon", "FacturaProveedorTributo", "Grupo", "GrupoDeOpciones", "GrupoDePrecio", "Insumo", "Invitacion", "MargenObjetivo", "ModuloEmpresa", "MotivoMerma", "NotaCreditoProveedor", "NotaCreditoProveedorLinea", "NotaCreditoProveedorTributo", "OpcionDeEntradaDeCupo", "OpcionDeGrupo", "PagoDeFacturaProveedor", "PermisoRol", "PlanDeCostos", "PortalCartaEmpresa", "Presentacion", "Producto", "ProductoAdmiteGrupo", "ProductoAdmiteOpcion",
   "PromoCarta", "PromoCartaCupo", "Parte", "Proveedor", "ProveedorPorProducto", "PuntoDeVentaDeProveedor", "RecetaDeCombinacionIngrediente", "RecetaDeCombinacionVersion", "ReclasificacionRenglon", "Rol", "SeccionCarta", "Unidad", "UsuarioEmpresa", "VersionDeOpcion",
 ] as const;
@@ -176,7 +179,7 @@ const ALCANCE_DE_EMPRESA = [
 /** Declarada a mano (no derivada de `GLOBALES`/`CONSOLA`) a propósito: el guard cruza las dos listas y se pone en rojo si no coinciden. */
 const ALCANCE_SIN_EMPRESA = [
   "Account", "Accion", "AdminPlataforma", "AuditoriaPlataforma", "CodigoDeIngresoPlataforma", "CodigoDeRecuperacionPlataforma", "CotizacionDolar", "Empresa", "IndicePrecio", "SesionPlataforma",
-  "Session", "User", "VerificationToken",
+  "Session", "User", "ValorDeLista", "VerificationToken",
 ] as const;
 
 export const ALCANCE_DE_TABLAS: Readonly<Record<string, DeclaracionDeAlcance>> = Object.freeze({
