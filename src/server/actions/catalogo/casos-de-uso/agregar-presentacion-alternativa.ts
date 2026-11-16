@@ -6,7 +6,7 @@ import { MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES } from "@/core/features/catalogo/p
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { presentacionTieneUso } from "@/server/lecturas/catalogo/historia-de-producto";
-import { guardarPresentacion } from "@/server/persistencia/catalogo/productos";
+import { guardarPresentacion, presentacionesDeLaUnidad, tomarFilaDeProducto } from "@/server/persistencia/catalogo/productos";
 
 /**
  * Caso de uso «agregar (o reactivar con otro factor) una presentación de compra alternativa de un producto» (Hito 4 de la pureza, bloque 4.3, paso H4C-11 —
@@ -49,11 +49,15 @@ export async function agregarPresentacionAlternativaCasoDeUso(
   const factor = validarCantidad(factorConversion, producto.unidadStock, { etiqueta: "El factor de conversión", obligatorio: true });
   if (!factor.ok) return fracaso("FACTOR_INVALIDO", factor.mensaje);
 
-  const clave = { productoId_unidadCompraId: { productoId, unidadCompraId } };
   // La presentación y su rastro van en UNA transacción (Pureza 0.7): el factor de conversión mueve el costo por unidad de todo lo que se compre con ella. La presentación anterior (y si ya se usó) se lee
   // DENTRO de ella (M-4 / S-51): la comparación y la escritura ven el mismo estado.
   return actor.transaccion(async (tx): Promise<ResultadoAgregarPresentacionAlternativa> => {
-    const anterior = await tx.presentacion.findUnique({ where: clave, select: { factorConversion: true } });
+    // Ya no hay único (producto, unidad) en la base: dos altas simultáneas de la misma unidad se serializan con el bloqueo de la fila del producto (la segunda ve la fila de la primera y la reactiva, no la duplica).
+    await tomarFilaDeProducto(tx, productoId);
+    const existentes = await presentacionesDeLaUnidad(tx, { productoId, unidadCompraId });
+    // Fallo cerrado: más de una con esa unidad (hasta que la línea de compra apunte a la presentación no puede haberla) no se toca.
+    if (existentes.length > 1) return fracaso("PRESENTACION_AMBIGUA", "No se pudo agregar la presentación: ya hay más de una en esa unidad.");
+    const anterior = existentes[0] ?? null;
     const cambiaElFactor = anterior !== null && Number(anterior.factorConversion) !== factor.valor!;
     // M.2: definir un factor (crear la presentación, o cambiar el de una existente) exige `producto_campos_sensibles`. Se decide con la fila leída ACÁ ADENTRO y el factor ya normalizado, ANTES de preguntar por
     // el uso y de escribir: quien no tiene la clave no se entera de si la presentación se usó. Reactivar una presentación con el MISMO factor no define nada y sigue libre.
@@ -71,7 +75,7 @@ export async function agregarPresentacionAlternativaCasoDeUso(
       );
     }
     // Sin la clave fina solo se llega hasta acá reactivando con el MISMO factor: no se vuelve a escribir (si otra persona lo cambió después de la lectura de arriba, no se pisa).
-    const fila = await guardarPresentacion(tx, { productoId, unidadCompraId, factorConversion: factor.valor!, reescribirElFactor: comando.puedeEditarCamposSensibles });
+    const fila = await guardarPresentacion(tx, { productoId, unidadCompraId, factorConversion: factor.valor!, reescribirElFactor: comando.puedeEditarCamposSensibles, existenteId: anterior?.id ?? null });
     if (!anterior || cambiaElFactor) {
       await registrarCambioAuditado(tx, {
         entidad: "Presentacion",
