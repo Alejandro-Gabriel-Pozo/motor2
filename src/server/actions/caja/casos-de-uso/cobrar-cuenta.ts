@@ -12,7 +12,7 @@ import { diaDeColumnaDate } from "@/core/tiempo/zona-horaria";
 import { asegurarYBloquearJornadaCompartida, horaDeCorteDeColumna } from "@/server/persistencia/caja/jornada";
 import { cargarCajaDeSucursal, cargarCobranzaDeClave, cargarCobranzaDeCuenta, cargarSesion, cargarSesionAbiertaDeCaja, cargarTiposDeMedios, insertarCobranza, insertarCobro, insertarMovimiento } from "@/server/persistencia/caja/caja";
 import { cargarCuentaDeCobro, esMarcaDeTarjetaActiva } from "@/server/persistencia/caja/configuracion";
-import { cargarCuentaParaCobrar } from "@/server/persistencia/caja/total-de-cuenta";
+import { cargarCuentaParaCobrar } from "@/server/lecturas/caja/total-de-cuenta";
 
 /**
  * Caso de uso «cobrar una cuenta cerrada» (etapa C1, CU5; el cobro es un paso APARTE de cerrar la cuenta — «Cobro aparte primero», dueño, 2026-11-16). Registra con qué medios se pagó una cuenta ya cerrada y la plata entra a
@@ -31,7 +31,7 @@ import { cargarCuentaParaCobrar } from "@/server/persistencia/caja/total-de-cuen
  * @idempotency Clave de reintento única por empresa más la huella del pedido; además único por cuenta: dos cobros de la misma cuenta a la vez dejan uno solo (el otro ve `CUENTA_YA_COBRADA`).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento, también ante el choque de índice único).
  * @sideEffects registrarCambioAuditado (el cobro con su total y la cantidad de renglones; sin datos personales).
- * @ficha permiso=cobrar_cuenta transaccion=SERIALIZABLE idempotencia=POR_CLAVE auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
+ * @ficha permiso=cobrar_cuenta transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function cobrarCuentaCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "empresaId" | "transaccion" | "ahora">,

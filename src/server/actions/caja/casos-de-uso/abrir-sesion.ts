@@ -28,7 +28,7 @@ import { asegurarCaja, asegurarMedioEfectivo, cargarCajaDeSucursal, cargarMedioE
  * @idempotency Clave de reintento única por empresa más la huella del pedido, dentro de la misma transacción; además los índices únicos.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento, también ante el choque de índice único).
  * @sideEffects crea la jornada del día si es la primera actividad; registrarCambioAuditado (apertura con su fondo).
- * @ficha permiso=caja_abrir_sesion transaccion=SERIALIZABLE idempotencia=POR_CLAVE auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
+ * @ficha permiso=caja_abrir_sesion transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function abrirSesionCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "empresaId" | "empresaZonaHoraria" | "transaccion" | "ahora">,
