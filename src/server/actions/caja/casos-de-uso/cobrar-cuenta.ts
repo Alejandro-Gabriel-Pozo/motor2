@@ -8,7 +8,7 @@ import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { cargarCajaDeSucursal, cargarCobranzaDeClave, cargarCobranzaDeCuenta, cargarSesionAbiertaDeCaja, cargarTiposDeMedios, insertarCobranza, insertarCobro, insertarMovimiento } from "@/server/persistencia/caja/caja";
-import { cargarCuentaParaCobrar } from "@/server/persistencia/caja/total-de-cuenta";
+import { cargarCuentaParaCobrar } from "@/server/lecturas/caja/total-de-cuenta";
 
 /**
  * Caso de uso «cobrar una cuenta cerrada» (etapa C1, CU5; el cobro es un paso APARTE de cerrar la cuenta — «Cobro aparte primero», dueño, 2026-11-16). Registra con qué medios se pagó una cuenta ya cerrada y la plata entra a

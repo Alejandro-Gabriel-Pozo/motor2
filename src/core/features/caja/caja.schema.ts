@@ -6,6 +6,48 @@ import type { Exito, Fracaso } from "@/core/resultado-caso";
  * (la pantalla lo traduce a texto). El dinero viaja en CENTAVOS enteros (`bigint`), nunca como `number` decimal.
  */
 
+/**
+ * Lo que la pantalla le manda a cada Server Action ANTES de validarse (el navegador puede mandar cualquier cosa: los guards de `caja.guard.ts` lo juzgan campo por campo). Los importes viajan como TEXTO decimal
+ * («1234.56», a lo sumo 2 decimales), nunca como número: el guard los pasa a centavos enteros sin pasar por `number`.
+ */
+export interface EntradaDeAbrirSesion {
+  claveIdempotencia: string;
+  /** El fondo inicial en pesos como texto decimal; admite «0». */
+  fondo: string;
+}
+
+export interface EntradaDeMovimientoManual {
+  claveIdempotencia: string;
+  sesionId: string;
+  sentido: "INGRESO" | "EGRESO";
+  importe: string;
+  motivo: string;
+}
+
+export interface EntradaDeAnularMovimiento {
+  claveIdempotencia: string;
+  movimientoId: string;
+  motivo: string;
+}
+
+export interface EntradaDeCobrarCuenta {
+  claveIdempotencia: string;
+  cuentaId: string;
+  /** El total que vio quien cobra, en pesos como texto decimal. */
+  totalVisto: string;
+  renglones: readonly { medioDePagoId: string; importe: string }[];
+}
+
+export interface EntradaDeCerrarSesion {
+  sesionId: string;
+  /** Cantidad de billetes por denominación en pesos («20000», «10000»… «10»); las que faltan valen 0. */
+  billetes: Readonly<Record<string, number>>;
+  /** Las monedas en pesos como texto decimal; admite «0». */
+  monedas: string;
+  conformeDeLosDemasMedios: boolean;
+  observacion: string | null;
+}
+
 export interface ComandoAbrirSesion {
   /** UUID que la pantalla genera al abrir el formulario y repite en cada reintento. */
   claveIdempotencia: string;
