@@ -6,6 +6,7 @@ import { actorDesdeLaBase, objetivoEnSucursal } from "@/server/lecturas/permisos
 import { SELECCION_DE_ROL_PARA_JERARQUIA } from "@/core/permisos/jerarquia";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 import type { FuenteDeAzar } from "@/core/seguridad/azar";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { conGobierno } from "../../con-gobierno";
@@ -63,7 +64,7 @@ export async function invitarAVincularCasoDeUso(
             where: { id: membresiaId },
             select: { sucursalId: true, usuarioId: true, rol: { select: SELECCION_DE_ROL_PARA_JERARQUIA }, usuario: { select: { email: true, accounts: { where: { provider: "google" }, select: { id: true }, take: 1 } } } },
           });
-          if (!membresia || membresia.sucursalId !== actor.sucursalId) return fracaso("MEMBRESIA_NO_ENCONTRADA", textoDe("rechazo.MEMBRESIA_NO_ENCONTRADA"));
+          if (!membresia || membresia.sucursalId !== actor.sucursalId) return fracaso("MEMBRESIA_NO_ENCONTRADA", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.membresia }));
           if (membresia.usuario.accounts.length > 0) return fracaso("YA_VINCULO_GOOGLE", "Esa persona ya vinculó su cuenta de Google.");
           // S-19: NO se mira `activoGlobal` (tabla global `User`): decirlo filtraba el estado de una cuenta que se apaga por fuera de esta empresa. Igual que con una cuenta activa se deja la
           // invitación; la cuenta apagada no puede iniciar sesión (kill-switch de `decidirInicioDeSesion`), así que no le abre nada.

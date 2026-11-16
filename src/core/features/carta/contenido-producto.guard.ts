@@ -1,6 +1,6 @@
 import { LARGO_MAXIMO_DESCRIPCION_CARTA, normalizarTagsCarta, validarOrdenCarta, validarTextoLibreCarta } from "@/core/carta/public";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
-import { RE_TEXTO_CATALOGO } from "@/core/texto";
+import { nombreDeFicha } from "@/core/datos/nombre-de-ficha";
 import type { ComandoConfirmarNombreEnCarta, ContenidoCartaValidado } from "./contenido-producto.schema";
 
 /**
@@ -15,8 +15,7 @@ export const LARGO_MAXIMO_DEL_NOMBRE_EN_CARTA = 80;
 
 /**
  * «Nombre en la carta» (pedido del dueño, 2026-11-04). Ausente (`undefined`) queda ausente (un formulario que no lo muestra no lo toca); `null`, vacío o solo espacios es «sin nombre en la carta» (`null`: la carta
- * usa el nombre interno); si no, UNA línea (sin saltos), sin espacios a los costados (no se recorta: se avisa), de hasta 80 caracteres y con el juego de caracteres de un nombre de catálogo (letras, números,
- * espacios y `- . , ( ) % & / ' _`: nunca HTML). El CHECK de la base repite el tope, los costados y los saltos.
+ * usa el nombre interno); si no, UNA línea (sin saltos), sin espacios a los costados (no se recorta: se avisa), de hasta 80 caracteres y con la ficha ELECCION de Pedernal (E-1c, 2026-11-16: letras latinas con tilde y ñ, dígitos y la lista de signos de catálogo `¿ ¡ ? ! % $`; sin alfabetos no latinos, guion bajo, HTML ni `-`/`+` al principio; el nombre se guarda en su forma canónica). El CHECK de la base repite el tope, los costados y los saltos.
  */
 export function validarNombreEnCarta(valor: unknown): ResultadoDato<string | null | undefined> {
   if (valor === undefined) return aceptar(undefined);
@@ -26,9 +25,8 @@ export function validarNombreEnCarta(valor: unknown): ResultadoDato<string | nul
   if (valor.trim() === "") return aceptar(null);
   if (valor !== valor.trim()) return rechazar("formato", `${etiqueta} no puede empezar ni terminar con espacios: borralos y volvé a guardar.`);
   if (Array.from(valor).length > LARGO_MAXIMO_DEL_NOMBRE_EN_CARTA) return rechazar("largo", `${etiqueta} tiene hasta ${LARGO_MAXIMO_DEL_NOMBRE_EN_CARTA} caracteres: acortalo.`);
-  if (!RE_TEXTO_CATALOGO.test(valor)) return rechazar("formato", `${etiqueta} tiene caracteres no permitidos (va en una sola línea: sin saltos de línea). Se admiten letras, números, espacios y - . , ( ) % & / '`);
-  if (valor.startsWith("-")) return rechazar("formato", `${etiqueta} no puede empezar con "-".`);
-  return aceptar(valor);
+  const nombre = nombreDeFicha(valor, "ELECCION", `${etiqueta} no puede estar vacío.`);
+  return nombre.ok ? aceptar(nombre.valor) : rechazar("formato", nombre.mensaje);
 }
 
 export function guardComandoGuardarContenidoCartaProducto(entrada: { datos: unknown }): ResultadoDato<ContenidoCartaValidado> {

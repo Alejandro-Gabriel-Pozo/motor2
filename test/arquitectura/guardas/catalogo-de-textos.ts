@@ -32,7 +32,7 @@ export interface ContextoDelCatalogo {
 }
 
 const FORMA_DE_CLAVE = /^(?:rechazo\.[A-Z][A-Z0-9_]*|(?:rotulo|accion|aviso|ayuda|titulo)\.[a-z][a-z0-9_]*)$/;
-const TIPOS_DE_MARCADOR = ["texto", "causa"] as const;
+const TIPOS_DE_MARCADOR = ["texto", "causa", "entidad"] as const;
 const ESTADOS_QUE_AUTORIZAN = ["ACEPTADA", "CORREGIDA"];
 const LARGO_MINIMO_DEL_MOTIVO = 10;
 
