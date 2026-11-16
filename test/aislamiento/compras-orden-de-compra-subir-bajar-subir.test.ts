@@ -104,7 +104,9 @@ describe("Compras OC: subir, bajar y subir sobre una base temporal con todo lo a
     await base.cliente.query(`SET session_replication_role = replica`);
     await base.cliente.query(`INSERT INTO "NivelDeControl" ("id","empresaId","control","nivel","actualizadoPorId") VALUES ('11111111-1111-4111-8111-111111111111','e1','compras.recepcion_excede_la_orden','AVISAR','u1')`);
     await base.cliente.query(`SET session_replication_role = DEFAULT`);
-    await expect(bajar()).rejects.toThrow(/No se puede bajar 20261117130200_compras_permisos_orden_de_compra|No se puede bajar 20261117130000_compras_orden_de_compra: hay 0 orden\(es\), 0 línea\(s\), 0 saldo\(s\), 0 vínculo\(s\) y 1 nivel\(es\)/);
+    const despuesDeLasPoliticas = await foto();
+    await expect(base.cliente.query(sql(M.tablas, "down.sql"))).rejects.toThrow(/No se puede bajar 20261117130000_compras_orden_de_compra: hay 0 orden\(es\), 0 línea\(s\), 0 saldo\(s\), 0 vínculo\(s\) y 1 nivel\(es\)/);
+    expect(await foto(), "el down abortado no tocó nada").toEqual(despuesDeLasPoliticas);
     await base.cliente.query(`DELETE FROM "NivelDeControl"`);
 
     // Configuración hecha a mano de una clave: el down de los permisos aborta sin tocar nada.

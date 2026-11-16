@@ -95,7 +95,10 @@ describe("oráculo contra la base: pedir la orden", () => {
       const ordenId = await ordenEn(f["E"]!);
       if (f["L"] === "SIN_LINEAS" && f["E"] === "BORRADOR") await prismaAdmin.lineaDeOrdenDeCompra.updateMany({ where: { ordenId }, data: { retirada: true } });
       let ahora = new Date();
-      if (f["D"] === "ENTREGA_ANTERIOR") {
+      // Una orden ya pedida (o cerrada o anulada) es inmutable en la base: solo en BORRADOR se puede ajustar la entrega (en los demás estados el estado decide primero y L y D no cambian el resultado).
+      if (f["E"] !== "BORRADOR") {
+        // sin ajuste
+      } else if (f["D"] === "ENTREGA_ANTERIOR") {
         // La entrega prevista valía al crear (hoy); la pasada de «ahora» la deja anterior al día del pedido.
         await prismaAdmin.$executeRaw`UPDATE "OrdenDeCompra" SET "fechaDeEntregaPrevista" = ${hoy()}::date WHERE "id" = ${ordenId}::uuid`;
         ahora = new Date(mediodia(2));

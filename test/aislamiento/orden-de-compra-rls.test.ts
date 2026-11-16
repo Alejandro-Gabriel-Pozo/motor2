@@ -25,6 +25,7 @@ afterEach(async () => {
   await Promise.all(abiertos.splice(0).map((c) => c.end().catch(() => undefined)));
 });
 
+const HASH = "a".repeat(64);
 const hayRol = async (rol: string) => ((await prismaAdmin.$queryRaw<Array<{ n: bigint }>>`SELECT count(*) AS n FROM pg_roles WHERE rolname = ${rol}`)[0]!.n) === BigInt(1);
 const como = (lectura: string[], escritura = lectura) => baseDeTest({ lectura, escritura }).db;
 const cliente = async (empresaId: string, alcance: { lectura: string[]; escritura: string[] }) => {
@@ -36,15 +37,15 @@ const cliente = async (empresaId: string, alcance: { lectura: string[]; escritur
 
 /** Tres órdenes pedidas (con su línea y su saldo): una destinada a A, una a B y una de toda la empresa (sin sucursal). Escritas con el dueño, que no tiene políticas. */
 async function tresOrdenes() {
-  const nueva = async (sucursalId: string | null, numero: number) => {
+  const nueva = async (sucursalId: string | null) => {
     const id = randomUUID();
     await prismaAdmin.ordenDeCompra.create({
-      data: { id, numero, proveedorId: e.proveedorId, sucursalId, claveIdempotencia: randomUUID(), payloadHash: "h", creadoPorId: e.usuarioId, estado: "BORRADOR", lineas: { create: { id: randomUUID(), numero: 1, productoId: e.productoId, cantidadPedida: "10" } } },
+      data: { id, proveedorId: e.proveedorId, sucursalId, claveIdempotencia: randomUUID(), payloadHash: HASH, creadoPorId: e.usuarioId, estado: "BORRADOR", lineas: { create: { id: randomUUID(), numero: 1, productoId: e.productoId, cantidadPedida: "10" } } },
     });
-    await prismaAdmin.ordenDeCompra.update({ where: { id }, data: { estado: "PEDIDA", pedidaPorId: e.usuarioId, pedidaEn: new Date(), fechaDeNegocio: new Date(), numero } });
+    await prismaAdmin.ordenDeCompra.update({ where: { id }, data: { estado: "PEDIDA", pedidaPorId: e.usuarioId, pedidaEn: new Date(), fechaDeNegocio: new Date() } });
     return id;
   };
-  return { a: await nueva(e.sucursalA, 1), b: await nueva(e.sucursalB, 2), todas: await nueva(null, 3) };
+  return { a: await nueva(e.sucursalA), b: await nueva(e.sucursalB), todas: await nueva(null) };
 }
 
 describe("las órdenes: RLS por sucursal", () => {
@@ -63,13 +64,13 @@ describe("las órdenes: RLS por sucursal", () => {
 
   it("crear una orden destinada a OTRA sucursal se rechaza (sin alcance de escritura en ella); sin sucursal destino entra con cualquier alcance de escritura; sin alcance de escritura, nunca", async (ctx) => {
     if (!(await hayRol("motor2_app"))) return ctx.skip();
-    const datos = (sucursalId: string | null) => ({ id: randomUUID(), proveedorId: e.proveedorId, sucursalId, claveIdempotencia: randomUUID(), payloadHash: "h", creadoPorId: e.usuarioId });
+    const datos = (sucursalId: string | null) => ({ id: randomUUID(), proveedorId: e.proveedorId, sucursalId, claveIdempotencia: randomUUID(), payloadHash: HASH, creadoPorId: e.usuarioId });
 
     await expect(como([e.sucursalA]).ordenDeCompra.create({ data: datos(e.sucursalB) })).rejects.toThrow();
     await expect(como([e.sucursalA, e.sucursalB], [e.sucursalA]).ordenDeCompra.create({ data: datos(e.sucursalB) })).rejects.toThrow();
     const sinEscritura = await cliente(EMPRESA_DE_PRUEBA_ID, { lectura: [e.sucursalA], escritura: [] });
     await expect(
-      sinEscritura.query(`INSERT INTO "OrdenDeCompra" ("id","proveedorId","claveIdempotencia","payloadHash","creadoPorId") VALUES ($1,$2,$3,'h',$4)`, [randomUUID(), e.proveedorId, randomUUID(), e.usuarioId]),
+      sinEscritura.query(`INSERT INTO "OrdenDeCompra" ("id","proveedorId","claveIdempotencia","payloadHash","creadoPorId") VALUES ($1,$2,$3,'${HASH}',$4)`, [randomUUID(), e.proveedorId, randomUUID(), e.usuarioId]),
     ).rejects.toThrow();
     expect(await prismaAdmin.ordenDeCompra.count()).toBe(0);
 
@@ -106,7 +107,7 @@ describe("la otra empresa no ve nada, ni escribe en esta", () => {
     const testigo = await cliente(EMPRESA_TESTIGO_ID, { lectura: [e.sucursalA, e.sucursalB], escritura: [e.sucursalA, e.sucursalB] });
     for (const tabla of ["OrdenDeCompra", "LineaDeOrdenDeCompra", "SaldoDeLineaDeOrden", "NivelDeControl"]) expect((await testigo.query(`SELECT count(*)::int AS n FROM "${tabla}"`)).rows[0].n, tabla).toBe(0);
     await expect(
-      testigo.query(`INSERT INTO "OrdenDeCompra" ("id","empresaId","proveedorId","claveIdempotencia","payloadHash","creadoPorId") VALUES ($1,$2,$3,$4,'h',$5)`, [randomUUID(), EMPRESA_DE_PRUEBA_ID, e.proveedorId, randomUUID(), e.usuarioId]),
+      testigo.query(`INSERT INTO "OrdenDeCompra" ("id","empresaId","proveedorId","claveIdempotencia","payloadHash","creadoPorId") VALUES ($1,$2,$3,$4,'${HASH}',$5)`, [randomUUID(), EMPRESA_DE_PRUEBA_ID, e.proveedorId, randomUUID(), e.usuarioId]),
     ).rejects.toThrow();
     await expect(
       testigo.query(`INSERT INTO "NivelDeControl" ("id","empresaId","control","nivel","actualizadoPorId") VALUES ($1,$2,'compras.recepcion_excede_la_orden','PERMITIR',$3)`, [randomUUID(), EMPRESA_DE_PRUEBA_ID, e.usuarioId]),
