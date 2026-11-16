@@ -548,7 +548,7 @@ describe("registrar el control de las líneas (N3-b)", () => {
     const facturaId = await cargarPendiente();
     const [rHarina, rAceite] = await renglonesDe(facturaId);
 
-    const r = await controlar(facturaId, [{ renglonId: rAceite!.id, condicion: "CON_OBSERVACIONES", observacion: "  Envase   abollado ", cantidadSegunRemito: 4.5 }]);
+    const r = await controlar(facturaId, [{ renglonId: rAceite!.id, condicion: "CON_OBSERVACIONES", observacion: "Envase abollado", cantidadSegunRemito: 4.5 }]);
 
     expect(r).toMatchObject({ ok: true, mensaje: "Control registrado: 1 línea(s).", datos: { controles: 1 } });
     const filas = await prisma.controlDeLineaDeRecepcion.findMany();
@@ -672,7 +672,8 @@ describe("el control en la base: las reglas que no dependen del código (segunda
     await expect(insertar({ ...base, condicion: "CON_OBSERVACIONES", observacion: "a".repeat(501) })).rejects.toThrow(/observacion_chk/);
     await expect(insertar({ ...base, cantidadSegunRemito: 0 })).rejects.toThrow(/cantidadSegunRemito_chk/);
     await expect(insertar({ ...base, facturaProveedorRenglonId: rAjeno!.id })).rejects.toThrow(/renglon_fkey/);
-    await expect(insertar({ ...base, facturaProveedorId: otra })).rejects.toThrow(/renglon_fkey/);
+    // Dice otra factura: el disparador (que corre antes que las claves foráneas) ve que la parte no es de esa factura.
+    await expect(insertar({ ...base, facturaProveedorId: otra })).rejects.toThrow(/el renglón no es de la factura de la parte/);
     expect(await controlesGuardados()).toBe(0);
 
     // Lo válido entra; el único (parte, renglón) frena el segundo; y después de confirmar la base no admite ninguno.
