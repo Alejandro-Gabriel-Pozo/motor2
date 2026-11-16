@@ -153,3 +153,23 @@ test("carta (mantenimiento): un plato que se muestra con un ingrediente en 0 en 
     await prisma.producto.deleteMany({ where: { id: { in: [plato.id, carne.id] } } });
   }
 });
+
+test("un grupo que la persona abrió a mano sigue abierto después de buscar y borrar la búsqueda (vista plegada)", async ({ paginaAutenticada: page, sucursalId }) => {
+  const m = marca();
+  await milanesaConGuarnicion(m, sucursalId);
+  await page.goto("/movimientos/opciones-agotadas");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Opciones agotadas en");
+  const grupo = page.locator(`details[data-grupo-de-opciones='E2E Guarnición ${m}']`);
+  // Con la vista plegada apagada los grupos son secciones y no hay nada que abrir.
+  test.skip((await grupo.count()) === 0, "vista plegada apagada: no hay grupos plegables");
+  await expect(grupo).toHaveJSProperty("open", false); // todo disponible: viene plegado
+  await grupo.locator("summary").click();
+  await expect(grupo).toHaveJSProperty("open", true);
+  const buscador = page.getByLabel("Buscar opción");
+  await buscador.fill(`Papas fritas ${m}`);
+  await expect(grupo).toHaveJSProperty("open", true);
+  await buscador.fill("");
+  await expect(grupo, "borrar la búsqueda no cierra lo que la persona abrió").toHaveJSProperty("open", true);
+  await grupo.locator("summary").click(); // y lo que cierra a mano, queda cerrado
+  await expect(grupo).toHaveJSProperty("open", false);
+});

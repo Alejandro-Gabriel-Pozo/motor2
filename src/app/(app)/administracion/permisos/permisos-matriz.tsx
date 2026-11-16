@@ -55,7 +55,8 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
   // Frente 6 (`PERMISOS_PLEGADOS`): las acciones agrupadas por módulo, plegadas en la lectura; en la edición se muestran todas. Con el interruptor apagado, la tabla de siempre.
   const [abiertos, setAbiertos] = useState<Set<string>>(new Set());
   const alternar = (id: string) => setAbiertos((prev) => { const s = new Set(prev); if (s.has(id)) s.delete(id); else s.add(id); return s; });
-  const grupos = useMemo(() => agruparAccionesPorModulo(acciones), [acciones]);
+  // Apagado: un solo grupo con todas las acciones en el orden de siempre (el DOM de antes, sin renglones de módulo).
+  const grupos = useMemo(() => (PERMISOS_PLEGADOS ? agruparAccionesPorModulo(acciones) : [{ id: "todas", nombre: "", acciones }]), [acciones]);
   const [revisando, setRevisando] = useState(false);
   // `conflicto`: otra persona cambió lo que se editaba → hay que RECARGAR. `reintentable`: el guardado chocó con otro en curso y no se guardó nada,
   // los cambios siguen marcados → hay que REINTENTAR. Son estados distintos con la acción correctiva opuesta, por eso no se mezclan.
@@ -227,9 +228,16 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
                 {PERMISOS_PLEGADOS && (
                   <tr className="border-b bg-superficie-suave" data-modulo-de-permisos={g.id}>
                     <td colSpan={1 + 2 * roles.length} className="py-1">
-                      <Boton variante="secundario" tamano="tactil" aria-expanded={editando || abiertos.has(g.id)} className="w-full" onClick={() => alternar(g.id)}>
-                        {editando || abiertos.has(g.id) ? "▾" : "▸"} {g.nombre} · {g.acciones.length}
-                      </Boton>
+                      {editando ? (
+                        // En la edición se ven todas las acciones: el módulo es solo un título, sin control que no haga nada.
+                        <div className="px-3 py-2 font-medium">
+                          {g.nombre} · {g.acciones.length}
+                        </div>
+                      ) : (
+                        <Boton variante="secundario" tamano="tactil" aria-expanded={abiertos.has(g.id)} className="w-full" onClick={() => alternar(g.id)}>
+                          {abiertos.has(g.id) ? "▾" : "▸"} {g.nombre} · {g.acciones.length}
+                        </Boton>
+                      )}
                     </td>
                   </tr>
                 )}

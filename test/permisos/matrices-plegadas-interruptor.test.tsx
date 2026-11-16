@@ -69,6 +69,20 @@ describe("Permisos", () => {
   });
 });
 
+describe("Permisos apagado: el orden de siempre (el que manda el servidor), sin reagrupar", () => {
+  it("las acciones salen en el orden recibido aunque sean de módulos mezclados", async () => {
+    const porModulo = new Map<string, string[]>();
+    for (const a of ACCIONES) porModulo.set(a.modulo, [...(porModulo.get(a.modulo) ?? []), a.clave]);
+    const [m1, m2] = [...porModulo.values()].filter((v) => v.length >= 2);
+    const mezcladas = [m1[0], m2[0], m1[1]].map((clave) => ({ clave, descripcion: "d" }));
+    const { PermisosMatriz } = await cargar(false);
+    const html = renderToStaticMarkup(<PermisosMatriz acciones={mezcladas} roles={ROLES} permisosIniciales={[]} />);
+    const pos = mezcladas.map((a) => html.indexOf(`<div class="font-medium">${a.clave}</div>`));
+    expect(pos.every((p) => p > 0)).toBe(true);
+    expect([...pos].sort((x, y) => x - y)).toEqual(pos);
+  });
+});
+
 describe("Capacidades por sucursal", () => {
   it("plegado: un bloque cerrado por módulo, cada uno con su tabla", async () => {
     const { pagina } = await cargar(true);

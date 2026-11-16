@@ -54,6 +54,9 @@ export function OpcionesAgotadas({
     return { abiertos: new Set(conAgotadas), orden: [...conAgotadas, ...grupos.filter((g) => !conAgotadas.includes(g.grupoId)).map((g) => g.grupoId)] };
   });
   const abiertosAlCargar = alCargar.abiertos;
+  // Lo que la persona abrió o cerró a mano manda sobre lo automático (al cargar o buscando): borrar la búsqueda no le cierra lo que abrió.
+  const [aMano, setAMano] = useState<Record<string, boolean>>({});
+  const estaAbierto = (id: string) => aMano[id] ?? (buscar.trim() !== "" || abiertosAlCargar.has(id));
   const rango = (id: string) => (alCargar.orden.includes(id) ? alCargar.orden.indexOf(id) : alCargar.orden.length);
 
   /** Un toque: lo cambia el servidor; «Deshacer» es el cambio inverso (y ya no se puede deshacer). */
@@ -125,8 +128,14 @@ export function OpcionesAgotadas({
       )}
       {visibles.map((g) =>
         OPCIONES_AGOTADAS_PLEGADAS ? (
-          <details key={g.grupoId} open={buscar.trim() !== "" || abiertosAlCargar.has(g.grupoId)} className="flex flex-col gap-2 rounded border p-3" data-grupo-de-opciones={g.nombre}>
-            <summary className="flex min-h-11 cursor-pointer items-baseline gap-2">
+          <details key={g.grupoId} open={estaAbierto(g.grupoId)} className="flex flex-col gap-2 rounded border p-3" data-grupo-de-opciones={g.nombre}>
+            <summary
+              className="flex min-h-11 cursor-pointer items-baseline gap-2"
+              onClick={(e) => {
+                e.preventDefault();
+                setAMano((prev) => ({ ...prev, [g.grupoId]: !estaAbierto(g.grupoId) }));
+              }}
+            >
               <h2 id={`grupo-${g.grupoId}`} className="font-medium">
                 {g.nombre}
               </h2>
@@ -143,7 +152,10 @@ export function OpcionesAgotadas({
             <h2 id={`grupo-${g.grupoId}`} className="font-medium">
               {g.nombre}
               {OPCIONES_AGOTADAS_AYUDAS_VISIBLES && (
-                <span className="text-sm font-normal text-tinta-suave"> · {g.opciones.filter((o) => !o.agotada).length} de {g.opciones.length} disponibles</span>
+                <>
+                  {" "}
+                  <span className="text-sm font-normal text-tinta-suave">· {g.opciones.filter((o) => !o.agotada).length} de {g.opciones.length} disponibles</span>
+                </>
               )}
             </h2>
             {lista(g)}

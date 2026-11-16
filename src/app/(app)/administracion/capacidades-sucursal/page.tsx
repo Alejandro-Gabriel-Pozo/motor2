@@ -31,14 +31,7 @@ export default async function CapacidadesSucursalPage() {
         Columna &quot;Default&quot; = comportamiento para cualquier sucursal sin fila propia. Sin ninguna fila, la acción está habilitada. Una sucursal sin fila propia toma el valor del Default: la casilla muestra ese valor y lo marca con «hereda del Default».
       </p>)}
       {grupos.map((g) => {
-        const Envoltorio = CAPACIDADES_PLEGADAS ? "details" : "div";
-        return (
-        <Envoltorio key={g.id} className={CAPACIDADES_PLEGADAS ? "rounded border" : undefined} data-modulo-de-capacidades={g.id}>
-          {CAPACIDADES_PLEGADAS && (
-            <summary className="min-h-11 cursor-pointer px-3 py-2 font-medium">
-              {g.nombre} · {g.acciones.length}
-            </summary>
-          )}
+        const tabla = (
           <div className={CAPACIDADES_PLEGADAS ? "overflow-x-auto px-3 pb-3" : "overflow-x-auto"}>
             <table className="w-full text-sm">
               <thead>
@@ -80,7 +73,17 @@ export default async function CapacidadesSucursalPage() {
               </tbody>
             </table>
           </div>
-        </Envoltorio>
+        );
+        // Plegado: un `<details>` por módulo. Apagado: la tabla de siempre, sin envoltorio (el DOM de antes).
+        return CAPACIDADES_PLEGADAS ? (
+          <details key={g.id} className="rounded border" data-modulo-de-capacidades={g.id}>
+            <summary className="min-h-11 cursor-pointer px-3 py-2 font-medium">
+              {g.nombre} · {g.acciones.length}
+            </summary>
+            {tabla}
+          </details>
+        ) : (
+          <Fragment key={g.id}>{tabla}</Fragment>
         );
       })}
     </AvisosDeAccion>

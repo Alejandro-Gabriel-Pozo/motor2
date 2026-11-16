@@ -283,8 +283,9 @@ test.describe("carta de una sucursal", () => {
       // El encargado marca «Mediano» agotado hoy: la carta (cacheada, ISR) lo deja de mostrar en la próxima visita, sin esperar el minuto.
       await page.setViewportSize({ width: 375, height: 800 });
       await paginaAutenticada.goto("/movimientos/opciones-agotadas");
-      await abrirTodosLosDetails(paginaAutenticada);
-      const pildora = paginaAutenticada.locator("[data-grupo-de-opciones]", { hasText: new RegExp(`^Tamaño ${m}`) }).getByRole("button", { name: "Mediano: Disponible" });
+      await abrirTodosLosDetails(paginaAutenticada); // plegado (hoy): cada grupo es un <details>; apagado: <section>, no hay nada que abrir
+      const grupo = paginaAutenticada.locator("details, section").filter({ has: paginaAutenticada.getByRole("heading", { name: new RegExp(`^Tamaño ${m}`) }) });
+      const pildora = grupo.getByRole("button", { name: "Mediano: Disponible" });
       await pildora.click();
       await expect(paginaAutenticada.getByRole("status").filter({ hasText: "quedó agotada" })).toBeVisible();
       const despues = await abrir();
