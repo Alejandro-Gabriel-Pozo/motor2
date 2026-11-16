@@ -1,6 +1,6 @@
 # Checklist previo al despliegue de «Ocultar» (preparado, NO ejecutado) — 2026-11-16
 
-**Estado:** documento de preparación. Nada de esto se ejecutó contra ninguna base real. Las migraciones de «Ocultar» **no están aplicadas en ninguna base real** (solo en bases locales descartables); aplicarlas requiere **autorización expresa del dueño, base por base, con respaldo y ensayo en una rama de Neon** (regla vigente desde 2026-11-15: «migraciones aditivas y reversibles», aplicar en bases reales sigue congelado). Diseño: `docs/diseno-ocultar-como-pedernal-2026-11-15.md`. PR de cada etapa: tabla #301 → c1/c2 → c3 #320 → c4 #317 → tarjeta #347 → uuid #359.
+**Estado:** documento de preparación. Nada de esto se ejecutó contra ninguna base real. Las migraciones de «Ocultar» **no están aplicadas en ninguna base real** (solo en bases locales descartables); aplicarlas requiere **autorización expresa del dueño, base por base, con respaldo y ensayo en una rama de Neon** (regla vigente desde 2026-11-15: «migraciones aditivas y reversibles», aplicar en bases reales sigue congelado). Diseño: `docs/diseno-ocultar-como-pedernal-2026-11-15.md`. PR de las etapas posteriores a la tabla: c2 #315, c3 #320, c4 #317, tarjeta #347, uuid #359 (el núcleo puro fue #293; el número del PR de la tabla no lo verifiqué).
 
 ## 1. Las cuatro migraciones, en orden de aplicación
 
