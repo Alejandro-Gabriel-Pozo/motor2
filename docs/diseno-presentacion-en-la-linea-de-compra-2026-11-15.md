@@ -4,6 +4,14 @@ Estado del documento: **DISEÑO EN PAPEL. No se migra ni se programa nada de est
 Estados: **CONFIRMADA** (dicha por el dueño, con cita), **PROPUESTA**, **PENDIENTE**, **NO VERIFICADA**. Lo verificado en el código real lleva `archivo:línea` o nombre exacto; lo demás queda NO VERIFICADO.
 Tipos de cambios de código: Sonnet escribe, este documento solo planifica (regla del 2026-11-04).
 
+## Decisión (2026-11-15): las etapas d1 a d5 NO se construyen
+
+- Pregunta de negocio al dueño (§12): ¿hace falta ya comprar con dos presentaciones de la misma unidad? Respuesta del dueño, 2026-11-15, chat con el orquestador: «Como lo hace pedernal?».
+- Verificado por el orquestador en Pedernal (código y documentación): **no tiene compra por presentación ni dos presentaciones de la misma unidad**; un producto con envases distintos son **dos productos**. Por la regla «igual a Pedernal» (2026-11-13): **d1 a d5 no se construyen**. **Estado: PROPUESTA** (el dueño la corrige si no es así). No hay construcción que revertir.
+- Este documento queda como **diseño en reserva**: se retoma solo si aparece un caso real que lo pida. Lo que ya existe (etapas a y a2-1: el fallo cerrado en compras con dos activas de la misma unidad) alcanza y es seguro.
+- **La etapa (b)** (caso de uso de alta/edición con nombre, peso variable, versión y el rechazo «mismo nombre, otra cantidad») **tampoco se construye hasta que exista (d)**. Motivo: en Pedernal la presentación no lleva unidad de compra y se elige en la línea; en Motor2 la compra resuelve la presentación por su unidad, así que, sin (d), un nombre y un peso variable que ninguna compra usa serían campos que Pedernal no usa así («lo que el dueño no pidió no entra»). Decisión del orquestador, 2026-11-15, **PROPUESTA** (el dueño la corrige si no es así). Las columnas de las etapas (a) y (a2-1) quedan listas, sin uso y con el interruptor `PRESENTACIONES_VISIBLES` apagado.
+- Las secciones siguientes describen ese diseño en reserva; donde dicen «PROPUESTA» o «etapa», léase «si se retomara».
+
 ## 0. Por qué existe este documento
 
 - **CONFIRMADA** (dueño, 2026-11-13, chat con el orquestador): «El de Pedernal: presentación por producto (Recomendada)»: «caja x6» y «caja x12» son dos presentaciones del mismo producto, con nombres distintos y la **misma** unidad «caja»; la oferta del proveedor apunta a la presentación. El diseño del 03/11 (envase por proveedor) queda revocado.
@@ -158,7 +166,7 @@ Los goldens que fijan «apagado» o el costo de compras sin presentación **no s
 
 ### 10.4 Orden de etapas (más barata primero)
 
-1. **d0 — Nada** (ya hecho en a2-1): el sistema es seguro; dos presentaciones con la misma unidad se rechazan en compras. Si el dueño no necesita comprar con ellas todavía, **se puede parar acá**.
+1. **d0 — Nada** (ya hecho en a2-1): el sistema es seguro; dos presentaciones con la misma unidad se rechazan en compras. **Decisión 2026-11-15: se para acá** (ver «Decisión» arriba).
 2. **d1 — Línea simple:** migración 6.1 + 6.4 (aditiva), la línea acepta `presentacionId` opcional, resolución por id, I1 y pruebas; sin tocar factura ni vínculo; pantalla sigue apagada. Cambia dinero/stock: golden de costo idéntico obligatorio.
 3. **d2 — Factura de proveedor:** migración 6.2, renglón con presentación.
 4. **d3 — Pantallas** de Compra y Compra por pasos con presentaciones por nombre (detrás del interruptor).
@@ -180,7 +188,7 @@ d1 a d4: columnas nuevas opcionales; revertir es poner el interruptor en `false`
 
 ## 12. Preguntas de NEGOCIO abiertas (una por una)
 
-1. **¿Hace falta ya comprar con dos presentaciones de la misma unidad («caja x6» y «caja x12»)?** Si no, se queda en d0 (seguro) y esto no se construye. (Q1 y Q2 de §5.2 se resuelven con las recomendaciones, salvo objeción del dueño.)
+1. **¿Hace falta ya comprar con dos presentaciones de la misma unidad («caja x6» y «caja x12»)?** **Respondida** (dueño, 2026-11-15, chat con el orquestador): «Como lo hace pedernal?». Pedernal no lo tiene (son dos productos), así que d1 a d5 **no se construyen** (PROPUESTA; ver «Decisión» arriba). Q1 y Q2 de §5.2 quedan sin objeto mientras tanto.
 
 Las demás (Q3) son técnicas y las decide quien implementa con aprobación del orquestador.
 

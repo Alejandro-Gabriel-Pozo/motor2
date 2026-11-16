@@ -212,7 +212,7 @@ async function actualizarProductoEnTransaccion(
       if (typeof visto !== "number" || !mismosCentavos(visto, precioGuardado)) {
         return fracaso(
           "PRECIO_DESACTUALIZADO",
-          `Alguien cambió el precio de venta de «${existente.nombre}» mientras lo editabas (ahora es ${formatearMonto(precioGuardado)}): no se guardó nada. Recargá la pantalla y volvé a hacer el cambio.`,
+          `El precio vigente ahora es ${formatearMonto(precioGuardado)}. Revisalo y volvé a intentar.`,
         );
       }
     }

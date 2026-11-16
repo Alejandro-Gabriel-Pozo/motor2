@@ -1,4 +1,4 @@
-import { cumplePaso, mensajeCantidadNoCumplePaso, rendimientoEfectivo } from "@/core/catalogo/public";
+import { cumplePaso, factorDeMerma, mensajeCantidadNoCumplePaso, rendimientoEfectivo } from "@/core/catalogo/public";
 
 /**
  * Las REGLAS PURAS de una línea de venta (Hito 5, pieza 5.1: mudadas TAL CUAL desde `armarLinea`, que vive en `server/actions/movimientos/casos-de-uso/registrar-venta-en-tx.ts`).
@@ -84,7 +84,7 @@ export function mensajeMateriaPrimaNoDisponible(nombrePV: string, nombreMP: stri
 
 /**
  * El pedido de consumo de un ingrediente para `cantidad` unidades vendidas del PV. rendimientoEfectivo (D2, docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md): la fórmula queda
- * TEXTUALMENTE igual (`cantidad * ef.cantidad * (1 + ef.mermaPorcentaje / 100)`, ni una reasociación: el orden de las multiplicaciones cambia los últimos bits del `number`), solo cambia
+ * TEXTUALMENTE igual (`cantidad * ef.cantidad * factorDeMerma(ef.mermaPorcentaje)`, y `factorDeMerma` es `1 + merma / 100` en `core/catalogo/merma.ts`: ni una reasociación: el orden de las multiplicaciones cambia los últimos bits del `number`), solo cambia
  * de dónde salen los dos operandos — sin ninguna calibración de ESTA sucursal, `ef.*` es exactamente `ing.cantidad`/`ing.mermaPorcentaje` (`Object.is`), así que el cálculo de siempre
  * no se mueve un bit. `unidadStockId` es el de la MP principal: la familia sustituta se filtra a esa misma unidad (D8).
  */
@@ -92,7 +92,7 @@ export function pedidoDeIngrediente(cantidad: number, ing: IngredienteParaVender
   const ef = rendimientoEfectivo({ cantidad: ing.cantidad, mermaPorcentaje: ing.mermaPorcentaje }, ing.rendimientosLocales, sucursalId);
   return {
     productoId: ing.insumoProductoId,
-    cantidad: cantidad * ef.cantidad * (1 + ef.mermaPorcentaje / 100),
+    cantidad: cantidad * ef.cantidad * factorDeMerma(ef.mermaPorcentaje),
     insumoSustitutoIds: ing.insumoSustitutoIds,
     unidadStockId,
   };

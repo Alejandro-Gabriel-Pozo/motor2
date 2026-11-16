@@ -7,7 +7,7 @@ import { TRANSICIONES, convertirCantidadAUnidadDeStock, esSignoFijo, precioPorUn
 import { obtenerLoteMasProximoAVencer, resolverConsumoPorFamilia } from "@/server/lecturas/movimientos/saldos";
 import { crearCacheProducto } from "@/server/persistencia/movimientos/producto-cache";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
-import { rendimientoEfectivo } from "@/core/catalogo/public";
+import { factorDeMerma, rendimientoEfectivo } from "@/core/catalogo/public";
 import { PRESENTACION_AMBIGUA, cargarPresentacionActiva, cargarRecetaVigenteParaProducir } from "@/server/persistencia/movimientos/cargar-linea-de-movimiento";
 import type { DatosMovimientoInput, ItemMovimientoInput } from "@/core/features/movimientos/movimiento.schema";
 
@@ -63,7 +63,7 @@ async function calcularConsumosProduccion(
   for (const ing of ingredientes) {
     // rendimientoEfectivo (D2) — misma fórmula textual, solo cambia de dónde salen cantidad/merma (ver registrar-venta.ts).
     const ef = rendimientoEfectivo({ cantidad: ing.cantidad, mermaPorcentaje: ing.mermaPorcentaje }, ing.rendimientosLocales, sucursalId);
-    const cantidadSalida = cantidadProducida * ef.cantidad * (1 + ef.mermaPorcentaje / 100);
+    const cantidadSalida = cantidadProducida * ef.cantidad * factorDeMerma(ef.mermaPorcentaje);
     const reparto = await resolverConsumoPorFamilia(ing.insumoProductoId, cantidadSalida, seccionId, tx, obtenerProducto);
     // Snapshot plano del insumo REAL consumido (puede ser un "hermano", no el ingrediente pedido) — resuelto acá, la única I/O que
     // hacía falta, para que `armarFilasDeMovimiento` (core/movimientos/armar-filas-de-movimiento.ts) sea una función pura.
