@@ -20,7 +20,7 @@ export const tablaDeOrden = (seccion: string): TablaDelOraculo => tablaDelOracul
 export { productoCartesiano };
 
 /** «Hoy» con que se evalúan las reglas. */
-export const HOY = "2026-11-15";
+const HOY = "2026-11-15";
 type Fila = Record<string, string>;
 
 const ACCION_DE: Record<string, "orden_de_compra_gestionar" | "compras_configurar" | "orden_de_compra_ver"> = {

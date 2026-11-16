@@ -45,7 +45,7 @@ export function esNivelDeControl(valor: unknown): valor is NivelDeControl {
 }
 
 /** Tope del motivo de anulación (el CHECK de la base dice lo mismo). */
-export const LARGO_MAXIMO_DEL_MOTIVO_DE_ORDEN = 500;
+const LARGO_MAXIMO_DEL_MOTIVO_DE_ORDEN = 500;
 /** Cantidades: `Decimal(14,4)`, el CHECK de la base pide menos de 1e11; acá se pide menos de 1e10, como el resto de las cantidades. */
 const CANTIDAD_MAXIMA = 1e10;
 /** Precio por unidad de stock: `Decimal(14,4)`, el CHECK de la base pide menos de 1e10. */
@@ -65,7 +65,7 @@ export interface LineaDeOrdenCruda {
   precio?: unknown;
 }
 
-export interface LineaDeOrdenValidada {
+interface LineaDeOrdenValidada {
   productoId: string;
   cantidad: number;
   precio: number | null;
@@ -155,12 +155,12 @@ export type CodigoDeRechazoDeOrden =
   | "MOTIVO_OBLIGATORIO"
   | "MOTIVO_INVALIDO";
 
-export type DecisionDeOrden = { ok: true } | { ok: false; codigo: CodigoDeRechazoDeOrden; mensaje: string };
+type DecisionDeOrden = { ok: true } | { ok: false; codigo: CodigoDeRechazoDeOrden; mensaje: string };
 
-export const MENSAJE_ORDEN_YA_PEDIDA = "Esta orden ya fue pedida.";
-export const MENSAJE_ORDEN_ANULADA = "Esta orden está anulada.";
-export const MENSAJE_ORDEN_CERRADA = "Esta orden ya está cerrada.";
-export const MENSAJE_ORDEN_NO_ESTA_PEDIDA = "Solo se cierra una orden que ya fue pedida.";
+const MENSAJE_ORDEN_YA_PEDIDA = "Esta orden ya fue pedida.";
+const MENSAJE_ORDEN_ANULADA = "Esta orden está anulada.";
+const MENSAJE_ORDEN_CERRADA = "Esta orden ya está cerrada.";
+const MENSAJE_ORDEN_NO_ESTA_PEDIDA = "Solo se cierra una orden que ya fue pedida.";
 const MENSAJE_ORDEN_SIN_LINEAS = "Una orden sin líneas no se pide.";
 const MENSAJE_ORDEN_CON_RECEPCIONES = "Hay compras cargadas contra esta orden que siguen vigentes: anulá esas compras antes de anular la orden.";
 const MENSAJE_ORDEN_CON_RECEPCIONES_PENDIENTES = "Hay compras pendientes de recibir contra esta orden: confirmá o anulá esas compras antes de cerrarla.";
@@ -242,7 +242,7 @@ export type CodigoDeRechazoDeVinculo =
   | "EXCEDE_LA_ORDEN_BLOQUEADA"
   | "EXCEDE_LA_ORDEN_SIN_CONFIRMAR";
 
-export type DecisionDeVinculo = { ok: true } | { ok: false; codigo: CodigoDeRechazoDeVinculo; mensaje: string };
+type DecisionDeVinculo = { ok: true } | { ok: false; codigo: CodigoDeRechazoDeVinculo; mensaje: string };
 
 export const MENSAJE_VINCULO_ORDEN_NO_PEDIDA = "Solo se recibe contra una orden que está pedida.";
 const MENSAJE_VINCULO_PROVEEDOR_DISTINTO = "El proveedor de la compra no es el de la orden.";
@@ -252,7 +252,7 @@ export const MENSAJE_EXCEDE_LA_ORDEN_BLOQUEADA = "Lo que recibís supera lo pedi
 export const MENSAJE_EXCEDE_LA_ORDEN_SIN_CONFIRMAR = "Lo que recibís supera lo pedido en la orden: confirmá que querés recibir de más.";
 
 /** El resultado del control de exceso de un renglón: pasa, o lo frena el nivel BLOQUEAR, o lo frena el nivel AVISAR porque no se confirmó el exceso. */
-export type ResultadoDelExceso = "PASA" | "BLOQUEADA" | "SIN_CONFIRMAR";
+type ResultadoDelExceso = "PASA" | "BLOQUEADA" | "SIN_CONFIRMAR";
 
 /**
  * El control `compras.recepcion_excede_la_orden`, IDÉNTICO al de Pedernal 0066 (`v_exige := nivel = 'BLOQUEAR' OR (nivel = 'AVISAR' AND NOT confirmo_exceso)`; el tope viaja en el WHERE del UPDATE del saldo): con `nivel` ausente (sin fila) es PERMITIR; el exceso
