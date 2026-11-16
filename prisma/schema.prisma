@@ -632,6 +632,9 @@ model Unidad {
   activa    Boolean        @default(true)
   /// 0-6, validado en la capa de aplicación (Catalogo.js:2777).
   decimales Int            @default(2)
+  /// Cuál de las 14 unidades fijas de Pedernal es esta (U1, `docs/diseno-unidades-de-medida-como-pedernal-2026-11-15.md` §6.1): NULL = «pendiente de completar» (toda unidad existente; sigue
+  /// funcionando como hoy). CHECK `Unidad_codigoFijo_chk` con la lista cerrada de `src/core/catalogo/unidades-de-medida.ts`. Se rellena por base (U1b, autorización expresa), nunca acá.
+  codigoFijo String?
 
   productosPorUnidadCompra      Producto[]             @relation("ProductoUnidadCompra")
   productosPorUnidadStock       Producto[]             @relation("ProductoUnidadStock")
