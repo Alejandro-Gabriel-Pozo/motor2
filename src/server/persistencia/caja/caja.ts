@@ -1,6 +1,6 @@
 import "server-only";
 import { textoDeCentavos } from "@/core/caja/public";
-import type { ClaseDeMovimiento } from "@/core/caja/public";
+import type { ClaseDeMovimiento, DatosDelCobroCompletos, DatosQuePideElMedio, TipoDeMedio } from "@/core/caja/public";
 import type { Prisma } from "@prisma/client";
 
 /**
@@ -100,30 +100,43 @@ export async function cargarMovimientoDeClave(db: Prisma.TransactionClient, empr
 
 export async function insertarMovimiento(
   db: Prisma.TransactionClient,
-  args: { id: string; empresaId: string; sucursalId: string; sesionId: string; clase: ClaseDeMovimiento; medioDePagoId: string; importeEnCentavos: bigint; motivo: string | null; anulaAId: string | null; claveIdempotencia: string | null; creadoPorId: string },
+  args: { id: string; empresaId: string; sucursalId: string; sesionId: string; clase: ClaseDeMovimiento; medioDePagoId: string; cuentaDeCobroId?: string | null; importeEnCentavos: bigint; motivo: string | null; anulaAId: string | null; claveIdempotencia: string | null; creadoPorId: string },
 ): Promise<void> {
   const { importeEnCentavos, ...resto } = args;
   await db.movimientoCaja.create({ data: { ...resto, importe: textoDeCentavos(importeEnCentavos) }, select: { id: true } });
 }
 
-/** Lo esperado por medio en una sesión: Σ de sus movimientos con signo, en centavos. */
+/** Lo esperado por (medio, cuenta) en una sesión: Σ de sus movimientos con signo, en centavos. `cuentaDeCobroId: null` = «sin cuenta» (el efectivo siempre). */
+export async function sumarMovimientosPorMedioYCuenta(db: Prisma.TransactionClient, empresaId: string, sesionId: string): Promise<readonly { medioDePagoId: string; cuentaDeCobroId: string | null; esperadoEnCentavos: bigint }[]> {
+  const grupos = await db.movimientoCaja.groupBy({ by: ["medioDePagoId", "cuentaDeCobroId"], where: { empresaId, sesionId }, _sum: { importe: true } });
+  return grupos.map((g) => ({ medioDePagoId: g.medioDePagoId, cuentaDeCobroId: g.cuentaDeCobroId, esperadoEnCentavos: g._sum.importe ? centavosDeDecimal(g._sum.importe) : BigInt(0) }));
+}
+
+/** Lo esperado por medio en una sesión (sumando sus cuentas): Σ de sus movimientos con signo, en centavos. */
 export async function sumarMovimientosPorMedio(db: Prisma.TransactionClient, empresaId: string, sesionId: string): Promise<ReadonlyMap<string, bigint>> {
   const grupos = await db.movimientoCaja.groupBy({ by: ["medioDePagoId"], where: { empresaId, sesionId }, _sum: { importe: true } });
   return new Map(grupos.map((g) => [g.medioDePagoId, g._sum.importe ? centavosDeDecimal(g._sum.importe) : BigInt(0)]));
 }
 
-export async function cargarTiposDeMedios(db: Prisma.TransactionClient, empresaId: string, ids: readonly string[]): Promise<ReadonlyMap<string, { tipo: string; activo: boolean }>> {
-  const filas = await db.medioDePago.findMany({ where: { empresaId, id: { in: [...ids] } }, select: { id: true, tipo: true, activo: true } });
-  return new Map(filas.map((f) => [f.id, { tipo: f.tipo, activo: f.activo }]));
+export interface MedioConDatos {
+  tipo: TipoDeMedio;
+  activo: boolean;
+  /** Qué datos opcionales pide al cobrar (C3). */
+  pide: DatosQuePideElMedio;
+}
+
+export async function cargarTiposDeMedios(db: Prisma.TransactionClient, empresaId: string, ids: readonly string[]): Promise<ReadonlyMap<string, MedioConDatos>> {
+  const filas = await db.medioDePago.findMany({ where: { empresaId, id: { in: [...ids] } }, select: { id: true, tipo: true, activo: true, pideCupon: true, pideUltimos4: true, pideMarca: true, pideCuotas: true, pideDni: true } });
+  return new Map(filas.map((f) => [f.id, { tipo: f.tipo as TipoDeMedio, activo: f.activo, pide: { cupon: f.pideCupon, ultimos4: f.pideUltimos4, marca: f.pideMarca, cuotas: f.pideCuotas, dni: f.pideDni } }]));
 }
 
 export async function insertarArqueo(
   db: Prisma.TransactionClient,
-  args: { id: string; empresaId: string; sucursalId: string; sesionId: string; medioDePagoId: string; esperadoEnCentavos: bigint; contadoEnCentavos: bigint | null; monedasEnCentavos: bigint | null; conforme: boolean },
+  args: { id: string; empresaId: string; sucursalId: string; sesionId: string; medioDePagoId: string; cuentaDeCobroId?: string | null; esperadoEnCentavos: bigint; contadoEnCentavos: bigint | null; monedasEnCentavos: bigint | null; conforme: boolean },
 ): Promise<void> {
   await db.arqueoCaja.create({
     data: {
-      id: args.id, empresaId: args.empresaId, sucursalId: args.sucursalId, sesionId: args.sesionId, medioDePagoId: args.medioDePagoId, conforme: args.conforme,
+      id: args.id, empresaId: args.empresaId, sucursalId: args.sucursalId, sesionId: args.sesionId, medioDePagoId: args.medioDePagoId, cuentaDeCobroId: args.cuentaDeCobroId ?? null, conforme: args.conforme,
       esperado: textoDeCentavos(args.esperadoEnCentavos),
       contado: args.contadoEnCentavos === null ? null : textoDeCentavos(args.contadoEnCentavos),
       contadoMonedas: args.monedasEnCentavos === null ? null : textoDeCentavos(args.monedasEnCentavos),
@@ -165,8 +178,11 @@ export async function insertarCobranza(
 
 export async function insertarCobro(
   db: Prisma.TransactionClient,
-  args: { id: string; empresaId: string; sucursalId: string; cobranzaId: string; orden: number; medioDePagoId: string; movimientoId: string; importeEnCentavos: bigint },
+  args: { id: string; empresaId: string; sucursalId: string; cobranzaId: string; orden: number; medioDePagoId: string; cuentaDeCobroId?: string | null; movimientoId: string; importeEnCentavos: bigint; datos?: DatosDelCobroCompletos },
 ): Promise<void> {
-  const { importeEnCentavos, ...resto } = args;
-  await db.cobro.create({ data: { ...resto, importe: textoDeCentavos(importeEnCentavos) }, select: { id: true } });
+  const { importeEnCentavos, datos, cuentaDeCobroId, ...resto } = args;
+  await db.cobro.create({
+    data: { ...resto, cuentaDeCobroId: cuentaDeCobroId ?? null, importe: textoDeCentavos(importeEnCentavos), cupon: datos?.cupon ?? null, ultimos4: datos?.ultimos4 ?? null, marcaDeTarjetaId: datos?.marcaDeTarjetaId ?? null, cuotas: datos?.cuotas ?? null, dni: datos?.dni ?? null },
+    select: { id: true },
+  });
 }

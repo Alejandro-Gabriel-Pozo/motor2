@@ -76,6 +76,7 @@ export async function limpiarBaseDeTest() {
   await prismaAdmin.sesionCaja.deleteMany();
   await prismaAdmin.caja.deleteMany();
   await prismaAdmin.medioDePago.deleteMany();
+  await prismaAdmin.cuentaDeCobro.deleteMany(); // C3: después de lo que la referencia (movimientos, cobros, arqueos). `ValorDeLista` es global y sembrada: no se limpia.
   // Carta antes que nada: sus tablas referencian Producto y Sucursal (RESTRICT), que se borran más abajo.
   // Las opciones de un ítem agrupado primero: referencian al ítem agrupado (RESTRICT) y a Producto.
   // OJO: PromoCartaCupo, PromoCarta y SeccionCarta NO se borran acá (Task #16, docs/plan-promo-combo-2026-09-26.md, M2) —
