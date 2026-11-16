@@ -152,6 +152,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Compras N3 sobre el origin/main integrado (39fc9233), matriz regenerada sobre el merge. Dos cambios de la rama, ya declarados al dueño: (1) compra_recibir pasa al módulo recepcion_de_compras y a piso administrador (Compras N3-a, recepción separada) (2) acción nueva compra_controlar_recepcion (Compras N3-a): módulo recepcion_de_compras, de sucursal, piso operario, semilla admin y operador (dueño, 2026-11-16: «Como Pedernal: también el operador»). Revisado con `git diff`: solo se suma esa clave a la lista de `MODULO_NO_ACTIVO//recepcion_de_compras` y a las listas de claves de cada bloque; ningún otro permiso ni rol cambia.",
       },
+      {
+        blob: "a18216148e4bf19553206513b1c042ff9a9034a2",
+        // El commit que regenera la matriz es el WIP `4822b8af` de la rama de la orden de compra (el contenedor se reinició antes de commitearlo con su motivo); este registro es el motivo.
+        commit: "4822b8af",
+        motivo:
+          "Compras, orden de compra (etapa OC): módulo nuevo `ordenes_de_compra` (vendible, nace apagado, requiere `recepcion_de_compras`) y tres acciones nuevas: `orden_de_compra_gestionar` y `compras_configurar` (empresa, piso administrador, semilla admin) y `orden_de_compra_ver` (empresa, piso operario, solo lectura, semilla admin y operador). NO cambia ningún permiso existente ni a ningún rol: verificado quitando las tres claves y el bloque del módulo nuevo de la matriz nueva, que queda IDÉNTICA a la anterior salvo las dos líneas del texto de denegación del módulo («Tu empresa no tiene activado el módulo \"Órdenes de compra\".») y su encabezado `MODULO_NO_ACTIVO//ordenes_de_compra//`, que aparecen para cada usuario y cada registro de módulos. Todo lo nuevo se rechaza con el módulo apagado.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
