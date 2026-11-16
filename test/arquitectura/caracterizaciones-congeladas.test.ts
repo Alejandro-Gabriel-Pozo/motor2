@@ -138,6 +138,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Parte P1 (ADITIVO; claves nuevas, semilla solo `admin`, todo nace cerrado): `ACCIONES 130 a 133` y las filas `PERMISO` de `partes_ver`, `partes_editar` y `partes_desactivar` (admin ver=true editar=true; operador sin Ver ni Editar). Revisado con `git diff`: solo se suman esas claves a las listas de cada bloque; ningún otro permiso ni rol cambia.",
       },
+      {
+        blob: "f72a3054a0048254e26106ebab94e7d7c1c76ba4",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `72fe9640` (Parte P1: el operador recibe partes_ver y partes_editar, la semilla y la migración).
+        commit: "72fe9640",
+        motivo:
+          "Parte P1, operador como Pedernal (pedido del dueño 2026-11-16, «como pedernal,»; CAMBIA COMPORTAMIENTO, deliberado): la semilla de `partes_ver` y `partes_editar` pasa de [admin] a [admin, operador] (`partes_desactivar` NO cambia: piso administrador). El operador pasa de no tener esas dos claves a tenerlas (ok en ver y editar) en la matriz de acceso. Revisado con `git diff -U0`: cambia SOLO lo de `partes_ver`/`partes_editar` y el rol operador; ningún otro permiso ni rol cambia.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
@@ -272,6 +279,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "c0b4626",
         motivo:
           "Parte P1 (ADITIVO; claves nuevas, semilla solo `admin`, todo nace cerrado): `ACCIONES 130 a 133` (en las dos fotos) y las seis filas `PERMISO` por foto de `partes_ver`, `partes_editar` y `partes_desactivar` (admin ver=true editar=true; operador ver=false editar=false). Revisado con `git diff`: solo se suman esas líneas; ningún otro permiso ni rol cambia.",
+      },
+      {
+        blob: "3ca51ace3297de66b37d91052a538418448bf353",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `72fe9640` (Parte P1: el operador recibe partes_ver y partes_editar, la semilla y la migración).
+        commit: "72fe9640",
+        motivo:
+          "Parte P1, operador como Pedernal (pedido del dueño 2026-11-16, «como pedernal,»; CAMBIA COMPORTAMIENTO, deliberado): la semilla de `partes_ver` y `partes_editar` pasa de [admin] a [admin, operador] (`partes_desactivar` NO cambia: piso administrador). Las filas `PERMISO operador:partes_ver` y `operador:partes_editar` pasan de ver=false editar=false a ver=true editar=true en las dos fotos. Revisado con `git diff -U0`: cambia SOLO lo de `partes_ver`/`partes_editar` y el rol operador; ningún otro permiso ni rol cambia.",
       },
     ],
   },
