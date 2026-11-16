@@ -27,3 +27,16 @@ export async function cambiarNombreDeRol(tx: Prisma.TransactionClient, entrada: 
 export async function cambiarActivoDeRol(tx: Prisma.TransactionClient, entrada: { rolId: string; activo: boolean }): Promise<void> {
   await tx.rol.update({ where: { id: entrada.rolId }, data: { activo: entrada.activo } });
 }
+
+/**
+ * Toma el candado del cupo de roles propios de ESA empresa hasta el final de la transacción (`pg_advisory_xact_lock`): dos altas o reactivaciones a la vez se serializan y la segunda cuenta DESPUÉS de que la primera
+ * confirmó, así que con cupo 1 no pasan las dos. Se usa un candado de aviso y no `SELECT … FOR UPDATE` de `Empresa` porque la app solo LEE `Empresa` (S-35): no tiene permiso de actualización sobre esa tabla.
+ */
+export async function tomarCandadoDeRolesPropios(tx: Prisma.TransactionClient, empresaId: string): Promise<void> {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${"roles-propios:" + empresaId}, 0))`;
+}
+
+/** Cuántos roles PROPIOS (sin clave de sistema) ACTIVOS tiene la empresa del contexto. */
+export async function contarRolesPropiosActivos(tx: Prisma.TransactionClient): Promise<number> {
+  return tx.rol.count({ where: { clave: null, activo: true } });
+}

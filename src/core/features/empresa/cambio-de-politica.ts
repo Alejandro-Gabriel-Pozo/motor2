@@ -12,6 +12,8 @@ export interface CambioDePoliticaPedido {
   perfil?: NombreDePerfilDePolitica;
   permisosEditables?: boolean;
   dosPaneles?: boolean;
+  /** El tope de roles propios activos (entero de 0 a 1000). Lo fija SOLO la plataforma. */
+  rolesPropiosMax?: number;
 }
 
 export interface CambioDePoliticaHecho {
@@ -29,10 +31,16 @@ export class PoliticaDeEmpresaError extends Error {
 }
 
 /** Las perillas pedidas: el perfil fija las dos y las perillas sueltas se aplican después y lo pisan. Sin ninguna es un error. */
-export function perillasPedidas(pedido: Pick<CambioDePoliticaPedido, "perfil" | "permisosEditables" | "dosPaneles">): Partial<PoliticaDeEmpresa> {
+export function perillasPedidas(pedido: Pick<CambioDePoliticaPedido, "perfil" | "permisosEditables" | "dosPaneles" | "rolesPropiosMax">): Partial<PoliticaDeEmpresa> {
   const pedidas: Partial<PoliticaDeEmpresa> = { ...(pedido.perfil ? PERFILES_DE_POLITICA[pedido.perfil] : {}) };
   if (pedido.permisosEditables !== undefined) pedidas.permisosEditables = pedido.permisosEditables;
   if (pedido.dosPaneles !== undefined) pedidas.dosPaneles = pedido.dosPaneles;
+  if (pedido.rolesPropiosMax !== undefined) {
+    if (!Number.isInteger(pedido.rolesPropiosMax) || pedido.rolesPropiosMax < 0 || pedido.rolesPropiosMax > 1000) {
+      throw new PoliticaDeEmpresaError(`--roles-propios-max tiene que ser un entero de 0 a 1000 (llegó "${pedido.rolesPropiosMax}").`);
+    }
+    pedidas.rolesPropiosMax = pedido.rolesPropiosMax;
+  }
   if (Object.keys(pedidas).length === 0) throw new PoliticaDeEmpresaError("No pediste ningún cambio: indicá un perfil o alguna perilla.");
   return pedidas;
 }
