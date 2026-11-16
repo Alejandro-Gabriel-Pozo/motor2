@@ -4,7 +4,7 @@ import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-aud
 import { invarianteRolDeSistemaIntacto } from "@/core/permisos/invariantes";
 import { invarianteRolSinUsuariosActivos } from "@/server/lecturas/permisos/gobierno";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
-import { hayCupoDeRolPropio } from "@/core/permisos/cupo-de-roles-propios";
+import { esRolPropio, hayCupoDeRolPropio } from "@/core/permisos/cupo-de-roles-propios";
 import { MENSAJE_PERMISOS_DE_PLATAFORMA } from "@/core/permisos/politica-de-empresa";
 import { politicaDeEmpresa } from "@/server/acceso/politica-de-empresa";
 import { cambiarActivoDeRol, contarRolesPropiosActivos, tomarCandadoDeRolesPropios } from "@/server/persistencia/permisos/roles";
@@ -42,7 +42,7 @@ export async function actualizarActivoRolCasoDeUso(actor: Pick<ContextoUsuario, 
       if (!rol) return fracaso("ROL_NO_ENCONTRADO", "No se encontró ese rol.");
 
       // P2: REACTIVAR un rol propio archivado vuelve a contar en el cupo (`Empresa.rolesPropiosMax`): se toma el candado de la empresa, se cuenta y recién ahí se decide. Activar uno que ya está activo no gasta cupo.
-      if (activo && !rol.activo && rol.clave === null) {
+      if (activo && !rol.activo && esRolPropio(rol)) {
         await tomarCandadoDeRolesPropios(tx, actor.empresaId);
         const { rolesPropiosMax } = await politicaDeEmpresa(actor.empresaId, tx);
         if (!hayCupoDeRolPropio(rolesPropiosMax, await contarRolesPropiosActivos(tx))) return fracaso("CUPO_DE_ROLES_PROPIOS", MENSAJE_PERMISOS_DE_PLATAFORMA);

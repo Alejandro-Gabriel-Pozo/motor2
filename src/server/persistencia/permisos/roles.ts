@@ -1,5 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
+import { FILTRO_DE_ROLES_PROPIOS_ACTIVOS } from "@/core/permisos/cupo-de-roles-propios";
 
 /**
  * Persistencia de los ROLES (`Rol`; Hito 3, Fase I, I.2 de `docs/plan-hito-3-pureza.md`). Son EXACTAMENTE las escrituras que las Server Actions de
@@ -38,5 +39,5 @@ export async function tomarCandadoDeRolesPropios(tx: Prisma.TransactionClient, e
 
 /** Cuántos roles PROPIOS (sin clave de sistema) ACTIVOS tiene la empresa del contexto. */
 export async function contarRolesPropiosActivos(tx: Prisma.TransactionClient): Promise<number> {
-  return tx.rol.count({ where: { clave: null, activo: true } });
+  return tx.rol.count({ where: FILTRO_DE_ROLES_PROPIOS_ACTIVOS });
 }

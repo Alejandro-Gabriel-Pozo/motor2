@@ -6,3 +6,12 @@
 export function hayCupoDeRolPropio(rolesPropiosMax: number, rolesPropiosActivos: number): boolean {
   return Number.isInteger(rolesPropiosMax) && Number.isInteger(rolesPropiosActivos) && rolesPropiosActivos >= 0 && rolesPropiosActivos < rolesPropiosMax;
 }
+
+/** Un rol PROPIO es el que no tiene clave de sistema (los de sistema, «admin» y «operador», la tienen). La clave de un rol se lee solo desde `core/permisos` (regla 4 de `acceso-solo-por-el-guard`). */
+export function esRolPropio(rol: { clave: string | null }): boolean {
+  return rol.clave === null;
+}
+
+/** El filtro de los roles propios ACTIVOS (los que cuentan para el cupo), para la consulta de la persistencia. */
+export const FILTRO_DE_ROLES_PROPIOS_ACTIVOS = { clave: null, activo: true } as const;
+
