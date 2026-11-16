@@ -17,6 +17,11 @@ export const ENTIDADES_AUDITABLES = [
   "SesionCaja",
   "MovimientoCaja",
   "Cobranza",
+  // Caja y cobro C2: `JornadaDeSucursal` (empezar, cancelar y cerrar el día; `entidadId` es el id de la jornada), `CorreccionDeMedio` (el medio de un cobro corregido durante el cierre), `DeclaracionDeTotal` y `ConformeDeJornada` (lo que se declara al cerrar el día) — con `sucursalId`. Nunca llevan datos personales.
+  "JornadaDeSucursal",
+  "CorreccionDeMedio",
+  "DeclaracionDeTotal",
+  "ConformeDeJornada",
   "PermisoRol",
   "CapacidadSucursal",
   "Rol",

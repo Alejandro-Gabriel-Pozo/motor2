@@ -4343,7 +4343,7 @@ model JornadaDeSucursal {
   sucursal               Sucursal  @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   fechaDeNegocio         DateTime  @db.Date
   /// ABIERTA | EN_AUDITORIA | CERRADA (CHECK).
-  estado                 String    @default("ABIERTA")
+  estado                 String    @default(dbgenerated("'ABIERTA'"))
   auditoriaIniciadaEn    DateTime? @db.Timestamptz(3)
   auditoriaIniciadaPorId String?
   auditoriaIniciadaPor   User?     @relation("JornadaIniciadaPor", fields: [auditoriaIniciadaPorId], references: [id])
@@ -4353,7 +4353,8 @@ model JornadaDeSucursal {
   /// sha256 (hex) de los controles que se vieron al cerrar.
   huellaDeCierre         String?
   observacion            String?
-  creadoEn               DateTime  @default(now()) @db.Timestamptz(3)
+  /// `dbgenerated`: la app solo puede insertar la identidad de la jornada (INSERT por columna); un default de Prisma agregaría estas columnas al INSERT.
+  creadoEn               DateTime  @default(dbgenerated("CURRENT_TIMESTAMP")) @db.Timestamptz(3)
 
   controles     ControlDeJornadaCerrada[]
   correcciones  CorreccionDeMedio[]

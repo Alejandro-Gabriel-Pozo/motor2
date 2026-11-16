@@ -8,3 +8,15 @@ export type { RenglonDeCobro } from "./cobro";
 export { TOPE_EN_CENTAVOS, centavosDeImporte, importeDeCentavos, textoDeCentavos } from "./dinero-de-caja";
 export { CLASES_DE_MOVIMIENTO, importeValidoParaClase, signoDeClase } from "./sesion";
 export type { ClaseDeMovimiento } from "./sesion";
+// Etapa C2 (docs/diseno-caja-c2-jornada-y-cierre-del-dia-2026-11-16.md): la jornada, el cierre del día, la fecha de negocio con hora de corte y los controles.
+export { fechaDeNegocio } from "./fecha-de-negocio";
+export { explicacionDesdeTexto } from "./explicacion";
+export { ESTADOS_DE_JORNADA, TRANSICIONES_DE_JORNADA, decidirCancelar, decidirIniciar } from "./jornada";
+export type { EstadoConsultado, EstadoDeJornada } from "./jornada";
+export { decidirCierre, impideCerrar, ordenarControles, reconocimientosValidos, repiteElCierre } from "./cierre";
+export type { ControlDelDia, ControlResuelto, ReconocimientoPedido, Severidad } from "./cierre";
+export { conciliarJornada } from "./conciliacion";
+export type { CierreDeCajaDelMedio } from "./conciliacion";
+export { CONTROLES_DEL_DIA, controlesDelDia } from "./controles-del-dia";
+export type { DatosParaLosControles } from "./controles-del-dia";
+export { decidirAjuste, decidirCorreccionDeMedio, decidirDeclaracion, medioVigenteDelCobro, motivoObligatorio } from "./correccion";
