@@ -81,9 +81,9 @@ describe.skipIf(!process.env.PLATAFORMA_DATABASE_URL)("con el rol motor2_platafo
   afterAll(() => plataforma.$disconnect());
 
   // Lista cerrada: es la misma que documenta scripts/operaciones/crear-rol-motor2-plataforma.sql. Una tabla nueva no entra sola.
-  const LECTURA_Y_ALTA_Y_CAMBIO = ["Empresa", "ModuloEmpresa", "AdminPlataforma", "CodigoDeIngresoPlataforma", "CodigoDeRecuperacionPlataforma", "SesionPlataforma", "Invitacion"];
+  const LECTURA_Y_ALTA_Y_CAMBIO = ["Empresa", "ModuloEmpresa", "AdminPlataforma", "CodigoDeIngresoPlataforma", "CodigoDeRecuperacionPlataforma", "SesionPlataforma", "Invitacion", "Plan", "VersionDePlan"];
   // S-33: `RegistroAuditoria` ya no se escribe desde plataforma (los cambios por script auditan en `AuditoriaPlataforma`): sin privilegios. S-35: `User` y `UsuarioEmpresa` solo se leen y `UsuarioSucursal` no tiene ninguno.
-  const LECTURA_Y_ALTA = ["Accion", "Rol", "PermisoRol", "Unidad", "MotivoMerma", "DestinoConsumo", "Sucursal", "AuditoriaPlataforma"];
+  const LECTURA_Y_ALTA = ["Accion", "Rol", "PermisoRol", "Unidad", "MotivoMerma", "DestinoConsumo", "Sucursal", "AuditoriaPlataforma", "PlanDeEmpresa"];
   // Solo lectura: `User` y `UsuarioEmpresa` (el gerente de una empresa) y los metadatos de Prisma (ADR-025, aviso de instalación atrasada en migraciones): NUNCA datos de negocio, nunca escritura.
   const SOLO_LECTURA = ["User", "UsuarioEmpresa", "_prisma_migrations"];
   const PRIVILEGIOS = ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"];
