@@ -6,6 +6,8 @@
 > - `docs/diseno-unidades-y-clasificacion-paridad-pedernal-2026-11-16-auditoria.md`: tabla «igual / difiere / falta» contra el código real de los dos lados, e inventario de las migraciones de igualación y su estado.
 > - `docs/diseno-unidades-y-clasificacion-paridad-pedernal-2026-11-16-escalera.md`: niveles 1 a 5 con el estado de cada decisión y la tabla «¿qué pasa si…?» por comando.
 >
+> **Actualización 2026-11-16 (tras el merge de #324).** El dueño respondió dos cosas (citas en §8): **departamento en la cuenta: «Sí, ya»** y **redondeo de cantidades: «Pasar a cuenta exacta como Pedernal»**. Además el orquestador general decidió que **clases de producto y «unir pares» quedan en este frente** y que **porciones / unidad de venta separada (Pedernal 0051) NO se toman**. Los cambios están marcados «(actualizado)».
+>
 > **Marcas.** **VERIFICADO** (lo leí en el código, con ruta): código de Motor2 `main` `903c0f6d` y de Pedernal `ZuluHub-ERP` `ad4a9a4` (2026-11-16 11:36 -0300; docs `125e09e`). **CONFIRMADA**: la dijo el dueño, con cita y fecha (cuando la cita me llega por un documento y no por el chat, lo digo). **PROPUESTA**, **PENDIENTE**, **NO VERIFICADO**.
 > Este repositorio es público: sin nombres de clientes, cifras reales ni identificadores de bases.
 
@@ -32,7 +34,7 @@
 3. **La clasificación de Pedernal tiene backend completo pero NO tiene pantalla** (`apps/web` sin ruta de clasificación; solo la maqueta `clasificacion.html`). El diseño de Motor2 del 2026-11-13 daba por hecho que había pantallas aprobadas: la «forma» a igualar en pantalla es la **maqueta**, no una pantalla real. Marca de riesgo para el frente 6.
 4. **La unidad de compra en Pedernal no es del producto**: se elige **en cada línea de recepción** (`linea_de_recepcion.unidad_de_compra_id`); Pedernal no tiene `unidadCompraId` en producto. Motor2 sí (`Producto.unidadCompraId` + `factorConversion`). Diferencia de forma que ninguna pieza anterior declaraba; pertenece al frente 5 (compras) y se avisa (§7).
 5. **Merma: Pedernal la tiene apagada de base** (perilla `composiciones_con_perdida`, `src/capacidades/planes/perillas.ts:60-65`, `encendida:false`) y solo en la receta; Motor2 la tiene siempre encendida y además en opciones y combinaciones. Diferencia por datos existentes, ya declarada para opciones y combinaciones; **la perilla es nueva** y es del frente 4.
-6. **Riesgo en código existente, anotado (no lo toco, no es mi carril de escritura en Fase 1):** `redondearACantidadDeUnidad` redondea con números de coma flotante (`src/core/movimientos/transiciones.ts:173`: `Math.round(cantidad * 10**dec) / 10**dec`). Es la regla de «cantidades exactas, nunca flotantes»; Pedernal usa enteros. Ya figura en el diseño de merma («dinero con `number` sigue; no se reescribe») pero conviene decidirlo con el frente 3 (§7).
+6. **(actualizado) Redondeo de cantidades: DECIDIDO por el dueño.** `redondearACantidadDeUnidad` redondea con números de coma flotante (`src/core/movimientos/transiciones.ts:173`: `Math.round(cantidad * 10**dec) / 10**dec`). Dueño, 2026-11-16: «Pasar a cuenta exacta como Pedernal» → **CONFIRMADA**. Entra en este frente como etapa **A1b** (§1), **medida primero**. Queda **una pregunta de alcance** (P2, §8): qué hace con `Unidad.decimales`.
 
 ---
 
@@ -44,11 +46,12 @@ El orden sale de «lo más barato primero» y de que **las migraciones se aprueb
 |---|---|---|---|
 | **A0** (hecha) | Unidades U0 y merma M0: código puro y función única | No | En `main` (#299, #297) |
 | **A1** | Consultas de **solo lectura** por base: unidades y equivalencias propuestas (U0 del diseño), recetas y líneas con merma (M1), categorías y productos, pares compra+venta (clases §11.3.9) | No | PROPUESTA, sin pedido nuevo: ya diseñadas |
+| **A1b** (actualizado) | **Redondeo exacto de cantidades** (`transiciones.ts:173`): pasar a `Decimal` con 4 decimales, como Pedernal. **Antes de aplicar: medir el efecto en el Kardex con la copia de solo lectura** (nada se escribe en producción), **regenerar los `golden` con el motivo declarado** y **coordinar la edición de `transiciones.ts` (zona de stock) con el frente 3**, que da la primitiva de cantidad exacta. Sin migración, pero **cambia resultados de stock**: no se mergea sin la medición | No (código), **cambia resultados** | **CONFIRMADA** («Pasar a cuenta exacta como Pedernal», 2026-11-16); alcance sobre `Unidad.decimales` **PENDIENTE** (P2) |
 | **A2** | Aditivas y reversibles, **con `down.sql`**, solo escritas y llevadas a `main` (no aplicadas): `Unidad.codigoFijo` (U1), `baseDeCantidad` en las tres tablas de versiones (M2), árbol en `CategoriaProducto` (E1), `ProductoClasificacion` (E2), columna `Producto.clase` (clases E1) | Esquema, no filas | PROPUESTA; **no se escriben hasta que el dueño confirme los niveles 1 a 5 de cada una** (compuerta) |
 | **A3** | El código lee lo nuevo (U2, M3a, pantallas de clasificación y selector) | No | Después de A2; la pantalla es del frente 6 |
-| **A4** | **Reescriben datos o cambian tipos**, **«requiere autorización expresa por base, con respaldo y ensayo»**: U1b (rellenar `codigoFijo`), U3 (agregar las 14 a empresas existentes), M2b (merma de 2 a 4 decimales), M3b (cargar en bruto y convertir al editar, sin migración pero cambia stock y costo de lo nuevo), clases E1b (relleno parcial) y E6 (**unir pares**), E3 de clasificación (camino en `CuentaItem`: aditiva, pero su reversión destruye lo sellado) | **Sí** | Nada aplicado; congelamiento vigente |
+| **A4** | **Reescriben datos o cambian tipos**, **«requiere autorización expresa por base, con respaldo y ensayo»**: U1b (rellenar `codigoFijo`), U3 (agregar las 14 a empresas existentes), M2b (merma de 2 a 4 decimales), M3b (cargar en bruto y convertir al editar, sin migración pero cambia stock y costo de lo nuevo), clases E1b (relleno parcial) y E6 (**unir pares**), E3 de clasificación (camino en `CuentaItem` **y departamento en `Cuenta`** (actualizado): aditivas, pero la reversión destruye lo sellado) | **Sí** | Nada aplicado; congelamiento vigente |
 
-**Lo que NO entra (nadie lo pidió; sugerencias, no código):** fusionar unidades duplicadas; renombrar presentaciones; unidad de venta separada de la de stock y porciones (Pedernal 0051: es del inventario R4 del plan de paridad y no está en el pedido de este frente; se consulta al orquestador general, §7); filtro de productos por clasificación; reportes por departamento; responsable de departamento.
+**Lo que NO entra (nadie lo pidió; sugerencias, no código):** fusionar unidades duplicadas; renombrar presentaciones; unidad de venta separada de la de stock y porciones (Pedernal 0051, R4: **decidido por el orquestador general: NO se toma**; queda pregunta abierta para el dueño porque nadie la pidió); filtro de productos por clasificación; reportes por departamento; responsable de departamento.
 
 ---
 
@@ -76,7 +79,7 @@ El orden sale de «lo más barato primero» y de que **las migraciones se aprueb
 | `RecetaVersion`, `VersionDeOpcion`, `RecetaDeCombinacionVersion` | columna `baseDeCantidad` | M2 |
 | `RecetaIngrediente`, `RendimientoLocalIngrediente`, `ConsumoDeOpcion`, `RecetaDeCombinacionIngrediente` | `mermaPorcentaje` de `Decimal(6,2)` a `(7,4)` | M2b |
 
-**Modelos que se tocan pero NO son solo míos (se piden por turno al orquestador general; ver §3):** `CuentaItem` (E3: dos columnas del camino), `Cuenta` (solo si el dueño decide 0048), `Producto` (columna de clase y, si se retira, `categoriaId`), `MovimientoStock` y `Presentacion` (no se tocan: ver §3).
+**Modelos que se tocan pero NO son solo míos (se piden por turno al orquestador general; ver §3):** `CuentaItem` (E3: dos columnas del camino), `Cuenta` (**0048 confirmado**, entra con E3: se pide el turno al orquestador general), `Producto` (columna de clase y, si se retira, `categoriaId`), `MovimientoStock` y `Presentacion` (no se tocan: ver §3).
 
 **Zona restringida que se pide al orquestador general** (nada se edita en concurrencia): numeración de migraciones y `test/aislamiento/m1-mostrador-subir-bajar-subir.test.ts`; `test/modulos/__golden__/*` y `caracterizaciones-congeladas` si una prueba de caracterización cambia (por diseño **no deberían cambiar**: las migraciones de A2 no alteran ningún resultado); `src/core/permisos/acciones.ts` (clasificación **no suma clave**, usa las existentes: ver escalera §5); `src/core/textos/*` (textos nuevos: ninguno propuesto; los aprobados de unidades, merma y clasificación se reutilizan); `docs/registro-de-decisiones.md` (no abro DEC); `knip.jsonc` si la primitiva `unidades-de-medida.ts` queda sin consumidor al cerrar una etapa.
 
@@ -120,22 +123,28 @@ Nivel 6 (tablas) **no se diseña de nuevo acá**: las propuestas de esquema ya e
 
 ## 7. Preguntas a otros frentes y al orquestador general (no son preguntas al dueño)
 
-1. **Orquestador general:** ¿el inventario R4 (porciones, unidad de venta separada de la base; Pedernal 0051 y `producto.unidad_de_venta_id`) es de este frente, del 5 o del 6? Yo **no** lo tomo sin su respuesta (no está en el pedido).
-2. **Orquestador general:** las **clases de producto** (incluida «unir pares») ¿quedan en este frente (como «clasificación del producto») o van al 6 (ficha)? Las trato como mías en este documento porque el encargo las nombra («clases»), y modifican `Producto`.
-3. **Frente 3:** ¿quién decide pasar `redondearACantidadDeUnidad` a aritmética exacta?
+1. **(Resuelta)** R4 (porciones, unidad de venta separada, Pedernal 0051): **NO se toma**; pregunta abierta para el dueño en manos del orquestador general.
+2. **(Resuelta)** Las **clases de producto** y «unir pares» **quedan en este frente** (decidido por el orquestador general).
+3. **(Resuelta)** Redondeo: lo decidió el dueño (§8). **Coordinar con el frente 3 la edición de `transiciones.ts`** (zona de stock): él da la primitiva de cantidad exacta; yo aplico en mi carril tras medir.
 4. **Frente 4:** ¿la merma pasa a perilla?
 5. **Frente 5:** la unidad de compra por línea (como Pedernal) en lugar de por producto.
 
-## 8. Preguntas al dueño (una por vez)
+## 8. Decisiones del dueño y preguntas (una por vez)
 
-Solo las que cambian modelo de datos, dinero o permisos y que **no** están ya respondidas. Se hace **una** (la primera); el resto queda en fila y no se pregunta hasta tener la respuesta.
+**Respondidas (CONFIRMADAS; fuente: `motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, «Fase 1 de los frentes»; la cita me llega por el orquestador general):**
 
-**P1 (ahora). Departamento en la cuenta de venta (Pedernal 0048).** En Pedernal, al abrir una cuenta se fija el «Departamento» (un selector, oculto si la empresa tiene 0 o 1 departamentos) y no cambia después; vender un producto de otro departamento **no se bloquea**. En Motor2 no existe. Como el dueño pidió «iguales en todo» pero esto **no estaba en el pedido de clasificación de Motor2** (13/11: «departamento… categoría»), se pregunta: ¿**Motor2 también guarda el departamento en la cuenta, como Pedernal**? Opciones: **(a) No por ahora (recomendada: es lo más barato, y el departamento ya queda en cada renglón con E3)**; (b) Sí, después de E1 a E3 (una columna anulable en `Cuenta`, aditiva); (c) Sí, ya, junto con E3 (más riesgo en ventas). Si no se responde: (a).
+- **P1. Departamento en la cuenta de venta (Pedernal 0048).** Dueño, 2026-11-16: «Sí, ya». **CONFIRMADA** la opción (c): el «Departamento» se fija en la cuenta al abrirla (no cambia después; vender un producto de otro departamento **no se bloquea**; el selector se oculta con 0 o 1 departamentos, como en Pedernal) y **entra con E3**. Es una columna anulable en `Cuenta` (aditiva) y **zona restringida**: se pide por turno al orquestador general. Consecuencia: E3 pasa a ser la etapa más delicada (toca `Cuenta` y `CuentaItem`, tablas muy usadas por mostrador y mesas) y exige pruebas de regresión de ventas (precio, descuento de stock y foto de la línea idénticos). Los textos del selector son los ya aprobados en Pedernal; **ninguno nuevo se inventa acá**.
+- **P2 anterior (redondeo).** Dueño, 2026-11-16: «Pasar a cuenta exacta como Pedernal». **CONFIRMADA**: `redondearACantidadDeUnidad` pasa a aritmética exacta con 4 decimales. Procedimiento fijado por el orquestador general: **medir el efecto en el Kardex con la copia de solo lectura, regenerar los `golden` con el motivo declarado, coordinar `transiciones.ts` con el frente 3**.
 
-**Fila de espera (se preguntan de a una cuando toque, no ahora):**
-- **P2.** Confirmar «en bloque» las asunciones de clasificación hasta hoy solo del orquestador: que el diseño del 06/11 («unidad → rubro») queda reemplazado (P1 del 13/11), que el vínculo producto → nodo es de solo inserción (P2) y que se amplía `CategoriaProducto` en vez de crear tabla (P7). Cambia el modelo de datos.
-- **P3.** ¿Se pasa a perilla la merma (frente 4)? Cambia lo que ven las empresas existentes. Solo si el frente 4 la necesita.
-- **P4.** Qué hacer con **un cliente cuya base tenga unidades o pares que no entren en la regla** (se pregunta **por base**, con el informe en la mano: no antes).
+**P2 (ahora, una sola; cambia stock y dinero).** «Cuenta exacta con 4 decimales» deja una duda que **cambia lo que se guarda en el stock**: hoy el stock se redondea a los decimales de **cada unidad** (kg 2, g 0, unidad 0). En Pedernal las cantidades llevan **siempre 4 decimales y nunca se redondean**. ¿Qué querés?
+- **(a)** Cuenta exacta **pero el stock sigue redondeado a los decimales de su unidad** (kg a 2): cambia solo *cómo* se calcula (sin coma flotante), no *a cuántos decimales* se guarda. **Recomendada: es lo más barato y no reescribe nada de lo guardado.**
+- **(b)** Como Pedernal del todo: **4 decimales en todo el stock nuevo**, sin redondear a los decimales de la unidad (lo ya guardado queda como está; cambia lo que se guarda hacia adelante y la lectura de `Unidad.decimales`).
+Si no se responde: (a), y la medición del Kardex de A1b dice cuánto cambia.
+
+**Fila de espera:**
+- **P3.** Confirmar «en bloque» las asunciones de clasificación solo del orquestador: diseño del 06/11 («unidad → rubro») reemplazado, vínculo producto → nodo de solo inserción, `CategoriaProducto` ampliada en lugar de tabla nueva.
+- **P4.** ¿Merma a perilla? (solo si el frente 4 la necesita; hoy el frente 4 **no** la crea).
+- **P5.** Por base: unidades o pares que no entren en la regla (con el informe en la mano).
 
 ## 9. Sugerencias (no implementadas)
 
