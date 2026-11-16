@@ -38,6 +38,7 @@ export const COLUMNAS_DEL_DUPLICADO: Readonly<Record<string, Readonly<Record<str
     alicuotaIvaVenta: "SE_COPIA",
     alicuotaIvaCompra: "SE_COPIA",
     pasoVenta: "SE_COPIA",
+    nombreDeCocina: "SE_COPIA", // cómo nombra la cocina al producto (2026-11-15): el duplicado lo hereda
     seProduce: "SE_COPIA",
     esConsignacion: "NO_SE_COPIA", // fijar el costo de un consignante exige `pagar_consignante`: no se hereda
     proveedorConsignacionId: "NO_SE_COPIA",

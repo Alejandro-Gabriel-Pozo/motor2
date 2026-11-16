@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nombreDeFicha, nombreDeFichaSiCambio, nombreMinimoDeFicha } from "@/core/datos/nombre-de-ficha";
+import { nombreDeCocinaDeProducto, nombreDeFicha, nombreDeFichaSiCambio, nombreMinimoDeFicha } from "@/core/datos/nombre-de-ficha";
 
 const VACIO = "El nombre no puede estar vacío.";
 const GENERICO = "Esta acción no está permitida";
@@ -66,5 +66,30 @@ describe("nombreDeFichaSiCambio (el caso de uso de una edición, con el nombre g
   });
   it("vacío falla aunque el guardado también lo fuera", () => {
     expect(nombreDeFichaSiCambio("", "", "PRODUCTO", VACIO)).toMatchObject({ ok: false, codigo: "vacio" });
+  });
+});
+
+describe("nombreDeCocinaDeProducto (opcional, solo un PV, ficha NOMBRE_DE_COCINA)", () => {
+  it("sin dato (undefined, null o solo espacios) es «sin nombre de cocina»: null, en cualquier tipo", () => {
+    for (const valor of [undefined, null, "", "   ", "\n\t"]) {
+      for (const tipo of ["PV", "MP", undefined]) expect(nombreDeCocinaDeProducto(valor, tipo), `${JSON.stringify(valor)} / ${String(tipo)}`).toEqual({ ok: true, valor: null });
+    }
+  });
+
+  it("con dato en un PV: el nombre canónico (recortado, NFC, espacios colapsados)", () => {
+    expect(nombreDeCocinaDeProducto("  Medallón   de bife ", "PV")).toEqual({ ok: true, valor: "Medallón de bife" });
+    expect(nombreDeCocinaDeProducto("x".repeat(80), "PV").ok).toBe(true);
+  });
+
+  it("rechaza con el mensaje genérico: largo, sin letras, signos de catálogo, invisibles, salto de línea, y lo que no es texto", () => {
+    for (const malo of ["x".repeat(81), "12 34", "¿Bife?", "Bife 50%", "a​b", "a\nb", 5, {}, ["x"], true]) {
+      expect(nombreDeCocinaDeProducto(malo, "PV"), JSON.stringify(malo)).toEqual({ ok: false, codigo: "formato", mensaje: "Esta acción no está permitida" });
+    }
+  });
+
+  it("falla cerrado en el tipo: con dato, solo un PV; una MP, un tipo desconocido o ausente lo rechazan", () => {
+    for (const tipo of ["MP", "pv", "", null, undefined, 1]) {
+      expect(nombreDeCocinaDeProducto("Medallón", tipo), String(tipo)).toEqual({ ok: false, codigo: "formato", mensaje: "Esta acción no está permitida" });
+    }
   });
 });

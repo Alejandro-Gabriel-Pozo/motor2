@@ -63,7 +63,7 @@ async function abrirEnDosSucursales(browser: Browser, baseURL: string | undefine
 async function darDeAltaPV(page: import("@playwright/test").Page, nombre: string, tildar: boolean) {
   await page.goto("/catalogo/productos/nuevo");
   await page.getByRole("radio", { name: "Producto de venta (PV)" }).check();
-  await page.getByRole("textbox", { name: "Nombre" }).fill(nombre);
+  await page.getByRole("textbox", { name: "Nombre", exact: true }).fill(nombre);
   await page.getByRole("combobox", { name: "Unidad de stock" }).selectOption({ label: "kg" });
   if (!tildar) await page.getByRole("checkbox", { name: "Activo en todas las sucursales" }).uncheck();
   await page.getByRole("button", { name: "Crear producto" }).click();

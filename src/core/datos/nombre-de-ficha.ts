@@ -56,3 +56,18 @@ export function nombreDeFichaSiCambio(valor: unknown, vigente: string, ficha: Fi
   if (v !== "" && v === vigente.trim()) return aceptar(vigente);
   return nombreDeFicha(valor, ficha, mensajeVacio);
 }
+
+/**
+ * EL NOMBRE DE COCINA de un producto (2026-11-15; `docs/diseno-nombre-de-cocina-como-pedernal-2026-11-15.md`): OPCIONAL. Sin dato (`undefined`, `null` o solo espacios) es «sin nombre de cocina» y se guarda como `null`
+ * (la comanda usa el nombre interno); con dato, la ficha NOMBRE_DE_COCINA (1 a 80, exige una letra, sin los signos solo de catálogo) y devuelve el nombre canónico que se guarda. Solo un producto de venta (PV) lo lleva
+ * (invariante I2): en cualquier otro tipo (o uno que no se conoce, falla cerrado) un nombre con dato se rechaza. Todo rechazo usa el mismo mensaje genérico de las demás fichas («Esta acción no está permitida»,
+ * decisión del dueño 2026-11-15, «como Pedernal»): no se inventa texto nuevo.
+ */
+export function nombreDeCocinaDeProducto(valor: unknown, tipo: unknown): ResultadoDato<string | null> {
+  if (valor === undefined || valor === null) return aceptar(null);
+  if (typeof valor !== "string") return rechazar("formato", MENSAJE_DE_NOMBRE_NO_PERMITIDO);
+  if (texto(valor) === "") return aceptar(null);
+  if (tipo !== "PV") return rechazar("formato", MENSAJE_DE_NOMBRE_NO_PERMITIDO);
+  const r = nombreDeFicha(valor, "NOMBRE_DE_COCINA", MENSAJE_DE_NOMBRE_NO_PERMITIDO);
+  return r.ok ? aceptar(r.valor) : rechazar("formato", MENSAJE_DE_NOMBRE_NO_PERMITIDO);
+}
