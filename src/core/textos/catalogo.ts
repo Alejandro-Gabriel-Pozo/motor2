@@ -123,6 +123,41 @@ export const CATALOGO = {
     usos: [{ archivo: "plataforma/src/app/instalaciones/[instalacion]/empresas/textos.ts", nombre: "ACCION_DE_AUDITORIA" }],
     fuente: { decision: "DEC-0015" },
   },
+  // Lote A (DEC-0017): «No se encontró …» idénticos con el mismo código, una clave por código.
+  "rechazo.MEMBRESIA_NO_ENCONTRADA": {
+    porDefecto: "No se encontró esa membresía.",
+    usos: [
+      { archivo: "src/server/actions/auth/casos-de-uso/actualizar-activo-membresia.ts", nombre: "actualizarActivoMembresiaCasoDeUso" },
+      { archivo: "src/server/actions/auth/casos-de-uso/actualizar-notas-membresia.ts", nombre: "actualizarNotasMembresiaCasoDeUso" },
+      { archivo: "src/server/actions/auth/casos-de-uso/invitar-a-vincular.ts", nombre: "invitarAVincularCasoDeUso" },
+    ],
+    fuente: { decision: "DEC-0017" },
+  },
+  "rechazo.SUCURSAL_NO_ENCONTRADA": {
+    porDefecto: "No se encontró esa sucursal.",
+    usos: [
+      { archivo: "src/server/actions/auth/casos-de-uso/actualizar-activo-sucursal.ts", nombre: "actualizarActivoSucursalCasoDeUso" },
+      { archivo: "src/server/actions/auth/casos-de-uso/renombrar-sucursal.ts", nombre: "renombrarSucursalCasoDeUso" },
+    ],
+    fuente: { decision: "DEC-0017" },
+  },
+  "rechazo.CONTEO_NO_ENCONTRADO": {
+    porDefecto: "No se encontró ese conteo.",
+    usos: [
+      { archivo: "src/server/actions/movimientos/casos-de-uso/cancelar-conteo-fisico.ts", nombre: "cancelarConteoFisicoCasoDeUso" },
+      { archivo: "src/server/actions/movimientos/casos-de-uso/resolver-conteo-pendiente.ts", nombre: "resolverConteoPendienteCasoDeUso" },
+    ],
+    fuente: { decision: "DEC-0017" },
+  },
+  "rechazo.PRODUCTO_NO_ENCONTRADO": {
+    porDefecto: "No se encontró el producto.",
+    usos: [
+      { archivo: "src/server/actions/stock/casos-de-uso/set-frecuencia-conteo.ts", nombre: "setFrecuenciaConteoCasoDeUso" },
+      { archivo: "src/server/actions/stock/casos-de-uso/set-seccion-habitual.ts", nombre: "setSeccionHabitualCasoDeUso" },
+      { archivo: "src/server/actions/stock/casos-de-uso/set-stock-minimo-producto.ts", nombre: "setStockMinimoProductoCasoDeUso" },
+    ],
+    fuente: { decision: "DEC-0017" },
+  },
 } as const satisfies Readonly<Record<string, DefinicionDeTexto>>;
 
 export type ClaveDeTexto = keyof typeof CATALOGO;

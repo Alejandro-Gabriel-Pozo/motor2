@@ -156,6 +156,16 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 - **Estado:** ACEPTADA
 - **Cita del dueño:** «Sí, mismas palabras (Recomendada)» — 2026-11-16 — chat del dueño con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, «Textos: cuatro respuestas del dueño sobre la lista única»)
 
+### DEC-0017
+- **Fecha:** 2026-11-16
+- **Quién:** la sesión Sonnet de los lotes de reducción del catálogo de textos; lote aceptado por el orquestador por delegación del dueño (lote A).
+- **Qué decidió:** el segundo lote del catálogo de textos: cuatro rechazos «No se encontró …» que hoy se escriben idénticos en varios casos de uso con el mismo código pasan a una clave cada uno, `rechazo.MEMBRESIA_NO_ENCONTRADA` («No se encontró esa membresía.»), `rechazo.SUCURSAL_NO_ENCONTRADA` («No se encontró esa sucursal.»), `rechazo.CONTEO_NO_ENCONTRADO` («No se encontró ese conteo.») y `rechazo.PRODUCTO_NO_ENCONTRADO` («No se encontró el producto.»), en 10 sitios de 10 archivos de `src/server/actions/`. Las frases quedan palabra por palabra: el cliente no ve ningún cambio. No toca dinero, permisos, texto fiscal ni decisión previa. Las otras frases que hoy usa el código `PRODUCTO_NO_ENCONTRADO` en otros archivos quedan literales hasta decidir su reducción.
+- **Por qué:** el dueño pidió reducir, inventariar y reutilizar los textos para que cada uno represente una sola cosa; son frases idénticas con el mismo código escritas varias veces (`docs/diseno-textos-en-datos-2026-11-16.md`, familia D-6).
+- **Costo de revertir:** bajo: volver a escribir la frase literal en cada `fracaso(...)` y borrar las cuatro entradas; no hay migración ni datos.
+- **Dónde:** `src/core/textos/catalogo.ts`, `src/server/actions/stock/casos-de-uso/set-seccion-habitual.ts`
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Los textos encargarte vos trata de reducir, textos, inventariar y empezar a reutilizar y que representen 1 sola cosa, definir primitivas e invariantes en texto igual que pedernal; Sí, confirmo esos límites (Recomendada)» — 2026-11-16 — chat del dueño con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, «Palabras literales del dueño» y «Respuesta literal del dueño»); lote aceptado por el orquestador por delegación (2026-11-16)
+
 ### DEC-0018
 - **Fecha:** 2026-11-16
 - **Quién:** la sesión Sonnet de los lotes del catálogo de textos (F1' de permisos); aceptación directa del dueño y forma aprobada por el orquestador.
