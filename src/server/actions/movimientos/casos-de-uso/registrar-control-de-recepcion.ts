@@ -53,7 +53,7 @@ export async function registrarControlDeRecepcionCasoDeUso(
     if (!parte) return fracaso("NO_ENCONTRADA", MENSAJE_RECEPCION_NO_ENCONTRADA);
 
     const deLaCompra = new Set((await cargarRenglonesParaRecibir(tx, factura.id)).map((r) => r.facturaProveedorRenglonId));
-    if (comando.controles.some((c) => !deLaCompra.has(c.renglonId))) return fracaso("RENGLON_AJENO", "Hay un renglón que no es de esta compra.");
+    if (comando.controles.some((c) => !deLaCompra.has(c.renglonId))) return fracaso("RENGLON_AJENO", "No se encontró uno de los renglones en esta compra.");
     const yaControlados = await cargarRenglonesYaControlados(tx, parte.id);
     if (comando.controles.some((c) => yaControlados.has(c.renglonId))) {
       return fracaso("YA_CONTROLADA", "Alguna de esas líneas ya tiene su control registrado: no se guardó ninguno. Recargá la pantalla para ver lo constatado.");

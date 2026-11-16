@@ -163,7 +163,7 @@ export type CodigoDeRechazoDeEntradas = "SIN_ENTRADAS" | "RENGLON_AJENO" | "ENTR
 type ResultadoDeEntradas = { ok: true } | { ok: false; codigo: CodigoDeRechazoDeEntradas; mensaje: string };
 
 const MENSAJE_SIN_ENTRADAS = "Indicá la sección donde entra cada renglón de la compra.";
-const MENSAJE_RENGLON_AJENO = "Hay un renglón que no es de esta compra.";
+const MENSAJE_RENGLON_AJENO = "No se encontró uno de los renglones en esta compra.";
 const MENSAJE_ENTRADA_REPETIDA = "Un renglón no puede entrar dos veces en la misma sección: juntá las cantidades.";
 const MENSAJE_RENGLON_SIN_ENTRADAS = "Falta indicar la sección donde entra uno de los renglones de la compra.";
 
