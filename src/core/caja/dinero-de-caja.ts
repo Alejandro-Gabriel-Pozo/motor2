@@ -22,3 +22,12 @@ export function importeDeCentavos(centavos: bigint): number {
 
 /** El tope en centavos (exclusivo): el importe más grande que entra en la columna es `TOPE_EN_CENTAVOS - 1`. */
 export const TOPE_EN_CENTAVOS: bigint = BigInt(IMPORTE_MAXIMO) * BigInt(100);
+
+/** Centavos enteros como texto decimal exacto («12345» → «123.45»; negativo con signo) para escribirlo en una columna `Decimal(14,2)` sin pasar por `number`. */
+export function textoDeCentavos(centavos: bigint): string {
+  const negativo = centavos < BigInt(0);
+  const abs = negativo ? -centavos : centavos;
+  const enteros = abs / BigInt(100);
+  const resto = (abs % BigInt(100)).toString().padStart(2, "0");
+  return `${negativo ? "-" : ""}${enteros.toString()}.${resto}`;
+}
