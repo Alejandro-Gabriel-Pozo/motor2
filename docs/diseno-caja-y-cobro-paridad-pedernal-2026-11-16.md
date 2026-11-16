@@ -71,7 +71,7 @@ Solo escribe en estas rutas el frente 1. Si otra sesión necesita alguna, se arr
 |---|---|---|
 | `src/core/permisos/acciones.ts` y matrices | ~12 acciones de caja (nivel 8 de la escalera), todas con piso y fail-closed, semilla `admin` | C1 |
 | `src/core/textos/*` | textos nuevos de caja y cobro (catálogo T1) | C1 |
-| `src/core/modulos/catalogo.ts` | módulo `caja` `en_desarrollo`, `requiere: ["salon"]` (frente 4 puede reclamarlo: es plataforma) | C1 |
+| `src/core/modulos/catalogo.ts` | **No lo pido yo:** lo escribe Frente 4 (ver «Acuerdos») | C1 |
 | `prisma/schema.prisma`: relaciones inversas en `Empresa`, `Sucursal`, `User`, `Cuenta` | campos de relación que Prisma exige; **no** cambia columnas | C1 |
 | `prisma/schema.prisma`: `Sucursal.horaDeCorte` | una columna (frente 3 `fechas`) | C2 |
 | `test/aislamiento/m1-mostrador-subir-bajar-subir.test.ts`, `test/modulos/__golden__/*`, `test/arquitectura/caracterizaciones-congeladas.test.ts` | lista de migraciones, golden de módulos | cada etapa |
@@ -98,6 +98,12 @@ Solo escribe en estas rutas el frente 1. Si otra sesión necesita alguna, se arr
 Mensajes a enviar a los frentes 3, 4, 5 y 6 con rutas/modelos exactos: ver el aviso de este PR. Lo que me pidan es información, no una orden.
 
 ---
+
+## Acuerdos entre orquestadores (2026-11-16, por mensaje; información, no decisión del dueño)
+
+- **Frente 3:** las tablas de caja nacen con el molde E-0 de su PR #323 (uuid de la app, `TIMESTAMPTZ(3)`, sin DELETE, solo inserción por disparador, `claveIdempotencia`). Tipo exacto del uuid y ancho del dinero (`Decimal(14,2)` vs `(18,2)`) los resuelve el orquestador general; hasta entonces `(18,2)` es pregunta abierta. `fechaDeNegocio` la escribe Frente 3 en `src/core/tiempo/**`; la columna `Sucursal.horaDeCorte` la agrega este frente en C2. Este frente **no agrega columnas** a `Cuenta`, `Venta` ni `EjemplarTicket`.
+- **Frente 4:** el módulo `caja` en `src/core/modulos/catalogo.ts` lo escribe Frente 4 (no se pide al orquestador general), citando el pedido del dueño; la perilla `cajas_por_sucursal` es suya. Verificador propuesto: `crearCaja` y `reactivarCaja` rechazan con `LIMITE_DE_CAJAS`.
+- **Frente 5:** puerto propuesto `registrarEgresoDeCajaEnTx(tx, {sucursalId, origenTipo, origenId, importe, motivo, claveIdempotencia})` en `src/server/actions/caja/puertos/`; no entra hasta después de C1 y con pedido citado del dueño.
 
 ## Preguntas al dueño (una por vez; solo las que cambian modelo de datos, dinero o permisos)
 
