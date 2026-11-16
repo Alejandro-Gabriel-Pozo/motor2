@@ -8,8 +8,6 @@
 export type Ficha = "PRODUCTO" | "ELECCION" | "RAZON_SOCIAL" | "NOMBRE_DE_SUCURSAL" | "NOMBRE_DE_ROL";
 export type PuntoDeNombre = Readonly<{ pedernal: readonly Ficha[]; viejos: readonly string[]; dato: string; pedernalHace?: string }>;
 
-const SIN_REGLA = "sin regla de Pedernal; decisión pendiente";
-
 export const PUNTOS_DE_NOMBRE: Readonly<Record<string, PuntoDeNombre>> = {
   // --- Conectados a la regla de Pedernal (alta estricta; edición estricta solo si el nombre cambia) ---
   "src/core/features/catalogo/productos.guard.ts": { pedernal: ["PRODUCTO"], viejos: [], dato: "nombre de producto (alta rápida y alta/edición completa)" },
