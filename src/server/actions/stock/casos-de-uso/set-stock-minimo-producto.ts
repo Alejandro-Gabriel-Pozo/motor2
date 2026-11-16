@@ -3,6 +3,7 @@ import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoSetStockMinimo, ResultadoSetStockMinimo } from "@/core/features/stock/stock-minimo.schema";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
+import { textoDe } from "@/core/textos/texto-de";
 import { cambiarMinimoSiSigueComoSeVio, guardarMinimoDeSeccion, guardarMinimoGlobal, leerMinimo } from "@/server/persistencia/stock/stock-minimo";
 import { decidirCambioDeMinimo } from "@/core/stock/public";
 import { formatearCantidad } from "@/core/formato-de-numero";
@@ -40,7 +41,7 @@ export async function setStockMinimoProductoCasoDeUso(
 ): Promise<ResultadoSetStockMinimo> {
   const { productoId, minimo, seccionId } = comando;
   const producto = await actor.db.producto.findUnique({ where: { id: productoId } });
-  if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró el producto.");
+  if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", textoDe("rechazo.PRODUCTO_NO_ENCONTRADO"));
 
   if (seccionId) {
     const seccion = await actor.db.seccion.findUnique({ where: { id: seccionId } });
