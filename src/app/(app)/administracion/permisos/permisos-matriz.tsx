@@ -227,7 +227,7 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
                 {PERMISOS_PLEGADOS && (
                   <tr className="border-b bg-superficie-suave" data-modulo-de-permisos={g.id}>
                     <td colSpan={1 + 2 * roles.length} className="py-1">
-                      <Boton variante="secundario" tamano="tactil" aria-expanded={editando || abiertos.has(g.id)} className="w-full justify-start font-medium" onClick={() => alternar(g.id)}>
+                      <Boton variante="secundario" tamano="tactil" aria-expanded={editando || abiertos.has(g.id)} className="w-full" onClick={() => alternar(g.id)}>
                         {editando || abiertos.has(g.id) ? "▾" : "▸"} {g.nombre} · {g.acciones.length}
                       </Boton>
                     </td>
