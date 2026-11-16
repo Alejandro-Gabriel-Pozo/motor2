@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { lugaresParaPoner, ponerEnElLugar } from "@/core/carta/public";
+import { RUTA_SECCIONES, lugaresParaPoner, ponerEnElLugar } from "@/core/carta/public";
+import Link from "next/link";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import s from "../../carta-mant.module.css";
 
@@ -18,7 +19,7 @@ type Pedido = { seccionCartaId: string; ordenVisto: number }[];
 
 /**
  * CARTA-MANT F3 «Secciones de la carta» con «Ordenar» (prototipo aprobado; ADR-034): la lista de las secciones de la EMPRESA en el orden en que salen, con «Oculta» en las apagadas y «⋯» para
- * ocultarla o mostrarla, moverla o ir a sus datos. «Ordenar»: se toca la sección que se quiere mover y después «Poner acá» donde va (sin arrastrar, que en el celular falla, ni flechas fila por
+ * ocultarla o mostrarla, moverla o abrir su pantalla (sus datos y sus productos). «Ordenar»: se toca la sección que se quiere mover y después «Poner acá» donde va (sin arrastrar, que en el celular falla, ni flechas fila por
  * fila); la lista misma es la vista del resultado, y «Listo» lo guarda de UNA vez (`ordenarSeccionesCarta`: todo o nada, contra el orden que vio la pantalla). Después, «Deshacer» manda el orden
  * de antes. Sin permiso (`carta_secciones`), la lista sin botones.
  *
@@ -98,10 +99,7 @@ export function OrdenarSecciones({
 
   const irALosDatos = (x: SeccionParaOrdenar) => {
     setMenu(null);
-    const fila = document.getElementById(`datos-seccion-${x.id}`);
-    fila?.querySelector("details")?.setAttribute("open", "");
-    fila?.scrollIntoView({ block: "start" });
-    fila?.querySelector<HTMLElement>("summary")?.focus();
+    router.push(`${RUTA_SECCIONES}/${x.id}`);
   };
 
   const lugares = new Set(lugaresParaPoner(lista.length, ordenando ? elegida : null));
@@ -175,7 +173,11 @@ export function OrdenarSecciones({
               </button>
             ) : (
               <div key={x.id} className={s.orden} data-seccion-orden={x.nombre}>
-                {contenido}
+                <span className={s.ordenN}>{i + 1}</span>
+                <Link href={`${RUTA_SECCIONES}/${x.id}`} className="font-bold [overflow-wrap:anywhere]" style={x.activa ? undefined : { color: "var(--color-tinta-suave)" }}>
+                  {x.nombre}
+                </Link>
+                {!x.activa && <span className={s.etiqueta}>Oculta</span>}
                 {puede && (
                   <button type="button" className={`${s.boton} ${s.botonSuave}`} style={{ marginLeft: "auto" }} aria-label={`Opciones de ${x.nombre}`} onClick={() => setMenu(x)}>
                     ⋯

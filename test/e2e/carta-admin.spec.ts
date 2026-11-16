@@ -52,10 +52,11 @@ test("cargar la carta desde el admin la publica en la carta pública", async ({ 
     await enFuera.getByRole("button", { name: nombreSeccion, exact: true }).click();
     await expect(page.locator("[data-aviso-carta] > span")).toHaveText(`«${producto.nombre}» ya sale en la carta, al final de «${nombreSeccion}».`);
     await expect(enFuera).toHaveCount(0);
+    // Lista simple (Frente 6): la sección abre sus datos y sus productos; cada producto lleva a su ficha de carta (ya abierta).
     await page.goto("/carta/parametrizacion/secciones");
-    await page.locator(`[data-grupo-de-la-carta="${nombreSeccion}"] > summary`).click();
+    await page.locator(`[data-seccion-orden="${nombreSeccion}"]`).getByRole("link", { name: nombreSeccion }).click();
+    await page.locator(`[data-producto-de-la-seccion="${producto.nombre}"]`).getByRole("link", { name: producto.nombre }).click();
     const filaProducto = page.locator(`[data-contenido-carta="${producto.nombre}"]`);
-    await filaProducto.locator("summary").click();
     await expect(filaProducto.getByLabel(/^Imagen/)).toHaveCount(0);
     await expect(filaProducto.getByLabel(/^Sección de carta/)).toHaveValue((await prisma.seccionCarta.findFirstOrThrow({ where: { nombre: nombreSeccion } })).id);
     await filaProducto.getByLabel("Descripción (opcional)").fill("400 g a las brasas");
