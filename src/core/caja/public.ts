@@ -16,8 +16,8 @@ export {
 } from "./configuracion";
 export type { CuentaGuardada, MedioGuardado } from "./configuracion";
 export { datosCompletados, datosEnFormaCompleta, sinDatos, validarDatosDelCobro } from "./datos-del-cobro";
-export type { DatosDelCobro, DatosDelCobroCompletos, ErrorDeDatoDelCobro, MotivoDeDatoInvalido } from "./datos-del-cobro";
-export { CUENTAS_ADMITIDAS, DATOS_ADMITIDOS_POR_MEDIO, DATOS_DEL_COBRO, NINGUN_DATO_PEDIDO, TIPOS_DE_CUENTA, TIPOS_DE_MEDIO, validarDatosQuePide, validarParDeCobro } from "./medios";
+export type { DatosDelCobro, DatosDelCobroCompletos, MotivoDeDatoInvalido } from "./datos-del-cobro";
+export { CUENTAS_ADMITIDAS, DATOS_ADMITIDOS_POR_MEDIO, DATOS_DEL_COBRO, TIPOS_DE_CUENTA, TIPOS_DE_MEDIO, validarDatosQuePide, validarParDeCobro } from "./medios";
 export type { DatoDelCobro, DatosQuePideElMedio, TipoDeCuenta, TipoDeMedio } from "./medios";
 export { MAXIMO_DE_RENGLONES_DE_COBRO, repartirCobro } from "./cobro";
 export type { RenglonDeCobro } from "./cobro";

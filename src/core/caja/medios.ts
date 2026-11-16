@@ -44,9 +44,6 @@ function cuentaAdmitidaPorMedio(tipoDeMedio: TipoDeMedio, tipoDeCuenta: TipoDeCu
 /** Qué datos pide un medio (las columnas `pide*` de `MedioDePago`). Un medio nuevo nace con todos en `false`. */
 export type DatosQuePideElMedio = Readonly<Record<DatoDelCobro, boolean>>;
 
-/** Ningún dato pedido: el valor de un medio recién creado. */
-export const NINGUN_DATO_PEDIDO: DatosQuePideElMedio = { cupon: false, ultimos4: false, marca: false, cuotas: false, dni: false };
-
 export type MedioVisto = Readonly<{ tipo: TipoDeMedio; activo: boolean }>;
 export type CuentaVista = Readonly<{ tipo: TipoDeCuenta; activa: boolean; sucursalId: string }>;
 

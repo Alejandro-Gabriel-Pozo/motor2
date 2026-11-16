@@ -23,7 +23,6 @@ import {
   subconjuntos,
   type Dato,
   type Esperado,
-  type EstadoDeCuenta,
   type Tipo,
 } from "./oraculo-de-combinaciones-del-cobro";
 
