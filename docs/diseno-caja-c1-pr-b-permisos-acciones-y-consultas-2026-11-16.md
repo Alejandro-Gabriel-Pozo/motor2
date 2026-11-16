@@ -100,3 +100,10 @@ Dimensiones que cambian permisos (regla «Combinaciones»): rol × acción, decl
 - PENDIENTE: confirmar con el dueño los pisos de §2 (operador: ver, abrir y cobrar) y el módulo definitivo de las seis claves (hoy `salon`, provisorio hasta que el Frente 4 agregue `caja`).
 - PENDIENTE: «cuentas cobradas del día» (varias sesiones de un mismo día): C1 las lista por sesión; el día entero es de la etapa C2 (jornada).
 - Textos visibles: siguen literales en los casos de uso y las acciones; la lista completa para el catálogo T1 está en el informe del PR.
+
+
+## Confirmaciones y supuestos del 2026-11-16 (relatados por el orquestador general)
+
+- **Pisos CONFIRMADOS por el dueño** (AskUserQuestion, literal): «Sí, como Pedernal (Recomendada)»: el operador ve, abre sesión y cobra; gerente y administrador cierran, mueven efectivo y anulan movimientos ajenos; las claves nacen cerradas, semilla solo administrador.
+- **Módulo:** `salon` queda PROVISORIO y declarado; el Frente 4 define `caja` cuando el dueño lo pida.
+- **Supuestos declarados (el dueño corrige):** «cuentas cobradas del día» es por día de negocio entero en C2 (acá, por sesión); una cuenta con total 0 NO aparece en «sin cobrar» (cambio hecho en `listarCuentasSinCobrar`).

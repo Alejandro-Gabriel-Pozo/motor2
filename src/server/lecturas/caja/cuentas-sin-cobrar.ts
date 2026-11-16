@@ -7,7 +7,7 @@ import { cargarCuentaParaCobrar } from "@/server/lecturas/caja/total-de-cuenta";
  * Lectura «cuentas cerradas con venta sin cobrar» de la sucursal (etapa C1, PR-B). SOLO LECTURA. «Sin cobrar» se DERIVA: la cuenta está cerrada, tuvo venta (emitió ticket) y NO existe una `Cobranza` suya (no hay una marca que se pueda
  * desfasar). El total sale del MISMO cálculo que usa el cobro (`cargarCuentaParaCobrar`: el ticket «como se imprimiría ahora», con el descuento del cliente congelado en la cuenta), así lo que se lista es lo que después se cobra. Más recientes
  * primero (cerrada en, luego id), paginadas por cursor de a `TAMANO_PAGINA_DE_CUENTAS_SIN_COBRAR` como `listarTicketsEmitidos`. Siempre filtra por la sucursal recibida (la del contexto) además de la RLS. Sin datos del cliente: solo la cuenta, su
- * mesa, cuándo se cerró y el total en CENTAVOS (texto). Una cuenta con total 0 se lista con «0» (no se puede cobrar: el caso de uso responde `NADA_PARA_COBRAR`).
+ * mesa, cuándo se cerró y el total en CENTAVOS (texto). Una cuenta con total 0 NO se lista (no hay nada que cobrar; el caso de uso responde `NADA_PARA_COBRAR`): supuesto declarado por el orquestador general el 2026-11-16, el dueño lo corrige.
  */
 export const TAMANO_PAGINA_DE_CUENTAS_SIN_COBRAR = 30;
 
@@ -41,6 +41,7 @@ export async function listarCuentasSinCobrar(args: { empresaId: string; sucursal
   for (const f of pagina) {
     const cuenta = await cargarCuentaParaCobrar(db, args.empresaId, f.id, args.ahora);
     if (!cuenta || f.cerradaEn === null) continue;
+    if (centavosDeImporte(cuenta.total) === BigInt(0)) continue;
     items.push({ cuentaId: f.id, mesaNumero: f.mesa.numero, tipoMesa: f.tipoMesa, cerradaEn: f.cerradaEn, totalEnCentavos: centavosDeImporte(cuenta.total)?.toString() ?? null });
   }
   return { items, nextCursor: hayMas ? pagina[pagina.length - 1]!.id : null };
