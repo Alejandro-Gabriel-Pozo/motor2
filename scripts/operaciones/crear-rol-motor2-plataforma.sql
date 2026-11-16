@@ -92,7 +92,7 @@ $$;
 DO $$
 DECLARE t text;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['AdminPlataforma', 'CodigoDeIngresoPlataforma', 'CodigoDeRecuperacionPlataforma', 'SesionPlataforma', 'Invitacion'] LOOP
+  FOREACH t IN ARRAY ARRAY['AdminPlataforma', 'CodigoDeIngresoPlataforma', 'CodigoDeRecuperacionPlataforma', 'SesionPlataforma', 'Invitacion', 'Plan', 'VersionDePlan'] LOOP
     IF to_regclass(format('public.%I', t)) IS NOT NULL THEN
       EXECUTE format('GRANT SELECT, INSERT, UPDATE ON public.%I TO motor2_plataforma', t);
     END IF;
@@ -100,23 +100,13 @@ BEGIN
   IF to_regclass('public."AuditoriaPlataforma"') IS NOT NULL THEN
     GRANT SELECT, INSERT ON "AuditoriaPlataforma" TO motor2_plataforma;
   END IF;
-END
-$$;
-
--- Planes versionados (M1): solo si ya los creó la migración 20261117100000 (si no, la migración da el permiso al crearse).
-DO $$
-DECLARE t text;
-BEGIN
-  FOREACH t IN ARRAY ARRAY['Plan', 'VersionDePlan'] LOOP
-    IF to_regclass(format('public.%I', t)) IS NOT NULL THEN
-      EXECUTE format('GRANT SELECT, INSERT, UPDATE ON public.%I TO motor2_plataforma', t);
-    END IF;
-  END LOOP;
+  -- Planes versionados (M1): `Plan` y `VersionDePlan` van en la lista de arriba; la asignación solo se agrega.
   IF to_regclass('public."PlanDeEmpresa"') IS NOT NULL THEN
     GRANT SELECT, INSERT ON "PlanDeEmpresa" TO motor2_plataforma;
   END IF;
 END
 $$;
+
 
 -- M.1-C2: el recorte DENIEGA POR DEFECTO. No enumera lo que quita (REVOKE INSERT, UPDATE, DELETE dejaba TRUNCATE, REFERENCES, TRIGGER y lo que hubiera por columna): quita TODO a motor2_app
 -- sobre "Empresa" (el REVOKE de tabla también quita los privilegios por columna que ella tuviera), le da SOLO lectura y exige que no quede nada más. La aserción mira el privilegio EFECTIVO,
