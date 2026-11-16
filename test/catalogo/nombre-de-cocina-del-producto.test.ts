@@ -237,6 +237,7 @@ describe("nombre de cocina del producto", () => {
       } finally {
         await prismaAdmin.producto.deleteMany({ where: { empresaId: EMPRESA_TESTIGO_ID } });
         await prismaAdmin.unidad.deleteMany({ where: { empresaId: EMPRESA_TESTIGO_ID } });
+        await prismaAdmin.moduloEmpresa.deleteMany({ where: { empresaId: EMPRESA_TESTIGO_ID } });
         await prismaAdmin.empresa.deleteMany({ where: { id: EMPRESA_TESTIGO_ID } });
       }
     });
