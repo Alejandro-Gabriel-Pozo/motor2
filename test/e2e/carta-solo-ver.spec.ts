@@ -113,18 +113,29 @@ test("un rol que solo VE la carta ve secciones, contenido y promos en /carta com
     await expect(main.getByRole("button", { name: BOTONES_DE_EDICION }), "Mantenimiento sin botones de edición").toHaveCount(0);
     await expect(main.locator("input:not([type=search]), textarea, select"), "Mantenimiento sin campos").toHaveCount(0);
 
-    // Parametrización › Secciones: los datos están, como texto.
+    // Parametrización › Secciones (lista simple, Frente 6): la lista sin botones de edición; tocar una sección abre sus datos como texto y sus productos con el enlace a su ficha de carta.
     await page.goto("/carta/parametrizacion/secciones");
     await expect(main.locator("[data-aviso-solo-lectura]")).toHaveText("Solo lectura: tu rol no tiene permiso para editar la carta.");
+    await expect(main.locator(`[data-seccion-orden="${carta.seccion.nombre}"]`)).toBeVisible();
+    await expect(main.locator("input, textarea, select"), "la lista no tenía que tener ningún campo editable").toHaveCount(0);
+    await expect(main.getByRole("button", { name: BOTONES_DE_EDICION }), "la lista no tenía que tener botones de edición").toHaveCount(0);
+    await expect(main.getByRole("heading", { name: "Nueva sección de carta" })).toHaveCount(0);
+    expect((await new AxeBuilder({ page }).analyze()).violations, "Secciones en solo lectura").toEqual([]);
+    await main.locator(`[data-seccion-orden="${carta.seccion.nombre}"]`).getByRole("link", { name: carta.seccion.nombre }).click();
+    await expect(page.getByRole("heading", { name: `${carta.seccion.nombre}`, level: 2 })).toBeVisible();
     const seccion = main.locator(`[data-seccion-carta="${carta.seccion.nombre}"]`);
-    await seccion.locator("summary").click();
     await expect(seccion.locator("[data-solo-lectura]")).toContainText(`Descripción de sección ${carta.marca}`);
     await expect(seccion.locator("[data-solo-lectura]")).toContainText("Del horno");
+    await expect(main.locator("input, textarea, select"), "no tenía que haber ningún campo editable").toHaveCount(0);
+    await expect(main.getByRole("button", { name: BOTONES_DE_EDICION }), "no tenía que haber botones de edición").toHaveCount(0);
+    // Sus productos, con el enlace a la ficha de carta del producto (donde vive el contenido).
+    const delaSeccion = main.locator(`[data-producto-de-la-seccion="${carta.suelto.nombre}"]`);
+    await expect(delaSeccion.getByRole("link", { name: carta.suelto.nombre })).toHaveAttribute("href", /\/catalogo\/productos\/[A-Za-z0-9_-]+\/en-la-carta$/);
+    expect((await new AxeBuilder({ page }).analyze()).violations, "Una sección en solo lectura").toEqual([]);
 
-    // Los productos van agrupados por sección (plegada).
-    await main.locator(`[data-grupo-de-la-carta="${carta.seccion.nombre}"] > summary`).click();
+    // La ficha de carta del producto (ya abierta en su pantalla), como texto.
+    await delaSeccion.getByRole("link", { name: carta.suelto.nombre }).click();
     const contenido = main.locator(`[data-contenido-carta="${carta.suelto.nombre}"]`);
-    await contenido.locator("summary").click();
     const datosContenido = contenido.locator("[data-solo-lectura]").first();
     await expect(datosContenido).toContainText(`Contenido del plato ${carta.marca}`);
     await expect(datosContenido).toContainText("Sin TACC");
@@ -133,10 +144,8 @@ test("un rol que solo VE la carta ve secciones, contenido y promos en /carta com
     if (DESCUENTO_POR_PRODUCTO_VISIBLE) await expect(descuentoDeLaSucursal).toContainText("Sin descuento");
     else await expect(descuentoDeLaSucursal).toHaveCount(0);
     await expect(datosContenido).toContainText(carta.seccion.nombre);
-    await expect(main.locator("input, textarea, select"), "no tenía que haber ningún campo editable").toHaveCount(0);
-    await expect(main.getByRole("button", { name: BOTONES_DE_EDICION }), "no tenía que haber botones de edición").toHaveCount(0);
-    await expect(main.getByRole("heading", { name: "Nueva sección de carta" })).toHaveCount(0);
-    expect((await new AxeBuilder({ page }).analyze()).violations, "Secciones en solo lectura").toEqual([]);
+    await expect(contenido.locator("input, textarea, select"), "la ficha no tenía que tener ningún campo editable").toHaveCount(0);
+    await expect(contenido.getByRole("button", { name: BOTONES_DE_EDICION }), "la ficha no tenía que tener botones de edición").toHaveCount(0);
 
     // Parametrización › Promociones.
     await page.goto("/carta/parametrizacion/promociones");
@@ -196,8 +205,8 @@ test("un rol CON editar de la carta ve los formularios y las altas en las dos pa
     await page.goto("/carta/parametrizacion/secciones");
     await expect(main.locator("[data-aviso-solo-lectura]")).toHaveCount(0);
     await expect(main.getByRole("heading", { name: "Nueva sección de carta" })).toBeVisible();
+    await main.locator(`[data-seccion-orden="${carta.seccion.nombre}"]`).getByRole("link", { name: carta.seccion.nombre }).click();
     const seccion = main.locator(`[data-seccion-carta="${carta.seccion.nombre}"]`);
-    await seccion.locator("summary").click();
     await expect(seccion.getByRole("button", { name: "Guardar sección" })).toBeVisible();
     await expect(seccion.getByRole("button", { name: `Apagar «${carta.seccion.nombre}»` })).toBeVisible();
     await expect(main.locator("[data-solo-lectura]")).toHaveCount(0);

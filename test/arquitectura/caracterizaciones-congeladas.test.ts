@@ -1249,6 +1249,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Productos P2 (cambio de texto de ADMINISTRACIÓN, no de la carta pública; dueño, 2026-11-13: «Sí, así provisorio (Recomendada)», ficha de tres pestañas): la ficha del producto pasa de «Resumen / Qué se vende / Opciones y precio / Receta / En la carta» a «Datos / Precios / Opciones», y la pantalla de opciones suma la línea «El precio del producto está en la pestaña Precios». Regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra la base e2e local y revisado: solo cambian las pestañas de la ficha y el título y la ayuda de la pantalla de opciones (10 líneas agregadas, 16 quitadas), ninguna línea de la carta pública.",
       },
+      {
+        blob: "5f96a74d385a544335c96075c34384686c7ece42",
+        // El commit PADRE de este (66bb76e5) es el último antes de la regeneración; el texto lo cambió el commit que agrega esta entrada (Frente 6, Secciones: lista simple).
+        commit: "66bb76e5",
+        motivo:
+          "Frente 6, Secciones como lista simple (cambio de texto de ADMINISTRACIÓN, no de la carta pública; dueño, 2026-11-16: «Lista simple como Pedernal (Recomendada)»; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). En «Carta › Parametrización › Secciones» (a 1280 y a 375 px): los nombres de las secciones pasan a ser enlaces `[enlace: …]` a la pantalla de cada sección (`/carta/parametrizacion/secciones/[id]`), la ayuda suma «Tocá una sección para ver sus datos y sus productos.» y salen de esta pantalla «Datos de cada sección» (el formulario de cada sección, con las mismas acciones) y «Productos de cada sección» (la ficha de cada producto, que ya vivía en `/catalogo/productos/[id]/en-la-carta`): pasan a la pantalla de cada sección y a la ficha del producto. 10 líneas agregadas, 504 quitadas, todas de esa pantalla (revisado con git diff); la carta pública, el catálogo de opciones y el resto quedan idénticos.",
+      },
     ],
   },
 };
