@@ -12,8 +12,8 @@ import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/bas
  */
 const RAIZ = join(__dirname, "../../prisma/migrations");
 const C1_RLS = "20261117111000_rls_sucursal_caja_c1";
-const TABLA = "20261117120000_caja_c2_jornada";
-const RLS = "20261117121000_rls_sucursal_caja_c2";
+const TABLA = "20261117114000_caja_c2_jornada";
+const RLS = "20261117115000_rls_sucursal_caja_c2";
 const E = "empresa_caja2";
 const OTRA = "empresa_caja2_otra";
 

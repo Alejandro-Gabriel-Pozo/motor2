@@ -1,4 +1,4 @@
--- Verificación previa de 20261117120000_caja_c2_jornada (SOLO LECTURA; correr como dueño ANTES de aplicarla en una base real). Resultado esperado: las cinco tablas y las tres columnas NO existen todavía, los nombres de función están libres
+-- Verificación previa de 20261117114000_caja_c2_jornada (SOLO LECTURA; correr como dueño ANTES de aplicarla en una base real). Resultado esperado: las cinco tablas y las tres columnas NO existen todavía, los nombres de función están libres
 -- y C1 está aplicada (las cuatro tablas que la migración amplía existen: `tablas_de_c1_que_faltan` = 0).
 SELECT 'tablas_nuevas_que_ya_existen' AS control, count(*) AS cantidad
   FROM information_schema.tables

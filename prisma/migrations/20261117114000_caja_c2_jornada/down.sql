@@ -1,5 +1,5 @@
--- Reversa de 20261117120000_caja_c2_jornada (Caja y cobro, etapa C2). A mano, como dueño, con `psql -1 -v ON_ERROR_STOP=1`; después `prisma migrate resolve --rolled-back 20261117120000_caja_c2_jornada`.
--- Bajar ANTES 20261117121000_rls_sucursal_caja_c2 (sus políticas cuelgan de las tablas; DROP TABLE las arrastra, pero la reversa de esa migración es la que deja el registro limpio).
+-- Reversa de 20261117114000_caja_c2_jornada (Caja y cobro, etapa C2). A mano, como dueño, con `psql -1 -v ON_ERROR_STOP=1`; después `prisma migrate resolve --rolled-back 20261117114000_caja_c2_jornada`.
+-- Bajar ANTES 20261117115000_rls_sucursal_caja_c2 (sus políticas cuelgan de las tablas; DROP TABLE las arrastra, pero la reversa de esa migración es la que deja el registro limpio).
 -- ABORTA si hay algo que decidió una persona y se perdería: una jornada EN_AUDITORIA o CERRADA, filas en las otras cuatro tablas nuevas, un movimiento AJUSTE o una hora de corte distinta de 00:00 (en una sucursal o en una sesión).
 -- Las jornadas ABIERTAS no cuentan: se derivan de las sesiones y se vuelven a crear con la actividad. Con eso limpio el estado resultante es el de C1.
 -- Bajarla dos veces no falla: si algo ya no está, no hay nada que contar ni que borrar.
@@ -12,29 +12,29 @@ BEGIN
     filas := 0;
     IF to_regclass(format('%I', t)) IS NOT NULL THEN EXECUTE format('SELECT count(*) FROM %I', t) INTO filas; END IF;
     IF filas > 0 THEN
-      RAISE EXCEPTION 'No se puede bajar 20261117120000_caja_c2_jornada: la tabla % tiene % fila(s)', t, filas;
+      RAISE EXCEPTION 'No se puede bajar 20261117114000_caja_c2_jornada: la tabla % tiene % fila(s)', t, filas;
     END IF;
   END LOOP;
   IF to_regclass('"JornadaDeSucursal"') IS NOT NULL THEN
     EXECUTE 'SELECT count(*) FROM "JornadaDeSucursal" WHERE "estado" <> ''ABIERTA''' INTO filas;
     IF filas > 0 THEN
-      RAISE EXCEPTION 'No se puede bajar 20261117120000_caja_c2_jornada: hay % jornada(s) en cierre o cerrada(s)', filas;
+      RAISE EXCEPTION 'No se puede bajar 20261117114000_caja_c2_jornada: hay % jornada(s) en cierre o cerrada(s)', filas;
     END IF;
   END IF;
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'MovimientoCaja' AND column_name = 'corrigeJornada') THEN
     EXECUTE 'SELECT count(*) FROM "MovimientoCaja" WHERE "clase" = ''AJUSTE''' INTO filas;
     IF filas > 0 THEN
-      RAISE EXCEPTION 'No se puede bajar 20261117120000_caja_c2_jornada: hay % movimiento(s) AJUSTE', filas;
+      RAISE EXCEPTION 'No se puede bajar 20261117114000_caja_c2_jornada: hay % movimiento(s) AJUSTE', filas;
     END IF;
   END IF;
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Sucursal' AND column_name = 'horaDeCorte') THEN
     EXECUTE 'SELECT count(*) FROM "Sucursal" WHERE "horaDeCorte" <> time ''00:00''' INTO filas;
     IF filas > 0 THEN
-      RAISE EXCEPTION 'No se puede bajar 20261117120000_caja_c2_jornada: % sucursal(es) tienen una hora de corte distinta de 00:00', filas;
+      RAISE EXCEPTION 'No se puede bajar 20261117114000_caja_c2_jornada: % sucursal(es) tienen una hora de corte distinta de 00:00', filas;
     END IF;
     EXECUTE 'SELECT count(*) FROM "SesionCaja" WHERE "horaDeCorte" <> time ''00:00''' INTO filas;
     IF filas > 0 THEN
-      RAISE EXCEPTION 'No se puede bajar 20261117120000_caja_c2_jornada: % sesion(es) de caja se abrieron con una hora de corte distinta de 00:00', filas;
+      RAISE EXCEPTION 'No se puede bajar 20261117114000_caja_c2_jornada: % sesion(es) de caja se abrieron con una hora de corte distinta de 00:00', filas;
     END IF;
   END IF;
 END

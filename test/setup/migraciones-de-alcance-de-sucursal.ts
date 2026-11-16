@@ -63,7 +63,7 @@ export const MIGRACIONES_DE_POLITICAS_POSTERIORES: readonly { readonly migracion
   // Caja y cobro C1: las tablas de dinero de una sucursal (la caja, su sesión, sus movimientos, el cobro de una cuenta y el arqueo) (PROPIA).
   { migracion: "20261117111000_rls_sucursal_caja_c1", tablas: ["Caja", "SesionCaja", "MovimientoCaja", "Cobranza", "Cobro", "ArqueoCaja", "ArqueoBillete"] },
   // Caja y cobro C2: la jornada de una sucursal y lo que cuelga de ella (la foto de controles, la corrección de medio, la declaración de total y el conforme general) (PROPIA).
-  { migracion: "20261117121000_rls_sucursal_caja_c2", tablas: ["JornadaDeSucursal", "ControlDeJornadaCerrada", "CorreccionDeMedio", "DeclaracionDeTotal", "ConformeDeJornada"] },
+  { migracion: "20261117115000_rls_sucursal_caja_c2", tablas: ["JornadaDeSucursal", "ControlDeJornadaCerrada", "CorreccionDeMedio", "DeclaracionDeTotal", "ConformeDeJornada"] },
 ];
 
 /** Las migraciones previas que la prueba de subir/bajar/subir baja DESPUÉS de B1 (en este orden: P3 y después M.2). Ambas reversas son destructivas. */

@@ -3,7 +3,7 @@ import { diaDeCalendario, esZonaHorariaValida, formatearHora, sumarDias } from "
 
 /**
  * Fecha de negocio (la jornada) de caja, C2 (docs/diseno-caja-c2-jornada-y-cierre-del-dia-2026-11-16.md, §2 fila 2): la fecha civil de `(instante en la zona de la empresa) − hora de corte`, la MISMA fórmula que aplica la base
- * (`((instante AT TIME ZONE zona) - corte)::date`, función `caja_fecha_de_negocio` de la migración 20261117120000) y que usa Pedernal (`fechaDeNegocio` de `primitivas/tiempo`). Con corte 00:00 es el día civil local; con corte 06:00,
+ * (`((instante AT TIME ZONE zona) - corte)::date`, función `caja_fecha_de_negocio` de la migración 20261117114000) y que usa Pedernal (`fechaDeNegocio` de `primitivas/tiempo`). Con corte 00:00 es el día civil local; con corte 06:00,
  * lo que pasa entre las 00:00 y las 05:59 pertenece a la jornada del día anterior. Los segundos del instante no cuentan: la jornada cambia exactamente a la hora de corte en punto.
  *
  * TRANSITORIA: la función de verdad es de `src/core/tiempo/` (la escribe el Frente 3, «fechas»); cuando entre, esta se reemplaza por esa. Usa solo funciones de `core/tiempo` (ningún `Intl` ni zona a mano acá).

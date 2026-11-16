@@ -12,9 +12,9 @@
 -- ABIERTA; la jornada solo cambia ABIERTA → EN_AUDITORIA, EN_AUDITORIA → ABIERTA y EN_AUDITORIA → CERRADA, y CERRADA no se toca; la foto de controles solo entra con la jornada pasando a CERRADA en la misma transacción; corregir medio, declarar total y dar el conforme solo con la jornada EN_AUDITORIA;
 -- la secuencia de correcciones y de declaraciones sigue sin huecos y la corrección parte del medio vigente; el efectivo no se declara; un AJUSTE que corrige una jornada exige que exista, esté CERRADA y sea anterior a la de su sesión.
 -- QUÉ DECIDE EL CASO DE USO: permisos (quién ajusta), alcance, la huella de los controles y su comparación, qué se reconoce, la clave de reintento y la auditoría. La base NO sabe qué controles aportan los módulos.
--- Las políticas de alcance de sucursal (RLS por sucursal) van en la migración siguiente (20261117121000), salida exacta del generador.
+-- Las políticas de alcance de sucursal (RLS por sucursal) van en la migración siguiente (20261117115000), salida exacta del generador.
 --
--- Reversa: down.sql (a mano, como dueño, con `psql -1 -v ON_ERROR_STOP=1`; después `prisma migrate resolve --rolled-back 20261117120000_caja_c2_jornada`). Bajar ANTES la de políticas (20261117121000).
+-- Reversa: down.sql (a mano, como dueño, con `psql -1 -v ON_ERROR_STOP=1`; después `prisma migrate resolve --rolled-back 20261117114000_caja_c2_jornada`). Bajar ANTES la de políticas (20261117115000).
 -- La reversa ABORTA si hay una jornada en cierre o cerrada, filas en las otras cuatro tablas, un AJUSTE o una hora de corte distinta de 00:00 (se perdería lo que decidió una persona).
 
 DO $$
@@ -417,7 +417,7 @@ BEGIN
   RETURN NEW;
 END $$;
 
--- ===== RLS por empresa (las políticas por sucursal van en 20261117121000) =====
+-- ===== RLS por empresa (las políticas por sucursal van en 20261117115000) =====
 DO $$
 DECLARE t text;
 BEGIN

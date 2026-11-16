@@ -8,7 +8,7 @@ import { centavosDeDecimal } from "./caja";
 /**
  * Persistencia de la JORNADA de sucursal y de lo que cuelga de ella (etapa C2, docs/diseno-caja-c2-jornada-y-cierre-del-dia-2026-11-16.md). Mismo contrato que `caja.ts`: el cliente es el PRIMER parámetro, `data` literal, sin reglas de negocio ni
  * auditoría (las pone el caso de uso dentro de su transacción). Los BLOQUEOS son parte del contrato (E3b §3.7 de Pedernal): `FOR SHARE` para quien tiene actividad en la jornada y `FOR UPDATE` para quien cambia su estado; se esperan entre sí y,
- * bajo `SERIALIZABLE`, la lectura participa de la verificación de conflictos. La base decide lo que ninguna lectura puede asegurar (ver la migración 20261117120000_caja_c2_jornada).
+ * bajo `SERIALIZABLE`, la lectura participa de la verificación de conflictos. La base decide lo que ninguna lectura puede asegurar (ver la migración 20261117114000_caja_c2_jornada).
  */
 
 /** La hora de corte de una columna `TIME(0)` (Prisma la entrega como un `Date` del 1/1/1970 en UTC) a «HH:MM». */
