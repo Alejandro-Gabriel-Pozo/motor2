@@ -31,7 +31,7 @@ export { prismaDuenioSinEmpresa } from "./cliente-duenio";
  * Postgres no deja truncar `Operacion` si otra tabla la referencia, aunque esté vacía: `FacturaProveedorSucursal` (M3b) la referencia con `operacionId` (y a la parte la referencia la propuesta de E3a, con sus renglones), `NotaCreditoProveedorImputacion` (M6) con `operacionDevolucionId` y `OpcionElegidaEnLinea` (GO-1d) y `CombinacionEnLinea` (GO-3a) referencian a `CuentaItem`, así que van en el mismo `TRUNCATE`.
  */
 export async function vaciarOperacionesPorVolumen() {
-  await prismaAdmin.$executeRawUnsafe('TRUNCATE TABLE "OpcionElegidaEnLinea", "CombinacionEnLinea", "MovimientoStock", "CuentaItem", "FacturaProveedorPropuestaRenglon", "FacturaProveedorPropuesta", "FacturaProveedorSucursal", "NotaCreditoProveedorImputacion", "Operacion"');
+  await prismaAdmin.$executeRawUnsafe('TRUNCATE TABLE "OpcionElegidaEnLinea", "CombinacionEnLinea", "MovimientoStock", "CuentaItem", "FacturaProveedorPropuestaRenglon", "FacturaProveedorPropuesta", "ControlDeLineaDeRecepcion", "FacturaProveedorSucursal", "NotaCreditoProveedorImputacion", "Operacion"');
 }
 
 /**
@@ -113,6 +113,7 @@ export async function limpiarBaseDeTest() {
   // E3a (ADR-041): los renglones de la propuesta referencian a la propuesta y al renglón, y la propuesta a la parte que la aceptó (RESTRICT): antes de las partes.
   await prismaAdmin.facturaProveedorPropuestaRenglon.deleteMany();
   await prismaAdmin.facturaProveedorPropuesta.deleteMany();
+  await prismaAdmin.controlDeLineaDeRecepcion.deleteMany();
   await prismaAdmin.facturaProveedorSucursal.deleteMany();
   // Los centros de costos (M7): las líneas de distribución referencian a su versión y al centro, la versión a la imputación, al plan y al User, la aplicabilidad al plan y a la sucursal, y el centro al plan (todo RESTRICT):
   // líneas, versiones, aplicabilidad, centros y planes, todo ANTES de la imputación (M4.3), del User y de la sucursal (más abajo).

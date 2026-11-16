@@ -168,7 +168,8 @@ describe("la reclasificación del gobierno (ADR-027 §3, 3.4-4)", () => {
     // 55 → 56 operario: Pagos X0 suma `declarar_pago_compra` (clase O).
     // 56 → 58 operario y 60 → 61 administrador: Parte P1 suma `partes_ver` y `partes_editar` (clase O) y `partes_desactivar` (clase A).
     // 58 → 57 operario y 61 → 62 administrador: Compras N3-a (2026-11-16) sube `compra_recibir` de piso operario (clase O) a administrador (clase A): confirman el gerente y el administrador, no el operador.
+    // 57 → 58 operario: Compras N3-b (2026-11-16) suma `compra_controlar_recepcion` (clase L: piso operario, semilla admin y operador).
     // 51 → 52: M.2 P1 suma `producto_campos_sensibles` (piso operario, clase O); los otros pisos no se mueven.
-    expect(["operario", "administrador", "administrador_sistema", "gerente"].map((p) => conPiso(p as NivelDeAccion).length)).toEqual([57, 62, 12, 2]);
+    expect(["operario", "administrador", "administrador_sistema", "gerente"].map((p) => conPiso(p as NivelDeAccion).length)).toEqual([58, 62, 12, 2]);
   });
 });

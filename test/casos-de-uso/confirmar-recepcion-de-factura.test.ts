@@ -8,11 +8,20 @@ vi.mock("../../src/server/persistencia/movimientos/escribir-movimiento-de-stock"
   return { ...original, escribirLineasDeMovimientoStock: vi.fn(original.escribirLineasDeMovimientoStock) };
 });
 
+// La auditoría pasa por la original salvo cuando un test le pide que falle (atomicidad del control).
+vi.mock("../../src/server/auditoria/registrar-cambio-auditado", async (importarOriginal) => {
+  const original = await importarOriginal<typeof import("../../src/server/auditoria/registrar-cambio-auditado")>();
+  return { ...original, registrarCambioAuditado: vi.fn(original.registrarCambioAuditado) };
+});
+
 import { baseDeTest, crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarSeccion } from "../setup/test-db";
 import { fijarModulosActivos, MODULOS_VENDIBLES } from "../setup/modulos";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 import { escribirLineasDeMovimientoStock } from "../../src/server/persistencia/movimientos/escribir-movimiento-de-stock";
+import { registrarCambioAuditado } from "../../src/server/auditoria/registrar-cambio-auditado";
+import { registrarControlDeRecepcionCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/registrar-control-de-recepcion";
+import { azarDelProceso } from "../../src/lib/azar";
 import { registrarFacturaProveedorCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/registrar-factura-proveedor";
 import { confirmarRecepcionDeFacturaCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/confirmar-recepcion-de-factura";
 import { confirmarParteRecibida } from "../../src/server/persistencia/compras/escribir-factura-proveedor";
@@ -26,7 +35,7 @@ import type { ContextoDeAccion } from "../../src/server/actions/tipos";
 import type { DatosFacturaProveedorInput } from "../../src/core/features/compras/factura-proveedor.schema";
 
 /**
- * Compras N3-a, recepción separada: cargar «pendiente de recibir» (módulo `recepcion_de_compras` encendido) y CONFIRMAR la recepción, con Postgres real. El permiso lo pide la Server Action (`compra_recibir`; lo prueba
+ * Compras N3-a y N3-b, recepción separada: cargar «pendiente de recibir» (módulo `recepcion_de_compras` encendido) y CONFIRMAR la recepción, con Postgres real. El permiso lo pide la Server Action (`compra_recibir`; lo prueba
  * `test/permisos/confirmar-recepcion-permisos.test.ts`); acá se prueba el caso de uso con el actor ya resuelto: lo que escribe, lo que rechaza, su idempotencia por estado, su atomicidad y su aislamiento por empresa.
  * La concurrencia (dos confirmaciones a la vez; confirmar contra anular) está en `test/movimientos/recepcion-de-compras-concurrencia.test.ts` y el recorrido de todas las combinaciones contra el oráculo en
  * `test/movimientos/combinaciones-compras-recepcion-integracion.test.ts`.
@@ -76,8 +85,11 @@ async function cargarPendiente(extra: Partial<DatosFacturaProveedorInput> = {}):
   const r = await cargar(extra);
   return (r.ok && r.datos.facturaId) as string;
 }
-const confirmar = (facturaId: string, o: { seccionId?: string; fechaStock?: Date; ahora?: Date } = {}) =>
-  confirmarRecepcionDeFacturaCasoDeUso(actor3(o.ahora), { facturaId, seccionId: o.seccionId ?? sec3, fechaStock: o.fechaStock ?? mediodia(-2) });
+/** Una entrada por renglón de mercadería de la factura, con TODA su cantidad en la sección dada (el caso común: un renglón, una sección). */
+const entradasEnteras = async (facturaId: string, seccionId: string) =>
+  (await prisma.facturaProveedorRenglon.findMany({ where: { facturaProveedorId: facturaId, productoId: { not: null } }, orderBy: { orden: "asc" } })).map((r) => ({ renglonId: r.id, seccionId, cantidad: Number(r.cantidadStock) }));
+const confirmar = async (facturaId: string, o: { seccionId?: string; fechaStock?: Date; ahora?: Date; entradas?: { renglonId: string; seccionId: string; cantidad: number }[] } = {}) =>
+  confirmarRecepcionDeFacturaCasoDeUso(actor3(o.ahora), { facturaId, entradas: o.entradas ?? (await entradasEnteras(facturaId, o.seccionId ?? sec3)), fechaStock: o.fechaStock ?? mediodia(-2) });
 
 const comprasDeStock = () => prisma.operacion.count({ where: { proceso: "COMPRA" } });
 const movimientosDeCompra = () => prisma.movimientoStock.count({ where: { proceso: "COMPRA" } });
@@ -103,6 +115,7 @@ async function sembrarEscenario() {
 
 beforeEach(async () => {
   vi.mocked(escribirLineasDeMovimientoStock).mockClear();
+  vi.mocked(registrarCambioAuditado).mockClear();
   await sembrarEscenario();
 });
 
@@ -308,7 +321,7 @@ describe("confirmar la recepción", () => {
   it("la parte es de OTRA sucursal: quien confirma desde la 4 recibe «no se encontró» y la parte de la 3 sigue pendiente", async () => {
     const facturaId = await cargarPendiente();
 
-    const r = await confirmarRecepcionDeFacturaCasoDeUso(actorDe(admin4, s4, "Sucursal 4"), { facturaId, seccionId: sec4, fechaStock: mediodia(-2) });
+    const r = await confirmarRecepcionDeFacturaCasoDeUso(actorDe(admin4, s4, "Sucursal 4"), { facturaId, entradas: await entradasEnteras(facturaId, sec4), fechaStock: mediodia(-2) });
 
     expect(r).toMatchObject({ ok: false, codigo: "NO_ES_DE_ESTA_SUCURSAL" });
     expect((await parteDe(facturaId)).estadoRecepcion).toBe("PENDIENTE");
@@ -410,5 +423,276 @@ describe("confirmar la recepción", () => {
     const r = await confirmar(facturaId, { ahora: unaSemanaAtras, fechaStock: mediodia(-2) });
 
     expect(r).toMatchObject({ ok: false, codigo: "FECHA_FUERA_DE_RANGO" });
+  });
+});
+
+const renglonesDe = (facturaId: string) => prisma.facturaProveedorRenglon.findMany({ where: { facturaProveedorId: facturaId }, orderBy: { orden: "asc" } });
+const controlar = (facturaId: string, controles: { renglonId: string; condicion: "CONFORME" | "CON_OBSERVACIONES" | "RECHAZADA"; observacion?: string | null; cantidadSegunRemito?: number | null }[], actor = actor3()) =>
+  registrarControlDeRecepcionCasoDeUso(actor, { facturaId, controles }, azarDelProceso);
+const controlesGuardados = () => prisma.controlDeLineaDeRecepcion.count();
+const movimientosDe = (renglonId: string) => prisma.movimientoStock.findMany({ where: { facturaProveedorRenglonId: renglonId }, orderBy: { cantidad: "asc" } });
+
+describe("confirmar con entradas fraccionadas entre secciones (N3-b)", () => {
+  it("un renglón dividido entre dos secciones: una línea del Kardex por entrada, el stock entra en cada sección, el precio del renglón se reparte exacto y el precio por unidad es el del renglón", async () => {
+    const facturaId = await cargarPendiente();
+    const otra = (await sembrarSeccion(s3, "Cámara")).id;
+    const [rHarina, rAceite] = await renglonesDe(facturaId);
+    const entradas = [
+      { renglonId: rHarina!.id, seccionId: sec3, cantidad: 4 },
+      { renglonId: rHarina!.id, seccionId: otra, cantidad: 6 },
+      { renglonId: rAceite!.id, seccionId: sec3, cantidad: 5 },
+    ];
+
+    const r = await confirmar(facturaId, { entradas });
+
+    expect(r).toMatchObject({ ok: true, datos: { movimientos: 3 } });
+    expect([await calcularSaldoTotal(harina, sec3, prisma), await calcularSaldoTotal(harina, otra, prisma), await calcularSaldoTotal(aceite, sec3, prisma)]).toEqual([4, 6, 5]);
+    const deHarina = await movimientosDe(rHarina!.id);
+    expect(deHarina.map((m) => [m.seccionId, Number(m.cantidad), Number(m.precioTotal), Number(m.precioPorUnidadStock)])).toEqual([[sec3, 4, 400, 100], [otra, 6, 600, 100]]);
+    expect(deHarina.reduce((t, m) => t + Number(m.precioTotal), 0)).toBe(1000);
+    // Una sola compra (Operacion) con las tres líneas, y la auditoría nombra las dos secciones.
+    expect(await comprasDeStock()).toBe(1);
+    const auditoria = await prisma.registroAuditoria.findFirstOrThrow({ where: { entidadId: facturaId, campo: "recepcion" } });
+    expect(auditoria.descripcion).toContain("secciones «Depósito», «Cámara»");
+  });
+
+  it("el precio con centavos se reparte EXACTO: 100,01 en tres entradas iguales da 33,34 + 33,34 + 33,33 (la suma es el precio del renglón al centavo, nunca un centavo de más ni de menos)", async () => {
+    await encenderRecepcion();
+    const r = await cargar({ items: [{ productoId: harina, cantidad: 3, precioTotal: 100.01, referenciaProveedor: REFERENCIA_DE_PRUEBA }] });
+    const facturaId = (r.ok && r.datos.facturaId) as string;
+    const [renglon] = await renglonesDe(facturaId);
+    const dos = (await sembrarSeccion(s3, "Cámara")).id;
+    const tres = (await sembrarSeccion(s3, "Freezer")).id;
+
+    const c = await confirmar(facturaId, { entradas: [{ renglonId: renglon!.id, seccionId: sec3, cantidad: 1 }, { renglonId: renglon!.id, seccionId: dos, cantidad: 1 }, { renglonId: renglon!.id, seccionId: tres, cantidad: 1 }] });
+
+    expect(c.ok, c.mensaje).toBe(true);
+    const precios = (await movimientosDe(renglon!.id)).map((m) => Number(m.precioTotal)).sort((a, b) => b - a);
+    expect(precios).toEqual([33.34, 33.34, 33.33]);
+    expect(Math.round(precios.reduce((t, p) => t + p * 100, 0))).toBe(10001);
+  });
+
+  it("entradas que NO suman la cantidad del renglón (menos o más) se rechazan sin escribir nada y la parte sigue pendiente", async () => {
+    const facturaId = await cargarPendiente();
+    const otra = (await sembrarSeccion(s3, "Cámara")).id;
+    const [rHarina, rAceite] = await renglonesDe(facturaId);
+    const aceiteEntero = { renglonId: rAceite!.id, seccionId: sec3, cantidad: 5 };
+
+    const menos = await confirmar(facturaId, { entradas: [{ renglonId: rHarina!.id, seccionId: sec3, cantidad: 4 }, { renglonId: rHarina!.id, seccionId: otra, cantidad: 5 }, aceiteEntero] });
+    const mas = await confirmar(facturaId, { entradas: [{ renglonId: rHarina!.id, seccionId: sec3, cantidad: 4 }, { renglonId: rHarina!.id, seccionId: otra, cantidad: 6.5 }, aceiteEntero] });
+
+    for (const r of [menos, mas]) expect(r).toMatchObject({ ok: false, codigo: "CANTIDAD_NO_SUMA" });
+    expect(menos.mensaje).toBe("Las cantidades repartidas entre las secciones tienen que sumar exactamente 10, la cantidad del renglón.");
+    expect([await comprasDeStock(), await movimientosDeCompra()]).toEqual([0, 0]);
+    expect((await parteDe(facturaId)).estadoRecepcion).toBe("PENDIENTE");
+  });
+
+  it("el mismo renglón dos veces en la misma sección, un renglón sin entradas, un renglón de otra compra y una cantidad con más decimales que la unidad se rechazan con su código", async () => {
+    const facturaId = await cargarPendiente();
+    const otraFactura = await cargarPendiente({ nroFactura: "A-00001-00000555", claveIdempotencia: randomUUID() });
+    const [rHarina, rAceite] = await renglonesDe(facturaId);
+    const [rAjeno] = await renglonesDe(otraFactura);
+    const aceiteEntero = { renglonId: rAceite!.id, seccionId: sec3, cantidad: 5 };
+    const harinaEntera = { renglonId: rHarina!.id, seccionId: sec3, cantidad: 10 };
+
+    const repetida = await confirmar(facturaId, { entradas: [{ ...harinaEntera, cantidad: 4 }, { ...harinaEntera, cantidad: 6 }, aceiteEntero] });
+    const sinEntradas = await confirmar(facturaId, { entradas: [harinaEntera] });
+    const ajeno = await confirmar(facturaId, { entradas: [harinaEntera, aceiteEntero, { renglonId: rAjeno!.id, seccionId: sec3, cantidad: 10 }] });
+    // El aceite es de una unidad con 2 decimales: 2,505 no entra aunque sume.
+    const demasiadosDecimales = await confirmar(facturaId, { entradas: [harinaEntera, { ...aceiteEntero, cantidad: 2.505 }, { ...aceiteEntero, seccionId: (await sembrarSeccion(s3, "Cámara")).id, cantidad: 2.495 }] });
+    const ceroOnegativa = await confirmar(facturaId, { entradas: [harinaEntera, { ...aceiteEntero, cantidad: 0 }] });
+
+    expect(repetida).toMatchObject({ ok: false, codigo: "ENTRADA_REPETIDA" });
+    expect(sinEntradas).toMatchObject({ ok: false, codigo: "RENGLON_SIN_ENTRADAS" });
+    expect(ajeno).toMatchObject({ ok: false, codigo: "RENGLON_AJENO" });
+    expect(demasiadosDecimales).toMatchObject({ ok: false, codigo: "CANTIDAD_INVALIDA" });
+    expect(ceroOnegativa).toMatchObject({ ok: false, codigo: "CANTIDAD_INVALIDA" });
+    expect([await comprasDeStock(), await movimientosDeCompra()]).toEqual([0, 0]);
+  });
+
+  it("una sección AJENA o INACTIVA en UNA de las entradas frena toda la confirmación (la regla de secciones mira todas): nada entra", async () => {
+    const facturaId = await cargarPendiente();
+    const inactiva = (await prisma.seccion.create({ data: { sucursalId: s3, nombre: "Vieja", activa: false } })).id;
+    const [rHarina, rAceite] = await renglonesDe(facturaId);
+    const resto = [{ renglonId: rAceite!.id, seccionId: sec3, cantidad: 5 }];
+
+    const ajena = await confirmar(facturaId, { entradas: [{ renglonId: rHarina!.id, seccionId: sec3, cantidad: 4 }, { renglonId: rHarina!.id, seccionId: sec4, cantidad: 6 }, ...resto] });
+    const desactivada = await confirmar(facturaId, { entradas: [{ renglonId: rHarina!.id, seccionId: sec3, cantidad: 4 }, { renglonId: rHarina!.id, seccionId: inactiva, cantidad: 6 }, ...resto] });
+
+    expect(ajena).toMatchObject({ ok: false, codigo: "SECCION_NO_ENCONTRADA" });
+    expect(desactivada).toMatchObject({ ok: false, codigo: "SECCION_INACTIVA" });
+    expect(desactivada.mensaje).toContain("«Vieja» está desactivada");
+    expect([await comprasDeStock(), await movimientosDeCompra()]).toEqual([0, 0]);
+  });
+
+  it("una línea RECHAZADA (o con observaciones, o sin control) ENTRA al stock igual, en la sección que elige quien recibe: la condición del control no cambia cuánto entra", async () => {
+    const facturaId = await cargarPendiente();
+    const [rHarina, rAceite] = await renglonesDe(facturaId);
+    const c = await controlar(facturaId, [{ renglonId: rHarina!.id, condicion: "RECHAZADA", observacion: "Llegó vencida" }]);
+    expect(c.ok, c.mensaje).toBe(true);
+
+    const r = await confirmar(facturaId);
+
+    expect(r.ok, r.mensaje).toBe(true);
+    // La rechazada (harina) y la que no se constató (aceite) entran con toda su cantidad.
+    expect([await calcularSaldoTotal(harina, sec3, prisma), await calcularSaldoTotal(aceite, sec3, prisma)]).toEqual([10, 5]);
+    expect((await movimientosDe(rHarina!.id)).map((m) => Number(m.precioTotal))).toEqual([1000]);
+    expect((await movimientosDe(rAceite!.id)).map((m) => Number(m.precioTotal))).toEqual([1000]);
+    // El control queda como se constató (no se toca al confirmar).
+    expect((await prisma.controlDeLineaDeRecepcion.findFirstOrThrow()).condicion).toBe("RECHAZADA");
+  });
+});
+
+describe("registrar el control de las líneas (N3-b)", () => {
+  it("éxito: guarda el control de cada línea pedida con su observación y su cantidad según remito, quién y cuándo, con id uuid, y audita; no toca el stock ni el estado de la parte; una línea sin control queda sin fila", async () => {
+    const facturaId = await cargarPendiente();
+    const [rHarina, rAceite] = await renglonesDe(facturaId);
+
+    const r = await controlar(facturaId, [{ renglonId: rAceite!.id, condicion: "CON_OBSERVACIONES", observacion: "  Envase   abollado ", cantidadSegunRemito: 4.5 }]);
+
+    expect(r).toMatchObject({ ok: true, mensaje: "Control registrado: 1 línea(s).", datos: { controles: 1 } });
+    const filas = await prisma.controlDeLineaDeRecepcion.findMany();
+    expect(filas).toHaveLength(1);
+    expect(filas[0]).toMatchObject({ facturaProveedorId: facturaId, facturaProveedorRenglonId: rAceite!.id, condicion: "CON_OBSERVACIONES", observacion: "Envase abollado", registradoPorId: admin });
+    expect(Number(filas[0]!.cantidadSegunRemito)).toBe(4.5);
+    expect(filas[0]!.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(await prisma.controlDeLineaDeRecepcion.count({ where: { facturaProveedorRenglonId: rHarina!.id } })).toBe(0);
+    expect([await comprasDeStock(), await movimientosDeCompra()]).toEqual([0, 0]);
+    expect((await parteDe(facturaId)).estadoRecepcion).toBe("PENDIENTE");
+    const auditoria = await prisma.registroAuditoria.findFirstOrThrow({ where: { entidadId: facturaId, campo: "controlDeRecepcion" } });
+    expect(auditoria).toMatchObject({ actorId: admin, sucursalId: s3, valorAnterior: null, valorNuevo: "1" });
+  });
+
+  it("idempotencia: controlar de nuevo la misma línea devuelve YA_CONTROLADA y NO escribe nada (ni la línea nueva de un pedido mixto); el control ya guardado no se cambia", async () => {
+    const facturaId = await cargarPendiente();
+    const [rHarina, rAceite] = await renglonesDe(facturaId);
+    expect((await controlar(facturaId, [{ renglonId: rHarina!.id, condicion: "CONFORME" }])).ok).toBe(true);
+
+    const repetido = await controlar(facturaId, [{ renglonId: rHarina!.id, condicion: "RECHAZADA", observacion: "Otra cosa" }]);
+    const mixto = await controlar(facturaId, [{ renglonId: rAceite!.id, condicion: "CONFORME" }, { renglonId: rHarina!.id, condicion: "CONFORME" }]);
+
+    expect(repetido).toMatchObject({ ok: false, codigo: "YA_CONTROLADA" });
+    expect(mixto).toMatchObject({ ok: false, codigo: "YA_CONTROLADA" });
+    expect(await controlesGuardados()).toBe(1);
+    expect((await prisma.controlDeLineaDeRecepcion.findFirstOrThrow()).condicion).toBe("CONFORME");
+    expect(await prisma.registroAuditoria.count({ where: { entidadId: facturaId, campo: "controlDeRecepcion" } })).toBe(1);
+  });
+
+  it("CONCURRENCIA: dos registros del control del MISMO renglón a la vez: gana uno, el otro recibe YA_CONTROLADA y queda un solo control", async () => {
+    const facturaId = await cargarPendiente();
+    const [rHarina] = await renglonesDe(facturaId);
+
+    const resultados = await Promise.all([
+      controlar(facturaId, [{ renglonId: rHarina!.id, condicion: "CONFORME" }]),
+      controlar(facturaId, [{ renglonId: rHarina!.id, condicion: "RECHAZADA", observacion: "Llegó rota" }]),
+    ]);
+
+    expect(resultados.filter((x) => x.ok)).toHaveLength(1);
+    expect(resultados.filter((x) => !x.ok)).toEqual([expect.objectContaining({ ok: false, codigo: "YA_CONTROLADA" })]);
+    expect(await controlesGuardados()).toBe(1);
+  });
+
+  it("estados: la parte ya RECIBIDA, la factura ANULADA, la compra de OTRA sucursal, la que no existe y la de OTRA empresa se rechazan sin escribir nada", async () => {
+    const recibida = await cargarPendiente({ nroFactura: "A-00001-00000601" });
+    const anulada = (await cargar({ nroFactura: "A-00001-00000602" })) && ((await prisma.facturaProveedor.findFirstOrThrow({ where: { nroFactura: "A-00001-00000602" } })).id as string);
+    const pendiente = (await cargar({ nroFactura: "A-00001-00000603" })).ok && ((await prisma.facturaProveedor.findFirstOrThrow({ where: { nroFactura: "A-00001-00000603" } })).id as string);
+    expect((await confirmar(recibida)).ok).toBe(true);
+    expect((await anularFacturaProveedorCasoDeUso(actor3(), { facturaId: anulada, motivo: "Se cargó mal", claveIdempotencia: randomUUID() })).ok).toBe(true);
+    const renglonDe = async (id: string) => (await renglonesDe(id))[0]!.id;
+
+    const yaRecibida = await controlar(recibida, [{ renglonId: await renglonDe(recibida), condicion: "CONFORME" }]);
+    const anuladaR = await controlar(anulada, [{ renglonId: await renglonDe(anulada), condicion: "CONFORME" }]);
+    const deOtraSucursal = await controlar(pendiente as string, [{ renglonId: await renglonDe(pendiente as string), condicion: "CONFORME" }], actorDe(admin4, s4, "Sucursal 4"));
+    const noExiste = await controlar("factura-que-no-existe", [{ renglonId: "x", condicion: "CONFORME" }]);
+
+    expect(yaRecibida).toMatchObject({ ok: false, codigo: "YA_RECIBIDA" });
+    expect(anuladaR).toMatchObject({ ok: false, codigo: "YA_ANULADA" });
+    expect(deOtraSucursal).toMatchObject({ ok: false, codigo: "NO_ES_DE_ESTA_SUCURSAL" });
+    expect(noExiste).toMatchObject({ ok: false, codigo: "NO_ENCONTRADA" });
+    expect(await controlesGuardados()).toBe(0);
+  });
+
+  it("un renglón de OTRA compra no se controla (RENGLON_AJENO) y los renglones sin producto (gastos) tampoco: sin escribir nada", async () => {
+    const facturaId = await cargarPendiente();
+    const otra = await cargarPendiente({ nroFactura: "A-00001-00000700", claveIdempotencia: randomUUID() });
+    const [rAjeno] = await renglonesDe(otra);
+
+    const r = await controlar(facturaId, [{ renglonId: rAjeno!.id, condicion: "CONFORME" }]);
+
+    expect(r).toMatchObject({ ok: false, codigo: "RENGLON_AJENO" });
+    expect(await controlesGuardados()).toBe(0);
+  });
+
+  it("AISLAMIENTO por empresa: la compra pendiente de OTRA empresa es «no se encontró» y no recibe ningún control", async () => {
+    await encenderRecepcion();
+    await prisma.empresa.create({ data: { id: "empresa_b", nombre: "Empresa B", slug: "empresa-b", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "PROVISIONING" } });
+    const sucursalB = await prismaAdmin.sucursal.create({ data: { empresaId: "empresa_b", nombre: "Sucursal B" } });
+    const proveedorB = await prismaAdmin.proveedor.create({ data: { empresaId: "empresa_b", codigo: "PRV_B", nombre: "Proveedor B" } });
+    const facturaB = await prismaAdmin.facturaProveedor.create({
+      data: { empresaId: "empresa_b", proveedorId: proveedorB.id, fecha: mediodia(-3), importeTotal: 100, estado: "CONFIRMADA", confirmadaEn: new Date(), confirmadaPorId: admin, creadoPorId: admin },
+    });
+    await prismaAdmin.facturaProveedorSucursal.create({ data: { empresaId: "empresa_b", facturaProveedorId: facturaB.id, sucursalId: sucursalB.id, porcentajeDeclaradoBp: 10000, estadoRecepcion: "PENDIENTE" } });
+
+    const r = await controlar(facturaB.id, [{ renglonId: "x", condicion: "CONFORME" }]);
+
+    expect(r).toMatchObject({ ok: false, codigo: "NO_ENCONTRADA" });
+    expect(await prismaAdmin.controlDeLineaDeRecepcion.count()).toBe(0);
+  });
+
+  it("ATOMICIDAD: si falla la auditoría después de insertar los controles, no queda NINGUNO (todo o nada) y el reintento posterior sí los guarda", async () => {
+    const facturaId = await cargarPendiente();
+    const [rHarina, rAceite] = await renglonesDe(facturaId);
+    vi.mocked(registrarCambioAuditado).mockRejectedValueOnce(new Error("falla inyectada al auditar el control"));
+
+    await expect(controlar(facturaId, [{ renglonId: rHarina!.id, condicion: "CONFORME" }, { renglonId: rAceite!.id, condicion: "RECHAZADA", observacion: "Rota" }])).rejects.toThrow("falla inyectada");
+
+    expect(await controlesGuardados()).toBe(0);
+    expect(await prisma.registroAuditoria.count({ where: { entidadId: facturaId, campo: "controlDeRecepcion" } })).toBe(0);
+    const reintento = await controlar(facturaId, [{ renglonId: rHarina!.id, condicion: "CONFORME" }, { renglonId: rAceite!.id, condicion: "RECHAZADA", observacion: "Rota" }]);
+    expect(reintento.ok, reintento.mensaje).toBe(true);
+    expect(await controlesGuardados()).toBe(2);
+  });
+});
+
+describe("el control en la base: las reglas que no dependen del código (segunda barrera)", () => {
+  const insertar = (datos: Record<string, unknown>) => prismaAdmin.controlDeLineaDeRecepcion.create({ data: { id: randomUUID(), condicion: "CONFORME", registradoPorId: admin, ...datos } as never });
+
+  it("la base rechaza: una condición fuera de la lista, una observación faltante si no es conforme, un carácter no permitido, una observación de más de 500, una cantidad según remito en cero, un renglón de otra factura y un control después de confirmar", async () => {
+    const facturaId = await cargarPendiente();
+    const otra = await cargarPendiente({ nroFactura: "A-00001-00000800", claveIdempotencia: randomUUID() });
+    const [rHarina] = await renglonesDe(facturaId);
+    const [rAjeno] = await renglonesDe(otra);
+    const parte = await parteDe(facturaId);
+    const base = { facturaProveedorId: facturaId, facturaProveedorSucursalId: parte.id, facturaProveedorRenglonId: rHarina!.id, empresaId: E };
+
+    await expect(insertar({ ...base, condicion: "DEVUELTA" })).rejects.toThrow(/condicion_chk/);
+    await expect(insertar({ ...base, condicion: "RECHAZADA" })).rejects.toThrow(/observacion_requerida_chk/);
+    await expect(insertar({ ...base, condicion: "CON_OBSERVACIONES", observacion: "Caja <rota>" })).rejects.toThrow(/observacion_chk/);
+    await expect(insertar({ ...base, condicion: "CON_OBSERVACIONES", observacion: "  con espacios en los extremos " })).rejects.toThrow(/observacion_chk/);
+    await expect(insertar({ ...base, condicion: "CON_OBSERVACIONES", observacion: "a".repeat(501) })).rejects.toThrow(/observacion_chk/);
+    await expect(insertar({ ...base, cantidadSegunRemito: 0 })).rejects.toThrow(/cantidadSegunRemito_chk/);
+    await expect(insertar({ ...base, facturaProveedorRenglonId: rAjeno!.id })).rejects.toThrow(/renglon_fkey/);
+    await expect(insertar({ ...base, facturaProveedorId: otra })).rejects.toThrow(/renglon_fkey/);
+    expect(await controlesGuardados()).toBe(0);
+
+    // Lo válido entra; el único (parte, renglón) frena el segundo; y después de confirmar la base no admite ninguno.
+    await insertar({ ...base, condicion: "CON_OBSERVACIONES", observacion: "Faltó una caja (3 de 4)" });
+    await expect(insertar({ ...base })).rejects.toThrow(/parte_renglon_key|Unique constraint/i);
+    expect((await confirmar(facturaId)).ok).toBe(true);
+    const [, rAceite] = await renglonesDe(facturaId);
+    await expect(insertar({ ...base, facturaProveedorRenglonId: rAceite!.id })).rejects.toThrow(/parte_pendiente/);
+  });
+
+  it("la app no puede cambiar ni borrar un control (solo SELECT e INSERT): UPDATE y DELETE dan permission denied", async (ctx) => {
+    const hayRol = (await prismaAdmin.$queryRaw<{ n: bigint }[]>`SELECT count(*) AS n FROM pg_roles WHERE rolname = 'motor2_app'`)[0]!.n === BigInt(1);
+    if (!hayRol) return ctx.skip();
+    const facturaId = await cargarPendiente();
+    const [rHarina] = await renglonesDe(facturaId);
+    const parte = await parteDe(facturaId);
+    const fila = await insertar({ facturaProveedorId: facturaId, facturaProveedorSucursalId: parte.id, facturaProveedorRenglonId: rHarina!.id, empresaId: E });
+
+    await expect(baseDe(s3).db.controlDeLineaDeRecepcion.update({ where: { id: fila.id }, data: { condicion: "RECHAZADA", observacion: "Cambio" } })).rejects.toThrow(/permission denied/i);
+    await expect(baseDe(s3).db.controlDeLineaDeRecepcion.delete({ where: { id: fila.id } })).rejects.toThrow(/permission denied/i);
+    expect((await prismaAdmin.controlDeLineaDeRecepcion.findUniqueOrThrow({ where: { id: fila.id } })).condicion).toBe("CONFORME");
   });
 });

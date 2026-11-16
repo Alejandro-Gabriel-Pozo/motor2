@@ -91,13 +91,13 @@ export const ETIQUETA_DE_CONDICION_DE_CONTROL: Readonly<Record<CondicionDeContro
   RECHAZADA: "Rechazada",
 };
 
-export function esCondicionDeControl(valor: unknown): valor is CondicionDeControl {
+function esCondicionDeControl(valor: unknown): valor is CondicionDeControl {
   return typeof valor === "string" && (CONDICIONES_DE_CONTROL as readonly string[]).includes(valor);
 }
 
 export type CodigoDeRechazoDeControl = "CONDICION_INVALIDA" | "OBSERVACION_OBLIGATORIA" | "OBSERVACION_INVALIDA" | "CANTIDAD_SEGUN_REMITO_INVALIDA";
 
-export interface ControlDeLineaValidado {
+interface ControlDeLineaValidado {
   condicion: CondicionDeControl;
   /** Recortada y con los espacios repetidos colapsados (la forma canónica del texto de una línea); `null` si no se escribió. */
   observacion: string | null;
@@ -105,12 +105,12 @@ export interface ControlDeLineaValidado {
   cantidadSegunRemito: number | null;
 }
 
-export type ResultadoDeControlDeLinea = { ok: true; valor: ControlDeLineaValidado } | { ok: false; codigo: CodigoDeRechazoDeControl; mensaje: string };
+type ResultadoDeControlDeLinea = { ok: true; valor: ControlDeLineaValidado } | { ok: false; codigo: CodigoDeRechazoDeControl; mensaje: string };
 
-export const MENSAJE_CONDICION_DE_CONTROL_INVALIDA = "Elegí cómo llegó la mercadería: conforme, con observaciones o rechazada.";
-export const MENSAJE_OBSERVACION_OBLIGATORIA = "Escribí la observación: es obligatoria si la mercadería no está conforme.";
-export const MENSAJE_OBSERVACION_INVALIDA = `La observación tiene caracteres que no se admiten o pasa de ${LARGO_MAXIMO_DE_LA_OBSERVACION} caracteres.`;
-export const MENSAJE_CANTIDAD_SEGUN_REMITO_INVALIDA = "La cantidad según el remito tiene que ser un número mayor que cero, con hasta 4 decimales.";
+const MENSAJE_CONDICION_DE_CONTROL_INVALIDA = "Elegí cómo llegó la mercadería: conforme, con observaciones o rechazada.";
+const MENSAJE_OBSERVACION_OBLIGATORIA = "Escribí la observación: es obligatoria si la mercadería no está conforme.";
+const MENSAJE_OBSERVACION_INVALIDA = `La observación tiene caracteres que no se admiten o pasa de ${LARGO_MAXIMO_DE_LA_OBSERVACION} caracteres.`;
+const MENSAJE_CANTIDAD_SEGUN_REMITO_INVALIDA = "La cantidad según el remito tiene que ser un número mayor que cero, con hasta 4 decimales.";
 
 /**
  * ¿Sirve el control de UNA línea? Orden de las razones: condición fuera de la lista → observación escrita que no pasa la lista de caracteres PERMITIDOS (la del texto de catálogo, con `¿ ¡ ? ! % $`; una sola línea, hasta 500) →
@@ -146,7 +146,7 @@ function pasosEnteros(cantidad: number): number | null {
 }
 
 /** Lo que la regla necesita saber de cada renglón de mercadería de la compra pendiente. `decimales` es la precisión de la unidad de stock del producto. */
-export interface RenglonParaEntradas {
+interface RenglonParaEntradas {
   renglonId: string;
   cantidad: number;
   decimales: number;
@@ -160,12 +160,12 @@ export interface EntradaDeRecepcion {
 
 export type CodigoDeRechazoDeEntradas = "SIN_ENTRADAS" | "RENGLON_AJENO" | "ENTRADA_REPETIDA" | "CANTIDAD_INVALIDA" | "CANTIDAD_NO_SUMA" | "RENGLON_SIN_ENTRADAS";
 
-export type ResultadoDeEntradas = { ok: true } | { ok: false; codigo: CodigoDeRechazoDeEntradas; mensaje: string };
+type ResultadoDeEntradas = { ok: true } | { ok: false; codigo: CodigoDeRechazoDeEntradas; mensaje: string };
 
-export const MENSAJE_SIN_ENTRADAS = "Indicá la sección donde entra cada renglón de la compra.";
-export const MENSAJE_RENGLON_AJENO = "Hay un renglón que no es de esta compra.";
-export const MENSAJE_ENTRADA_REPETIDA = "Un renglón no puede entrar dos veces en la misma sección: juntá las cantidades.";
-export const MENSAJE_RENGLON_SIN_ENTRADAS = "Falta indicar la sección donde entra uno de los renglones de la compra.";
+const MENSAJE_SIN_ENTRADAS = "Indicá la sección donde entra cada renglón de la compra.";
+const MENSAJE_RENGLON_AJENO = "Hay un renglón que no es de esta compra.";
+const MENSAJE_ENTRADA_REPETIDA = "Un renglón no puede entrar dos veces en la misma sección: juntá las cantidades.";
+const MENSAJE_RENGLON_SIN_ENTRADAS = "Falta indicar la sección donde entra uno de los renglones de la compra.";
 
 /**
  * ¿Sirven las entradas de stock de la recepción? Cada entrada es `{ renglón, sección, cantidad }`: un renglón puede FRACCIONARSE entre varias secciones. Reglas, en este orden: hay al menos una entrada → cada renglón es de la compra → no se repite
@@ -233,7 +233,7 @@ export interface EntradaDeRegistroDeControl {
   estadoDeLaParte: EstadoDeRecepcion;
 }
 
-export const MENSAJE_CONTROL_COMPRA_YA_RECIBIDA = "Esta compra ya fue recibida: el control se registra antes de confirmar la recepción.";
+const MENSAJE_CONTROL_COMPRA_YA_RECIBIDA = "Esta compra ya fue recibida: el control se registra antes de confirmar la recepción.";
 
 /**
  * ¿Se puede registrar el control de las líneas de esa parte? Orden de las razones: la parte no es de esta sucursal (no se dice nada más: no se filtra la existencia) → la factura está anulada → la parte ya está recibida (el control solo existe antes de

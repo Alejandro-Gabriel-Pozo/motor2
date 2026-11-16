@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { decidirConfirmacionDeRecepcion, estadoInicialDeLaParte } from "../../src/core/compras/public";
+import { decidirConfirmacionDeRecepcion, decidirRegistroDeControl, estadoInicialDeLaParte, validarControlDeLinea, validarEntradasDeRecepcion } from "../../src/core/compras/public";
 import type { EntradaDeConfirmacionDeRecepcion } from "../../src/core/compras/public";
 import { modulosEfectivos } from "../../src/core/modulos/clausura";
 import { denegacionDeModulo } from "../../src/core/permisos/modulo-de-la-accion";
@@ -41,11 +41,11 @@ function entradaDeLaRegla(f: Pick<FilaDeConfirmacion, "P" | "E" | "S" | "F">): E
 }
 
 /** La puerta de la Server Action (guard): módulo → piso del rol, con las funciones reales del acceso. `null` = pasa. */
-function puertaDeAcceso(f: Pick<FilaDeConfirmacion, "M" | "O">): "RECHAZA_MODULO_NO_ACTIVO" | "RECHAZA_SIN_PERMISO" | null {
+function puertaDeAcceso(f: Pick<FilaDeConfirmacion, "M" | "O">, accion: "compra_recibir" | "compra_controlar_recepcion" = "compra_recibir"): "RECHAZA_MODULO_NO_ACTIVO" | "RECHAZA_SIN_PERMISO" | null {
   const efectivos = modulosEfectivos(f.M === "ENCENDIDO" ? ["compras", "recepcion_de_compras"] : ["compras"]);
   if (denegacionDeModulo("recepcion_de_compras", efectivos)) return "RECHAZA_MODULO_NO_ACTIVO";
   const nivel = nivelDe({ rolEmpresa: f.O === "GERENTE" ? ROL_EMPRESA_GERENTE : null, esAdminEnElContexto: f.O === "ADMINISTRADOR" });
-  return nivelAlcanzaElPiso(nivel, nivelMinimoDeAccion("compra_recibir")) ? null : "RECHAZA_SIN_PERMISO";
+  return nivelAlcanzaElPiso(nivel, nivelMinimoDeAccion(accion)) ? null : "RECHAZA_SIN_PERMISO";
 }
 
 /** Lo que las reglas reales deciden para una fila de «Confirmar la recepción». */
@@ -59,4 +59,48 @@ export function resultadoDeConfirmar(f: FilaDeConfirmacion): string {
 /** Lo que las reglas reales deciden para una fila de «Cargar la factura». */
 export function resultadoDeCargar(f: { M: string; R: string }): string {
   return estadoInicialDeLaParte({ moduloEncendido: f.M === "ENCENDIDO", hayPartesAjenas: f.R === "REPARTIDA" }) === "PENDIENTE" ? "PARTE_PENDIENTE_SIN_STOCK" : "PARTE_RECIBIDA_CON_STOCK";
+}
+
+// ------------------------------------------------------------------------------------------------
+// N3-b: el control por línea y las entradas de stock
+// ------------------------------------------------------------------------------------------------
+
+/** El valor de cada nivel de la dimensión de la condición, de la observación y de la cantidad según remito, tal como llegarían al servidor. */
+const CONDICION_DE_PRUEBA: Record<string, unknown> = { CONFORME: "CONFORME", CON_OBSERVACIONES: "CON_OBSERVACIONES", RECHAZADA: "RECHAZADA", FUERA_DE_LISTA: "DEVUELTA" };
+const OBSERVACION_DE_PRUEBA: Record<string, unknown> = { SIN: undefined, VALIDA: "Llegó con la caja rota", INVALIDA: "Caja <rota>" };
+const CANTIDAD_SEGUN_REMITO_DE_PRUEBA: Record<string, unknown> = { SIN: undefined, VALIDA: 9.5, INVALIDA: 0 };
+
+export type FilaDeControl = { C: string; B: string; Q: string };
+
+/** Lo que la regla real decide para una fila de «Registrar el control de una línea». */
+export function resultadoDeControlDeLinea(f: FilaDeControl): string {
+  const r = validarControlDeLinea({ condicion: CONDICION_DE_PRUEBA[f.C], observacion: OBSERVACION_DE_PRUEBA[f.B], cantidadSegunRemito: CANTIDAD_SEGUN_REMITO_DE_PRUEBA[f.Q] });
+  return r.ok ? "GUARDA" : `RECHAZA_${r.codigo}`;
+}
+
+export type FilaDePuertaDeControl = { M: string; O: string; P: string; E: string };
+
+/** Lo que las reglas reales deciden para una fila de «Registrar el control: puerta y estado». */
+export function resultadoDePuertaDeControl(f: FilaDePuertaDeControl): string {
+  const puerta = puertaDeAcceso(f, "compra_controlar_recepcion");
+  if (puerta) return puerta;
+  const d = decidirRegistroDeControl({ esDeLaSucursalDelActor: f.P === "PROPIA", facturaAnulada: f.E === "ANULADA", estadoDeLaParte: f.E === "RECIBIDA" ? "RECIBIDA" : "PENDIENTE" });
+  return d.ok ? "GUARDA" : `RECHAZA_${d.codigo}`;
+}
+
+/** Las entradas de stock de cada valor de la dimensión N para un renglón de 10 unidades (de una unidad con 2 decimales) y dos secciones. */
+const ENTRADAS_DE_PRUEBA: Record<string, { renglonId: string; seccionId: string; cantidad: number }[]> = {
+  UNA_SECCION: [{ renglonId: "r1", seccionId: "s1", cantidad: 10 }],
+  FRACCIONADA: [{ renglonId: "r1", seccionId: "s1", cantidad: 4 }, { renglonId: "r1", seccionId: "s2", cantidad: 6 }],
+  SUMA_MENOR: [{ renglonId: "r1", seccionId: "s1", cantidad: 4 }, { renglonId: "r1", seccionId: "s2", cantidad: 5 }],
+  SUMA_MAYOR: [{ renglonId: "r1", seccionId: "s1", cantidad: 4 }, { renglonId: "r1", seccionId: "s2", cantidad: 6.5 }],
+  REPETIDA: [{ renglonId: "r1", seccionId: "s1", cantidad: 4 }, { renglonId: "r1", seccionId: "s1", cantidad: 6 }],
+};
+
+export type FilaDeEntradas = { N: string; K: string };
+
+/** Lo que la regla real decide para una fila de «Entradas de la confirmación». La dimensión K (el control) NO entra en la regla: es justamente lo que el oráculo declara que no cambia el resultado. */
+export function resultadoDeEntradas(f: FilaDeEntradas): string {
+  const r = validarEntradasDeRecepcion([{ renglonId: "r1", cantidad: 10, decimales: 2 }], ENTRADAS_DE_PRUEBA[f.N]!);
+  return r.ok ? "CONFIRMA" : `RECHAZA_${r.codigo}`;
 }

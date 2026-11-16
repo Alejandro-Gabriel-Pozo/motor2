@@ -48,7 +48,9 @@ async function cargarPendiente(nroFactura: string): Promise<string> {
   expect(r.ok, r.mensaje).toBe(true);
   return (r.ok && r.datos.facturaId) as string;
 }
-const confirmar = (facturaId: string) => confirmarRecepcionDeFacturaCasoDeUso(actor(), { facturaId, seccionId: sec3, fechaStock: mediodia(-2) });
+const entradasEnteras = async (facturaId: string) =>
+  (await prisma.facturaProveedorRenglon.findMany({ where: { facturaProveedorId: facturaId, productoId: { not: null } }, orderBy: { orden: "asc" } })).map((r) => ({ renglonId: r.id, seccionId: sec3, cantidad: Number(r.cantidadStock) }));
+const confirmar = async (facturaId: string) => confirmarRecepcionDeFacturaCasoDeUso(actor(), { facturaId, entradas: await entradasEnteras(facturaId), fechaStock: mediodia(-2) });
 const anular = (facturaId: string) => anularFacturaProveedorCasoDeUso(actor(), { facturaId, motivo: "Prueba de concurrencia", claveIdempotencia: randomUUID() });
 
 beforeEach(async () => {

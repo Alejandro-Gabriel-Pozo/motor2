@@ -58,6 +58,9 @@ async function cargar(reparto: { sucursalId: string; valor: number }[]) {
   expect(r.ok, r.mensaje).toBe(true);
   return (r.ok && r.datos.facturaId) as string;
 }
+/** Una entrada por renglón de la factura con TODA su cantidad en la sección dada (el caso común). */
+const entradasEnteras = async (facturaId: string, seccionId: string) =>
+  (await prisma.facturaProveedorRenglon.findMany({ where: { facturaProveedorId: facturaId, productoId: { not: null } }, orderBy: { orden: "asc" } })).map((r) => ({ renglonId: r.id, seccionId, cantidad: Number(r.cantidadStock) }));
 const parteDe = (facturaId: string) => prisma.facturaProveedorSucursal.findFirstOrThrow({ where: { facturaProveedorId: facturaId, sucursalId: s3 } });
 const comprasDeStock = () => prisma.operacion.count({ where: { proceso: "COMPRA" } });
 
@@ -116,14 +119,14 @@ describe("oráculo contra la base real: confirmar la recepción (módulo encendi
       const clave = `P=${P} E=${estado} S=${S} F=${F}`;
       const facturaId = await cargar([{ sucursalId: s3, valor: 100 }]);
       // El estado de la parte (dimensión E): pendiente tal cual nace, recibida confirmándola antes, anulada anulando la factura pendiente.
-      if (estado === "RECIBIDA") expect((await confirmarRecepcionDeFacturaCasoDeUso(actor3(), { facturaId, seccionId: secDe[s3]!.activa, fechaStock: mediodia(-3) })).ok, clave).toBe(true);
+      if (estado === "RECIBIDA") expect((await confirmarRecepcionDeFacturaCasoDeUso(actor3(), { facturaId, entradas: await entradasEnteras(facturaId, secDe[s3]!.activa), fechaStock: mediodia(-3) })).ok, clave).toBe(true);
       if (estado === "ANULADA") expect((await anularFacturaProveedorCasoDeUso(actor3(), { facturaId, motivo: "Prueba de combinaciones", claveIdempotencia: randomUUID() })).ok, clave).toBe(true);
       // Quién confirma (dimensión P) y qué sección elige (dimensión S, respecto de SU sucursal).
       const [quien, suSucursal, nombre, otraSucursal] = P === "PROPIA" ? [admin3, s3, "Central", s4] : [admin4, s4, "Sucursal 4", s3];
       const seccionId = S === "PROPIA_ACTIVA" ? secDe[suSucursal]!.activa : S === "INACTIVA" ? secDe[suSucursal]!.inactiva : secDe[otraSucursal]!.activa;
       const antes = await comprasDeStock();
 
-      const r = await confirmarRecepcionDeFacturaCasoDeUso(actorDe(quien, suSucursal, nombre), { facturaId, seccionId, fechaStock: FECHA_DE_STOCK[F]! });
+      const r = await confirmarRecepcionDeFacturaCasoDeUso(actorDe(quien, suSucursal, nombre), { facturaId, entradas: await entradasEnteras(facturaId, seccionId), fechaStock: FECHA_DE_STOCK[F]! });
 
       expect(r.ok ? "CONFIRMA" : `RECHAZA_${r.codigo}`, clave).toBe(fila["Resultado"]);
       const parte = await parteDe(facturaId);
@@ -159,7 +162,7 @@ describe("oráculo contra la base real: la puerta de la Server Action (módulo �
     await mockearUsuarioActual({ id: usuario.id, email: `${O.toLowerCase()}@test.com`, nombre: null });
     const gate = await requierePermiso(usuario.id, s3, "compra_recibir", prisma);
 
-    const r = await confirmarRecepcionDeFactura(facturaId, secDe[s3]!.activa, FECHA_DE_STOCK["VALIDA"]!);
+    const r = await confirmarRecepcionDeFactura(facturaId, await entradasEnteras(facturaId, secDe[s3]!.activa), FECHA_DE_STOCK["VALIDA"]!);
 
     if (resultado === "CONFIRMA") {
       expect([gate.ok, r.ok]).toEqual([true, true]);

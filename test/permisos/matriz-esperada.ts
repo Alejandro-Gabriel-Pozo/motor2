@@ -145,6 +145,7 @@ export const MATRIZ_ESPERADA: Readonly<Record<AccionClave, FilaEsperada>> = {
   compra_repartir: { modulo: "compras", contexto: "empresa", nivelMinimo: "operario", roles: ["admin"] }, // E3a: piso operario (decisión del dueño P3, 2026-10-28); la semilla sigue siendo solo `admin`.
   declarar_pago_compra: { modulo: "compras", contexto: "empresa", nivelMinimo: "operario", roles: ["admin"] }, // Pagos X0 (2026-11-04): dinero; piso operario, semilla solo `admin`.
   compra_recibir: { modulo: "recepcion_de_compras", contexto: "sucursal", nivelMinimo: "administrador", roles: ["admin"] }, // Compras N3-a (2026-11-16): módulo propio (apagado por defecto) y piso administrador: confirman gerente y administrador, no el operador.
+  compra_controlar_recepcion: { modulo: "recepcion_de_compras", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin", "operador"] }, // Compras N3-b (2026-11-16, «Como Pedernal: también el operador»): registrar el control por línea lo hace quien recibe; semilla admin y operador, como `proceso_compra`.
   opciones_definir: { modulo: "catalogo_basico", contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] },
   producto_opciones_admitidas: { modulo: "catalogo_basico", contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] },
   opcion_apagar_en_sucursal: { modulo: "catalogo_basico", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin", "operador"] },

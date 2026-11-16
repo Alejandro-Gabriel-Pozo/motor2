@@ -1,4 +1,4 @@
-# Oráculo de combinaciones — recepción separada de compras (Compras N3-a)
+# Oráculo de combinaciones — recepción separada de compras (Compras N3-a y N3-b)
 
 Regla «Combinaciones» del dueño (AGENTS.md, 2026-10-28). Este archivo es la tabla de reglas esperadas, escrita APARTE del código. La leen:
 
@@ -15,11 +15,16 @@ Diseño de origen: `docs/diseno-compras-paridad-escalera-2026-11-16.md` (niveles
 |---|---|---|
 | **M** módulo `recepcion_de_compras` de la empresa | APAGADO, ENCENDIDO | Registro `ModuloEmpresa` (lo enciende la plataforma por empresa; nace apagado) |
 | **R** reparto de la factura al cargarla | UNA_PARTE, REPARTIDA | Una parte (la de la sucursal que carga, 100 %) o con partes de otras sucursales |
-| **O** rol de quien confirma | OPERADOR, ADMINISTRADOR, GERENTE | Nivel de la persona (`nivelDe`) frente al piso de `compra_recibir` (administrador) |
+| **O** rol de quien actúa | OPERADOR, ADMINISTRADOR, GERENTE | Nivel de la persona (`nivelDe`) frente al piso de la acción: `compra_recibir` (administrador) para confirmar, `compra_controlar_recepcion` (operario) para registrar el control |
 | **P** de quién es la parte | PROPIA, AJENA | La parte pertenece (o no) a la sucursal activa de quien confirma |
 | **E** estado de la parte | PENDIENTE, RECIBIDA, ANULADA | `FacturaProveedorSucursal.estadoRecepcion` y `FacturaProveedor.anuladaEn` (ANULADA = la factura está anulada) |
 | **S** sección elegida para recibir | PROPIA_ACTIVA, AJENA, INACTIVA | La sección es de la sucursal que recibe y está activa, es de otra sucursal (o no existe), o es de la sucursal pero está dada de baja |
 | **F** fecha de stock elegida | VALIDA, ANTERIOR_A_LA_FACTURA, FUTURA | Entre la fecha de la factura y hoy (hora argentina), antes de la factura, o posterior a hoy |
+| **C** condición del control de una línea (N3-b) | CONFORME, CON_OBSERVACIONES, RECHAZADA, FUERA_DE_LISTA | `ControlDeLineaDeRecepcion.condicion` (CHECK de la base y `CONDICIONES_DE_CONTROL`); FUERA_DE_LISTA es cualquier otro valor |
+| **B** observación del control (N3-b) | SIN, VALIDA, INVALIDA | Ausente o en blanco; texto de una línea de la lista de caracteres permitidos (hasta 500); texto con un carácter no permitido (por ejemplo `<`) |
+| **Q** cantidad según remito (N3-b) | SIN, VALIDA, INVALIDA | No informada; número mayor que cero con hasta 4 decimales; cero, negativa o con más de 4 decimales |
+| **N** entradas de stock de la confirmación (N3-b) | UNA_SECCION, FRACCIONADA, SUMA_MENOR, SUMA_MAYOR, REPETIDA | El renglón entra entero en una sección; repartido entre dos secciones con suma exacta; la suma es menor o mayor que la cantidad del renglón; el mismo renglón y la misma sección dos veces |
+| **K** control de la línea al confirmar (N3-b) | SIN_CONTROL, CONFORME, CON_OBSERVACIONES, RECHAZADA | Lo que quien recibe constató antes de confirmar; sin fila es «no se constató» |
 
 ## Dimensiones que NO cambian el resultado
 
@@ -29,6 +34,9 @@ Diseño de origen: `docs/diseno-compras-paridad-escalera-2026-11-16.md` (niveles
 | Cantidad de renglones, productos, lotes, precios | La parte única recibe el renglón entero tal cual se cargó: cambian los movimientos que entran, no si se puede confirmar (salvo un producto ya no habilitado en la sucursal: «Producto no disponible», se prueba aparte). |
 | Condición de pago (pagada al cargar o pendiente de pago) y pago declarado | La recepción es de la mercadería, no del dinero: confirmar no toca el pago. (PROPUESTA; el dueño la corrige si no es así.) |
 | Medio de pago, proveedor, número de factura | No participan de la decisión de recibir. |
+| Temperatura, lotes y series del control (N3-b) | No se capturan: nadie los pidió (el dueño no los pidió; Pedernal tiene temperatura y se declara como diferencia). |
+| Cantidad según remito (N3-b) | Es solo un dato del control: no cambia cuánto stock entra (entra la cantidad del renglón repartida en las entradas). |
+| Quién registró el control | El operador, el administrador o el gerente (los tres alcanzan el piso operario): el resultado no depende de la persona, sí del módulo y del estado de la parte (tabla «Registrar el control: puerta y estado»). |
 
 ## Cargar la factura
 
@@ -372,6 +380,119 @@ Orden de las razones (la primera que corresponda): módulo apagado → el rol no
 | ENCENDIDO | GERENTE | AJENA | ANULADA | INACTIVA | ANTERIOR_A_LA_FACTURA | RECHAZA_NO_ES_DE_ESTA_SUCURSAL |
 | ENCENDIDO | GERENTE | AJENA | ANULADA | INACTIVA | FUTURA | RECHAZA_NO_ES_DE_ESTA_SUCURSAL |
 
+## Registrar el control de una línea
+
+Orden de las razones (la primera que corresponda): la condición no es de la lista → la observación escrita no pasa la lista de caracteres permitidos → falta la observación y la condición no es CONFORME → la cantidad según remito informada no es un número mayor que cero con hasta 4 decimales. Con CONFORME la observación es opcional. Sin control = «no se constató»: nunca hay un CONFORME por defecto.
+
+| C | B | Q | Resultado |
+|---|---|---|---|
+| CONFORME | SIN | SIN | GUARDA |
+| CONFORME | SIN | VALIDA | GUARDA |
+| CONFORME | SIN | INVALIDA | RECHAZA_CANTIDAD_SEGUN_REMITO_INVALIDA |
+| CONFORME | VALIDA | SIN | GUARDA |
+| CONFORME | VALIDA | VALIDA | GUARDA |
+| CONFORME | VALIDA | INVALIDA | RECHAZA_CANTIDAD_SEGUN_REMITO_INVALIDA |
+| CONFORME | INVALIDA | SIN | RECHAZA_OBSERVACION_INVALIDA |
+| CONFORME | INVALIDA | VALIDA | RECHAZA_OBSERVACION_INVALIDA |
+| CONFORME | INVALIDA | INVALIDA | RECHAZA_OBSERVACION_INVALIDA |
+| CON_OBSERVACIONES | SIN | SIN | RECHAZA_OBSERVACION_OBLIGATORIA |
+| CON_OBSERVACIONES | SIN | VALIDA | RECHAZA_OBSERVACION_OBLIGATORIA |
+| CON_OBSERVACIONES | SIN | INVALIDA | RECHAZA_OBSERVACION_OBLIGATORIA |
+| CON_OBSERVACIONES | VALIDA | SIN | GUARDA |
+| CON_OBSERVACIONES | VALIDA | VALIDA | GUARDA |
+| CON_OBSERVACIONES | VALIDA | INVALIDA | RECHAZA_CANTIDAD_SEGUN_REMITO_INVALIDA |
+| CON_OBSERVACIONES | INVALIDA | SIN | RECHAZA_OBSERVACION_INVALIDA |
+| CON_OBSERVACIONES | INVALIDA | VALIDA | RECHAZA_OBSERVACION_INVALIDA |
+| CON_OBSERVACIONES | INVALIDA | INVALIDA | RECHAZA_OBSERVACION_INVALIDA |
+| RECHAZADA | SIN | SIN | RECHAZA_OBSERVACION_OBLIGATORIA |
+| RECHAZADA | SIN | VALIDA | RECHAZA_OBSERVACION_OBLIGATORIA |
+| RECHAZADA | SIN | INVALIDA | RECHAZA_OBSERVACION_OBLIGATORIA |
+| RECHAZADA | VALIDA | SIN | GUARDA |
+| RECHAZADA | VALIDA | VALIDA | GUARDA |
+| RECHAZADA | VALIDA | INVALIDA | RECHAZA_CANTIDAD_SEGUN_REMITO_INVALIDA |
+| RECHAZADA | INVALIDA | SIN | RECHAZA_OBSERVACION_INVALIDA |
+| RECHAZADA | INVALIDA | VALIDA | RECHAZA_OBSERVACION_INVALIDA |
+| RECHAZADA | INVALIDA | INVALIDA | RECHAZA_OBSERVACION_INVALIDA |
+| FUERA_DE_LISTA | SIN | SIN | RECHAZA_CONDICION_INVALIDA |
+| FUERA_DE_LISTA | SIN | VALIDA | RECHAZA_CONDICION_INVALIDA |
+| FUERA_DE_LISTA | SIN | INVALIDA | RECHAZA_CONDICION_INVALIDA |
+| FUERA_DE_LISTA | VALIDA | SIN | RECHAZA_CONDICION_INVALIDA |
+| FUERA_DE_LISTA | VALIDA | VALIDA | RECHAZA_CONDICION_INVALIDA |
+| FUERA_DE_LISTA | VALIDA | INVALIDA | RECHAZA_CONDICION_INVALIDA |
+| FUERA_DE_LISTA | INVALIDA | SIN | RECHAZA_CONDICION_INVALIDA |
+| FUERA_DE_LISTA | INVALIDA | VALIDA | RECHAZA_CONDICION_INVALIDA |
+| FUERA_DE_LISTA | INVALIDA | INVALIDA | RECHAZA_CONDICION_INVALIDA |
+
+## Registrar el control: puerta y estado
+
+Quién y cuándo se puede registrar el control. Orden de las razones: módulo apagado → el rol no llega al piso de `compra_controlar_recepcion` (operario: lo alcanzan los tres roles, el operador también) → la parte no es de esta sucursal → la factura está anulada → la parte ya está recibida (el control solo existe antes de confirmar). Confirmar la recepción sigue siendo de gerente y administrador (tabla «Confirmar la recepción»).
+
+| M | O | P | E | Resultado |
+|---|---|---|---|---|
+| APAGADO | OPERADOR | PROPIA | PENDIENTE | RECHAZA_MODULO_NO_ACTIVO |
+| APAGADO | OPERADOR | PROPIA | RECIBIDA | RECHAZA_MODULO_NO_ACTIVO |
+| APAGADO | OPERADOR | PROPIA | ANULADA | RECHAZA_MODULO_NO_ACTIVO |
+| APAGADO | OPERADOR | AJENA | PENDIENTE | RECHAZA_MODULO_NO_ACTIVO |
+| APAGADO | OPERADOR | AJENA | RECIBIDA | RECHAZA_MODULO_NO_ACTIVO |
+| APAGADO | OPERADOR | AJENA | ANULADA | RECHAZA_MODULO_NO_ACTIVO |
+| APAGADO | ADMINISTRADOR | PROPIA | PENDIENTE | RECHAZA_MODULO_NO_ACTIVO |
+| APAGADO | ADMINISTRADOR | PROPIA | RECIBIDA | RECHAZA_MODULO_NO_ACTIVO |
+| APAGADO | ADMINISTRADOR | PROPIA | ANULADA | RECHAZA_MODULO_NO_ACTIVO |
+| APAGADO | ADMINISTRADOR | AJENA | PENDIENTE | RECHAZA_MODULO_NO_ACTIVO |
+| APAGADO | ADMINISTRADOR | AJENA | RECIBIDA | RECHAZA_MODULO_NO_ACTIVO |
+| APAGADO | ADMINISTRADOR | AJENA | ANULADA | RECHAZA_MODULO_NO_ACTIVO |
+| APAGADO | GERENTE | PROPIA | PENDIENTE | RECHAZA_MODULO_NO_ACTIVO |
+| APAGADO | GERENTE | PROPIA | RECIBIDA | RECHAZA_MODULO_NO_ACTIVO |
+| APAGADO | GERENTE | PROPIA | ANULADA | RECHAZA_MODULO_NO_ACTIVO |
+| APAGADO | GERENTE | AJENA | PENDIENTE | RECHAZA_MODULO_NO_ACTIVO |
+| APAGADO | GERENTE | AJENA | RECIBIDA | RECHAZA_MODULO_NO_ACTIVO |
+| APAGADO | GERENTE | AJENA | ANULADA | RECHAZA_MODULO_NO_ACTIVO |
+| ENCENDIDO | OPERADOR | PROPIA | PENDIENTE | GUARDA |
+| ENCENDIDO | OPERADOR | PROPIA | RECIBIDA | RECHAZA_YA_RECIBIDA |
+| ENCENDIDO | OPERADOR | PROPIA | ANULADA | RECHAZA_YA_ANULADA |
+| ENCENDIDO | OPERADOR | AJENA | PENDIENTE | RECHAZA_NO_ES_DE_ESTA_SUCURSAL |
+| ENCENDIDO | OPERADOR | AJENA | RECIBIDA | RECHAZA_NO_ES_DE_ESTA_SUCURSAL |
+| ENCENDIDO | OPERADOR | AJENA | ANULADA | RECHAZA_NO_ES_DE_ESTA_SUCURSAL |
+| ENCENDIDO | ADMINISTRADOR | PROPIA | PENDIENTE | GUARDA |
+| ENCENDIDO | ADMINISTRADOR | PROPIA | RECIBIDA | RECHAZA_YA_RECIBIDA |
+| ENCENDIDO | ADMINISTRADOR | PROPIA | ANULADA | RECHAZA_YA_ANULADA |
+| ENCENDIDO | ADMINISTRADOR | AJENA | PENDIENTE | RECHAZA_NO_ES_DE_ESTA_SUCURSAL |
+| ENCENDIDO | ADMINISTRADOR | AJENA | RECIBIDA | RECHAZA_NO_ES_DE_ESTA_SUCURSAL |
+| ENCENDIDO | ADMINISTRADOR | AJENA | ANULADA | RECHAZA_NO_ES_DE_ESTA_SUCURSAL |
+| ENCENDIDO | GERENTE | PROPIA | PENDIENTE | GUARDA |
+| ENCENDIDO | GERENTE | PROPIA | RECIBIDA | RECHAZA_YA_RECIBIDA |
+| ENCENDIDO | GERENTE | PROPIA | ANULADA | RECHAZA_YA_ANULADA |
+| ENCENDIDO | GERENTE | AJENA | PENDIENTE | RECHAZA_NO_ES_DE_ESTA_SUCURSAL |
+| ENCENDIDO | GERENTE | AJENA | RECIBIDA | RECHAZA_NO_ES_DE_ESTA_SUCURSAL |
+| ENCENDIDO | GERENTE | AJENA | ANULADA | RECHAZA_NO_ES_DE_ESTA_SUCURSAL |
+
+## Entradas de la confirmación
+
+Qué se hace con las entradas `{ renglón, sección, cantidad }` de una confirmación que ya pasó las reglas de la tabla «Confirmar la recepción» (módulo, rol, parte, estado, secciones, fecha). Un renglón puede FRACCIONARSE entre secciones; por cada renglón la suma de sus entradas es EXACTAMENTE su cantidad (diferencia declarada con Pedernal: allá es menor o igual; acá no hay otra cantidad recibida). El control de la línea (K) NO cambia cuánto stock entra: una línea RECHAZADA entra igual en la sección que elige quien recibe, y una sin control también. CONFIRMA: entra una línea del Kardex por entrada, con la cantidad de la entrada y el precio del renglón repartido en proporción exacta (la suma da el precio del renglón al centavo).
+
+| N | K | Resultado |
+|---|---|---|
+| UNA_SECCION | SIN_CONTROL | CONFIRMA |
+| UNA_SECCION | CONFORME | CONFIRMA |
+| UNA_SECCION | CON_OBSERVACIONES | CONFIRMA |
+| UNA_SECCION | RECHAZADA | CONFIRMA |
+| FRACCIONADA | SIN_CONTROL | CONFIRMA |
+| FRACCIONADA | CONFORME | CONFIRMA |
+| FRACCIONADA | CON_OBSERVACIONES | CONFIRMA |
+| FRACCIONADA | RECHAZADA | CONFIRMA |
+| SUMA_MENOR | SIN_CONTROL | RECHAZA_CANTIDAD_NO_SUMA |
+| SUMA_MENOR | CONFORME | RECHAZA_CANTIDAD_NO_SUMA |
+| SUMA_MENOR | CON_OBSERVACIONES | RECHAZA_CANTIDAD_NO_SUMA |
+| SUMA_MENOR | RECHAZADA | RECHAZA_CANTIDAD_NO_SUMA |
+| SUMA_MAYOR | SIN_CONTROL | RECHAZA_CANTIDAD_NO_SUMA |
+| SUMA_MAYOR | CONFORME | RECHAZA_CANTIDAD_NO_SUMA |
+| SUMA_MAYOR | CON_OBSERVACIONES | RECHAZA_CANTIDAD_NO_SUMA |
+| SUMA_MAYOR | RECHAZADA | RECHAZA_CANTIDAD_NO_SUMA |
+| REPETIDA | SIN_CONTROL | RECHAZA_ENTRADA_REPETIDA |
+| REPETIDA | CONFORME | RECHAZA_ENTRADA_REPETIDA |
+| REPETIDA | CON_OBSERVACIONES | RECHAZA_ENTRADA_REPETIDA |
+| REPETIDA | RECHAZADA | RECHAZA_ENTRADA_REPETIDA |
+
 ## Entradas de la regla de confirmar y su efecto
 
 Cada entrada de `decidirConfirmacionDeRecepcion` declara la dimensión a la que responde o «no afecta» con su motivo. Una entrada nueva obliga a decidir acá si cambia el resultado.
@@ -386,6 +507,31 @@ Cada entrada de `decidirConfirmacionDeRecepcion` declara la dimensión a la que 
 | diaStock | F |
 | hoy | F |
 
+## Entradas de la regla de registrar el control y su efecto
+
+Cada entrada de `decidirRegistroDeControl` y de `validarControlDeLinea` declara la dimensión a la que responde o «no afecta» con su motivo. Una entrada nueva obliga a decidir acá si cambia el resultado.
+
+| Entrada | Efecto |
+|---|---|
+| esDeLaSucursalDelActor | P |
+| facturaAnulada | E |
+| estadoDeLaParte | E |
+| condicion | C |
+| observacion | B |
+| cantidadSegunRemito | Q |
+
+## Entradas de la regla de las entradas de stock y su efecto
+
+Cada campo de una entrada de stock y cada renglón que recibe `validarEntradasDeRecepcion`. La condición del control (K) NO cambia el stock que entra.
+
+| Entrada | Efecto |
+|---|---|
+| renglonId | N |
+| seccionId | N |
+| cantidad | N |
+| renglones | N |
+| decimales | no afecta: es la precisión de la unidad del producto; solo rechaza una cantidad con más decimales (cantidad inválida), no cambia el resultado de las combinaciones declaradas |
+
 ## Estados y reglas que el código declara
 
-Los estados de recepción de la base son exactamente PENDIENTE y RECIBIDA (la dimensión E suma ANULADA, que sale de la factura y no de la parte). El módulo `recepcion_de_compras` requiere `compras` y la acción `compra_recibir` es de ese módulo, de la sucursal y de piso administrador: así lo verifica el guardián.
+Los estados de recepción de la base son exactamente PENDIENTE y RECIBIDA (la dimensión E suma ANULADA, que sale de la factura y no de la parte). El módulo `recepcion_de_compras` requiere `compras` y la acción `compra_recibir` es de ese módulo, de la sucursal y de piso administrador; la acción `compra_controlar_recepcion` (N3-b) es de ese módulo, de la sucursal y de piso operario (semilla admin y operador): así lo verifica el guardián. Los valores de la condición del control son exactamente los del CHECK `ControlDeLineaDeRecepcion_condicion_chk` de la base.

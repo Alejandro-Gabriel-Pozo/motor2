@@ -127,6 +127,8 @@ const L = [
   "producto_disponibilidad",
   // GO-2a: apagar una opción de venta en la sucursal (piso operario). Nació en la clase O (semilla solo admin); pasa a L en las empresas NUEVAS (semilla admin y operador, decisión del dueño, limpieza paquete A paso 3b; las bases existentes no cambian, sin migración).
   "opcion_apagar_en_sucursal",
+  // Compras N3-b (2026-11-16, «Como Pedernal: también el operador»): registrar el control por línea de una compra pendiente de recibir (piso operario, semilla admin y operador, como `proceso_compra`).
+  "compra_controlar_recepcion",
 ] as const satisfies readonly AccionClave[];
 
 const A = [
@@ -224,8 +226,9 @@ describe("GT-26 — las clases de claves (G gobierno, O operativas sensibles, L 
     // O 22 → 21 y L 33 → 34: `opcion_apagar_en_sucursal` pasa de O a L (su semilla suma `operador` en las empresas nuevas).
     // O 21 → 22: Pagos X0 suma `declarar_pago_compra`.
     // O 22 → 24 y A 60 → 61: Parte P1 suma `partes_ver` y `partes_editar` (O: piso operario, semilla solo admin) y `partes_desactivar` (A).
+    // L 34 → 35: Compras N3-b (2026-11-16) suma `compra_controlar_recepcion` (piso operario, semilla admin y operador).
     // O 24 → 23 y A 61 → 62: Compras N3-a (2026-11-16) sube `compra_recibir` de O a A (piso administrador).
-    expect([G.length, O.length, L.length, A.length]).toEqual([14, 23, 34, 62]);
+    expect([G.length, O.length, L.length, A.length]).toEqual([14, 23, 35, 62]);
   });
 
   it("toda clave del catálogo declara su clase, y toda clase declarada existe en el catálogo (las dos direcciones)", () => {

@@ -125,6 +125,8 @@ export interface KitDeSucursal {
   facturaPendienteDePagoId: string;
   /** Compras N3-a: una factura de proveedor cuya parte de ESTA sucursal está PENDIENTE de recibir (a esa se le confirma la recepción). */
   facturaPorRecibirId: string;
+  /** Compras N3-b: el renglón de mercadería de esa factura (2 unidades): lo que se controla y lo que entra en la confirmación. */
+  renglonPorRecibirId: string;
   /** Pagos X0: un pago VIGENTE de otra factura pendiente de pago (ese se anula). */
   pagoDeFacturaId: string;
   pagoConsignanteId: string;
@@ -183,6 +185,7 @@ const CAMPOS_DE_SUCURSAL_REGISTRO: Record<keyof KitDeSucursal, true> = {
   propuestaParaAceptarId: true,
   facturaPendienteDePagoId: true,
   facturaPorRecibirId: true,
+  renglonPorRecibirId: true,
   pagoDeFacturaId: true,
   pagoConsignanteId: true,
   precioLocalId: true,
@@ -504,7 +507,7 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   // Compras N3-a (recepción separada): la parte de ESTA sucursal de la factura «por recibir» nace PENDIENTE (el valor por defecto de la columna), sin compra ni stock.
   await db.facturaProveedorSucursal.create({ data: { id: id("factura-por-recibir-parte"), empresaId, facturaProveedorId: facturasPendientes["factura-por-recibir"]!, sucursalId, porcentajeDeclaradoBp: 10000 } });
   // …y un renglón de mercadería (el producto de la empresa, habilitado en la sucursal) para que la confirmación tenga qué recibir: sin renglones el caso de uso responde «no tiene mercadería para recibir».
-  await db.facturaProveedorRenglon.create({
+  const renglonPorRecibir = await db.facturaProveedorRenglon.create({
     data: { id: id("factura-por-recibir-renglon"), empresaId, facturaProveedorId: facturasPendientes["factura-por-recibir"]!, orden: 1, naturaleza: "MERCADERIA", productoId: k.productoId, cantidadStock: 2, precioPorUnidadStock: 50, detalle: "Compra", precioTotal: 100 },
   });
   const pagoDeFactura = await db.pagoDeFacturaProveedor.create({
@@ -586,6 +589,7 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
     propuestaParaAceptarId: facturasE3a["factura-para-aceptar"].propuestaId,
     facturaPendienteDePagoId: facturasPendientes["factura-pendiente-de-pago"]!,
     facturaPorRecibirId: facturasPendientes["factura-por-recibir"]!,
+    renglonPorRecibirId: renglonPorRecibir.id,
     pagoDeFacturaId: pagoDeFactura.id,
     pagoConsignanteId: pago.id,
     precioLocalId: precioLocal.id,

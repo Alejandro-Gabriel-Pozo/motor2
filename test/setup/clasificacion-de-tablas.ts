@@ -18,7 +18,7 @@ import { join } from "node:path";
 export type ClaseDeTabla = "POR_EMPRESA" | "DE_EMPRESA_ESCRITA_POR_LA_PLATAFORMA" | "GLOBAL" | "EMPRESA" | "CONSOLA";
 
 const POR_EMPRESA = [
-  "AgregadoDeCuenta", "CapacidadSucursal", "CategoriaProducto", "CentroDeCostos", "Cliente", "CombinacionDeProducto", "CombinacionEnLinea", "ConceptoDeGasto", "ConsumoDeOpcion", "ContenidoCartaProducto", "ConteoFisico", "Cuenta", "CuentaItem", "DescuentoProductoSucursal", "DestinoConsumo", "DisponibilidadProducto", "DistribucionCostoLinea", "DistribucionCostoVersion",
+  "AgregadoDeCuenta", "CapacidadSucursal", "CategoriaProducto", "CentroDeCostos", "Cliente", "CombinacionDeProducto", "CombinacionEnLinea", "ConceptoDeGasto", "ConsumoDeOpcion", "ContenidoCartaProducto", "ConteoFisico", "ControlDeLineaDeRecepcion", "Cuenta", "CuentaItem", "DescuentoProductoSucursal", "DestinoConsumo", "DisponibilidadProducto", "DistribucionCostoLinea", "DistribucionCostoVersion",
   "AnulacionDeFacturaProveedor", "AnulacionDePagoDeFacturaProveedor", "EjemplarTicket", "EntradaDeCupo", "EntradaDelDiaDeCupo", "FacturaProveedor", "FacturaProveedorPropuesta", "FacturaProveedorPropuestaRenglon", "FacturaProveedorRenglon", "FacturaProveedorSucursal", "FacturaProveedorTributo", "FrecuenciaConteoProducto", "GeneroCarta", "Grupo", "GrupoDeOpciones", "GrupoDePrecio", "ImputacionDeGasto", "Insumo", "InvitacionSucursal", "ItemAgrupadoCarta", "MargenObjetivo", "Mesa", "MotivoMerma", "MovimientoStock",
   "NotaCreditoProveedor", "NotaCreditoProveedorImputacion", "NotaCreditoProveedorLinea", "NotaCreditoProveedorTributo", "OcultamientoProducto", "OpcionApagadaEnSucursal", "OpcionDeEntradaDeCupo", "OpcionDeGrupo", "OpcionElegidaEnLinea", "OpcionItemAgrupadoCarta", "Operacion", "PagoConsignante", "PagoDeFacturaProveedor", "Parte", "PermisoRol", "PlanDeCostos", "PlanDeCostosSucursal", "PortalCartaEmpresa", "PrecioLocalDeCombinacion", "PrecioLocalDeOpcion", "PrecioLocalProducto", "Presentacion", "Producto", "ProductoAdmiteGrupo", "ProductoAdmiteOpcion", "PromoCarta", "PromoCartaCupo",
   "PromoCartaSucursal", "PromoCuenta", "Proveedor", "ProveedorPorProducto", "PuntoDeVentaDeProveedor", "RecetaDeCombinacionIngrediente", "RecetaDeCombinacionVersion", "RecetaIngrediente", "RecetaPaso", "RecetaPasoIngrediente", "RecetaSucursal", "RecetaVersion", "ReclasificacionRenglon", "RegistroAuditoria",
@@ -138,6 +138,7 @@ const ALCANCE_PROPIA_O_EMPRESA = ["OcultamientoProducto", "RecetaVersion", "Regi
 const ALCANCE_HEREDADA: Readonly<Record<string, { padre: string; columna: string }>> = {
   AgregadoDeCuenta: { padre: "Cuenta", columna: "cuentaId" },
   CombinacionEnLinea: { padre: "CuentaItem", columna: "cuentaItemId" },
+  ControlDeLineaDeRecepcion: { padre: "FacturaProveedorSucursal", columna: "facturaProveedorSucursalId" },
   Cuenta: { padre: "Mesa", columna: "mesaId" },
   CuentaItem: { padre: "Cuenta", columna: "cuentaId" },
   DistribucionCostoLinea: { padre: "DistribucionCostoVersion", columna: "distribucionCostoVersionId" },

@@ -60,6 +60,8 @@ export const MIGRACIONES_DE_POLITICAS_POSTERIORES: readonly { readonly migracion
   { migracion: "20261028101000_rls_sucursal_factura_proveedor_propuesta", tablas: ["FacturaProveedorPropuesta", "FacturaProveedorPropuestaRenglon"] },
   // «Ocultar» como Pedernal (E3a): la marca de ocultar de un producto por sucursal o por toda la empresa (PROPIA_O_EMPRESA).
   { migracion: "20261115121000_rls_sucursal_ocultamiento_de_producto", tablas: ["OcultamientoProducto"] },
+  // Compras N3-b: el control por línea de una compra pendiente de recibir, de la sucursal de su parte (HEREDADA de `FacturaProveedorSucursal`).
+  { migracion: "20261117120110_rls_sucursal_control_de_linea_de_recepcion", tablas: ["ControlDeLineaDeRecepcion"] },
 ];
 
 /** Las migraciones previas que la prueba de subir/bajar/subir baja DESPUÉS de B1 (en este orden: P3 y después M.2). Ambas reversas son destructivas. */

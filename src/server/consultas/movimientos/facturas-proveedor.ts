@@ -97,17 +97,43 @@ export interface CompraPorRecibir {
   fechaFactura: Date;
   cantidadDeRenglones: number;
   cargadaEn: Date;
+  /** Los renglones de MERCADERÍA (los que entran al stock), en su orden, sin importes, con el control ya registrado de cada uno (`null` = «no se constató»). */
+  renglones: RenglonPorRecibir[];
+}
+
+export interface RenglonPorRecibir {
+  renglonId: string;
+  productoNombre: string;
+  unidadNombre: string;
+  /** Decimales de la unidad de stock: con cuánta precisión se puede fraccionar el renglón entre secciones. */
+  decimales: number;
+  cantidadStock: number;
+  control: { condicion: string; observacion: string | null; cantidadSegunRemito: number | null } | null;
 }
 
 /**
- * Compras, recepción separada (N3-a): «Por recibir», las compras de ESTA sucursal cuya parte está PENDIENTE (sin stock todavía) y cuya factura no está anulada, de la más vieja a la más nueva. SIN ningún campo de dinero (como el resto de este archivo): identifica la compra por proveedor, número y fecha. Solo la pide quien tiene `compra_recibir` (el componente `por-recibir.tsx` lo verifica antes de llamar). Sin guarda de permiso adentro. La RLS por sucursal deja ver la parte solo a su sucursal.
+ * Compras, recepción separada (N3-a): «Por recibir», las compras de ESTA sucursal cuya parte está PENDIENTE (sin stock todavía) y cuya factura no está anulada, de la más vieja a la más nueva. SIN ningún campo de dinero (como el resto de este archivo): identifica la compra por proveedor, número y fecha. Solo la pide quien tiene `compra_recibir` o `compra_controlar_recepcion` (el componente `por-recibir.tsx` lo verifica antes de llamar). Trae los renglones de mercadería (producto, unidad y cantidad, nunca importes) con el control ya registrado de cada uno (N3-b). Sin guarda de permiso adentro. La RLS por sucursal deja ver la parte solo a su sucursal.
  */
 export async function listarComprasPorRecibir(sucursalId: string, db: Db): Promise<CompraPorRecibir[]> {
   const filas = await db.facturaProveedorSucursal.findMany({
     where: { sucursalId, estadoRecepcion: "PENDIENTE", facturaProveedor: { anuladaEn: null } },
     select: {
       creadoEn: true,
-      facturaProveedor: { select: { id: true, nroFactura: true, fecha: true, proveedor: { select: { nombre: true } }, _count: { select: { renglones: true } } } },
+      controlesDeLinea: { select: { facturaProveedorRenglonId: true, condicion: true, observacion: true, cantidadSegunRemito: true } },
+      facturaProveedor: {
+        select: {
+          id: true,
+          nroFactura: true,
+          fecha: true,
+          proveedor: { select: { nombre: true } },
+          _count: { select: { renglones: true } },
+          renglones: {
+            where: { productoId: { not: null } },
+            orderBy: { orden: "asc" },
+            select: { id: true, cantidadStock: true, producto: { select: { nombre: true, unidadStock: { select: { nombre: true, decimales: true } } } } },
+          },
+        },
+      },
     },
     orderBy: { creadoEn: "asc" },
   });
@@ -118,5 +144,16 @@ export async function listarComprasPorRecibir(sucursalId: string, db: Db): Promi
     fechaFactura: f.facturaProveedor.fecha,
     cantidadDeRenglones: f.facturaProveedor._count.renglones,
     cargadaEn: f.creadoEn,
+    renglones: f.facturaProveedor.renglones.map((r) => {
+      const c = f.controlesDeLinea.find((x) => x.facturaProveedorRenglonId === r.id);
+      return {
+        renglonId: r.id,
+        productoNombre: r.producto?.nombre ?? "",
+        unidadNombre: r.producto?.unidadStock.nombre ?? "",
+        decimales: r.producto?.unidadStock.decimales ?? 4,
+        cantidadStock: Number(r.cantidadStock ?? 0),
+        control: c ? { condicion: c.condicion, observacion: c.observacion, cantidadSegunRemito: c.cantidadSegunRemito === null ? null : Number(c.cantidadSegunRemito) } : null,
+      };
+    }),
   }));
 }
