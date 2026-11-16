@@ -145,3 +145,13 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 - **Dónde:** `src/core/textos/catalogo.ts`, `src/components/catalogo/tarjeta-ocultar.tsx`, `src/server/actions/catalogo/casos-de-uso/ocultar-producto.ts`
 - **Estado:** ACEPTADA
 - **Cita del dueño:** «Los textos encargarte vos trata de reducir, textos, inventariar y empezar a reutilizar y que representen 1 sola cosa, definir primitivas e invariantes en texto igual que pedernal; Sí, confirmo esos límites (Recomendada)» — 2026-11-16 — chat del dueño con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, «Palabras literales del dueño» y «Respuesta literal del dueño»; la pantalla: «CONFIRMADA — Pantalla de Ocultar», mismo archivo); lote aceptado por el orquestador por delegación (2026-11-16)
+
+### DEC-0018
+- **Fecha:** 2026-11-16
+- **Quién:** la sesión Sonnet de los lotes del catálogo de textos (F1' de permisos); aceptación directa del dueño y forma aprobada por el orquestador.
+- **Qué decidió:** las 133 descripciones de los permisos (`src/core/permisos/acciones.ts`) NO se mueven al catálogo de textos: `acciones.ts` queda como la lista única de esos textos, con las mismas palabras de hoy. Se cubre con un guardián propio (`test/arquitectura/permisos-descripciones.test.ts`): toda acción con descripción sin espacios de más y sin repetir, y las 133 frases fijadas en un oráculo (`test/textos/oraculo-de-permisos.ts`); cambiar una descripción, sumar un permiso o sacarlo sin tocar el oráculo pone el CI en rojo. No cambia nada que vea el cliente ni toca `src/`.
+- **Por qué:** el dueño dijo «Sí, mismas palabras (Recomendada)» para las descripciones de permisos; copiarlas al catálogo las escribiría tres veces (acciones.ts, catálogo y un mapa) y obligaría a que `acciones.ts` importe `core/textos`, que la carta pública alcanzaría (contrato de arquitectura `ALCANCE_CARTA_PUBLICA`, que no se cambia sin pedirlo). Regla del dueño: la opción más barata primero.
+- **Costo de revertir:** muy bajo: borrar el guardián, su guarda y el oráculo; no hay migración ni datos. Si más adelante se quieren leer por `textoDe`, se hace con el OK del dueño y del contrato de arquitectura de la carta.
+- **Dónde:** `test/arquitectura/permisos-descripciones.test.ts`, `test/textos/oraculo-de-permisos.ts`
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Sí, mismas palabras (Recomendada)» — 2026-11-16 — chat del dueño con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, «Textos: cuatro respuestas del dueño sobre la lista única»)
