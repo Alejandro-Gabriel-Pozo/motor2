@@ -50,7 +50,7 @@ test("ficha: desactivar se bloquea si un plato disponible acá lo usa; sin ese u
     await expect(page.getByText(/No disponible en/)).toBeVisible();
     expect(await disponibleAca()).toBe(false);
 
-    await page.getByRole("button", { name: "Activar", exact: true }).click();
+    await page.getByRole("button", { name: "Reactivar", exact: true }).click();
     await expect(page.getByText(/Disponible en/)).toBeVisible();
     expect(await page.evaluate(() => (window as unknown as { __marca?: number }).__marca), "la página se recargó").toBe(1);
   } finally {
@@ -75,7 +75,7 @@ test("lista: desactivar desde la ficha pone el aviso «Desactivado» en la fila,
     await expect(fila.getByText("Desactivado", { exact: true })).toBeVisible();
 
     await fila.getByRole("link", { name: mp.nombre }).click();
-    await page.getByRole("button", { name: "Activar", exact: true }).click();
+    await page.getByRole("button", { name: "Reactivar", exact: true }).click();
     await expect(page.getByText(/Disponible en/)).toBeVisible();
     await page.goto(url);
     await expect(fila.getByText("Desactivado", { exact: true })).toHaveCount(0);

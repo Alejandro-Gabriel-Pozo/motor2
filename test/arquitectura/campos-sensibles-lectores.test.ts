@@ -36,6 +36,7 @@ const NO_SON_SECRETOS: Readonly<Record<string, string>> = {
   "Account.token_type": "El tipo del token (`Bearer`), no el token.",
   "Operacion.payloadHash": "Huella del pedido para la idempotencia: no abre nada.",
   "ConteoFisico.payloadHash": "Huella del pedido para la idempotencia: no abre nada.",
+  "Parte.payloadHash": "Huella del pedido de alta para la idempotencia (Parte P1): no abre nada.",
   "PagoConsignante.payloadHash": "Huella del pedido para la idempotencia: no abre nada.",
   "AgregadoDeCuenta.payloadHash": "Huella del pedido para la idempotencia: no abre nada.",
   "FacturaProveedor.payloadHash": "Huella del pedido para la idempotencia: no abre nada.",
