@@ -1,4 +1,5 @@
 import { Decimal } from "decimal.js";
+import { DECIMALES_DE_CANTIDAD, redondearCantidadExacta } from "@/core/datos/cantidad-exacta";
 import type { Proceso, TipoProducto } from "@/core/datos/enumerados-del-esquema";
 import type { AccionDeSucursal } from "@/core/permisos/acciones";
 
@@ -175,20 +176,18 @@ const D = Decimal.clone({ precision: 40, rounding: Decimal.ROUND_HALF_UP });
 /**
  * Los decimales con que se guarda una cantidad de STOCK NUEVA: 4 fijos, como Pedernal (`numeric(18,4)`), y no «los de cada unidad» (`Unidad.decimales`).
  * Dueño, 2026-11-16: «4 decimales fijos como Pedernal» (`docs/diseno-unidades-y-clasificacion-paridad-pedernal-2026-11-16.md` §8b). Las columnas de
- * cantidad ya son `Decimal(14,4)`: no hay migración y lo ya guardado no se reescribe. Es la ÚNICA fuente de esta cifra.
+ * cantidad ya son `Decimal(14,4)`: no hay migración y lo ya guardado no se reescribe. Es un alias de la constante del frente de datos (una sola cifra).
  */
-export const DECIMALES_DE_STOCK = 4;
+export const DECIMALES_DE_STOCK = DECIMALES_DE_CANTIDAD;
 
 /**
- * Redondea una cantidad a `decimales` con aritmética decimal EXACTA (nunca coma flotante) y el empate ALEJÁNDOSE DEL CERO (`MITAD_SUBE_SIMETRICA` de
- * Pedernal; igual que `NUMERIC` de Postgres): 0,00005 → 0,0001 y −0,00005 → −0,0001 con 4 decimales. Antes usaba `Math.round(x·10ⁿ)/10ⁿ` (float, empate
- * hacia +∞, y `1,005 × 100 = 100,49999999999999`). Nunca devuelve −0 (el Kardex no guarda signo en un cero). El `number` de entrada se lee por su
- * representación decimal más corta (`String(n)`): el valor tecleado o venido de la base, no su expansión binaria. El nombre se conserva por compatibilidad:
- * lo llaman con 4 (stock), con 8 (arrastre de redondeo) y con otros decimales.
+ * Redondea una cantidad a `decimales` con aritmética decimal EXACTA (nunca coma flotante) y el empate ALEJÁNDOSE DEL CERO (`MITAD_SUBE_SIMETRICA` de Pedernal):
+ * la cuenta vive en `redondearCantidadExacta` (`core/datos/cantidad-exacta.ts`, frente 3), una sola vez. Antes usaba `Math.round(x·10ⁿ)/10ⁿ` (float, empate hacia +∞,
+ * y `1,005 × 100 = 100,49999999999999`). Lo llaman con 4 (stock), con 8 (arrastre de redondeo) y con otros decimales (0 a 8); falla cerrado con un valor no finito.
+ * El nombre se conserva por compatibilidad.
  */
 export function redondearACantidadDeUnidad(cantidad: number, decimales: number): number {
-  const redondeada = new D(cantidad).toDecimalPlaces(decimales, Decimal.ROUND_HALF_UP).toNumber();
-  return redondeada === 0 ? 0 : redondeada;
+  return redondearCantidadExacta(cantidad, decimales);
 }
 
 /**
