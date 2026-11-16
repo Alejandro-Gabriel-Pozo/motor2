@@ -14,21 +14,21 @@ import { dimensionesDelOraculo, productoCartesiano, tablaDelOraculo, type TablaD
  * las reglas reales (no copia ningún resultado esperado). Lo usan el test exhaustivo de las reglas puras, el de integración y el guardián de dimensiones declaradas. Reutiliza el lector de `oraculo-una-sola-compra.ts`.
  */
 const RUTA_DEL_ORACULO = join(__dirname, "../../docs/oraculo-combinaciones-compras-recepcion-2026-11-16.md");
-export const TEXTO_DEL_ORACULO_DE_RECEPCION = readFileSync(RUTA_DEL_ORACULO, "utf8");
+const TEXTO_DEL_ORACULO_DE_RECEPCION = readFileSync(RUTA_DEL_ORACULO, "utf8");
 
 export const dimensionesDeRecepcion = (): Record<string, string[]> => dimensionesDelOraculo(TEXTO_DEL_ORACULO_DE_RECEPCION);
 export const tablaDeRecepcion = (seccion: string): TablaDelOraculo => tablaDelOraculo(seccion, TEXTO_DEL_ORACULO_DE_RECEPCION);
 export { productoCartesiano };
 
 /** Los días fijos con que se evalúan las reglas: la factura del 10, hoy es el 15. */
-export const DIA_FACTURA = "2026-11-10";
-export const HOY = "2026-11-15";
-export const DIA_DE_STOCK: Record<string, string> = { VALIDA: "2026-11-12", ANTERIOR_A_LA_FACTURA: "2026-11-09", FUTURA: "2026-11-16" };
+const DIA_FACTURA = "2026-11-10";
+const HOY = "2026-11-15";
+const DIA_DE_STOCK: Record<string, string> = { VALIDA: "2026-11-12", ANTERIOR_A_LA_FACTURA: "2026-11-09", FUTURA: "2026-11-16" };
 
 export type FilaDeConfirmacion = { M: string; O: string; P: string; E: string; S: string; F: string };
 
 /** La entrada de la regla pura de confirmar para una fila del oráculo. */
-export function entradaDeLaRegla(f: Pick<FilaDeConfirmacion, "P" | "E" | "S" | "F">): EntradaDeConfirmacionDeRecepcion {
+function entradaDeLaRegla(f: Pick<FilaDeConfirmacion, "P" | "E" | "S" | "F">): EntradaDeConfirmacionDeRecepcion {
   return {
     esDeLaSucursalDelActor: f.P === "PROPIA",
     facturaAnulada: f.E === "ANULADA",
@@ -41,7 +41,7 @@ export function entradaDeLaRegla(f: Pick<FilaDeConfirmacion, "P" | "E" | "S" | "
 }
 
 /** La puerta de la Server Action (guard): módulo → piso del rol, con las funciones reales del acceso. `null` = pasa. */
-export function puertaDeAcceso(f: Pick<FilaDeConfirmacion, "M" | "O">): "RECHAZA_MODULO_NO_ACTIVO" | "RECHAZA_SIN_PERMISO" | null {
+function puertaDeAcceso(f: Pick<FilaDeConfirmacion, "M" | "O">): "RECHAZA_MODULO_NO_ACTIVO" | "RECHAZA_SIN_PERMISO" | null {
   const efectivos = modulosEfectivos(f.M === "ENCENDIDO" ? ["compras", "recepcion_de_compras"] : ["compras"]);
   if (denegacionDeModulo("recepcion_de_compras", efectivos)) return "RECHAZA_MODULO_NO_ACTIVO";
   const nivel = nivelDe({ rolEmpresa: f.O === "GERENTE" ? ROL_EMPRESA_GERENTE : null, esAdminEnElContexto: f.O === "ADMINISTRADOR" });

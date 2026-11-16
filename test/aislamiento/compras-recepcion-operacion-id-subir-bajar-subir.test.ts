@@ -14,7 +14,7 @@ import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/bas
  *  2. BAJAR deja el catálogo IDÉNTICO al de antes de la migración (con los datos de la parte intactos).
  *  3. BAJAR DOS VECES no falla; SUBIR OTRA VEZ deja el catálogo idéntico al de la primera subida.
  *
- * Mutación (anotada en el commit): dar UPDATE de tabla en vez de por columna → rojo el caso 1; sacar el REVOKE del down.sql → rojo el caso 2.
+ * Mutaciones (comprobadas a mano al escribirlo): dar UPDATE de tabla en vez de por columna → rojo el caso 1; sacar el REVOKE del down.sql → rojo el caso 2.
  */
 const RAIZ = join(__dirname, "../../prisma/migrations");
 const MIGRACION = "20261117120000_compras_recepcion_operacion_id";
