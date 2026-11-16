@@ -66,6 +66,16 @@ export const EMPRESA_POR_DEFECTO_ID = EMPRESA_DE_PRUEBA_ID;
  * rol de ejecución solo vería la empresa por defecto y las filas de una segunda empresa sobrevivirían a la limpieza.
  */
 export async function limpiarBaseDeTest() {
+  // Caja y cobro C1 (etapa C1): lo que cuelga de una sesión, antes que nada (referencian Cuenta, Sucursal, User y entre sí). Las anulaciones primero: apuntan a su movimiento original.
+  await prismaAdmin.arqueoBillete.deleteMany();
+  await prismaAdmin.arqueoCaja.deleteMany();
+  await prismaAdmin.cobro.deleteMany();
+  await prismaAdmin.cobranza.deleteMany();
+  await prismaAdmin.movimientoCaja.deleteMany({ where: { anulaAId: { not: null } } });
+  await prismaAdmin.movimientoCaja.deleteMany();
+  await prismaAdmin.sesionCaja.deleteMany();
+  await prismaAdmin.caja.deleteMany();
+  await prismaAdmin.medioDePago.deleteMany();
   // Carta antes que nada: sus tablas referencian Producto y Sucursal (RESTRICT), que se borran más abajo.
   // Las opciones de un ítem agrupado primero: referencian al ítem agrupado (RESTRICT) y a Producto.
   // OJO: PromoCartaCupo, PromoCarta y SeccionCarta NO se borran acá (Task #16, docs/plan-promo-combo-2026-09-26.md, M2) —

@@ -60,6 +60,8 @@ export const MIGRACIONES_DE_POLITICAS_POSTERIORES: readonly { readonly migracion
   { migracion: "20261028101000_rls_sucursal_factura_proveedor_propuesta", tablas: ["FacturaProveedorPropuesta", "FacturaProveedorPropuestaRenglon"] },
   // «Ocultar» como Pedernal (E3a): la marca de ocultar de un producto por sucursal o por toda la empresa (PROPIA_O_EMPRESA).
   { migracion: "20261115121000_rls_sucursal_ocultamiento_de_producto", tablas: ["OcultamientoProducto"] },
+  // Caja y cobro C1: las tablas de dinero de una sucursal (la caja, su sesión, sus movimientos, el cobro de una cuenta y el arqueo) (PROPIA).
+  { migracion: "20261117111000_rls_sucursal_caja_c1", tablas: ["Caja", "SesionCaja", "MovimientoCaja", "Cobranza", "Cobro", "ArqueoCaja", "ArqueoBillete"] },
   // Compras N3-b: el control por línea de una compra pendiente de recibir, de la sucursal de su parte (HEREDADA de `FacturaProveedorSucursal`).
   { migracion: "20261117120110_rls_sucursal_control_de_linea_de_recepcion", tablas: ["ControlDeLineaDeRecepcion"] },
 ];

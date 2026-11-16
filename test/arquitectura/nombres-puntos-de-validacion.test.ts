@@ -13,7 +13,7 @@ import { PUNTOS_DE_NOMBRE } from "./nombres-puntos-declarados";
  */
 const USOS_VIEJOS = /\b(nombreDeCatalogo|validarTextoCatalogo|validarNombreCatalogo|RE_TEXTO_CATALOGO)\b/g;
 const USOS_NUEVOS = /\b(nombreDeFicha|nombreMinimoDeFicha|nombreDeFichaSiCambio)\b/g;
-const FICHAS = /"(PRODUCTO|ELECCION|RAZON_SOCIAL)"/g;
+const FICHAS = /"(PRODUCTO|ELECCION|RAZON_SOCIAL|NOMBRE_DE_SUCURSAL|NOMBRE_DE_ROL)"/g;
 /** Donde se DEFINEN los validadores: no son puntos de validación. */
 const DEFINICIONES = new Set(["src/core/texto.ts", "src/core/datos/nombre-catalogo.ts", "src/core/features/catalogo/nombre-de-catalogo.ts", "src/core/datos/nombre-de-ficha.ts"]);
 

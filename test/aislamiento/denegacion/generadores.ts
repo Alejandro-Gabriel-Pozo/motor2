@@ -372,6 +372,8 @@ const completos: Record<string, Valor> = {
   // Productos P1: el precio y la clase de cada fila de la lista. Los ids llegan de la página; con ids de OTRA empresa o sucursal no devuelve nada (no hay fila que mostrar).
   "consulta|consultas/catalogo/detalle-de-la-lista.ts|detalleDeLaLista": (k, c) => [c.db, c.propio.sucursalId, [k.productoPvId]],
   // Fase 6, bloque 3 (3b): qué «le falta algo» ofrece la lista de Productos a quien mira (por permisos y módulos del usuario y la empresa del contexto).
+  // La tarjeta «Ocultar»: el contexto propio SIN membresías (así la fila de la empresa nunca se ofrece) y con el permiso de la sucursal que ya dio la página (cortesía: lo único que devuelve son banderas, ninguna fila de otra sucursal); solo lee las marcas del producto (id ajeno: ninguna).
+  "consulta|consultas/catalogo/ocultar-producto.ts|cargarLoQueMuestraOcultar": (k, c) => [Object.assign(contextoPropio(c), { membresias: [], rolEmpresa: null }), k.productoId, true],
   "consulta|consultas/catalogo/filtros-de-productos.ts|faltasQueSePuedenFiltrarEnLaLista": (_k, c) => [contextoPropio(c)],
   "lectura|lecturas/catalogo/filtros-de-productos.ts|faltasQueSePuedenFiltrar": (_k, c) => [contextoPropio(c)],
   // Fase 7, M2: ¿puede quien busca encontrar un producto por lo que dice la factura del proveedor? Por los permisos del usuario en la sucursal activa del contexto (el propio).
@@ -454,6 +456,8 @@ const parametros: Record<string, Record<string, Valor>> = {
   "accion|actions/auth/usuarios.ts|transferirGerencia": { emailConfirmado: (_k, c) => (c.escenario === "controlMutacion" ? "zz-a1-miembro@e1.test" : "confirmado@ajeno.test") },
   // Activar un producto ya activo es idempotente; desactivar `mp` se rechaza (está en la receta vigente y tiene saldo).
   "accion|actions/catalogo/productos.ts|actualizarDisponibilidadProducto": { disponible: (_k, c) => c.escenario === "controlMutacion" },
+  // «Ocultar» (etapa d): siempre en la sucursal activa (`LOCAL`); el control positivo pide «volver a mostrar» un producto que no está oculto (idempotente: «ya estaba», no escribe); en los demás escenarios pide OCULTAR con ids ajenos.
+  "accion|actions/catalogo/ocultar-producto.ts|ocultarProducto": { alcance: () => "LOCAL", oculto: (_k, c) => c.escenario !== "controlMutacion" },
   // Los hermanos de UN ítem agrupado de la carta: el PV (en el mundo, la única opción del ítem).
   // `preciosVistos` (ola «precio y carta», Fase 2, A5): el precio de venta que «vio» la pantalla, el del PV del mundo (1000).
   "accion|actions/catalogo/productos.ts|sincronizarPrecioGrupoCarta": { productoIds: (k) => [k.productoPvId], preciosVistos: (k) => ({ [k.productoPvId]: 1000 }) },

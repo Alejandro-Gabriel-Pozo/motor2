@@ -123,6 +123,15 @@ N3-b → OC → 3V → NC → DEV, **un PR por etapa**, cada una en su rama sobr
 - Facturas repartidas entre sucursales: «Más adelante (Recomendada)» — CONFIRMADA: N3-a2 **diferida**, no se construye ahora.
 - Reutilizar `NotaCreditoProveedor*`: decisión técnica del orquestador general (corregible por el dueño).
 
+## Verificación del control por línea contra el SQL real de Pedernal (2026-11-16)
+
+Fuente: `ZuluHub-docs`, `11-especificaciones/sql-compras-pendientes/0063_compras_recepcion_separada.sql` (copia textual de la migración 0063; ZuluHub-ERP `main` todavía no la trae: el repo de código llega a la 0058). Tabla `inspeccion_de_linea_de_recepcion`.
+
+- a) Alcance y RLS (VERIFICADO): Pedernal aplica RLS por EMPRESA, activa y forzada, una política de SELECT y una de INSERT (`empresa_operable`); NO tiene política por sucursal. Solo se controlan líneas de recepción (`linea_de_recepcion` tiene `producto_id` obligatorio: mercadería, no gasto). Motor2 igual: solo renglones de mercadería de la compra (`cargarRenglonesParaRecibir`), RLS por empresa. DIFERENCIA declarada: Motor2 suma la política por sucursal heredada de la parte (`20261117120110`) porque todas sus tablas de sucursal la llevan (clasificación de tablas); y suma `registradoPorId` porque el control es un paso aparte de la recepción (en Pedernal el actor es el de la recepción). La temperatura no entra (nadie la pidió).
+- b) Observación (VERIFICADO): Pedernal usa `texto_de_catalogo_valido(observacion, 500)` (0043: lista de permitidos). La de Motor2 es la misma lista y el mismo largo, en la base (CHECK) y en el núcleo (`textoDeUnaLineaDesdeTexto` con `exigirUnaLetra: false`, igual que la base, que no exige letra). NO VERIFICADO: si Pedernal exige una letra en la aplicación (su código de compras de N3 todavía no existe).
+- c) Inmutable (VERIFICADO): Pedernal da solo SELECT e INSERT por columna y pone disparadores `solo_insercion` contra UPDATE, DELETE y TRUNCATE. Motor2: solo SELECT e INSERT al rol de la app; el control no se corrige ni se anula. DIFERENCIA: Motor2 no tiene el disparador contra UPDATE/DELETE para el dueño de la tabla (sugerencia, no implementada).
+- e) Tope de controles (decidido con evidencia): Pedernal NO tiene tope propio de controles. El de Motor2 no es propio del control: es `MAXIMO_LINEAS_POR_OPERACION` (500), el tope que el sistema ya impone a las líneas de toda operación (la factura, las entradas), y los controles son a lo sumo uno por renglón de la compra. Se mantiene como el mismo tope de lista; no hay constante ni regla nueva.
+
 ## Preguntas abiertas al dueño
 
 - Notas y saldo a favor: Pedernal decidió que la nota «siempre pasa por saldo a favor»; Motor2 no arranca el saldo hasta que Pedernal lo construya o el dueño lo pida (NO VERIFICADO el libro de saldos). Se pregunta cuando toque.
