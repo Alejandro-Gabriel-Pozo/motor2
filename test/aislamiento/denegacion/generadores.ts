@@ -595,6 +595,7 @@ export const SIN_GENERADOR: Readonly<Record<string, string>> = {
   "lectura|lecturas/carta/publica.ts|resolverPortalCarta": CARTA_PUBLICA,
   "lectura|lecturas/catalogo/datos-de-producto.ts|datosParaGuardar": "función PURA de armado de los datos de un producto, no lee la base",
   "lectura|lecturas/catalogo/datos-de-producto.ts|validarDatosDeProducto": "valida la entrada completa de un alta o edición de producto: se ejerce a través de `darDeAltaProducto` y `actualizarProducto`, que sí están en la matriz con ids ajenos en cada campo",
+  "lectura|lecturas/catalogo/ocultamiento.ts|ocultosQueQuedarianConExistencia": "recibe las líneas YA armadas de una anulación (producto, sección, cantidad con signo) y la operación; sin ids del cliente: se ejerce a través de `anularVenta` (el caso de uso, 2026-11-16, «Ocultar» E3c2), que sí está en la matriz, y la prueba `test/movimientos/anular-venta-producto-oculto.test.ts`",
   "lectura|lecturas/catalogo/recetas-vigentes.ts|cargarHistorialDeVersiones": AYUDANTE_DE_RECETAS,
   "lectura|lecturas/catalogo/recetas-vigentes.ts|cargarRecetaVigente": AYUDANTE_DE_RECETAS,
   "lectura|lecturas/catalogo/recetas-vigentes.ts|cargarRecetasVigentes": AYUDANTE_DE_RECETAS,

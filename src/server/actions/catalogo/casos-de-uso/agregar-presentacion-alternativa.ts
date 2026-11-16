@@ -5,6 +5,7 @@ import type { ComandoAgregarPresentacionAlternativa, ResultadoAgregarPresentacio
 import { MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES } from "@/core/features/catalogo/productos.guard";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
+import { textoDe } from "@/core/textos/texto-de";
 import { presentacionTieneUso } from "@/server/lecturas/catalogo/historia-de-producto";
 import { guardarPresentacion, presentacionesDeLaUnidad, tomarFilaDeProducto } from "@/server/persistencia/catalogo/productos";
 
@@ -56,7 +57,7 @@ export async function agregarPresentacionAlternativaCasoDeUso(
     await tomarFilaDeProducto(tx, productoId);
     const existentes = await presentacionesDeLaUnidad(tx, { productoId, unidadCompraId });
     // Fallo cerrado: más de una con esa unidad (hasta que la línea de compra apunte a la presentación no puede haberla) no se toca.
-    if (existentes.length > 1) return fracaso("PRESENTACION_AMBIGUA", "No se pudo agregar la presentación: ya hay más de una en esa unidad.");
+    if (existentes.length > 1) return fracaso("PRESENTACION_AMBIGUA", textoDe("aviso.no_se_pudo_agregar_la_presentacion", { causa: "rechazo.PRESENTACION_AMBIGUA" }));
     const anterior = existentes[0] ?? null;
     const cambiaElFactor = anterior !== null && Number(anterior.factorConversion) !== factor.valor!;
     // M.2: definir un factor (crear la presentación, o cambiar el de una existente) exige `producto_campos_sensibles`. Se decide con la fila leída ACÁ ADENTRO y el factor ya normalizado, ANTES de preguntar por
