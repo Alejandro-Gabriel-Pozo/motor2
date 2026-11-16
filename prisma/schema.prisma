@@ -2671,6 +2671,7 @@ model Empresa {
   cuentaItemRel                  CuentaItem[]
   ejemplarTicketRel              EjemplarTicket[]
   moduloEmpresaRel               ModuloEmpresa[]
+  planDeEmpresaRel               PlanDeEmpresa[]
   invitacionRel                  Invitacion[]
   invitacionSucursalRel          InvitacionSucursal[]
   agregadoDeCuentas              AgregadoDeCuenta[]
@@ -2735,6 +2736,60 @@ model ModuloEmpresa {
   actualizadoEn DateTime     @default(now()) @updatedAt
 
   @@unique([empresaId, modulo])
+}
+
+/// Plan (frente 4, M1; «Planes con versiones desde el inicio, como Pedernal», 2026-11-16): un paquete de la plataforma, global y SIN precio. Solo la escribe `motor2_plataforma` (RLS `solo_plataforma` + REVOKE a la app + trigger). El `codigo` no cambia nunca y un plan no se borra: se RETIRA. `claveIdempotencia`/`payloadHash`: un reintento con la misma clave y la misma entrada devuelve lo ya hecho.
+model Plan {
+  id                String          @id @db.Uuid
+  codigo            String          @unique
+  /// `ACTIVO` | `RETIRADO` (CHECK).
+  estado            String          @default(dbgenerated("'ACTIVO'"))
+  claveIdempotencia String          @unique @db.Uuid
+  payloadHash       String
+  creadoEn          DateTime        @default(dbgenerated("now()")) @db.Timestamptz(3)
+  versiones         VersionDePlan[]
+}
+
+/// Una versión de un plan. BORRADOR (a lo sumo uno por plan, se edita) → PUBLICADA (INMUTABLE: ningún UPDATE ni DELETE, ni del dueño, por trigger). `modulos` es el TECHO de módulos vendibles de la versión; M1 NO lo aplica todavía al guard ni al menú (M1b). `numero` es NULL mientras es borrador y el siguiente del plan al publicarse (lo exige la base).
+model VersionDePlan {
+  id                String          @id @db.Uuid
+  planId            String          @db.Uuid
+  plan              Plan            @relation(fields: [planId], references: [id], onDelete: Restrict)
+  /// `BORRADOR` | `PUBLICADA` (CHECK).
+  estado            String          @default(dbgenerated("'BORRADOR'"))
+  numero            Int?
+  nombreComercial   String
+  modulos           String[]
+  motivo            String?
+  claveIdempotencia String          @unique @db.Uuid
+  payloadHash       String
+  creadoEn          DateTime        @default(dbgenerated("now()")) @db.Timestamptz(3)
+  publicadaEn       DateTime?       @db.Timestamptz(3)
+  publicadaPor      String?
+  asignaciones      PlanDeEmpresa[]
+
+  @@unique([planId, numero])
+}
+
+/// Qué versión de plan tiene una empresa. SOLO SE AGREGA (ningún UPDATE ni DELETE, ni del dueño): el número es el siguiente de la empresa (lo exige la base) y el plan VIGENTE se CALCULA (la asignación de número mayor que ya empezó), nunca se marca. Sin default de `empresaId`: escribe la plataforma, siempre indicando la empresa. La app solo LEE la de su empresa. Orígenes: `TRANSICION` (la migración), `ALTA`, `CAMBIO`.
+model PlanDeEmpresa {
+  id                String        @id @db.Uuid
+  empresaId         String
+  empresa           Empresa       @relation(fields: [empresaId], references: [id])
+  versionDePlanId   String        @db.Uuid
+  versionDePlan     VersionDePlan @relation(fields: [versionDePlanId], references: [id], onDelete: Restrict)
+  numero            Int
+  vigenteDesde      DateTime      @db.Timestamptz(3)
+  origen            String
+  motivo            String
+  /// Quién la asignó: el email del administrador de plataforma (texto, sin FK: no es un `User`) o `migracion:…`.
+  asignadoPor       String
+  claveIdempotencia String        @unique @db.Uuid
+  payloadHash       String
+  creadoEn          DateTime      @default(dbgenerated("now()")) @db.Timestamptz(3)
+
+  @@unique([empresaId, numero])
+  @@index([versionDePlanId])
 }
 
 enum EstadoInvitacion {

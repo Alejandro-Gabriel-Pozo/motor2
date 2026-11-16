@@ -40,6 +40,11 @@ export const ACCION_DE_AUDITORIA: Record<string, string> = {
   "modulo-desactivado": "Módulo desactivado",
   // S-33: lo escribe `scripts/politica-empresa.ts` (no la consola); el historial lo muestra junto a lo demás.
   "politica-cambiada": "Política de la empresa cambiada",
+  // Planes versionados (M1): los escribe `scripts/plan-de-plataforma.ts`.
+  "plan-creado": "Plan creado",
+  "plan-borrador-guardado": "Borrador de plan guardado",
+  "plan-version-publicada": "Versión de plan publicada",
+  "plan-asignado": "Plan asignado a la empresa",
 };
 
 export const ETIQUETA_DE_FILTRO: Record<string, string> = {

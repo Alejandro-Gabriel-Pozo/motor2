@@ -27,16 +27,17 @@ const POR_EMPRESA = [
 ] as const;
 
 /** Con `empresaId`, pero escritas por la plataforma (ModuloEmpresa, Invitacion) o con una política de lectura propia del usuario (UsuarioEmpresa): sus políticas son las de `POLITICAS_ESPECIALES`. */
-const DE_EMPRESA_ESCRITA_POR_LA_PLATAFORMA = ["Invitacion", "ModuloEmpresa", "UsuarioEmpresa"] as const;
+const DE_EMPRESA_ESCRITA_POR_LA_PLATAFORMA = ["Invitacion", "ModuloEmpresa", "PlanDeEmpresa", "UsuarioEmpresa"] as const;
 
 const GLOBALES = ["Account", "Accion", "CotizacionDolar", "IndicePrecio", "Session", "User", "VerificationToken"] as const;
 
-const CONSOLA = ["AdminPlataforma", "AuditoriaPlataforma", "CodigoDeIngresoPlataforma", "CodigoDeRecuperacionPlataforma", "SesionPlataforma"] as const;
+const CONSOLA = ["AdminPlataforma", "AuditoriaPlataforma", "CodigoDeIngresoPlataforma", "CodigoDeRecuperacionPlataforma", "Plan", "SesionPlataforma", "VersionDePlan"] as const;
 
 /** Las políticas de las tablas que NO tienen la política única `aislamiento_empresa` (por nombre, ordenadas). */
 const POLITICAS_ESPECIALES: Readonly<Record<string, readonly string[]>> = {
   UsuarioEmpresa: ["aislamiento_empresa", "lectura_propia_usuario"],
   ModuloEmpresa: ["aislamiento_empresa", "escritura_plataforma"],
+  PlanDeEmpresa: ["aislamiento_empresa", "escritura_plataforma"],
   Invitacion: ["aislamiento_empresa", "escritura_plataforma", "lectura_por_token"],
 };
 
