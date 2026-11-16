@@ -6,7 +6,7 @@ import type { FuenteDeAzar } from "@/core/seguridad/azar";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
-import { centavosDeDecimal, cargarSesion, cargarTiposDeMedios, cerrarSesionEnBase, insertarArqueo, insertarBilletes, sumarMovimientosPorMedio } from "@/server/persistencia/caja/caja";
+import { bloquearSesion, centavosDeDecimal, cargarSesion, cargarTiposDeMedios, cerrarSesionEnBase, insertarArqueo, insertarBilletes, sumarMovimientosPorMedio } from "@/server/persistencia/caja/caja";
 
 /**
  * Caso de uso «cerrar la sesión de caja con arqueo» (etapa C1, CU7; etapa C1b: se cierra DESDE `EN_CIERRE`, después de `iniciarCierreDeSesion`): el efectivo se CUENTA por billetes y monedas; los demás medios con movimientos se
@@ -39,6 +39,8 @@ export async function cerrarSesionCasoDeUso(
       const sesion = await cargarSesion(tx, actor.empresaId, comando.sesionId);
       if (!sesion || sesion.sucursalId !== actor.sucursalId) return fracaso("SESION_NO_ENCONTRADA", "No se encontró la sesión de caja.");
 
+      // Dos cierres a la vez se ordenan por este bloqueo: el segundo espera, reintenta y ve la sesión cerrada (`yaEstabaCerrada`).
+      await bloquearSesion(tx, actor.empresaId, sesion.id);
       const decision = decidirCerrar(estadoDeSesion(sesion.estado));
       if (decision === "SESION_NO_EN_CIERRE") return fracaso("SESION_NO_EN_CIERRE", "Para cerrar la caja primero hay que iniciar el cierre.");
 

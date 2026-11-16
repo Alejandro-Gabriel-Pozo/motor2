@@ -59,6 +59,11 @@ export async function insertarSesion(
   await db.sesionCaja.create({ data: { ...args, estado: "ABIERTA" }, select: { id: true } });
 }
 
+/** Toma el bloqueo exclusivo de la sesión (FOR UPDATE): los cierres que llegan a la vez se ordenan acá en vez de pelearse al subir el bloqueo compartido de los disparadores (deadlock); el que espera ve la sesión ya cerrada en su reintento. */
+export async function bloquearSesion(db: Prisma.TransactionClient, empresaId: string, id: string): Promise<void> {
+  await db.$queryRaw`SELECT "id" FROM "SesionCaja" WHERE "empresaId" = ${empresaId} AND "id" = ${id}::uuid FOR UPDATE`;
+}
+
 /** Inicia el cierre (ABIERTA → EN_CIERRE). Devuelve si escribió: 0 filas = ya no estaba abierta. El disparador de la base deja pasar solo las transiciones del ciclo y el UPDATE espera a los cobros en vuelo (FOR SHARE). */
 export async function iniciarCierreEnBase(db: Prisma.TransactionClient, args: { empresaId: string; id: string; cierreIniciadoEn: Date; cierreIniciadoPorId: string }): Promise<boolean> {
   const { count } = await db.sesionCaja.updateMany({
