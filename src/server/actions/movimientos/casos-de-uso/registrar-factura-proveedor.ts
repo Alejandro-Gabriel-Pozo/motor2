@@ -6,6 +6,7 @@ import { mensajeReferenciaProveedorObligatoria } from "@/core/features/compras/c
 import {
   DIAS_DE_VENTANA_DE_DUPLICADO,
   avisoDePosibleDuplicado,
+  decidirVinculoConOrden,
   estadoInicialDeLaParte,
   normalizarNumeroDeComprobante,
   posiblesDuplicados,
@@ -14,6 +15,7 @@ import {
   type RepartoDeFactura,
 } from "@/core/compras/public";
 import type { DatosMovimientoInput } from "@/core/features/movimientos/movimiento.schema";
+import type { EstadoDeOrden } from "@/core/compras/public";
 import type { DatosFacturaProveedorInput, ResultadoRegistrarFacturaProveedor } from "@/core/features/compras/factura-proveedor.schema";
 import { mensajeSeccionDesactivada } from "@/core/features/movimientos/secciones.guard";
 import {
@@ -26,6 +28,7 @@ import {
   MENSAJE_FACTURA_DUPLICADA,
 } from "@/core/movimientos/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";
+import type { FuenteDeAzar } from "@/core/seguridad/azar";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { sucursalesDondeElUsuarioPuedeVer } from "@/server/acceso/gate";
@@ -48,6 +51,9 @@ import {
   escribirRenglonesDeFactura,
   registrarResultadoDeFactura,
 } from "@/server/persistencia/compras/escribir-factura-proveedor";
+import { cargarLineasParaVincular, cargarNivelDelControlDeExceso } from "@/server/persistencia/compras/cargar-orden-de-compra";
+import { escribirVinculosConOrden } from "@/server/persistencia/compras/escribir-orden-de-compra";
+import { rechazoDeOrdenDeLaBase } from "@/server/persistencia/compras/errores-de-orden-de-compra";
 import { registrarVinculoDeCompraEnTx } from "@/server/actions/catalogo/casos-de-uso/registrar-vinculo-de-compra-en-tx";
 import { armarLineaMovimiento, type LineaCalculada } from "./armar-linea-de-movimiento";
 
@@ -78,7 +84,9 @@ import { armarLineaMovimiento, type LineaCalculada } from "./armar-linea-de-movi
  */
 export async function registrarFacturaProveedorCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion" | "empresaId" | "alcance" | "ahora">,
-  datos: DatosFacturaProveedorInput
+  datos: DatosFacturaProveedorInput,
+  /** Solo hace falta con `datos.ordenDeCompra` (el id de cada vínculo con la orden); la Server Action la pasa siempre. */
+  azar?: FuenteDeAzar
 ): Promise<ResultadoRegistrarFacturaProveedor> {
   const partes = datos.reparto.partes;
   const propia = partes.find((p) => p.sucursalId === actor.sucursalId) ?? null;
@@ -87,8 +95,16 @@ export async function registrarFacturaProveedorCasoDeUso(
   // Compras N3-a (recepción separada): con el módulo `recepcion_de_compras` encendido en la empresa y una factura de UNA sola parte propia, la parte nace PENDIENTE de recibir: no entra stock ni se escribe `Operacion` ni
   // `MovimientoStock`; la sección (donde entraría) se ignora —la elige quien confirma la recepción—. Sin el módulo, o con partes de otras sucursales, todo sigue como siempre (la parte propia entra al stock al cargar).
   // El registro de módulos se lee por el único lector (`modulos-de-empresa`), una vez por carga.
-  const moduloEncendido = propia ? (await modulosEfectivosDeEmpresa(actor.empresaId, actor.db)).has("recepcion_de_compras") : false;
+  const modulos = propia ? await modulosEfectivosDeEmpresa(actor.empresaId, actor.db) : new Set<string>();
+  const moduloEncendido = modulos.has("recepcion_de_compras");
   const pendienteDeRecibir = propia ? estadoInicialDeLaParte({ moduloEncendido, hayPartesAjenas: ajenas.length > 0 }) === "PENDIENTE" : false;
+
+  // Compras, orden de compra (etapa OC): cargar la compra CONTRA una orden solo existe con el módulo `ordenes_de_compra` encendido y con una compra que nace pendiente de recibir (el vínculo se confirma con la recepción). Todo lo demás se rechaza ANTES de abrir nada.
+  if (datos.ordenDeCompra) {
+    if (!modulos.has("ordenes_de_compra")) return fracaso("MODULO_APAGADO", "Las órdenes de compra no están habilitadas en esta empresa.");
+    if (!pendienteDeRecibir) return fracaso("ORDEN_NO_APLICA", "Esta compra no se recibe por separado: no se puede cargar contra una orden.");
+    if (!azar) throw new Error("registrarFacturaProveedor: cargar contra una orden necesita la fuente de azar.");
+  }
 
   // Fallo cerrado: si el pedido TRAE una sección, se valida a quién pertenece aunque la parte nazca pendiente y la sección no se use para escribir stock; un id ajeno (de otra sucursal o empresa) o inexistente nunca es ok
   // (SECCION_NO_ENCONTRADA) y una desactivada tampoco (SECCION_INACTIVA, más abajo). Solo si NO viene sección y la parte nace pendiente no se exige: se elige al confirmar la recepción.
@@ -147,12 +163,15 @@ export async function registrarFacturaProveedorCasoDeUso(
     const comoCompra: DatosMovimientoInput = { proceso: "COMPRA", fecha: datos.fecha, seccionId: datos.seccionId ?? "", proveedorId: datos.proveedorId, items: datos.items, claveIdempotencia: datos.claveIdempotencia };
     const obtenerProducto = crearCacheProducto(tx);
     const lineas: { linea: LineaCalculada; nombre: string; decimales: number }[] = [];
-    for (const item of datos.items) {
+    /** La posición en `datos.items` de cada línea armada (un ítem sin cantidad se salta y las posiciones se corren). */
+    const indiceDeItem: number[] = [];
+    for (const [posicion, item] of datos.items.entries()) {
       const armado = await armarLineaMovimiento(item, comoCompra, tx, obtenerProducto, actor.sucursalId, actor.sucursalNombre);
       if (!armado.ok) return fracaso("LINEA_INVALIDA", armado.mensaje);
       if (!armado.linea) continue;
       const producto = await obtenerProducto(armado.linea.productoId);
       lineas.push({ linea: armado.linea, nombre: producto?.nombre ?? "", decimales: producto?.unidadStock.decimales ?? 0 });
+      indiceDeItem.push(posicion);
     }
     if (!lineas.length) return fracaso("SIN_LINEAS_VALIDAS", "Ninguna línea tiene una cantidad válida.");
 
@@ -161,6 +180,38 @@ export async function registrarFacturaProveedorCasoDeUso(
     const conReferencia = new Set(lineas.filter((l) => l.linea.referenciaProveedor).map((l) => l.linea.productoId));
     const sinReferencia = lineas.find((l) => !vinculados.has(l.linea.productoId) && !conReferencia.has(l.linea.productoId));
     if (sinReferencia) return fracaso("REFERENCIA_PROVEEDOR_OBLIGATORIA", mensajeReferenciaProveedorObligatoria(sinReferencia.nombre));
+
+    // Orden de compra: cada vínculo se valida con la regla pura ANTES de escribir nada (la base repite las mismas reglas con sus disparadores y decide la carrera). Un renglón sin vínculo se recibe como siempre.
+    const vinculosAEscribir: { renglonDeLinea: number; lineaDeOrden: number; confirmoExceso: boolean }[] = [];
+    if (datos.ordenDeCompra) {
+      const orden = await tx.ordenDeCompra.findUnique({ where: { id: datos.ordenDeCompra.ordenId }, select: { estado: true, proveedorId: true } });
+      if (!orden) return fracaso("ORDEN_NO_ENCONTRADA", "No se encontró esa orden de compra.");
+      const lineasDeLaOrden = await cargarLineasParaVincular(tx, datos.ordenDeCompra.ordenId);
+      const nivel = await cargarNivelDelControlDeExceso(tx);
+      const acumulado = new Map<number, number>();
+      for (const v of datos.ordenDeCompra.renglones) {
+        const posicion = indiceDeItem.indexOf(v.itemIndex);
+        const armada = posicion >= 0 ? lineas[posicion] : undefined;
+        if (!armada) return fracaso("LINEA_INVALIDA", "Un vínculo con la orden apunta a un renglón sin cantidad.");
+        const lineaDeOrden = lineasDeLaOrden.get(v.lineaDeOrden);
+        if (!lineaDeOrden) return fracaso("LINEA_DE_ORDEN_NO_ENCONTRADA", "No se encontró una de las líneas de la orden.");
+        const yaEnEstaCompra = acumulado.get(v.lineaDeOrden) ?? 0;
+        const decision = decidirVinculoConOrden({
+          estadoDeLaOrden: orden.estado as EstadoDeOrden,
+          mismoProveedor: orden.proveedorId === datos.proveedorId,
+          lineaRetirada: lineaDeOrden.retirada,
+          mismoProducto: lineaDeOrden.productoId === armada.linea.productoId,
+          nivel,
+          confirmoExceso: v.confirmoExceso === true,
+          recibidaHasta: lineaDeOrden.recibida + yaEnEstaCompra,
+          cantidad: armada.linea.cantidadIngresada,
+          pedida: lineaDeOrden.pedida,
+        });
+        if (!decision.ok) return fracaso(decision.codigo, decision.mensaje);
+        acumulado.set(v.lineaDeOrden, yaEnEstaCompra + armada.linea.cantidadIngresada);
+        vinculosAEscribir.push({ renglonDeLinea: posicion, lineaDeOrden: v.lineaDeOrden, confirmoExceso: v.confirmoExceso === true });
+      }
+    }
 
     const reparto = repartirFactura(
       lineas.map((l) => ({ nombre: l.nombre, precioTotal: l.linea.precioTotal, cantidadStock: l.linea.cantidadIngresada, decimales: l.decimales })),
@@ -205,7 +256,16 @@ export async function registrarFacturaProveedorCasoDeUso(
       const celdas = reparto.celdas.map((fila, i) => ({ i, celda: fila[j]! })).filter(({ celda }) => celda.cantidadStock > 0);
       if (parte.sucursalId === actor.sucursalId && pendienteDeRecibir) {
         // Pendiente de recibir: solo la parte, sin compra ni stock (lo crea `confirmarRecepcionDeFacturaCasoDeUso`).
-        await escribirPartePendiente(tx, { facturaProveedorId: factura.id, sucursalId: actor.sucursalId, porcentajeDeclaradoBp: reparto.partes[j]!.porcentajeDeclaradoBp });
+        const parteEscrita = await escribirPartePendiente(tx, { facturaProveedorId: factura.id, sucursalId: actor.sucursalId, porcentajeDeclaradoBp: reparto.partes[j]!.porcentajeDeclaradoBp });
+        if (datos.ordenDeCompra && vinculosAEscribir.length > 0 && azar) {
+          await escribirVinculosConOrden(tx, {
+            facturaProveedorId: factura.id,
+            parteId: parteEscrita.id,
+            ordenId: datos.ordenDeCompra.ordenId,
+            registradoPorId: actor.usuarioId,
+            vinculos: vinculosAEscribir.map((v) => ({ id: azar.uuid(), renglonId: renglonIds[v.renglonDeLinea]!, lineaDeOrden: v.lineaDeOrden, confirmoExceso: v.confirmoExceso })),
+          });
+        }
       } else if (parte.sucursalId === actor.sucursalId) {
         const operacion = await escribirOperacionDeStock(tx, {
           sucursalId: actor.sucursalId,
@@ -298,6 +358,9 @@ export async function registrarFacturaProveedorCasoDeUso(
     await registrarResultadoDeFactura(tx, factura.id, mensaje);
     return exito(mensaje, { repetida: false, facturaId: factura.id, operacionPropiaId, movimientosPropios });
   }, undefined, undefined, true).catch(async (e): Promise<ResultadoRegistrarFacturaProveedor> => {
+    // La carrera contra la orden (otra persona la cerró, anuló o llenó entre la lectura y la escritura): lo decide el disparador de la base.
+    const deLaOrden = datos.ordenDeCompra ? rechazoDeOrdenDeLaBase(e) : null;
+    if (deLaOrden) return fracaso(deLaOrden.codigo, deLaOrden.mensaje);
     if (esChoqueDeFacturaDeProveedorUnica(e)) return fracaso("FACTURA_DUPLICADA", MENSAJE_FACTURA_DUPLICADA);
     if (esChoqueDeFacturaUnica(e)) return fracaso("FACTURA_DUPLICADA", MENSAJE_FACTURA_DUPLICADA);
     if (esChoqueDeClaveIdempotenciaDeFactura(e)) {

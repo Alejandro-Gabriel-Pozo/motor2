@@ -146,6 +146,9 @@ export const MATRIZ_ESPERADA: Readonly<Record<AccionClave, FilaEsperada>> = {
   declarar_pago_compra: { modulo: "compras", contexto: "empresa", nivelMinimo: "operario", roles: ["admin"] }, // Pagos X0 (2026-11-04): dinero; piso operario, semilla solo `admin`.
   compra_recibir: { modulo: "recepcion_de_compras", contexto: "sucursal", nivelMinimo: "administrador", roles: ["admin"] }, // Compras N3-a (2026-11-16): módulo propio (apagado por defecto) y piso administrador: confirman gerente y administrador, no el operador.
   compra_controlar_recepcion: { modulo: "recepcion_de_compras", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin", "operador"] }, // Compras N3-b (2026-11-16, «Como Pedernal: también el operador»): registrar el control por línea lo hace quien recibe; semilla admin y operador, como `proceso_compra`.
+  orden_de_compra_gestionar: { modulo: "ordenes_de_compra", contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] }, // Compras, orden de compra (2026-11-16): crear, pedir, anular y cerrar una orden lo hace quien administra o gerencia, no el operador.
+  compras_configurar: { modulo: "ordenes_de_compra", contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] }, // Compras, orden de compra: el nivel del control de exceso, solo gerente y administrador.
+  orden_de_compra_ver: { modulo: "ordenes_de_compra", contexto: "empresa", nivelMinimo: "operario", roles: ["admin", "operador"] }, // Compras, orden de compra: ver las órdenes y elegir una al cargar una compra (solo lectura).
   opciones_definir: { modulo: "catalogo_basico", contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] },
   producto_opciones_admitidas: { modulo: "catalogo_basico", contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] },
   opcion_apagar_en_sucursal: { modulo: "catalogo_basico", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin", "operador"] },

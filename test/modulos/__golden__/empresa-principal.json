@@ -206,6 +206,7 @@
         "conteo_resolver_pendiente",
         "insumo_alta",
         "opcion_apagar_en_sucursal",
+        "orden_de_compra_ver",
         "partes_editar",
         "partes_ver",
         "proceso_compra",
@@ -1447,6 +1448,31 @@
     {
       "clave": "compra_controlar_recepcion",
       "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "orden_de_compra_gestionar",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "compras_configurar",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "orden_de_compra_ver",
+      "contexto": "empresa",
       "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin",

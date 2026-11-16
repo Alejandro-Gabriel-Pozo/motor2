@@ -18,6 +18,7 @@ import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad"
 import { obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
 import { bloquearFactura, cargarParteDeFacturaEnSucursal, cargarRenglonesParaRecibir } from "@/server/persistencia/compras/cargar-factura-proveedor";
 import { confirmarParteRecibida } from "@/server/persistencia/compras/escribir-factura-proveedor";
+import { rechazoDeOrdenDeLaBase } from "@/server/persistencia/compras/errores-de-orden-de-compra";
 import { escribirLineasDeMovimientoStock, escribirOperacionDeStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
 
 /** Lo que tira la transacción cuando otra confirmación ganó en el medio: hace ROLLBACK de todo lo escrito y el `.catch` lo traduce. */
@@ -39,6 +40,8 @@ class ParteYaRecibida extends Error {}
  *  3. arma una línea del Kardex por entrada desde los renglones guardados (el precio TOTAL del renglón se reparte en proporción exacta a la cantidad; el precio por unidad, el lote y el detalle, TAL CUAL), escribe la compra y marca la parte RECIBIDA con su compra, con `WHERE estado = 'PENDIENTE'`:
  *     si no tocó ninguna fila, ganó otra confirmación y se deshace todo (no queda compra huérfana); la segunda barrera es el disparador de la base (una parte recibida no vuelve atrás);
  *  4. audita (`FacturaProveedor`, campo `recepcion`, de PENDIENTE a RECIBIDA: quién (`actorId`), cuándo (el registro) y, en la descripción, las secciones y la fecha de stock).
+ * Compras, orden de compra (etapa OC): si los renglones de la compra están vinculados a líneas de una orden, al pasar la parte a RECIBIDA un disparador de la base suma lo recibido (sin los renglones que el control dejó RECHAZADOS) al saldo de cada línea, con UN UPDATE
+ * condicionado cuyo tope sale del nivel del control `compras.recepcion_excede_la_orden` (sin fila = PERMITIR) y de `confirmoExceso`; si el tope frena, se deshace TODO (compra, stock y estado) y la respuesta dice por qué (`EXCEDE_LA_ORDEN_*`).
  * Idempotente por ESTADO, sin clave de reintento: confirmar dos veces devuelve «ya recibida» sin crear stock de nuevo.
  *
  * @contract Confirma la recepción de la parte pendiente de una sucursal exactamente una vez: entra su stock con la fecha elegida, o no entra nada.
@@ -145,6 +148,9 @@ export async function confirmarRecepcionDeFacturaCasoDeUso(
     return exito(`Recepción confirmada: ${escritas.movimientos} movimiento(s) entraron al stock de esta sucursal con fecha ${diaStock}.`, { operacionId: operacion.id, movimientos: escritas.movimientos });
   }).catch((e): ResultadoConfirmarRecepcionDeFactura => {
     if (e instanceof ParteYaRecibida) return fracaso("YA_RECIBIDA", MENSAJE_RECEPCION_YA_RECIBIDA);
+    // Compras, orden de compra (etapa OC): confirmar suma lo recibido al saldo de la línea de la orden con el tope en el WHERE (disparador de la base); si el control de exceso lo frena, la transacción entera se deshace (no queda stock ni compra) y se dice por qué.
+    const deLaOrden = rechazoDeOrdenDeLaBase(e);
+    if (deLaOrden) return fracaso(deLaOrden.codigo, deLaOrden.mensaje);
     throw e;
   });
 }

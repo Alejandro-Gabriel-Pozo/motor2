@@ -3,6 +3,7 @@ import { validarDetalleLibreDeOperacion } from "@/core/movimientos/public";
 import { validarFechaDeCompra } from "@/core/datos/fecha-operacion";
 import { esClaveIdempotenciaValida, MENSAJE_CLAVE_DE_REINTENTO_INVALIDA } from "@/core/datos/clave-idempotencia";
 import { guardComprobanteDeCompra } from "./compra.guard";
+import { guardOrdenDeCompraDeLaCompra } from "./orden-de-compra.guard";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { LARGO_MAXIMO_DETALLE, MAXIMO_LINEAS_POR_OPERACION, validarTextoLibre, validarTopeDeLista } from "@/core/datos/limites";
 import { esCondicionDePago, esMedioDePago, validarControlDeLinea } from "@/core/compras/public";
@@ -67,7 +68,9 @@ export function guardComandoRegistrarFacturaProveedor(entrada: unknown, ahora: D
 
   const clave = claveObligatoria(e.claveIdempotencia);
   if (!clave.ok) return rechazar(clave.codigo, clave.mensaje);
-  return aceptar({ ...(entrada as DatosFacturaProveedorInput), nroFactura: numero.valor });
+  const orden = guardOrdenDeCompraDeLaCompra(e.ordenDeCompra, e.items.length);
+  if (!orden.ok) return rechazar(orden.codigo, orden.mensaje);
+  return aceptar({ ...(entrada as DatosFacturaProveedorInput), nroFactura: numero.valor, ...(orden.valor ? { ordenDeCompra: orden.valor } : {}) });
 }
 
 /** «Aceptar mi parte»: la parte, la sección y la fecha de stock (el rango contra la fecha de la factura lo mira el caso de uso, que la conoce). */

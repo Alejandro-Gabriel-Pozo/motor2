@@ -5,6 +5,7 @@ import type { CabeceraVista as CabeceraVistaSchema, CorreccionCompraInput as Cor
 import type { ControlDeLineaInput, DatosFacturaProveedorInput, EntradaDeRecepcionInput } from "@/core/features/compras/factura-proveedor.schema";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { azarDelProceso } from "@/lib/azar";
+import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { conPermiso, exigirTambienPermisoDeEmpresa } from "../con-permiso";
 import { error, type ResultadoAccion } from "../tipos";
 import { aceptarPropuestaDeFacturaCasoDeUso } from "./casos-de-uso/aceptar-propuesta-de-factura";
@@ -31,7 +32,12 @@ export async function registrarFacturaProveedor(datos: DatosFacturaProveedorInpu
       const tambien = await exigirTambienPermisoDeEmpresa(ctx, "compra_repartir");
       if (!tambien.ok) return error(tambien.mensaje);
     }
-    return aResultadoAccion(await registrarFacturaProveedorCasoDeUso(ctx, comando.valor));
+    // Compras, orden de compra (etapa OC): cargar la compra CONTRA una orden pide además el «Ver» de las órdenes (`orden_de_compra_ver`, módulo `ordenes_de_compra`: apagado, el servidor lo rechaza).
+    if (comando.valor.ordenDeCompra) {
+      const ver = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "orden_de_compra_ver", ctx.db);
+      if (!ver.ok) return error(ver.mensaje);
+    }
+    return aResultadoAccion(await registrarFacturaProveedorCasoDeUso(ctx, comando.valor, azarDelProceso));
   });
 }
 

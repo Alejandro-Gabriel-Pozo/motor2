@@ -10,6 +10,7 @@ import type {
   MedioDePago,
 } from "@/core/compras/public";
 import type { CabeceraVista, CorreccionCompraInput } from "./compra.schema";
+import type { CodigoVinculoConOrden, OrdenDeCompraDeLaCompraInput } from "./orden-de-compra.schema";
 
 /**
  * E3a (docs/diseno-factura-de-proveedor-e3a-2026-10-27.md): los contratos de los tres comandos de la factura de proveedor de mercadería repartida entre sucursales por PROPUESTA (la
@@ -39,11 +40,17 @@ export interface DatosFacturaProveedorInput {
   reparto: { modo: ModoDeRepartoInput; partes: ParteDeRepartoInput[] };
   /** Pagos X0: cómo se paga. Ausente = `CONTADO_PAGADA` (como siempre). `PENDIENTE_DE_PAGO`: el pago se declara después (`declararPagoDeFacturaProveedor`). */
   condicionPago?: CondicionDePago;
+  /**
+   * Compras, orden de compra (etapa OC): cargar la compra CONTRA una orden pedida (opcional). Solo vale con el módulo `ordenes_de_compra` y con una compra que nace pendiente de recibir (una sola parte propia, módulo `recepcion_de_compras`):
+   * cada renglón vinculado queda atado a una línea de la orden y, al confirmar la recepción, suma a lo recibido de esa línea (con el control de exceso). Sin orden, todo sigue como siempre.
+   */
+  ordenDeCompra?: OrdenDeCompraDeLaCompraInput;
   /** I3 — UUID que genera la pantalla al abrirse; obligatoria. */
   claveIdempotencia: string;
 }
 
 export type CodigoRegistrarFacturaProveedor =
+  | CodigoVinculoConOrden
   | "CONFLICTO_IDEMPOTENCIA"
   | "PROVEEDOR_NO_DISPONIBLE"
   | "SECCION_NO_ENCONTRADA"
@@ -107,7 +114,7 @@ export interface ComandoConfirmarRecepcionDeFactura {
   entradas: EntradaDeRecepcionInput[];
 }
 
-export type CodigoConfirmarRecepcionDeFactura = "NO_ENCONTRADA" | CodigoDeRechazoDeRecepcion | CodigoDeRechazoDeEntradas | "PRODUCTO_NO_DISPONIBLE" | "SIN_LINEAS";
+export type CodigoConfirmarRecepcionDeFactura = "NO_ENCONTRADA" | CodigoDeRechazoDeRecepcion | CodigoDeRechazoDeEntradas | "PRODUCTO_NO_DISPONIBLE" | "SIN_LINEAS" | "EXCEDE_LA_ORDEN_BLOQUEADA" | "EXCEDE_LA_ORDEN_SIN_CONFIRMAR" | "ORDEN_NO_PEDIDA";
 
 export type DatosConfirmarRecepcionDeFactura = { operacionId: string; movimientos: number };
 

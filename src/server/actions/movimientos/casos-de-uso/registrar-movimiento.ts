@@ -268,7 +268,8 @@ async function registrarCompraComoFactura(
     claveIdempotencia: datos.claveIdempotencia,
   });
   if (!r.ok) {
-    if (r.codigo === "REPARTO_INVALIDO" || r.codigo === "SUCURSAL_NO_DISPONIBLE" || r.codigo === "PRODUCTO_NO_DISPONIBLE") {
+    // Los de la orden de compra (etapa OC) tampoco: esta carga nunca manda `ordenDeCompra`.
+    if (r.codigo === "REPARTO_INVALIDO" || r.codigo === "SUCURSAL_NO_DISPONIBLE" || r.codigo === "PRODUCTO_NO_DISPONIBLE" || esCodigoDeOrden(r.codigo)) {
       throw new Error(`registrarMovimiento COMPRA: la factura de una parte devolvió ${r.codigo}, que una sola parte propia no puede producir.`);
     }
     return fracaso(r.codigo, r.mensaje);
@@ -277,4 +278,22 @@ async function registrarCompraComoFactura(
   // Compras N3-a: con el módulo `recepcion_de_compras` encendido la factura de una parte nace pendiente de recibir: sin compra ni stock todavía (los crea la confirmación de la recepción).
   if (!r.datos.operacionPropiaId) return exito(r.mensaje, { operacionId: null, movimientos: 0, repetida: false });
   return exito(r.mensaje, { operacionId: r.datos.operacionPropiaId, movimientos: r.datos.movimientosPropios, repetida: false });
+}
+
+/** Los rechazos de cargar una compra CONTRA una orden (etapa OC): esta carga nunca manda `ordenDeCompra`, así que no los puede producir. */
+const CODIGOS_DE_ORDEN = [
+  "ORDEN_NO_PEDIDA",
+  "PROVEEDOR_DISTINTO",
+  "LINEA_RETIRADA",
+  "PRODUCTO_DISTINTO",
+  "EXCEDE_LA_ORDEN_BLOQUEADA",
+  "EXCEDE_LA_ORDEN_SIN_CONFIRMAR",
+  "ORDEN_NO_ENCONTRADA",
+  "ORDEN_NO_APLICA",
+  "RENGLON_DE_ORDEN_REPETIDO",
+  "LINEA_DE_ORDEN_NO_ENCONTRADA",
+  "MODULO_APAGADO",
+] as const;
+function esCodigoDeOrden(codigo: string): codigo is (typeof CODIGOS_DE_ORDEN)[number] {
+  return (CODIGOS_DE_ORDEN as readonly string[]).includes(codigo);
 }

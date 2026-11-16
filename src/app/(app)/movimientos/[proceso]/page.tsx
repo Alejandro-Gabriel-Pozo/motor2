@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
@@ -70,14 +71,16 @@ export default async function MovimientoPage({
   // E3a (ADR-041): en Compra, la bandeja «Para aceptar» (lo que otra sucursal compró para esta: productos y cantidades, sin importes), «Lo que cargué» (estado de las partes propuestas a otras) y, para quien
   // puede repartir (`compra_repartir`), el interruptor «Repartir entre sucursales».
   const esCompra = config.proceso === "COMPRA";
-  const [paraAceptar, enviadas, otrasSucursales, nivelReparto] = esCompra
+  const [paraAceptar, enviadas, otrasSucursales, nivelReparto, nivelOrdenes] = esCompra
     ? await Promise.all([
         listarPropuestasParaAceptar(ctx.sucursalId, ctx.db),
         listarPropuestasEnviadas(ctx.sucursalId, ctx.db),
         listarOtrasSucursalesParaReparto(ctx.sucursalId, ctx.db),
         obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "compra_repartir", ctx.db),
+        // Compras, orden de compra (etapa OC): con el módulo `ordenes_de_compra` apagado el nivel da «ni ver» y no se ofrece nada.
+        obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "orden_de_compra_ver", ctx.db),
       ])
-    : [[], [], [], { ver: false, editar: false }];
+    : [[], [], [], { ver: false, editar: false }, { ver: false, editar: false }];
   const dia = (f: Date) => diaDeCalendario(f, ZONA_ARGENTINA);
   // La sección del original solo se precarga si sigue activa en esta sucursal (si no, la persona elige: nunca se adivina).
   const seccionInicialId = aCorregir && secciones.some((s) => s.id === aCorregir.seccionId) ? aCorregir.seccionId : undefined;
@@ -92,6 +95,13 @@ export default async function MovimientoPage({
     <div className="flex max-w-4xl flex-col gap-4">
       <h1 className="text-xl font-semibold">{delSelector ? `Registrar movimiento · ${delSelector.etiquetaCorta}` : config.titulo}</h1>
       {delSelector && <FilaDeMovimientos ctx={ctx} actual={delSelector.href} />}
+      {esCompra && nivelOrdenes.ver && (
+        <p className="text-sm">
+          <Link href="/movimientos/ordenes-de-compra" className="underline">
+            Órdenes de compra
+          </Link>
+        </p>
+      )}
       {esCompra && <PorRecibir ctx={ctx} secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))} />}
       {esCompra && (
         <BandejaParaAceptar
@@ -118,6 +128,7 @@ export default async function MovimientoPage({
             productoInicial={productoInicial ? { id: productoInicial.id, etiqueta: `${productoInicial.codigo} — ${productoInicial.nombre}` } : undefined}
             reparto={nivelReparto.editar && otrasSucursales.length ? { sucursalActiva: { id: ctx.sucursalId, nombre: ctx.sucursalNombre }, otras: otrasSucursales } : undefined}
             sucursalActivaId={ctx.sucursalId}
+            ordenesHabilitadas={nivelOrdenes.ver}
           />
         ) : (
           <PanelMovimientoForm

@@ -28,6 +28,9 @@ export const MODULOS = [
   // Compras, recepción separada N3-a (dueño, 2026-11-16: «Ya, con interruptor por empresa»): NACE APAGADO; solo la plataforma lo enciende por empresa en el registro. Con él encendido, una factura de proveedor de una sola parte
   // se carga «pendiente de recibir» y el stock entra cuando un gerente o administrador confirma la recepción (`compra_recibir`). Sin él, todo sigue como siempre: la compra entra al stock al cargarla.
   { id: "recepcion_de_compras", nombre: "Recepción separada de compras", tipo: "vendible", estado: "disponible", requiere: ["compras"], usaSiExiste: [] },
+  // Compras, orden de compra (etapa OC; dueño/Pedernal, 2026-11-16: «una orden de compra NO necesita aprobación»): NACE APAGADO; solo la plataforma lo enciende por empresa. Requiere la recepción separada (la orden se recibe contra la compra pendiente de recibir).
+  // Con él encendido un gerente o administrador crea, pide, cierra y anula órdenes de compra y quien carga una compra puede elegir la orden. Sin él, todo sigue como siempre.
+  { id: "ordenes_de_compra", nombre: "Órdenes de compra", tipo: "vendible", estado: "disponible", requiere: ["recepcion_de_compras"], usaSiExiste: [] },
   { id: "traspasos", nombre: "Traspasos", tipo: "vendible", estado: "disponible", requiere: ["stock"], usaSiExiste: [] },
   { id: "consignacion", nombre: "Consignación", tipo: "vendible", estado: "disponible", requiere: ["proveedores_basico", "stock"], usaSiExiste: ["salon"] },
   { id: "recetas", nombre: "Recetas", tipo: "vendible", estado: "disponible", requiere: ["catalogo_basico"], usaSiExiste: ["stock", "carta"] },

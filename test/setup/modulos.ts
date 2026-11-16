@@ -5,7 +5,8 @@ import { prismaAdmin } from "./cliente-duenio";
  * Interruptores que NACEN APAGADOS: la plataforma los enciende empresa por empresa y el backfill de la migración del registro no los trae. `recepcion_de_compras` (Compras N3-a, recepción separada): con él encendido una compra de una sola parte
  * nace «pendiente de recibir» y no entra al stock hasta que se confirma la recepción, así que `activarTodosLosModulos` NO lo enciende (un test que lo necesita lo pide con `fijarModulosActivos(empresa, [...MODULOS_VENDIBLES, "recepcion_de_compras"])`).
  */
-const MODULOS_QUE_NACEN_APAGADOS: readonly string[] = ["recepcion_de_compras"];
+// `ordenes_de_compra` (Compras, orden de compra, etapa OC): también nace apagado, y REQUIERE `recepcion_de_compras`, así que encenderlo trae la recepción separada (un test que lo necesita lo pide con `fijarModulosActivos(empresa, [...MODULOS_VENDIBLES, "ordenes_de_compra"])`).
+const MODULOS_QUE_NACEN_APAGADOS: readonly string[] = ["recepcion_de_compras", "ordenes_de_compra"];
 
 /**
  * Los módulos que se activan por empresa: los vendibles DISPONIBLES del catálogo del código (el fijo y los de soporte se calculan, no tienen fila; uno en

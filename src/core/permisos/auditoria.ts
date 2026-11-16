@@ -69,6 +69,10 @@ export const ENTIDADES_AUDITABLES = [
   // "FacturaProveedor" (E3a, ADR-041): la carga de una factura de proveedor repartida (`campo: "reparto"`, el reparto por sucursal en `valorNuevo`), la aceptación de la parte de una sucursal destino (`campo: "parteAceptada"`)
   // la confirmación de la recepción de una compra pendiente (`campo: "recepcion"`, Compras N3-a), el control por línea de esa recepción (`campo: "controlDeRecepcion"`, `valorNuevo` la cantidad de líneas, Compras N3-b), y la anulación (`campo: "anuladaEn"`, con el motivo en la descripción) — `entidadId` es el id de la factura, `sucursalId` el de la sucursal de quien actúa (nunca la ajena).
   "FacturaProveedor",
+  // "OrdenDeCompra" (Compras, etapa OC): crear (`campo: "estado"`, de `null` a BORRADOR), pedir (BORRADOR a PEDIDA, con el número en la descripción), cerrar (PEDIDA a CERRADA, con el motivo de cierre) y anular (con el motivo en la descripción) una orden de compra — `entidadId` es el id
+  // de la orden, `sucursalId` el de la sucursal de quien actúa. "NivelDeControl": el nivel del control de la empresa (`campo: "nivel"`, de PERMITIR/AVISAR/BLOQUEAR, `valorAnterior` null si no había fila, es decir el valor por defecto PERMITIR) — `entidadId` es `${empresaId}:${control}`.
+  "OrdenDeCompra",
+  "NivelDeControl",
   // "TraspasoSucursal" (Pureza, decisión del dueño 2026-10-07): el alta de una solicitud de traspaso o de un envío directo — `entidadId` es el id del traspaso, `campo: "cantidad"`,
   // `valorAnterior: null`, con la `sucursalId` de quien lo crea (la de destino en una solicitud, la de origen en un envío directo).
   "TraspasoSucursal",

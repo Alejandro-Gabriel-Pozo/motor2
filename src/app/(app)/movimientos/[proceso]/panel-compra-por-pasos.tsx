@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { ItemMovimientoInput } from "@/server/actions/movimientos/movimientos";
 import { registrarFacturaProveedor } from "@/server/actions/movimientos/facturas-proveedor";
+import { listarOrdenesParaElegir } from "@/server/actions/movimientos/ordenes-de-compra";
+import type { OrdenParaMostrar } from "@/server/consultas/movimientos/ordenes-de-compra";
 import { BloqueDeReparto, REPARTO_APAGADO, type EstadoDeReparto } from "./bloque-de-reparto";
 import { listarProductosDeProveedor } from "@/server/actions/catalogo/proveedor-por-producto";
 import { obtenerDatosDeCompraDelProducto } from "@/server/actions/catalogo/productos";
@@ -80,6 +82,10 @@ interface FilaCompra {
   ultimaCompraTexto: string;
   /** La fila vino de la precarga de un proveedor y nadie la tocó desde entonces: al cambiar de proveedor se descarta (las de otro proveedor no se arrastran). */
   precargada: boolean;
+  /** Orden de compra (etapa OC): el número de la línea de la orden elegida contra la que se recibe este renglón; vacío = ninguna (nada «viene vinculado»). */
+  lineaDeOrden: string;
+  /** Orden de compra: confirmo recibir más de lo pedido en esa línea (nace sin tildar). */
+  confirmoExceso: boolean;
 }
 
 const FILA_VACIA: FilaCompra = {
@@ -98,6 +104,8 @@ const FILA_VACIA: FilaCompra = {
   referenciaProveedor: "",
   ultimaCompraTexto: "",
   precargada: false,
+  lineaDeOrden: "",
+  confirmoExceso: false,
 };
 
 // El día de hoy en Argentina (no en UTC: desde las 21:00 locales UTC ya es mañana).
@@ -121,6 +129,7 @@ export function PanelCompraPorPasos({
   productoInicial,
   reparto,
   sucursalActivaId,
+  ordenesHabilitadas = false,
 }: {
   config: ProcesoUiConfig;
   secciones: Opcion[];
@@ -133,6 +142,8 @@ export function PanelCompraPorPasos({
   reparto?: { sucursalActiva: Opcion; otras: Opcion[] };
   /** Pagos X0: la sucursal activa, para cargar una compra «pendiente de pago» sin repartir (queda como factura de proveedor con una sola parte, la de esta sucursal). */
   sucursalActivaId: string;
+  /** Compras, orden de compra (etapa OC): el módulo `ordenes_de_compra` está encendido y quien carga puede ver las órdenes (`orden_de_compra_ver`): se ofrece cargar la compra contra una orden pedida del proveedor. */
+  ordenesHabilitadas?: boolean;
 }) {
   const router = useRouter();
   const leer = useLeerServidor();
@@ -157,6 +168,9 @@ export function PanelCompraPorPasos({
   const [productosYaVinculados, setProductosYaVinculados] = useState<ReadonlySet<string>>(new Set());
   const [cargandoProveedor, setCargandoProveedor] = useState(false);
   const [infoProveedor, setInfoProveedor] = useState("");
+  // Orden de compra (etapa OC): las órdenes pedidas del proveedor elegido y la elegida (vacío = sin orden: la compra sigue como siempre).
+  const [ordenes, setOrdenes] = useState<OrdenParaMostrar[]>([]);
+  const [ordenId, setOrdenId] = useState("");
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
   // I3: un UUID por intento de envío, reenviado tal cual en cada reintento del MISMO envío; se renueva recién después de un éxito.
@@ -225,6 +239,17 @@ export function PanelCompraPorPasos({
 
   const elegirProveedor = (id: string) => {
     setProveedorId(id);
+    setOrdenId("");
+    setOrdenes([]);
+    setItems((prev) => prev.map((f) => ({ ...f, lineaDeOrden: "", confirmoExceso: false })));
+    if (ordenesHabilitadas && id) {
+      void leer(
+        () => listarOrdenesParaElegir(id),
+        () => setOrdenes([])
+      ).then((lista) => {
+        if (lista) setOrdenes(lista);
+      });
+    }
     const pedido = ++pedidoProveedor.current;
     setProductosYaVinculados(new Set());
 
@@ -359,6 +384,9 @@ export function PanelCompraPorPasos({
           items: itemsValidos,
           reparto: { modo: repartiendo && reparto ? estadoReparto.modo : "PORCENTAJE", partes },
           ...(pendienteDePago ? { condicionPago: "PENDIENTE_DE_PAGO" as const } : {}),
+          ...(ordenesHabilitadas && ordenId
+            ? { ordenDeCompra: { ordenId, renglones: lineasAGuardar.flatMap((f, i) => (f.lineaDeOrden ? [{ itemIndex: i, lineaDeOrden: Number(f.lineaDeOrden), confirmoExceso: f.confirmoExceso }] : [])) } }
+            : {}),
           claveIdempotencia,
         });
         setOk(resultado.ok);
@@ -375,6 +403,8 @@ export function PanelCompraPorPasos({
           reiniciarFilas();
           setEstadoReparto(REPARTO_APAGADO);
           setPendienteDePago(false);
+          setOrdenId("");
+          setOrdenes([]);
           setClaveIdempotencia(crypto.randomUUID());
           router.refresh();
         }
@@ -438,6 +468,23 @@ export function PanelCompraPorPasos({
             <CampoFecha etiqueta="Fecha de la factura" value={fecha} max={hoy} onChange={(e) => setFecha(e.target.value)} required />
           </div>
           <CampoNumeroDeComprobante partes={numero} onCambio={setNumero} mostrarErrores={intentoFactura} />
+          {ordenesHabilitadas && ordenes.length > 0 && (
+            <Selector
+              etiqueta="Orden de compra (opcional)"
+              value={ordenId}
+              onChange={(e) => {
+                setOrdenId(e.target.value);
+                setItems((prev) => prev.map((f) => ({ ...f, lineaDeOrden: "", confirmoExceso: false })));
+              }}
+            >
+              <option value="">Sin orden de compra</option>
+              {ordenes.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {`N.º ${o.numero ?? ""}${o.fechaDeEntregaPrevista ? ` · entrega ${o.fechaDeEntregaPrevista}` : ""}`}
+                </option>
+              ))}
+            </Selector>
+          )}
         </div>
       )}
 
@@ -546,6 +593,23 @@ export function PanelCompraPorPasos({
                     <Aviso variante="error" forma="en-linea">
                       {errorAca.mensaje}
                     </Aviso>
+                  </div>
+                )}
+                {ordenesHabilitadas && ordenId && (
+                  <div className="flex w-full flex-wrap items-end gap-2">
+                    <div className="min-w-56 flex-1">
+                      <Selector etiqueta="Línea de la orden (opcional)" tamano="compacto" value={fila.lineaDeOrden} onChange={(e) => actualizarFila(idx, { lineaDeOrden: e.target.value, confirmoExceso: false })}>
+                        <option value="">Ninguna</option>
+                        {(ordenes.find((o) => o.id === ordenId)?.lineas ?? [])
+                          .filter((l) => !l.retirada)
+                          .map((l) => (
+                            <option key={l.numero} value={String(l.numero)}>
+                              {`${l.productoNombre}: pedida ${formatearCantidad(l.cantidadPedida)}, recibida ${formatearCantidad(l.cantidadRecibida ?? 0)}`}
+                            </option>
+                          ))}
+                      </Selector>
+                    </div>
+                    {fila.lineaDeOrden !== "" && <Casilla etiqueta="Confirmo recibir más de lo pedido" checked={fila.confirmoExceso} onChange={(e) => actualizarFila(idx, { confirmoExceso: e.target.checked })} />}
                   </div>
                 )}
                 <Boton variante="secundario" tamano="compacto" onClick={() => quitarFila(idx)} disabled={items.length === 1}>

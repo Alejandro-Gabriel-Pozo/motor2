@@ -54,11 +54,11 @@ describe("vistaDeModulos: los casos de ADR-015", () => {
   });
 });
 
-describe("vistaDeModulos coincide con la clausura en los 1024 registros posibles", () => {
+describe("vistaDeModulos coincide con la clausura en los 2048 registros posibles", () => {
   const subconjuntos = Array.from({ length: 1 << VENDIBLES_DISPONIBLES.length }, (_, mascara) => VENDIBLES_DISPONIBLES.filter((_, i) => mascara & (1 << i)));
 
   it("efectivo, puedeDesactivar y puedeActivar son exactamente lo que dicen modulosEfectivos y validarCambioDeModulos", () => {
-    expect(subconjuntos).toHaveLength(1024);
+    expect(subconjuntos).toHaveLength(2048);
     for (const activos of subconjuntos) {
       const efectivos = modulosEfectivos(activos);
       for (const f of vistaDeModulos(activos)) {

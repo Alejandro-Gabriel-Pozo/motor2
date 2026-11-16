@@ -129,11 +129,16 @@ const L = [
   "opcion_apagar_en_sucursal",
   // Compras N3-b (2026-11-16, «Como Pedernal: también el operador»): registrar el control por línea de una compra pendiente de recibir (piso operario, semilla admin y operador, como `proceso_compra`).
   "compra_controlar_recepcion",
+  // Compras, orden de compra (2026-11-16): ver las órdenes y elegir una al cargar una compra (solo lectura; piso operario, semilla admin y operador).
+  "orden_de_compra_ver",
 ] as const satisfies readonly AccionClave[];
 
 const A = [
   // Compras N3-a (2026-11-16): confirmar la recepción de una compra pendiente pasa de O a A (piso administrador, semilla admin): confirman el gerente y el administrador, no el operador (dueño: «un gerente o administrador la confirma»).
   "compra_recibir",
+  // Compras, orden de compra (2026-11-16): crear, pedir, anular y cerrar una orden, y configurar el control de exceso (piso administrador, semilla admin): lo hace quien administra o gerencia, no el operador.
+  "orden_de_compra_gestionar",
+  "compras_configurar",
   // Parte P1 (b): desactivar y reactivar fichas (piso administrador, semilla admin: D10, 2026-11-12).
   "partes_desactivar",
   "guardar_receta",
