@@ -23,7 +23,7 @@ export interface ComandoDuplicarProducto {
   copiarOpciones: boolean;
   /** La sucursal de la que se toma la receta vigente (si tiene receta propia habilitada, esa; si no, la central); `null` = la Central. Solo cuenta con `copiarReceta`. */
   sucursalDeLaRecetaId: string | null;
-  /** El precio de lista con el que nace (punto de partida editable). `null` = no viene: con `producto_campos_sensibles` nace con el del original; sin la clave, en 0. */
+  /** El precio de lista con el que nace (punto de partida editable). `null` = no viene: nace con el del original. Sin `producto_campos_sensibles` solo puede venir null (el precio se copia, no se elige). */
   precioVenta: number | null;
 }
 

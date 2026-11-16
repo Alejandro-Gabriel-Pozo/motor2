@@ -55,8 +55,8 @@ import { fijarAdmisionDeGrupoEnTx } from "./fijar-admision-de-grupo-en-producto"
  * dejan pasar a uno y el otro, al repetirse, recibe «ya existe».
  *
  * Quién puede (lo resuelve la Server Action; este caso de uso NO chequea permisos): `alta_producto` para crear, `guardar_receta` si se copia la receta y `producto_opciones_admitidas` si se copian las opciones — si falta alguno, se
- * rechaza el pedido ENTERO antes de leer nada (no se copia «lo que se pueda»). El precio lo decide `puedeEditarCamposSensibles` (`producto_campos_sensibles`): sin la clave el producto nace con precio 0, factor 1, sin unidad de compra y,
- * si es de venta, SIN disponibilidad (regla M.2-A4 del alta); un original que se vende por opción exige la clave (el modo de venta es un campo sensible) y que se copien también sus opciones. La receta de otra sucursal exige lo de S-07
+ * rechaza el pedido ENTERO antes de leer nada (no se copia «lo que se pueda»). El precio se COPIA siempre (decisión del dueño, 2026-11-16, como Pedernal); `puedeEditarCamposSensibles` (`producto_campos_sensibles`) solo decide si se puede ELEGIR otro: sin la clave el pedido no puede traer precio,
+ * y el producto nace con el factor 1, sin unidad de compra y, si es de venta, SIN disponibilidad (regla M.2-A4 del alta); un original que se vende por opción exige la clave (el modo de venta es un campo sensible) y que se copien también sus opciones. La receta de otra sucursal exige lo de S-07
  * (`leerOrigenDeCopia`: membresía y «Ver» de `receta_sucursal_copiar` allá).
  *
  * La receta pasa por la validación de siempre (`validarIngredientes`, `validarPasos`, `validarCabecera`, la unidad de stock): un ingrediente dado de baja hace fallar todo y se NOMBRAN todos; la guardia de unidad no corre (es una copia
@@ -92,8 +92,8 @@ export async function duplicarProductoCasoDeUso(
   /** M.2: si quien duplica tiene `producto_campos_sensibles` EDITAR (lo calcula la Server Action con el gate; este caso de uso no chequea permisos). */
   puedeEditarCamposSensibles: boolean
 ): Promise<ResultadoDuplicarProducto> {
-  // Sin la clave, lo único que el alta acepta es precio 0: un precio escrito (un NaN, un texto, ya no llega: lo filtró el guard) es fijar justo lo que protege `producto_campos_sensibles`. Fallo cerrado, antes de leer nada.
-  if (!puedeEditarCamposSensibles && comando.precioVenta !== null && comando.precioVenta !== 0) return fracaso("SIN_PERMISO_CAMPOS_SENSIBLES", MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES);
+  // Sin la clave el precio solo se COPIA del original: un precio en el pedido (cualquiera, también el 0 o el mismo del original) es elegir justo lo que protege `producto_campos_sensibles`. Fallo cerrado, antes de leer nada.
+  if (!puedeEditarCamposSensibles && comando.precioVenta !== null) return fracaso("SIN_PERMISO_CAMPOS_SENSIBLES", MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES);
 
   // S-07 (O.56): la receta de una sucursal se lee SOLO con membresía y «Ver» de `receta_sucursal_copiar` en ella (la Central no es una sucursal: no hay nada que chequear). Antes de leer el original.
   let sucursalDeLaReceta: { id: string; nombre: string } | null = null;
@@ -172,21 +172,14 @@ export async function duplicarProductoCasoDeUso(
         const admitidoLeido = comando.copiarOpciones ? await cargarAdmitidoDelOrigen(tx, origen.id) : [];
         if (comando.copiarOpciones && admitidoLeido.length === 0) return fracaso("ORIGEN_SIN_OPCIONES", `«${origen.nombre}» no tiene opciones vinculadas: no hay nada que copiar.`);
 
-        // 6. El precio y la ficha: con la clave se copian el precio, el factor y la unidad de compra; sin ella, los valores neutros del alta (M.2). Un original por opción se crea «Directo» y pasa a base al final, cuando sus
+        // 6. El precio y la ficha: el precio se copia siempre (con la clave se puede editar); el factor y la unidad de compra, solo con la clave; sin ella, los valores neutros del alta (M.2). Un original por opción se crea «Directo» y pasa a base al final, cuando sus
         // opciones ya están (así el control del precio de lista de cada grupo no se hace contra un precio guardado que en una base no se cobra).
         const esDeVenta = origen.tipo === "PV";
         // SUPUESTO(DEC-0008): un original por opción (su precio guardado no se cobra: rige el de cada opción) nace con precio guardado 0: así el control del precio de lista de cada grupo, que se hace contra el precio guardado, no juzga una
         // opción contra un número que en una base nunca se cobra.
-        const precioFinal = esBase ? 0 : puedeEditarCamposSensibles ? (comando.precioVenta ?? Number(origen.precioVenta)) : 0;
-        const precio: PrecioDelDuplicado = esBase
-          ? "POR_OPCION"
-          : !puedeEditarCamposSensibles
-            ? esDeVenta
-              ? "EN_CERO_Y_APAGADO"
-              : "EN_CERO"
-            : comando.precioVenta !== null && !mismosCentavos(comando.precioVenta, Number(origen.precioVenta))
-              ? "EDITADO"
-              : "COPIADO";
+        // Sin la clave `comando.precioVenta` es siempre null (lo rechazó el control de arriba): el precio sale del original.
+        const precioFinal = esBase ? 0 : (comando.precioVenta ?? Number(origen.precioVenta));
+        const precio: PrecioDelDuplicado = esBase ? "POR_OPCION" : comando.precioVenta !== null && !mismosCentavos(comando.precioVenta, Number(origen.precioVenta)) ? "EDITADO" : "COPIADO";
         const codigo = `${origen.tipo}_${azar.uuid().slice(0, 6)}`;
         await crearProductoDuplicado(tx, {
           id: comando.duplicadoId,
