@@ -18,15 +18,24 @@ import { cargarRecetaVigente } from "@/server/lecturas/catalogo/recetas-vigentes
  * se hacen acá, al borde de la persistencia.
  */
 
-/** `null` si no es una presentación real y activa de este producto: el caso de uso sigue con la default. */
+/** Hay más de una presentación activa de este producto con esa unidad: la línea de compra no sabe a cuál se refiere (hasta que apunte a la presentación, etapa d). */
+export const PRESENTACION_AMBIGUA = "AMBIGUA" as const;
+
+/**
+ * `null` si no es una presentación real y activa de este producto: el caso de uso sigue con la default. `PRESENTACION_AMBIGUA` si hay MÁS DE UNA activa con esa unidad (la línea solo trae la unidad):
+ * fallo cerrado, el que llama rechaza la línea; nunca se elige una al azar ni se cae a la default (cambiaría en silencio cuánto stock entra y a qué costo).
+ */
 export async function cargarPresentacionActiva(
   tx: Prisma.TransactionClient,
   args: { productoId: string; unidadCompraId: string }
-): Promise<{ unidadCompraId: string; factorConversion: number; unidadCompra: { nombre: string; decimales: number; magnitud: MagnitudUnidad } } | null> {
-  const presentacion = await tx.presentacion.findFirst({
+): Promise<{ unidadCompraId: string; factorConversion: number; unidadCompra: { nombre: string; decimales: number; magnitud: MagnitudUnidad } } | typeof PRESENTACION_AMBIGUA | null> {
+  const presentaciones = await tx.presentacion.findMany({
     where: { productoId: args.productoId, unidadCompraId: args.unidadCompraId, activa: true },
     include: { unidadCompra: true },
+    take: 2,
   });
+  if (presentaciones.length > 1) return PRESENTACION_AMBIGUA;
+  const presentacion = presentaciones[0];
   if (!presentacion) return null;
   return {
     unidadCompraId: presentacion.unidadCompraId,
