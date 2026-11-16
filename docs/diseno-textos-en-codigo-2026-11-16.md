@@ -2,7 +2,7 @@
 
 Fecha: 2026-11-16. Sesión de documentos (rama `diseno-textos-en-codigo-2026-11-16`, base `main` `66e20d1a`). **No toca ningún texto visible, código, prueba, catálogo ni migración.** Inventario con cifras y tabla: `docs/inventario-de-textos-motor2-2026-11-16.md`.
 
-**Pedido y necesidad (CONFIRMADA).** Dueño, 2026-11-16, chat con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, sección «Textos: el orquestador se encarga…»): «Los textos encargarte vos trata de reducir, textos, inventariar y empezar a reutilizar y que representen 1 sola cosa, definir primitivas e invariantes en texto igual que pedernal». Paridad con Pedernal: `AGENTS.md`, 2026-11-13. Referencia leída: `ZuluHub-docs` `11-especificaciones/inventario-de-textos-en-codigo-diseno.md` y `plan-de-construccion-de-declaraciones.md` (clon del 2026-11-16, `521fc60b`). El alcance de la delegación al orquestador figura en ese registro como **PROPUESTA** (el dueño la corrige).
+**Pedido y necesidad (CONFIRMADA).** Dueño, 2026-11-16, chat con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, sección «Textos: el orquestador se encarga…»): «Los textos encargarte vos trata de reducir, textos, inventariar y empezar a reutilizar y que representen 1 sola cosa, definir primitivas e invariantes en texto igual que pedernal». Paridad con Pedernal: `AGENTS.md`, 2026-11-13. Referencia leída: `ZuluHub-docs` `11-especificaciones/inventario-de-textos-en-codigo-diseno.md` y `plan-de-construccion-de-declaraciones.md` (clon del 2026-11-16, `521fc60b`). **Límites de la delegación (CONFIRMADA, relatada por el orquestador, 2026-11-16):** «Sí, confirmo esos límites (Recomendada)» — el orquestador acepta o rechaza inventarios de textos y le lleva al dueño lo que cambie dinero, permisos, un texto fiscal o legal, lo que contradiga una decisión suya y las palabras de negocio nuevas sin parecido aprobado; los textos aprobados con sus palabras no se tocan sin avisarle. Fuente: `motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, secciones «Textos: el orquestador se encarga…» y «Textos: límites de la delegación confirmados».
 
 Estados: CONFIRMADA (lo dijo el dueño), PROPUESTA (mía, la corrige quien decide), PENDIENTE, NO VERIFICADO. **†** = aproximado.
 
@@ -12,7 +12,7 @@ Estados: CONFIRMADA (lo dijo el dueño), PROPUESTA (mía, la corrige quien decid
 2. **Se propone una sola entrada por texto, en un catálogo cerrado** (pedir una clave inexistente no compila), con **quién lo usa** y **de dónde salió**, más chequeos que fallan si aparece un texto sin declarar, sin uso, sin fuente, repetido o escrito a mano. Es la forma de Pedernal con código propio.
 3. **Lo más barato primero (T1):** el esqueleto del catálogo con UNA sola entrada real (el rechazo de dos presentaciones activas en la misma unidad, etapa a2-1) y sus chequeos sobre el propio catálogo. No cambia nada para el cliente y no obliga a nadie.
 4. **Reducir** va por familias de causa (§4), siempre empezando por lo que no cambia lo que ve el cliente; lo que cambia dinero, permisos o texto fiscal/legal va «AL DUEÑO».
-5. **Una pregunta pendiente** (§10), para el orquestador, sobre cómo cita cada lote aceptado por delegación.
+5. **La única pregunta (cómo cita cada lote aceptado por delegación) quedó resuelta** por el dueño el 2026-11-16 (§10).
 
 ## 1. Qué cosa es qué (verificado contra el código de `66e20d1a`)
 
@@ -56,7 +56,7 @@ Medido con un script de solo lectura sobre `66e20d1a` (no se commitea): 5.697 ap
 ### Nivel 2. Actores y contexto
 | Actor | Qué hace con un texto |
 |---|---|
-| Dueño | Aprueba con sus palabras lo que cambia dinero, permisos, texto fiscal/legal, contradice una decisión suya o es una palabra de negocio nueva sin parecido aprobado (CONFIRMADA la delegación en dirección; su alcance, PROPUESTA) |
+| Dueño | Aprueba con sus palabras lo que cambia dinero, permisos, texto fiscal/legal, contradice una decisión suya o es una palabra de negocio nueva sin parecido aprobado (CONFIRMADA la delegación y sus límites) |
 | Orquestador | Acepta o rechaza un lote (inventario) por delegación y lo asienta en una DEC |
 | Sesión de código (Sonnet) | Escribe el catálogo y los chequeos; declara cada texto nuevo con `usos` y `fuente`; no acepta nada |
 | Cliente final / personal | Lee el texto; no lo edita |
@@ -194,9 +194,9 @@ Tamaños: S ≤ 150 líneas, M ≤ 400 (un PR), L = dos PR. Estimación del inge
 
 ## 10. Supuestos, pregunta, hallazgos y verificación
 
-**Supuestos (costo de revertir).** S-1: los usos se declaran por archivo + nombre de función o constante (bajo). S-2: un valor repetido falla salvo `homonimoDe` con motivo (bajo). S-3: un lote = una DEC ya `ACEPTADA` (ver pregunta; bajo). S-4: la carpeta es `src/core/textos/` (renombrar: bajo; verificar `dependency-cruiser` en T1). S-5: la clave de rechazo es el código existente (bajo). S-6: la composición tiene un solo nivel (bajo).
+**Supuestos (costo de revertir).** S-1: los usos se declaran por archivo + nombre de función o constante (bajo). S-2: un valor repetido falla salvo `homonimoDe` con motivo (bajo). S-3: un lote = una DEC ya `ACEPTADA`, con la cita descrita en la pregunta resuelta (bajo). S-4: la carpeta es `src/core/textos/` (renombrar: bajo; verificar `dependency-cruiser` en T1). S-5: la clave de rechazo es el código existente (bajo). S-6: la composición tiene un solo nivel (bajo).
 
-**Pregunta pendiente (UNA, para el orquestador).** `AGENTS.md` I1 exige que toda aceptación sea del dueño, con cita literal. Un lote aceptado por delegación se cita con la frase del 2026-11-16 («Los textos encargarte vos…») y el alcance de esa delegación todavía figura como PROPUESTA. ¿Esa cita alcanza como `Cita del dueño` de la DEC del lote, o cada lote necesita una cita nueva del dueño? Mientras no se resuelva, ningún lote se asienta como `ACEPTADA`: T1 solo se puede cerrar con una DEC cuya cita sea válida. Estado: PENDIENTE.
+**Pregunta (RESUELTA, CONFIRMADA).** `AGENTS.md` I1 exige cita literal del dueño. Respuesta del dueño, 2026-11-16, relatada por el orquestador: «Sí, confirmo esos límites (Recomendada)». Por lo tanto la «Cita del dueño» de la DEC de cada lote es su frase del 2026-11-16 («Los textos encargarte vos trata de reducir, textos, inventariar y empezar a reutilizar y que representen 1 sola cosa, definir primitivas e invariantes en texto igual que pedernal») más esta confirmación; fuente: `motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, secciones «Textos: el orquestador se encarga…» y «Textos: límites de la delegación confirmados». T1 puede cerrar su DEC como `ACEPTADA`, con la salvedad de que cada lote lo acepta el orquestador dentro de esos límites (lo que los excede va al dueño). No quedan preguntas abiertas.
 
 **Hallazgos aparte (no se tocaron).**
 1. `fracaso("TIENE_EXISTENCIA", "TIENE_EXISTENCIA")` (`ocultar-producto.ts:80,134`): el mensaje es el código crudo; NO VERIFICADO si la pantalla lo traduce (E3b no trae pantalla).
