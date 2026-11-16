@@ -85,6 +85,7 @@ export const AREAS: DeclaracionDeAreas = {
   "core/reportes": [],
   "core/seguridad": [],
   "core/stock": [],
+  "core/textos": [],
   "core/tiempo": [],
   // --- servidor: las capas de src/server, más src/lib, src/types y los archivos sueltos de src.
   "server/acceso": [],

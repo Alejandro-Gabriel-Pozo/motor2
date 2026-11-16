@@ -23,6 +23,7 @@ const INFRA_TRANSVERSAL = {
   tiempo: "zona horaria de la empresa: formato de horas y límites de día con Intl; puro, lo consumen reportes, POS y validaciones de fecha.",
   seguridad: "cabeceras HTTP y auditoría de dependencias: se consumen desde la configuración y los scripts.",
   correo: "envío de mails por canal (avisos / operativo): interfaz con implementaciones Resend, consola y memoria (E3, ADR-018); lo consumen las acciones de servidor y el arranque.",
+  textos: "catálogo cerrado de textos de interfaz y su lector `textoDe` (diseño `docs/diseno-textos-en-codigo-2026-11-16.md`, T1): puro, sin I/O ni estado; lo leen servidor, pantallas y app por diseño, sin internals que proteger.",
   plataforma: "primitivas puras de la consola de plataforma (TOTP, códigos, cifrado, sesión, límites, email reservado; E4, ADR-012/019): las consumen la app plataforma/ y el alta de empresa.",
 };
 
