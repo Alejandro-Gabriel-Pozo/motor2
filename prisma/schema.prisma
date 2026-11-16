@@ -47,6 +47,12 @@ model User {
   sesionesDeCajaCerradas     SesionCaja[]           @relation("SesionCajaCerradaPor")
   movimientosDeCaja          MovimientoCaja[]       @relation("MovimientoCajaCreadoPor")
   cobranzas                  Cobranza[]             @relation("CobranzaCreadaPor")
+  jornadasEnCierreIniciadas  JornadaDeSucursal[]    @relation("JornadaIniciadaPor")
+  jornadasCerradas           JornadaDeSucursal[]    @relation("JornadaCerradaPor")
+  controlesReconocidos       ControlDeJornadaCerrada[] @relation("ControlReconocidoPor")
+  correccionesDeMedio        CorreccionDeMedio[]    @relation("CorreccionDeMedioPor")
+  declaracionesDeTotal       DeclaracionDeTotal[]   @relation("DeclaracionDeTotalPor")
+  conformesDeJornada         ConformeDeJornada[]    @relation("ConformeDeJornadaPor")
   recetasDeCombinacionCreadas RecetaDeCombinacionVersion[]
   ventas                     Venta[]
   facturasProvCreadas        FacturaProveedor[]   @relation("FacturaProveedorCreadaPor")
@@ -143,6 +149,9 @@ model Sucursal {
   /// (docs/plan-comensales-y-limite-mesas-2026-09-26.md §2, retirado): el código ya no la lee ni la escribe y producción nunca la usó (`null` en todas las sucursales).
   maxMesasAbiertas Int?
 
+  /// Caja C2: hora de corte del día de negocio (por defecto 00:00, como Pedernal 0007). Lo que pasa antes de esta hora pertenece a la jornada del día anterior. La sesión de caja la sella al abrir; cambiarla no mueve jornadas existentes.
+  horaDeCorte DateTime @default(dbgenerated("'00:00:00'::time without time zone")) @db.Time(0)
+
   usuarios                 UsuarioSucursal[]
   capacidades              CapacidadSucursal[]
   secciones                Seccion[]
@@ -161,6 +170,11 @@ model Sucursal {
   cobros                   Cobro[]
   arqueosDeCaja            ArqueoCaja[]
   billetesDeArqueo         ArqueoBillete[]
+  jornadas                 JornadaDeSucursal[]
+  controlesDeJornada       ControlDeJornadaCerrada[]
+  correccionesDeMedio      CorreccionDeMedio[]
+  declaracionesDeTotal     DeclaracionDeTotal[]
+  conformesDeJornada       ConformeDeJornada[]
   traspasosComoOrigen      TraspasoSucursal[]            @relation("TraspasoOrigen")
   traspasosComoDestino     TraspasoSucursal[]            @relation("TraspasoDestino")
   pagosConsignante         PagoConsignante[]
@@ -2645,6 +2659,11 @@ model Empresa {
   cobros                         Cobro[]
   arqueosDeCaja                  ArqueoCaja[]
   billetesDeArqueo               ArqueoBillete[]
+  jornadasDeSucursal             JornadaDeSucursal[]
+  controlesDeJornada             ControlDeJornadaCerrada[]
+  correccionesDeMedio            CorreccionDeMedio[]
+  declaracionesDeTotal           DeclaracionDeTotal[]
+  conformesDeJornada             ConformeDeJornada[]
   insumoRel                      Insumo[]
   grupoRel                       Grupo[]
   categoriaProductoRel           CategoriaProducto[]
@@ -4147,6 +4166,9 @@ model MedioDePago {
   movimientos MovimientoCaja[]
   cobros      Cobro[]
   arqueos     ArqueoCaja[]
+  correccionesAntes   CorreccionDeMedio[] @relation("CorreccionMedioAntes")
+  correccionesDespues CorreccionDeMedio[] @relation("CorreccionMedioDespues")
+  declaraciones       DeclaracionDeTotal[]
 
   @@unique([empresaId, id])
 }
@@ -4165,6 +4187,8 @@ model SesionCaja {
   estado            String
   fechaDeNegocio    DateTime  @db.Date
   zonaHoraria       String
+  /// Caja C2: la hora de corte de la sucursal al abrir (sello, junto con la fecha y la zona; la base exige que sea la vigente). Las sesiones de C1 quedan con 00:00.
+  horaDeCorte       DateTime  @default(dbgenerated("'00:00:00'::time without time zone")) @db.Time(0)
   abiertaEn         DateTime  @default(now()) @db.Timestamptz(3)
   abiertaPorId      String
   abiertaPor        User      @relation("SesionCajaAbiertaPor", fields: [abiertaPorId], references: [id])
@@ -4202,6 +4226,8 @@ model MovimientoCaja {
   importe           Decimal         @db.Decimal(14, 2)
   motivo            String?
   anulaAId          String?         @db.Uuid
+  /// Caja C2: solo en un AJUSTE que explica una jornada YA CERRADA y anterior a la de su sesión (la jornada cerrada no cambia; el ajuste cae en el día en curso).
+  corrigeJornada    DateTime?       @db.Date
   anulaA            MovimientoCaja? @relation("MovimientoCajaAnulacion", fields: [empresaId, anulaAId], references: [empresaId, id])
   anulaciones       MovimientoCaja[] @relation("MovimientoCajaAnulacion")
   claveIdempotencia String?
@@ -4258,6 +4284,8 @@ model Cobro {
   movimiento    MovimientoCaja @relation(fields: [empresaId, movimientoId], references: [empresaId, id])
   importe       Decimal        @db.Decimal(14, 2)
 
+  correcciones CorreccionDeMedio[]
+
   @@unique([empresaId, id])
   @@unique([empresaId, cobranzaId, orden])
   @@unique([empresaId, movimientoId])
@@ -4299,4 +4327,142 @@ model ArqueoBillete {
 
   @@unique([empresaId, id])
   @@unique([empresaId, sesionId, denominacion])
+}
+
+// ===================================================================
+// CAJA Y COBRO, ETAPA C2 — jornada de sucursal y cierre del día (docs/diseno-caja-c2-jornada-y-cierre-del-dia-2026-11-16.md; como las decidió Pedernal, 0026_cierre.sql y 0027_caja.sql)
+// ===================================================================
+
+/// La jornada de una sucursal en una fecha de negocio: ABIERTA → EN_AUDITORIA («En cierre») ⇄ ABIERTA, y EN_AUDITORIA → CERRADA (inmutable). Nace con la primera actividad del día (abrir una sesión) y NO se cierra sola.
+/// Una por (empresa, sucursal, fecha): único `JornadaDeSucursal_una_por_dia_key`. Las marcas siguen al estado (CHECK). Sin `version` ni `actualizadoEn`: nada los lee.
+model JornadaDeSucursal {
+  id                     String    @id @db.Uuid
+  empresaId              String    @default(dbgenerated("app_empresa_actual()"))
+  empresa                Empresa   @relation(fields: [empresaId], references: [id])
+  sucursalId             String
+  sucursal               Sucursal  @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  fechaDeNegocio         DateTime  @db.Date
+  /// ABIERTA | EN_AUDITORIA | CERRADA (CHECK).
+  estado                 String    @default("ABIERTA")
+  auditoriaIniciadaEn    DateTime? @db.Timestamptz(3)
+  auditoriaIniciadaPorId String?
+  auditoriaIniciadaPor   User?     @relation("JornadaIniciadaPor", fields: [auditoriaIniciadaPorId], references: [id])
+  cerradaEn              DateTime? @db.Timestamptz(3)
+  cerradaPorId           String?
+  cerradaPor             User?     @relation("JornadaCerradaPor", fields: [cerradaPorId], references: [id])
+  /// sha256 (hex) de los controles que se vieron al cerrar.
+  huellaDeCierre         String?
+  observacion            String?
+  creadoEn               DateTime  @default(now()) @db.Timestamptz(3)
+
+  controles     ControlDeJornadaCerrada[]
+  correcciones  CorreccionDeMedio[]
+  declaraciones DeclaracionDeTotal[]
+  conforme      ConformeDeJornada?
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, sucursalId, fechaDeNegocio], map: "JornadaDeSucursal_una_por_dia_key")
+}
+
+/// La foto de cada control al cerrar la jornada. Solo se agrega, y solo con la jornada pasando a CERRADA en la misma transacción (disparador).
+model ControlDeJornadaCerrada {
+  id              String            @id @db.Uuid
+  empresaId       String            @default(dbgenerated("app_empresa_actual()"))
+  empresa         Empresa           @relation(fields: [empresaId], references: [id])
+  sucursalId      String
+  sucursal        Sucursal          @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  jornadaId       String            @db.Uuid
+  jornada         JornadaDeSucursal @relation(fields: [empresaId, jornadaId], references: [empresaId, id])
+  modulo          String
+  /// `modulo.control` en minúsculas y guion bajo.
+  clave           String
+  /// BLOQUEA | RECONOCIBLE | INFORMA (CHECK).
+  severidad       String
+  cantidad        Int
+  reconocido      Boolean
+  reconocidoEn    DateTime?         @db.Timestamptz(3)
+  reconocidoPorId String?
+  reconocidoPor   User?             @relation("ControlReconocidoPor", fields: [reconocidoPorId], references: [id])
+  /// Explicación opcional de quien reconoce (lista de permitidos, 1 a 500).
+  texto           String?
+  creadoEn        DateTime          @default(now()) @db.Timestamptz(3)
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, jornadaId, clave])
+}
+
+/// Corrección del medio de un cobro (cualquier medio a cualquier otro, con el importe completo): fila NUEVA, el cobro original no se toca. `secuencia + 1` por cobro, rige la última. Solo con la jornada EN_AUDITORIA.
+model CorreccionDeMedio {
+  id                String            @id @db.Uuid
+  empresaId         String            @default(dbgenerated("app_empresa_actual()"))
+  empresa           Empresa           @relation(fields: [empresaId], references: [id])
+  sucursalId        String
+  sucursal          Sucursal          @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  jornadaId         String            @db.Uuid
+  jornada           JornadaDeSucursal @relation(fields: [empresaId, jornadaId], references: [empresaId, id])
+  cobroId           String            @db.Uuid
+  cobro             Cobro             @relation(fields: [empresaId, cobroId], references: [empresaId, id])
+  secuencia         Int
+  medioAntesId      String            @db.Uuid
+  medioAntes        MedioDePago       @relation("CorreccionMedioAntes", fields: [empresaId, medioAntesId], references: [empresaId, id])
+  medioDespuesId    String            @db.Uuid
+  medioDespues      MedioDePago       @relation("CorreccionMedioDespues", fields: [empresaId, medioDespuesId], references: [empresaId, id])
+  motivo            String
+  corregidoEn       DateTime          @db.Timestamptz(3)
+  corregidoPorId    String
+  corregidoPor      User              @relation("CorreccionDeMedioPor", fields: [corregidoPorId], references: [id])
+  claveIdempotencia String
+  huella            String
+  creadoEn          DateTime          @default(now()) @db.Timestamptz(3)
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, cobroId, secuencia])
+  @@unique([empresaId, claveIdempotencia])
+  @@index([jornadaId])
+}
+
+/// El total que dicen los comprobantes de un medio que NO es efectivo, en una jornada. `secuencia + 1` por (jornada, medio): rige la última y gana sobre el «conforme general». Solo con la jornada EN_AUDITORIA.
+model DeclaracionDeTotal {
+  id                String            @id @db.Uuid
+  empresaId         String            @default(dbgenerated("app_empresa_actual()"))
+  empresa           Empresa           @relation(fields: [empresaId], references: [id])
+  sucursalId        String
+  sucursal          Sucursal          @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  jornadaId         String            @db.Uuid
+  jornada           JornadaDeSucursal @relation(fields: [empresaId, jornadaId], references: [empresaId, id])
+  medioDePagoId     String            @db.Uuid
+  medioDePago       MedioDePago       @relation(fields: [empresaId, medioDePagoId], references: [empresaId, id])
+  secuencia         Int
+  importe           Decimal           @db.Decimal(14, 2)
+  declaradoEn       DateTime          @db.Timestamptz(3)
+  declaradoPorId    String
+  declaradoPor      User              @relation("DeclaracionDeTotalPor", fields: [declaradoPorId], references: [id])
+  claveIdempotencia String
+  huella            String
+  creadoEn          DateTime          @default(now()) @db.Timestamptz(3)
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, jornadaId, medioDePagoId, secuencia])
+  @@unique([empresaId, claveIdempotencia])
+}
+
+/// El «conforme general» de la jornada: quien cierra el día acepta lo registrado de TODOS los medios que no son efectivo y que no declaró. Uno solo por jornada. Solo con la jornada EN_AUDITORIA.
+model ConformeDeJornada {
+  id                String            @id @db.Uuid
+  empresaId         String            @default(dbgenerated("app_empresa_actual()"))
+  empresa           Empresa           @relation(fields: [empresaId], references: [id])
+  sucursalId        String
+  sucursal          Sucursal          @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  jornadaId         String            @db.Uuid
+  jornada           JornadaDeSucursal @relation(fields: [empresaId, jornadaId], references: [empresaId, id])
+  conformePorId     String
+  conformePor       User              @relation("ConformeDeJornadaPor", fields: [conformePorId], references: [id])
+  conformeEn        DateTime          @db.Timestamptz(3)
+  claveIdempotencia String
+  huella            String
+  creadoEn          DateTime          @default(now()) @db.Timestamptz(3)
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, jornadaId])
+  @@unique([empresaId, claveIdempotencia])
 }
