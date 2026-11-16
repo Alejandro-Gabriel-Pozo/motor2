@@ -132,6 +132,13 @@ const VERIFICACION: Readonly<Record<string, UsoDeVerificacion>> = {
     devuelve: "SI_NO",
     motivo: "alta rápida: ¿hay un producto disponible con ese nombre? (`findFirst` con `select: { id }`, solo se usa que exista)",
   },
+  "src/server/actions/catalogo/casos-de-uso/ocultar-producto.ts": {
+    lectores: {},
+    directos: [],
+    transaccionA: { conTransaccionSerializable: 0 },
+    devuelve: "SI_NO",
+    motivo: "«Ocultar» en toda la empresa: ¿el producto tiene existencia distinta de cero en ALGUNA sucursal? (`tieneExistenciaDistintaDeCero`, un sí/no) y las marcas de ocultar del producto; la transacción SERIALIZABLE lee toda la empresa y la ESCRITURA no se ensancha (la marca de la empresa, `sucursalId` nulo, se escribe con el alcance de siempre)",
+  },
   "src/server/actions/catalogo/casos-de-uso/actualizar-producto.ts": {
     lectores: {},
     directos: [],
