@@ -4,6 +4,7 @@
 >
 > **Este es el documento de entrada (resumen, estado, etapas, carril, dependencias y preguntas).** El detalle está en dos piezas hermanas:
 > - `docs/diseno-unidades-y-clasificacion-paridad-pedernal-2026-11-16-auditoria.md`: tabla «igual / difiere / falta» contra el código real de los dos lados, e inventario de las migraciones de igualación y su estado.
+> - `docs/diseno-unidades-y-clasificacion-paridad-pedernal-2026-11-16-fracciones.md` **(nuevo)**: etapa R4, fracciones y unidad de venta separada.
 > - `docs/diseno-unidades-y-clasificacion-paridad-pedernal-2026-11-16-escalera.md`: niveles 1 a 5 con el estado de cada decisión y la tabla «¿qué pasa si…?» por comando.
 >
 > **Actualización 2026-11-16 (tras el merge de #324).** El dueño respondió dos cosas (citas en §8): **departamento en la cuenta: «Sí, ya»** y **redondeo de cantidades: «Pasar a cuenta exacta como Pedernal»**. Además el orquestador general decidió que **clases de producto y «unir pares» quedan en este frente** y que **porciones / unidad de venta separada (Pedernal 0051) NO se toman**. Los cambios están marcados «(actualizado)».
@@ -48,10 +49,11 @@ El orden sale de «lo más barato primero» y de que **las migraciones se aprueb
 | **A1** | Consultas de **solo lectura** por base: unidades y equivalencias propuestas (U0 del diseño), recetas y líneas con merma (M1), categorías y productos, pares compra+venta (clases §11.3.9) | No | PROPUESTA, sin pedido nuevo: ya diseñadas |
 | **A1b** (actualizado) | **Redondeo exacto de cantidades** (`transiciones.ts:173`): pasar a `Decimal` con 4 decimales, como Pedernal. **Antes de aplicar: medir el efecto en el Kardex con la copia de solo lectura** (nada se escribe en producción), **regenerar los `golden` con el motivo declarado** y **coordinar la edición de `transiciones.ts` (zona de stock) con el frente 3**, que da la primitiva de cantidad exacta. Sin migración, pero **cambia resultados de stock**: no se mergea sin la medición | No (código), **cambia resultados** | **CONFIRMADA** («Pasar a cuenta exacta como Pedernal», 2026-11-16); alcance sobre `Unidad.decimales` **PENDIENTE** (P2) |
 | **A2** | Aditivas y reversibles, **con `down.sql`**, solo escritas y llevadas a `main` (no aplicadas): `Unidad.codigoFijo` (U1), `baseDeCantidad` en las tres tablas de versiones (M2), árbol en `CategoriaProducto` (E1), `ProductoClasificacion` (E2), columna `Producto.clase` (clases E1) | Esquema, no filas | PROPUESTA; **no se escriben hasta que el dueño confirme los niveles 1 a 5 de cada una** (compuerta) |
+| **R4** (actualizado) | Fracciones 2/4/8 y, según P2b, unidad de venta separada: ver `docs/diseno-unidades-y-clasificacion-paridad-pedernal-2026-11-16-fracciones.md`. E0 hecha (#302); E1 a E5 diseñadas; E1b, E2 y E5 piden autorización expresa por base | Esquema + datos (E1b) | Ratificada (2026-11-16); **no escrita** |
 | **A3** | El código lee lo nuevo (U2, M3a, pantallas de clasificación y selector) | No | Después de A2; la pantalla es del frente 6 |
 | **A4** | **Reescriben datos o cambian tipos**, **«requiere autorización expresa por base, con respaldo y ensayo»**: U1b (rellenar `codigoFijo`), U3 (agregar las 14 a empresas existentes), M2b (merma de 2 a 4 decimales), M3b (cargar en bruto y convertir al editar, sin migración pero cambia stock y costo de lo nuevo), clases E1b (relleno parcial) y E6 (**unir pares**), E3 de clasificación (camino en `CuentaItem` **y departamento en `Cuenta`** (actualizado): aditivas, pero la reversión destruye lo sellado) | **Sí** | Nada aplicado; congelamiento vigente |
 
-**Lo que NO entra (nadie lo pidió; sugerencias, no código):** fusionar unidades duplicadas; renombrar presentaciones; unidad de venta separada de la de stock y porciones (Pedernal 0051, R4: **decidido por el orquestador general: NO se toma**; queda pregunta abierta para el dueño porque nadie la pidió); filtro de productos por clasificación; reportes por departamento; responsable de departamento.
+**Lo que NO entra (nadie lo pidió; sugerencias, no código):** fusionar unidades duplicadas; renombrar presentaciones; (actualizado) **porciones y unidad de venta separada (Pedernal 0051, R4) ENTRAN** como etapa propia: dueño, 2026-11-16, «Sí, como Pedernal (2, 4 y 8)» (ver `…-fracciones.md`); filtro de productos por clasificación; reportes por departamento; responsable de departamento.
 
 ---
 
@@ -123,7 +125,7 @@ Nivel 6 (tablas) **no se diseña de nuevo acá**: las propuestas de esquema ya e
 
 ## 7. Preguntas a otros frentes y al orquestador general (no son preguntas al dueño)
 
-1. **(Resuelta)** R4 (porciones, unidad de venta separada, Pedernal 0051): **NO se toma**; pregunta abierta para el dueño en manos del orquestador general.
+1. **(Resuelta, actualizado)** R4 (porciones, Pedernal 0051): el dueño dijo «Sí, como Pedernal (2, 4 y 8)» → **entra como etapa propia** (pieza `…-fracciones.md`). Queda **una** pregunta al dueño sobre la unidad de venta separada (choca con la respuesta del 15/11: ver esa pieza §4).
 2. **(Resuelta)** Las **clases de producto** y «unir pares» **quedan en este frente** (decidido por el orquestador general).
 3. **(Resuelta)** Redondeo: lo decidió el dueño (§8). **Coordinar con el frente 3 la edición de `transiciones.ts`** (zona de stock): él da la primitiva de cantidad exacta; yo aplico en mi carril tras medir.
 4. **Frente 4:** ¿la merma pasa a perilla?
@@ -142,6 +144,7 @@ Nivel 6 (tablas) **no se diseña de nuevo acá**: las propuestas de esquema ya e
 Si no se responde: (a), y la medición del Kardex de A1b dice cuánto cambia.
 
 **Fila de espera:**
+- **P2b (la siguiente cuando toque).** Unidad de venta separada: ¿siempre en la unidad de stock o también en otra, como Pedernal? (detalle y opciones en la pieza de fracciones §4; recomendada (a)).
 - **P3.** Confirmar «en bloque» las asunciones de clasificación solo del orquestador: diseño del 06/11 («unidad → rubro») reemplazado, vínculo producto → nodo de solo inserción, `CategoriaProducto` ampliada en lugar de tabla nueva.
 - **P4.** ¿Merma a perilla? (solo si el frente 4 la necesita; hoy el frente 4 **no** la crea).
 - **P5.** Por base: unidades o pares que no entren en la regla (con el informe en la mano).
