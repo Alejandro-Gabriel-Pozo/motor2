@@ -6,8 +6,8 @@ import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
-import { bloquearOrden, hayCompraContraLaOrden } from "@/server/persistencia/compras/cargar-orden-de-compra";
-import { marcarOrdenAnulada } from "@/server/persistencia/compras/escribir-orden-de-compra";
+import { bloquearOrden, hayCompraContraLaOrden } from "@/server/persistencia/movimientos/cargar-orden-de-compra";
+import { marcarOrdenAnulada } from "@/server/persistencia/movimientos/escribir-orden-de-compra";
 
 /**
  * Caso de uso «anular una orden de compra» (Compras, etapa OC): un gerente o administrador anula la orden (BORRADOR o PEDIDA) con un motivo obligatorio. Se anula solo si NO tiene compras vigentes cargadas contra ella (pendientes de recibir o ya recibidas,

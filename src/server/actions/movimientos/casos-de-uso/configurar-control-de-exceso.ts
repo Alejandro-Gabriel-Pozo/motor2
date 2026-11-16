@@ -6,8 +6,8 @@ import type { FuenteDeAzar } from "@/core/seguridad/azar";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
-import { cargarNivelDelControlDeExceso } from "@/server/persistencia/compras/cargar-orden-de-compra";
-import { escribirNivelDelControlDeExceso } from "@/server/persistencia/compras/escribir-orden-de-compra";
+import { cargarNivelDelControlDeExceso } from "@/server/lecturas/movimientos/ordenes-de-compra";
+import { escribirNivelDelControlDeExceso } from "@/server/persistencia/movimientos/escribir-orden-de-compra";
 
 /**
  * Caso de uso «configurar el control de exceso de la recepción contra la orden» (Compras, etapa OC): un gerente o administrador fija el nivel del control `compras.recepcion_excede_la_orden` de la empresa: PERMITIR (lo que se recibe de más pasa), AVISAR (pasa solo

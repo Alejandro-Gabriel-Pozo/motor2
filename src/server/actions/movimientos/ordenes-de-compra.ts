@@ -7,7 +7,7 @@ import { azarDelProceso } from "@/lib/azar";
 import { requerirVerDeEmpresa } from "../con-sesion";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { error, type ResultadoAccion } from "../tipos";
-import { listarOrdenesPedidasParaElegir, type OrdenParaMostrar } from "@/server/consultas/movimientos/ordenes-de-compra";
+import { listarOrdenesPedidasParaElegir, type OrdenParaMostrar } from "@/server/lecturas/movimientos/ordenes-de-compra";
 import { anularOrdenDeCompraCasoDeUso } from "./casos-de-uso/anular-orden-de-compra";
 import { cerrarOrdenDeCompraCasoDeUso } from "./casos-de-uso/cerrar-orden-de-compra";
 import { configurarControlDeExcesoCasoDeUso } from "./casos-de-uso/configurar-control-de-exceso";

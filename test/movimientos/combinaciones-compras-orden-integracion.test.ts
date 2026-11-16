@@ -55,7 +55,7 @@ const confirmar = async (facturaId: string) => {
   const entradas = (await prisma.facturaProveedorRenglon.findMany({ where: { facturaProveedorId: facturaId, productoId: { not: null } } })).map((r) => ({ renglonId: r.id, seccionId: sec3, cantidad: Number(r.cantidadStock) }));
   return confirmarRecepcionDeFacturaCasoDeUso(actor(), { facturaId, entradas, fechaStock: mediodia(0) });
 };
-const id = (r: { ok: boolean; datos?: { facturaId?: string } }) => r.datos?.facturaId as string;
+const id = (r: { ok: boolean; datos?: { facturaId?: string | null } }) => r.datos?.facturaId as string;
 
 beforeEach(async () => {
   await limpiarBaseDeTest();

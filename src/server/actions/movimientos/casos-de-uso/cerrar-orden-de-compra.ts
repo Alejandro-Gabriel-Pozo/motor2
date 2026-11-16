@@ -6,8 +6,8 @@ import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
-import { bloquearOrden, hayCompraContraLaOrden } from "@/server/persistencia/compras/cargar-orden-de-compra";
-import { marcarOrdenCerrada } from "@/server/persistencia/compras/escribir-orden-de-compra";
+import { bloquearOrden, hayCompraContraLaOrden } from "@/server/persistencia/movimientos/cargar-orden-de-compra";
+import { marcarOrdenCerrada } from "@/server/persistencia/movimientos/escribir-orden-de-compra";
 
 /**
  * Caso de uso «cerrar una orden de compra» (Compras, etapa OC): un gerente o administrador cierra A MANO una orden pedida (como Pedernal: no hay cierre automático al recibir todo). Se cierra solo si no hay compras pendientes de recibir contra ella. La base fija

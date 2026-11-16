@@ -3,7 +3,7 @@ import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { listarProveedoresParaSelector } from "@/server/actions/catalogo/proveedores";
-import { leerNivelDelControlDeExceso, listarOrdenesParaMostrar } from "@/server/consultas/movimientos/ordenes-de-compra";
+import { cargarNivelDelControlDeExceso, listarOrdenesParaMostrar } from "@/server/consultas/movimientos/ordenes-de-compra";
 import { NIVEL_POR_DEFECTO_DEL_CONTROL } from "@/core/compras/public";
 import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
 import { PanelOrdenesDeCompra } from "./panel-ordenes-de-compra";
@@ -28,7 +28,7 @@ export default async function OrdenesDeCompraPage() {
   const [ordenes, proveedores, nivel] = await Promise.all([
     listarOrdenesParaMostrar(ctx.db, gestionar.editar),
     gestionar.editar ? listarProveedoresParaSelector(true) : Promise.resolve([]),
-    configurar.editar ? leerNivelDelControlDeExceso(ctx.db) : Promise.resolve(null),
+    configurar.editar ? cargarNivelDelControlDeExceso(ctx.db) : Promise.resolve(null),
   ]);
 
   return (

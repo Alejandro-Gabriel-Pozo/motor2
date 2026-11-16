@@ -6,8 +6,8 @@ import { ZONA_ARGENTINA, diaDeCalendario, diaDeColumnaDate, fechaDeColumnaDate }
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
-import { bloquearOrden, contarLineasNoRetiradas } from "@/server/persistencia/compras/cargar-orden-de-compra";
-import { marcarOrdenPedida } from "@/server/persistencia/compras/escribir-orden-de-compra";
+import { bloquearOrden, contarLineasNoRetiradas } from "@/server/persistencia/movimientos/cargar-orden-de-compra";
+import { marcarOrdenPedida } from "@/server/persistencia/movimientos/escribir-orden-de-compra";
 
 /**
  * Caso de uso «pedir una orden de compra» (Compras, etapa OC): un gerente o administrador pasa la orden de BORRADOR a PEDIDA. Sin segunda aprobación (decisión del dueño de Pedernal, 2026-11-16: una orden NO necesita aprobación). Desde ese momento la orden

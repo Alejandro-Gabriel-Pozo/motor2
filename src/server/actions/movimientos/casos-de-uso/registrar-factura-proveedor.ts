@@ -51,9 +51,10 @@ import {
   escribirRenglonesDeFactura,
   registrarResultadoDeFactura,
 } from "@/server/persistencia/compras/escribir-factura-proveedor";
-import { cargarLineasParaVincular, cargarNivelDelControlDeExceso } from "@/server/persistencia/compras/cargar-orden-de-compra";
-import { escribirVinculosConOrden } from "@/server/persistencia/compras/escribir-orden-de-compra";
-import { rechazoDeOrdenDeLaBase } from "@/server/persistencia/compras/errores-de-orden-de-compra";
+import { cargarLineasParaVincular } from "@/server/persistencia/movimientos/cargar-orden-de-compra";
+import { cargarNivelDelControlDeExceso } from "@/server/lecturas/movimientos/ordenes-de-compra";
+import { escribirVinculosConOrden } from "@/server/persistencia/movimientos/escribir-orden-de-compra";
+import { rechazoDeOrdenDeLaBase } from "@/server/persistencia/movimientos/errores-de-orden-de-compra";
 import { registrarVinculoDeCompraEnTx } from "@/server/actions/catalogo/casos-de-uso/registrar-vinculo-de-compra-en-tx";
 import { armarLineaMovimiento, type LineaCalculada } from "./armar-linea-de-movimiento";
 

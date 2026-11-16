@@ -8,9 +8,8 @@ import { ZONA_ARGENTINA, diaDeCalendario, fechaDeColumnaDate } from "@/core/tiem
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
-import { cargarOrdenPorClaveIdempotencia } from "@/server/persistencia/compras/cargar-orden-de-compra";
-import { escribirOrdenBorrador } from "@/server/persistencia/compras/escribir-orden-de-compra";
-import { cargarSucursalesDelReparto } from "@/server/persistencia/compras/cargar-factura-proveedor";
+import { cargarOrdenPorClaveIdempotencia } from "@/server/persistencia/movimientos/cargar-orden-de-compra";
+import { escribirOrdenBorrador } from "@/server/persistencia/movimientos/escribir-orden-de-compra";
 import { cargarProveedor } from "@/server/persistencia/movimientos/cargar-validaciones-de-movimiento";
 
 /**
@@ -54,7 +53,7 @@ export async function crearOrdenDeCompraCasoDeUso(
     const proveedor = await cargarProveedor(tx, o.proveedorId);
     if (!proveedor?.activo) return fracaso("PROVEEDOR_NO_DISPONIBLE", "El proveedor elegido ya no está disponible.");
     if (o.sucursalId) {
-      const [sucursal] = await cargarSucursalesDelReparto(tx, [o.sucursalId]);
+      const sucursal = await tx.sucursal.findUnique({ where: { id: o.sucursalId }, select: { activo: true } });
       const enAlcance = !actor.alcance || actor.alcance.escritura.includes(o.sucursalId);
       if (!sucursal || !sucursal.activo || !enAlcance) return fracaso("SUCURSAL_NO_DISPONIBLE", "La sucursal destino no está disponible.");
     }

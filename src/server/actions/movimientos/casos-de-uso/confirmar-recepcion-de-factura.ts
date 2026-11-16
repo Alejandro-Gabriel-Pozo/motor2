@@ -18,7 +18,7 @@ import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad"
 import { obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
 import { bloquearFactura, cargarParteDeFacturaEnSucursal, cargarRenglonesParaRecibir } from "@/server/persistencia/compras/cargar-factura-proveedor";
 import { confirmarParteRecibida } from "@/server/persistencia/compras/escribir-factura-proveedor";
-import { rechazoDeOrdenDeLaBase } from "@/server/persistencia/compras/errores-de-orden-de-compra";
+import { rechazoDeOrdenDeLaBase } from "@/server/persistencia/movimientos/errores-de-orden-de-compra";
 import { escribirLineasDeMovimientoStock, escribirOperacionDeStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
 
 /** Lo que tira la transacción cuando otra confirmación ganó en el medio: hace ROLLBACK de todo lo escrito y el `.catch` lo traduce. */
