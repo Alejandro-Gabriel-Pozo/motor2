@@ -520,7 +520,7 @@ model DisponibilidadProducto {
 /// Los dos índices únicos PARCIALES (una marca de empresa por producto; una por sucursal) los declara la migración a mano: Prisma no los expresa.
 /// Todavía NO la lee ni la escribe ningún código: se conecta por etapas (caso de uso, ventas, stock, pantalla).
 model OcultamientoProducto {
-  id               String    @id
+  id               String    @id @db.Uuid
   empresaId        String    @default(dbgenerated("app_empresa_actual()"))
   empresa          Empresa   @relation(fields: [empresaId], references: [id])
   productoId       String
