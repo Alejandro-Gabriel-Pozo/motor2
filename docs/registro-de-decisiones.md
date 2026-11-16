@@ -136,7 +136,7 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 - **Estado:** ACEPTADA
 - **Cita del dueño:** «Los textos encargarte vos trata de reducir, textos, inventariar y empezar a reutilizar y que representen 1 sola cosa, definir primitivas e invariantes en texto igual que pedernal; Sí, confirmo esos límites (Recomendada)» — 2026-11-16 — chat del dueño con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, secciones «Textos: el orquestador se encarga…» y «Textos: límites de la delegación confirmados»); lote aceptado por el orquestador por delegación (2026-11-16)
 
-### DEC-0018
+### DEC-0016
 - **Fecha:** 2026-11-16
 - **Quién:** la sesión Sonnet de los lotes de reducción del catálogo de textos (lote E); aceptación directa del dueño.
 - **Qué decidió:** siete rótulos de dinero de columnas de los reportes, escritos idénticos en varios archivos de `src/app/(app)/reportes/` (21 apariciones en 10 archivos), pasan a una clave `columna.<tema>` cada uno con EXACTAMENTE las mismas palabras: Importe (8), Cobrado (3), Margen (2), Food cost % (2), Costo unitario (2), A precio de lista (2) y Margen Real (cobrado) (2). El cliente no ve ningún cambio. «Margen» se mira uno por uno: en los dos reportes significa lo mismo (monto con su porcentaje entre paréntesis).

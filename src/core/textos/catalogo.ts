@@ -31,7 +31,7 @@ export const CATALOGO = {
     usos: [{ archivo: "src/server/actions/catalogo/casos-de-uso/agregar-presentacion-alternativa.ts", nombre: "agregarPresentacionAlternativaCasoDeUso" }],
     fuente: { decision: "DEC-0013" },
   },
-  // Lote E (DEC-0018): rótulos de dinero de columnas de reportes, con las MISMAS palabras que tenían (aceptado por el dueño, 2026-11-16).
+  // Lote E (DEC-0016): rótulos de dinero de columnas de reportes, con las MISMAS palabras que tenían (aceptado por el dueño, 2026-11-16).
   "columna.importe": {
     porDefecto: "Importe",
     usos: [
@@ -44,7 +44,7 @@ export const CATALOGO = {
       { archivo: "src/app/(app)/reportes/tabla-resumen.tsx", nombre: "COLUMNAS_TOP_PROVEEDORES" },
       { archivo: "src/app/(app)/reportes/ventas-por-seccion/tabla-seccion.tsx", nombre: "COLUMNAS" },
     ],
-    fuente: { decision: "DEC-0018" },
+    fuente: { decision: "DEC-0016" },
   },
   "columna.cobrado": {
     porDefecto: "Cobrado",
@@ -53,7 +53,7 @@ export const CATALOGO = {
       { archivo: "src/app/(app)/reportes/descuentos-productos/tabla-descuentos-productos.tsx", nombre: "COLUMNAS" },
       { archivo: "src/app/(app)/reportes/margen-promociones/tabla-margen-promociones.tsx", nombre: "COLUMNAS" },
     ],
-    fuente: { decision: "DEC-0018" },
+    fuente: { decision: "DEC-0016" },
   },
   "columna.margen": {
     porDefecto: "Margen",
@@ -61,7 +61,7 @@ export const CATALOGO = {
       { archivo: "src/app/(app)/reportes/costos/tabla-costos.tsx", nombre: "COLUMNAS_PRODUCTOS" },
       { archivo: "src/app/(app)/reportes/periodo/tabla-periodo.tsx", nombre: "COLUMNAS_VENTAS_POR_OPCION" },
     ],
-    fuente: { decision: "DEC-0018" },
+    fuente: { decision: "DEC-0016" },
   },
   "columna.food_cost": {
     porDefecto: "Food cost %",
@@ -69,7 +69,7 @@ export const CATALOGO = {
       { archivo: "src/app/(app)/reportes/costos/tabla-costos.tsx", nombre: "COLUMNAS_PRODUCTOS" },
       { archivo: "src/app/(app)/reportes/periodo/tabla-periodo.tsx", nombre: "COLUMNAS_IMPACTO_RECETA" },
     ],
-    fuente: { decision: "DEC-0018" },
+    fuente: { decision: "DEC-0016" },
   },
   "columna.costo_unitario": {
     porDefecto: "Costo unitario",
@@ -77,7 +77,7 @@ export const CATALOGO = {
       { archivo: "src/app/(app)/reportes/costos/tabla-costos.tsx", nombre: "COLUMNAS_INSUMOS" },
       { archivo: "src/app/(app)/reportes/valuacion/tabla-valuacion.tsx", nombre: "COLUMNAS_CON_COSTO" },
     ],
-    fuente: { decision: "DEC-0018" },
+    fuente: { decision: "DEC-0016" },
   },
   "columna.a_precio_de_lista": {
     porDefecto: "A precio de lista",
@@ -85,7 +85,7 @@ export const CATALOGO = {
       { archivo: "src/app/(app)/reportes/descuentos-clientes/tabla-descuentos-clientes.tsx", nombre: "COLUMNAS" },
       { archivo: "src/app/(app)/reportes/descuentos-productos/tabla-descuentos-productos.tsx", nombre: "COLUMNAS" },
     ],
-    fuente: { decision: "DEC-0018" },
+    fuente: { decision: "DEC-0016" },
   },
   "columna.margen_real_cobrado": {
     porDefecto: "Margen Real (cobrado)",
@@ -93,7 +93,7 @@ export const CATALOGO = {
       { archivo: "src/app/(app)/reportes/descuentos-clientes/tabla-descuentos-clientes.tsx", nombre: "COLUMNAS" },
       { archivo: "src/app/(app)/reportes/margen-promociones/tabla-margen-promociones.tsx", nombre: "COLUMNAS" },
     ],
-    fuente: { decision: "DEC-0018" },
+    fuente: { decision: "DEC-0016" },
   },
 } as const satisfies Readonly<Record<string, DefinicionDeTexto>>;
 
