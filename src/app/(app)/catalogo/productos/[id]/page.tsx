@@ -14,7 +14,10 @@ import { DuplicarProducto } from "@/components/catalogo/duplicar-producto";
 import { OBSERVACIONES_VISIBLES } from "@/core/catalogo/public";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
-import { actualizarDisponibilidadProducto } from "@/server/actions/catalogo/productos";
+import { actualizarDisponibilidadProducto, ocultarProducto } from "@/server/actions/catalogo/productos";
+import { TarjetaOcultar } from "@/components/catalogo/tarjeta-ocultar";
+import { puedeOcultarEnLaEmpresa } from "@/server/acceso/ocultar-en-la-empresa";
+import { marcasDeOcultarDelProducto } from "@/server/lecturas/catalogo/ocultamiento";
 import { disponibilidadPorSucursalDeProducto } from "@/server/consultas/catalogo/disponibilidad";
 import { obtenerFichaProducto, obtenerSeccionHabitualEnSucursal } from "@/server/consultas/catalogo/productos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
@@ -88,6 +91,8 @@ export default async function FichaProductoPage({
     // `producto_opciones_admitidas` (cortesía: esa pantalla exige el permiso por su cuenta).
     p.tipo === "PV" ? cargarOpcionesDelProducto(ctx.db, p.id, ctx.sucursalId) : Promise.resolve(null),
   ]);
+  // «Ocultar» (tarjeta, etapa d): se lee dónde está oculto y quién puede cambiarlo. Todo es cortesía de la interfaz (el servidor decide cada pedido). Falla CERRADO: si no se pudo leer, la tarjeta no se muestra y la ficha sigue igual.
+  const ocultar = await cargarLoQueMuestraOcultar(ctx, p.id, puedeCambiarDisponibilidad);
   const disponibleAca = disponibilidadPorSucursal.find((d) => d.sucursalId === ctx.sucursalId)?.disponible ?? false;
   const esDeRespaldo = opcionesDeVenta?.producto.esAnclaDeAdicional ?? false;
 
@@ -241,6 +246,8 @@ export default async function FichaProductoPage({
         />
       </section>
 
+      {ocultar && !esDeRespaldo && <TarjetaOcultar {...ocultar} sucursalNombre={ctx.sucursalNombre} accion={ocultarProducto.bind(null, productoId)} />}
+
       {duplicar && (
         <div className="flex justify-end">
           <DuplicarProducto
@@ -344,4 +351,19 @@ async function cargarLoQuePideDuplicar(ctx: ContextoUsuario, productoId: string)
     leerResumenParaDuplicar(ctx.db, productoId),
   ]);
   return { puedeCopiarReceta: receta.editar && !sinModuloDeRecetas, puedeCopiarOpciones: opciones.editar, puedeFijarPrecio, sucursalesDeLaReceta, resumen };
+}
+
+/** Lo que la tarjeta «Ocultar» necesita: dónde está oculto el producto y a qué filas se le ofrece un botón. `null` (la tarjeta no se muestra) si la lectura falla: nunca se asume «visible». */
+async function cargarLoQueMuestraOcultar(ctx: ContextoUsuario, productoId: string, puedeCambiarDisponibilidad: boolean) {
+  try {
+    const [marcas, puedeEnLaEmpresa] = await Promise.all([
+      marcasDeOcultarDelProducto(ctx.db, productoId, ctx.sucursalId),
+      // La fila de la empresa pide, además del permiso de la sucursal, ser gerente o administrador con alcance total.
+      puedeCambiarDisponibilidad ? puedeOcultarEnLaEmpresa(ctx) : Promise.resolve(false),
+    ]);
+    return { ocultoEnLaSucursal: marcas.local, ocultoEnLaEmpresa: marcas.empresa, puedeEnElLocal: puedeCambiarDisponibilidad, puedeEnLaEmpresa };
+  } catch (e) {
+    console.error("No se pudo leer dónde está oculto el producto; la tarjeta «Ocultar» no se muestra.", e);
+    return null;
+  }
 }

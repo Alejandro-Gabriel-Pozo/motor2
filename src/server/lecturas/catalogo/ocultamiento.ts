@@ -64,3 +64,12 @@ export async function ocultosQueQuedarianConExistencia(
   }
   return [...rechazados];
 }
+
+/**
+ * Qué marcas de «Ocultar» tiene un producto, por separado, para la tarjeta de la ficha: la de ESTA sucursal (`local`) y la de toda la empresa (`empresa`). La lectura ve solo lo que el alcance deja ver: la fila de la
+ * sucursal activa y las de la empresa (`sucursalId` nulo). Sin fila = visible (`false`). La regla de «oculto en la sucursal» (`ocultoPor`) sigue siendo una sola: esto solo separa los dos alcances para mostrarlos.
+ */
+export async function marcasDeOcultarDelProducto(db: Db, productoId: string, sucursalId: string): Promise<{ local: boolean; empresa: boolean }> {
+  const filas = await db.ocultamientoProducto.findMany({ where: { productoId, oculto: true, OR: [{ sucursalId: null }, { sucursalId }] }, select: { sucursalId: true } });
+  return { local: filas.some((f) => f.sucursalId === sucursalId), empresa: filas.some((f) => f.sucursalId === null) };
+}

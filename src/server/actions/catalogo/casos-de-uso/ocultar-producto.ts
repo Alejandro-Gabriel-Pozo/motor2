@@ -2,6 +2,7 @@ import "server-only";
 import { decidirSobreProducto, marcasDeOcultar, ocultoPor, type MotivoDeRechazo, type Quien } from "@/core/catalogo/ocultar-producto";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
+import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { tieneExistenciaDistintaDeCero } from "@/server/lecturas/catalogo/existencia-para-ocultar";
@@ -75,7 +76,7 @@ function codigoDe(motivo: MotivoDeRechazo): CodigoDeOcultar {
  * @ficha permiso=producto_disponibilidad transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function ocultarProductoCasoDeUso(
-  actor: Pick<ContextoDeAccion, "transaccion" | "usuarioId" | "sucursalId" | "sucursalNombre" | "ahora">,
+  actor: Pick<ContextoDeAccion, "empresaId" | "db" | "alcance" | "transaccion" | "usuarioId" | "sucursalId" | "sucursalNombre" | "ahora">,
   comando: ComandoOcultarProducto,
 ): Promise<ResultadoOcultarProducto> {
   if (!comando.productoId || !ES_UUID.test(comando.marcaId)) return fracaso("DATOS_INVALIDOS", "DATOS_INVALIDOS");
@@ -88,8 +89,11 @@ export async function ocultarProductoCasoDeUso(
   const permiso = decidirSobreProducto({ hechos: sinHechos, operacion, quien, alcance });
   if (!permiso.ok) return fracaso(codigoDe(permiso.motivo), permiso.motivo);
 
+  // Toda la empresa: la existencia hay que mirarla en TODAS las sucursales (con la RLS por sucursal, sin esto se vería solo la activa y se subestimaría). Se ensancha SOLO la lectura (el SI_NO de existencia
+  // y las marcas del producto); la escritura queda en el alcance de siempre: la marca de la empresa (`sucursalId` nulo) se escribe con cualquier alcance fijado.
+  const base = comando.alcance === "EMPRESA" ? await lecturaDeVerificacionEnLaEmpresa(actor) : actor;
   try {
-    return await conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoOcultarProducto> => {
+    return await conTransaccionSerializable(base.transaccion, async (tx): Promise<ResultadoOcultarProducto> => {
       await tomarFilaDeProducto(tx, comando.productoId);
       const producto = await tx.producto.findUnique({ where: { id: comando.productoId }, select: { id: true, nombre: true } });
       if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", MENSAJE_PRODUCTO_NO_ENCONTRADO);
