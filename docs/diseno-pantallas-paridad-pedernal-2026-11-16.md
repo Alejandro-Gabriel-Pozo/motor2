@@ -6,7 +6,7 @@ Marcas de evidencia: **(V)** leído en el código real de `main` de Motor2 (`903
 
 ## 0. Límites honestos de esta auditoría (leer primero)
 
-- Lancé dos agentes de lectura (uno por sistema) para un inventario exhaustivo; **no entregaron a tiempo** (más de 2 h, sin informe). Este documento se apoya **solo en lo que leí yo** con grep y lectura directa. Todo lo demás va como NV. Cuando entreguen, su inventario se tratará como punto de partida y se verificará antes de usarlo.
+- Dos agentes de lectura (uno por sistema) entregaron un inventario al final; su contenido está en los anexos A y B y es **punto de partida**: lo que no contrasté yo con el código va marcado **(agente)**. Lo que leí yo directamente va **(V)**. Donde el agente corrige mi primera lectura, se corrigió el cuerpo del documento.
 - **No corrí la app de Motor2 ni capturé pantallas.** La regla del 2026-11-05 (maqueta = pantalla real con datos reales de la empresa del dueño, a 375 px y escritorio) se cumple recién en la etapa mínima (§6), no en esta fase.
 - Las maquetas de Pedernal se leyeron como texto (HTML sin estilos); **no vi su aspecto**.
 - No leí `motor2-docs/memoria-claude/` ni `seguimiento-de-pedernal/` salvo el contrato y la sección de paridad. Puede haber decisiones del dueño sobre pantallas que no vi (NV).
@@ -50,7 +50,7 @@ Leyenda de la columna «Veredicto»: **IGUAL** (mismo resultado y forma) · **DI
 ### 3.3 Menú por áreas
 - **Motor2 (V):** dos paneles Empresa/Sucursal (`sidebar-nav.tsx`, `src/core/navegacion/estructura`), selector con `localStorage`.
 - **Pedernal (V/DOC):** tabla declarativa con áreas `ventas`, `catalogo`, `cuenta`; «todo nace cerrado» (módulo disponible, activo y acción permitida); maqueta v8 (15/11) «pendiente de aprobación», con barra inferior en celular y panel lateral plegable en escritorio, selector de «departamento».
-- **Veredicto: DIFIERE-FORMA** (estructura del menú). **Solo interfaz** más una tabla; usa permisos existentes. **Bloqueo:** la maqueta de Pedernal **no está aprobada**: copiarla sería adelantarse (Q2). El selector de departamento depende de clasificación (frente 2).
+- **Veredicto: DIFIERE-FORMA** (estructura del menú). **Solo interfaz** más una tabla; usa permisos existentes. Estado de aprobación (agente, DOC): el archivo de la maqueta dice «pendiente de aprobación», pero `decisiones-del-dueno-2026-11.md` líneas 82, 83 y 110 la aprueban (12/11 opción B por módulo; «aprobado con cambios»; rótulos 13/11): **no está claro cuál manda (NV)** → Q2. Pedernal solo muestra filas de módulos `disponible`; `catalogo`, `caja`, `ventas`, `salon`… siguen `en_desarrollo`, así que su menú real tiene hoy pocas filas. El selector de departamento depende de clasificación (frente 2).
 
 ### 3.4 Mostrador y salón
 - **Motor2 (V):** `(pos)/mesas` (lista), `mesas/[mesaId]`, `mesas/mostrador`; componentes `src/components/mesas/*`.
@@ -60,7 +60,7 @@ Leyenda de la columna «Veredicto»: **IGUAL** (mismo resultado y forma) · **DI
 ### 3.5 Ficha del producto
 - **Motor2 (V):** `catalogo/productos/[id]` con subrutas `datos`, `precios`, `opciones`, `compra`, `en-la-carta`; ya reformada «como Pedernal» (Datos / Precios / Opciones, menos texto) por #279 y #282 (git log, V); duplicar producto (#257, #313).
 - **Pedernal (V):** `catalogo/productos/[id]` y `/precios`, `FormularioDeFichaDeProducto`, alta y filtros.
-- **Veredicto:** **IGUAL en lo trabajado** hasta #282; pendiente según `docs/diseno-productos-igual-a-pedernal-2026-11-13.md` (NV si se completó todo). **La tarjeta «Ocultar» NO se toca** (`session_01FWp2khnmfSfh88wNWCu66B`).
+- **Veredicto:** Motor2 **tiene más** que Pedernal: Pedernal solo construyó Datos y Precios (sin Opciones, Medidas, Consumo, Duplicar ni Clasificación; agente). Motor2 ya adoptó la forma de Pedernal en lista y ficha (#279, #282); queda lo de `docs/diseno-productos-igual-a-pedernal-2026-11-13.md` (NV si se completó). La tarjeta «Ocultar» **no existe aún** en Motor2 (agente: solo hay casillas «Se muestra en la carta» y «Ocultar menú» del sidebar); la hace otra sesión (`session_01FWp2khnmfSfh88wNWCu66B`), **no se toca**.
 
 ### 3.6 Compras
 - **Motor2 (V):** no hay pantalla propia de compras en `src/app`: se carga desde `movimientos/[proceso]` con `panel-compra-por-pasos.tsx`, más `catalogo/productos/[id]/compra`, `catalogo/proveedores/*` y `reportes/compras`.
@@ -68,7 +68,7 @@ Leyenda de la columna «Veredicto»: **IGUAL** (mismo resultado y forma) · **DI
 - **Veredicto: FALTA-PED (pantalla), DIFIERE-FORMA (NV)**. Recepción separada, orden de compra, tres vías y nota de crédito son del **frente 5**; yo solo haría la interfaz cuando ese frente entregue el contrato.
 
 ### 3.7 Caja
-- **Motor2 (V):** **no hay pantalla de caja** (ningún `page.tsx` de caja/cobro/cierre en `src/app`; el salón cobra desde la cuenta de la mesa, NV el detalle).
+- **Motor2 (V + agente):** **no hay pantalla ni entidad de caja/cobro**: «Cerrar cuenta» solo registra la venta y libera la mesa (`server/actions/pos/cuenta-cierre.ts:21`: «motor2 no tiene entidad de caja ni de pago»); no hay propina; el único «medio de pago» es el de facturas de proveedor.
 - **Pedernal (V):** `caja/medios-de-pago`, `caja/cuentas-de-cobro`, `caja/cajas` (alta, edición, lista; #276, #277). Maquetas `caja.html`, `cierre-del-dia.html` (sin aprobar), `medios.html`, `datos-cobro*.html`.
 - **Veredicto: FALTA-M2.** Es **frente 1**: el servidor (caja, cobro, jornada) va primero; yo solo pongo la interfaz después.
 
@@ -140,9 +140,30 @@ Niveles 6 a 10: **no se diseñan** hasta que el dueño confirme 1 a 5 (compuerta
 ## 8. Preguntas al dueño (una por vez)
 
 **Q1 (la que cambia qué se construye):** «Las pantallas no están adecuadas»: en Motor2 de hoy **sí se puede elegir un plato con opciones** al armar una promoción («Vienen fijas» o «El mozo elige»). ¿Cuál de estas pantallas querés que ajustemos primero: (A) menú de la barra lateral por áreas, como Pedernal; (B) secciones de la carta; (C) otra que me nombres? Recomendado: **mirar primero la fotografía E0 de las tres** y decidir sobre lo que ves.
-**Q2 (después de Q1, no se pregunta aún):** el menú por áreas de Pedernal figura «pendiente de aprobación»; ¿se aprueba esa maqueta antes de copiarla?
+**Q2 (después de Q1, no se pregunta aún):** la maqueta del menú por áreas figura «pendiente de aprobación» pero hay decisiones del 12 y 13/11 que la aprueban; confirmar cuál vale antes de copiarla.
 
-## 9. Pedido y aceptación (para la plantilla de PR)
+## 9. Anexos de verificación (informes de los agentes de lectura, resumidos; punto de partida)
+
+### Anexo A — Motor2 (agente, código leído en `src/`)
+- **Textos:** el catálogo T1 (`src/core/textos/catalogo.ts`) tiene 3 entradas (todas de Presentaciones); **todo el texto de las pantallas auditadas está hardcodeado** en el JSX o en casos de uso. Cualquier pantalla tocada en Fase 2 migra sus textos por T1 (pidiendo claves a la sesión de Textos).
+- **Promociones:** permisos `carta_ver`, `carta_promo_definir` (empresa), `carta_promo_activar` y `carta_promo_precio_local` (sucursal). Elegir plato con opciones: **sí** (FIJAS: un selector por grupo de una sola elección; A_ELEGIR: casillas de opciones permitidas; adicionales no tildables). Límites del servidor: solo producto PV, precio ≥ $0,01, alícuotas de IVA iguales entre componentes, no mezclar FIJAS y A_ELEGIR para la misma clave. Solo lugares de tipo LISTA.
+- **Secciones:** `/carta/parametrizacion/secciones` (ordenar con «Poner acá», menú «⋯» ocultar/mostrar, ficha de cada producto debajo; sin arrastrar a propósito por falla en celular); `/carta/agrupados` (ítems agrupados, otra cosa); `/movimientos/secciones` es **Depósitos** de stock, no secciones de carta.
+- **Mostrador/salón:** `/mesas`, `/mesas/mostrador`, `/mesas/[mesaId]` (misma pantalla `pantalla-del-puesto.tsx` para mesa y mostrador); permisos `pos_*`; sin cobro.
+- **Ficha del producto:** pestañas Datos, Precios, Opciones, Cómo se compra, Receta, En la carta (`core/catalogo/espacio-del-producto.ts`).
+- **Compras:** carga por 5 pasos (`panel-compra-por-pasos.tsx`: Factura, Qué compraste, Dónde entra, Pago, Revisar), bandeja «Para aceptar» (recepción entre sucursales), `/reportes/compras` con corregir, anular y declarar pago, proveedores y comparativa. **No hay orden de compra** ni pantalla/acción de nota de crédito (existen modelos `NotaCreditoProveedor*` en `schema.prisma`, solo lectura). No hay pantalla de recepción propia.
+- **Menú por áreas:** no existe (búsquedas: `area`, `menu por areas`, modelos `Area*`: sin resultados relevantes).
+- **NV (agente):** 375 px real (no se corrió navegador; hay e2e a 375 px sin leer: `carta-mantenimiento`, `movil-pos-mesa`, `movil-compra-por-pasos`), componentes internos del salón, `/movimientos/venta`.
+
+### Anexo B — Pedernal (agente, `ad4a9a4`; `mapa-de-pantallas-pedernal.md` del 12/11 está desactualizado)
+- **Construido en `apps/web`:** productos (lista, nuevo, ficha Datos, Precios), secciones (lista con subir/bajar, nueva, una sección con productos solo lectura, renombrar; **falta la parte 2: agregar y quitar productos**), medios de pago/cuentas de cobro/cajas (lista, nuevo, editar), facturación, configuración fiscal, cuenta/sucursal, ingreso, carta pública.
+- **Solo maqueta/ficha (sin pantalla):** combos y carga de promociones (`combos.html` aprobada 09/11; `e8-combos-especificacion.md`; ~5 % construido, solo dominio #305), elegir plato con opciones dentro de un combo (`combo-elecciones.html`, aceptada por delegación el 16/11: hoja de opciones común de la venta; sin adicionales con recargo; combo sin nada para elegir sale «No disponible»), clasificación comercial (ficha `EN_CONSTRUCCION`, rama `web/a14-clasificacion`), venta rápida (servidor sin ruta), salón/mesas/unir (rehechas el 14/11; aprobación de lo rehecho NV), compras, caja (abrir, arqueo, cerrar), datos del cobro en tres estados, cierre del día.
+- **Cómo se construye una pantalla allá:** maqueta aprobada primero; luego ficha declarativa (`FichaDePantalla`: campos con dato, botones con permiso, modales, estados, textos), hoy **sin cablear** (`FICHAS` vacío); campos solo con `dato` registrado; permisos de botones a mano en `servidor/modulos.ts`; textos por catálogo con fuente; acciones con versión vista e idempotencia; gate propio (`npm run gate`, tests de componentes y recorrido).
+- **NV (agente):** `pantallas-de-compras-inventario.md`, especificaciones de caja, cierre, salón y venta rápida, `ficha-de-pantalla-ocultar.md`, si #329 y #331 entraron.
+
+### Cambios a lo escrito antes de los anexos
+La caja de Motor2 es **inexistente** (no solo «sin pantalla»); el ejemplo de promociones **sigue siendo cierto** y verificado por dos lecturas independientes; Pedernal tiene **menos** pantallas de ficha de producto que Motor2.
+
+## 10. Pedido y aceptación (para la plantilla de PR)
 
 - **Qué entra al producto: nada.** Solo este documento. Cada renglón de §3 a §7 es propuesta, no producto.
 - Código de este PR: ninguno. Modelo que escribió el documento: Sonnet.
