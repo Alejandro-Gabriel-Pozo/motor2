@@ -14,10 +14,10 @@ import { DuplicarProducto } from "@/components/catalogo/duplicar-producto";
 import { OBSERVACIONES_VISIBLES } from "@/core/catalogo/public";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
-import { actualizarDisponibilidadProducto, ocultarProducto } from "@/server/actions/catalogo/productos";
+import { actualizarDisponibilidadProducto } from "@/server/actions/catalogo/productos";
+import { ocultarProducto } from "@/server/actions/catalogo/ocultar-producto";
 import { TarjetaOcultar } from "@/components/catalogo/tarjeta-ocultar";
-import { puedeOcultarEnLaEmpresa } from "@/server/acceso/ocultar-en-la-empresa";
-import { marcasDeOcultarDelProducto } from "@/server/lecturas/catalogo/ocultamiento";
+import { cargarLoQueMuestraOcultar } from "@/server/consultas/catalogo/ocultar-producto";
 import { disponibilidadPorSucursalDeProducto } from "@/server/consultas/catalogo/disponibilidad";
 import { obtenerFichaProducto, obtenerSeccionHabitualEnSucursal } from "@/server/consultas/catalogo/productos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
@@ -353,17 +353,3 @@ async function cargarLoQuePideDuplicar(ctx: ContextoUsuario, productoId: string)
   return { puedeCopiarReceta: receta.editar && !sinModuloDeRecetas, puedeCopiarOpciones: opciones.editar, puedeFijarPrecio, sucursalesDeLaReceta, resumen };
 }
 
-/** Lo que la tarjeta «Ocultar» necesita: dónde está oculto el producto y a qué filas se le ofrece un botón. `null` (la tarjeta no se muestra) si la lectura falla: nunca se asume «visible». */
-async function cargarLoQueMuestraOcultar(ctx: ContextoUsuario, productoId: string, puedeCambiarDisponibilidad: boolean) {
-  try {
-    const [marcas, puedeEnLaEmpresa] = await Promise.all([
-      marcasDeOcultarDelProducto(ctx.db, productoId, ctx.sucursalId),
-      // La fila de la empresa pide, además del permiso de la sucursal, ser gerente o administrador con alcance total.
-      puedeCambiarDisponibilidad ? puedeOcultarEnLaEmpresa(ctx) : Promise.resolve(false),
-    ]);
-    return { ocultoEnLaSucursal: marcas.local, ocultoEnLaEmpresa: marcas.empresa, puedeEnElLocal: puedeCambiarDisponibilidad, puedeEnLaEmpresa };
-  } catch (e) {
-    console.error("No se pudo leer dónde está oculto el producto; la tarjeta «Ocultar» no se muestra.", e);
-    return null;
-  }
-}

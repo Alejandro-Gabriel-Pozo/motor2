@@ -2,6 +2,7 @@ import "server-only";
 import { decidirSobreProducto, marcasDeOcultar, ocultoPor, type MotivoDeRechazo, type Quien } from "@/core/catalogo/ocultar-producto";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
+import { MENSAJE_GENERICO, textoDe } from "@/core/textos/texto-de";
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
@@ -33,6 +34,12 @@ export type ResultadoOcultarProducto = ResultadoCaso<{ yaEstaba: boolean; sigueO
 const MENSAJE_PRODUCTO_NO_ENCONTRADO = "No se encontró el producto.";
 
 const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/** El texto que ve la persona para cada rechazo (nunca el código interno): el de existencia es del catálogo (DEC-0014); los demás, el genérico ya aceptado (DEC-0013). «No se encontró el producto.» ya existía. */
+function mensajeDe(codigo: CodigoDeOcultar): string {
+  if (codigo === "TIENE_EXISTENCIA") return textoDe("rechazo.TIENE_EXISTENCIA");
+  return codigo === "PRODUCTO_NO_ENCONTRADO" ? MENSAJE_PRODUCTO_NO_ENCONTRADO : MENSAJE_GENERICO;
+}
 
 /** Un rechazo de la regla adentro de la transacción: tira para que la transacción se DESHAGA entera (la marca y la auditoría ya escritas no quedan). */
 class RechazoQueDeshace extends Error {
@@ -79,7 +86,7 @@ export async function ocultarProductoCasoDeUso(
   actor: Pick<ContextoDeAccion, "empresaId" | "db" | "alcance" | "transaccion" | "usuarioId" | "sucursalId" | "sucursalNombre" | "ahora">,
   comando: ComandoOcultarProducto,
 ): Promise<ResultadoOcultarProducto> {
-  if (!comando.productoId || !ES_UUID.test(comando.marcaId)) return fracaso("DATOS_INVALIDOS", "DATOS_INVALIDOS");
+  if (!comando.productoId || !ES_UUID.test(comando.marcaId)) return fracaso("DATOS_INVALIDOS", MENSAJE_GENERICO);
   const operacion = comando.oculto ? "ocultar" : "mostrar";
   const alcance = comando.alcance === "EMPRESA" ? "empresa" : "local";
   const quien: Quien = comando.alcance === "EMPRESA" ? (comando.puedeEnLaEmpresa ? "gerencia_alcance_total" : "sin_permiso") : "operador_de_este_local";
@@ -87,7 +94,7 @@ export async function ocultarProductoCasoDeUso(
   const sinHechos = { desactivar: "activo", ocultar: { empresa: false, local: false }, saldo: "cero", conteoSinResolver: false, enRecetaVigente: false } as const;
   // El permiso se decide ANTES de tocar la base.
   const permiso = decidirSobreProducto({ hechos: sinHechos, operacion, quien, alcance });
-  if (!permiso.ok) return fracaso(codigoDe(permiso.motivo), permiso.motivo);
+  if (!permiso.ok) return fracaso(codigoDe(permiso.motivo), mensajeDe(codigoDe(permiso.motivo)));
 
   // Toda la empresa: la existencia hay que mirarla en TODAS las sucursales (con la RLS por sucursal, sin esto se vería solo la activa y se subestimaría). Se ensancha SOLO la lectura (el SI_NO de existencia
   // y las marcas del producto); la escritura queda en el alcance de siempre: la marca de la empresa (`sucursalId` nulo) se escribe con cualquier alcance fijado.
@@ -106,7 +113,7 @@ export async function ocultarProductoCasoDeUso(
       // Mostrar en un local lo que la empresa oculta: la regla pura lo rechaza (R-15).
       const hechos = { ...sinHechos, ocultar: marcasDeOcultar(marcas, actor.sucursalId) };
       const sobreMarcas = decidirSobreProducto({ hechos, operacion, quien, alcance });
-      if (!sobreMarcas.ok) return fracaso(codigoDe(sobreMarcas.motivo), sobreMarcas.motivo);
+      if (!sobreMarcas.ok) return fracaso(codigoDe(sobreMarcas.motivo), mensajeDe(codigoDe(sobreMarcas.motivo)));
 
       if (actual) {
         if (!(await cambiarMarcaDeOcultar(tx, { id: actual.id, versionEsperada: actual.version, oculto: comando.oculto, actorId: actor.usuarioId, ahora: actor.ahora }))) {
@@ -136,6 +143,6 @@ export async function ocultarProductoCasoDeUso(
     }, undefined, undefined, true);
   } catch (e) {
     if (!(e instanceof RechazoQueDeshace)) throw e;
-    return e.motivo === "TIENE_EXISTENCIA" ? fracaso("TIENE_EXISTENCIA", "TIENE_EXISTENCIA") : fracaso("VERSION_DESACTUALIZADA", "VERSION_DESACTUALIZADA");
+    return e.motivo === "TIENE_EXISTENCIA" ? fracaso("TIENE_EXISTENCIA", mensajeDe("TIENE_EXISTENCIA")) : fracaso("VERSION_DESACTUALIZADA", mensajeDe("VERSION_DESACTUALIZADA"));
   }
 }

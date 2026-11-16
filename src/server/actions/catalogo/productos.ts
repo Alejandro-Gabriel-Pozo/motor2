@@ -16,8 +16,6 @@ import { guardComandoAgregarPresentacionAlternativa, guardComandoDarDeAltaProduc
 import { GENERO_E_ITEM_AGRUPADO_VISIBLE, MENSAJE_GENERO_E_ITEM_AGRUPADO_APAGADO, ofrecerSincronizarPrecio } from "@/core/carta/public";
 import type { UnidadesDeCompraDelProducto } from "@/core/compras/public";
 import { aResultadoAccion } from "@/core/resultado-caso";
-import { MENSAJE_GENERICO, textoDe } from "@/core/textos/texto-de";
-import { puedeOcultarEnLaEmpresa } from "@/server/acceso/ocultar-en-la-empresa";
 import { resolverGrupoDeProducto } from "@/server/lecturas/carta/grupo-de-producto";
 import { conPermiso, conPermisoDeEmpresa } from "../con-permiso";
 import { revalidarCartasPublicas } from "../carta/revalidar";
@@ -30,7 +28,6 @@ import { agregarPresentacionAlternativaCasoDeUso } from "./casos-de-uso/agregar-
 import { asignarInsumoAProductoCasoDeUso } from "./casos-de-uso/asignar-insumo-a-producto";
 import { darDeAltaProductoCasoDeUso } from "./casos-de-uso/dar-de-alta-producto";
 import { darDeAltaProductoRapidoCasoDeUso } from "./casos-de-uso/dar-de-alta-producto-rapido";
-import { ocultarProductoCasoDeUso } from "./casos-de-uso/ocultar-producto";
 import { sincronizarPrecioGrupoCartaCasoDeUso } from "./casos-de-uso/sincronizar-precio-grupo-carta";
 
 /**
@@ -476,35 +473,6 @@ export async function actualizarDisponibilidadProducto(productoId: string, dispo
     const resultado = await actualizarDisponibilidadProductoCasoDeUso(ctx, { productoId, disponible, puedeEditarCamposSensibles });
     if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
-  });
-}
-
-/**
- * «Ocultar» / «Volver a mostrar» un producto en la sucursal activa o en toda la empresa (docs/diseno-ocultar-como-pedernal-2026-11-15.md, etapa d; Pedernal A15). Fija un ESTADO (`oculto`), no alterna: un doble clic o un reintento
- * da el mismo resultado (la segunda llamada ve «ya estaba» y no escribe ni audita). Permiso (el servidor lo decide, nunca la pantalla): `producto_disponibilidad` EDITAR en la sucursal activa (`conPermiso`) y, para
- * `EMPRESA`, además gerente o administrador con membresía en todas las sucursales activas (`puedeOcultarEnLaEmpresa`); sin eso, el caso de uso rechaza sin tocar nada. La sucursal sale de la sesión, nunca de un
- * parámetro. El id de la marca lo genera el servidor (`azarDelProceso`). Los datos que llegan del navegador se validan acá (todo nace cerrado): cualquier cosa que no sea exactamente lo permitido se rechaza.
- * Sin guard (`SIN_GUARD`): no recibe datos libres, solo un id, un alcance de una lista y un booleano.
- */
-export async function ocultarProducto(productoId: string, alcance: "LOCAL" | "EMPRESA", oculto: boolean): Promise<ResultadoAccion> {
-  return conPermiso("producto_disponibilidad", async (ctx) => {
-    if (typeof productoId !== "string" || productoId.length === 0 || (alcance !== "LOCAL" && alcance !== "EMPRESA") || typeof oculto !== "boolean") return error(MENSAJE_GENERICO);
-    const puedeEnLaEmpresa = alcance === "EMPRESA" ? await puedeOcultarEnLaEmpresa(ctx) : false;
-    const resultado = await ocultarProductoCasoDeUso(ctx, { productoId, alcance, oculto, marcaId: azarDelProceso.uuid(), puedeEnLaEmpresa });
-    if (resultado.ok) {
-      revalidarCartasPublicas(ctx.empresaSlug);
-      // El éxito no lleva texto: la tarjeta se vuelve a dibujar con el estado nuevo (sus avisos son los del catálogo) y el código interno no se le muestra a nadie.
-      return { ok: true, mensaje: "" };
-    }
-    // Los códigos del caso de uso son internos: a la persona le llega un texto del catálogo (nunca el código).
-    switch (resultado.codigo) {
-      case "TIENE_EXISTENCIA":
-        return error(textoDe("rechazo.TIENE_EXISTENCIA"));
-      case "PRODUCTO_NO_ENCONTRADO":
-        return error(resultado.mensaje);
-      default:
-        return error(MENSAJE_GENERICO);
-    }
   });
 }
 
