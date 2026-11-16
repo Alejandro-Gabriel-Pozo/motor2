@@ -489,21 +489,38 @@ END
 $$;
 
 -- ===== Privilegios (si los roles existen): leer y agregar; NUNCA borrar. UPDATE solo por columna donde hace falta. La consola de plataforma no las toca. =====
+-- Una sentencia por tabla y por rol (así las lee el guardián `datos-molde-de-tabla-nueva`, que no interpreta SQL dinámico).
 DO $$
-DECLARE t text;
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'motor2_app') THEN
-    FOREACH t IN ARRAY ARRAY['Caja', 'MedioDePago', 'SesionCaja', 'MovimientoCaja', 'Cobranza', 'Cobro', 'ArqueoCaja', 'ArqueoBillete'] LOOP
-      EXECUTE format('REVOKE ALL ON %I FROM motor2_app', t);
-      EXECUTE format('GRANT SELECT, INSERT ON %I TO motor2_app', t);
-    END LOOP;
+    REVOKE ALL ON "Caja" FROM motor2_app;
+    GRANT SELECT, INSERT ON "Caja" TO motor2_app;
+    REVOKE ALL ON "MedioDePago" FROM motor2_app;
+    GRANT SELECT, INSERT ON "MedioDePago" TO motor2_app;
+    REVOKE ALL ON "SesionCaja" FROM motor2_app;
+    GRANT SELECT, INSERT ON "SesionCaja" TO motor2_app;
+    REVOKE ALL ON "MovimientoCaja" FROM motor2_app;
+    GRANT SELECT, INSERT ON "MovimientoCaja" TO motor2_app;
+    REVOKE ALL ON "Cobranza" FROM motor2_app;
+    GRANT SELECT, INSERT ON "Cobranza" TO motor2_app;
+    REVOKE ALL ON "Cobro" FROM motor2_app;
+    GRANT SELECT, INSERT ON "Cobro" TO motor2_app;
+    REVOKE ALL ON "ArqueoCaja" FROM motor2_app;
+    GRANT SELECT, INSERT ON "ArqueoCaja" TO motor2_app;
+    REVOKE ALL ON "ArqueoBillete" FROM motor2_app;
+    GRANT SELECT, INSERT ON "ArqueoBillete" TO motor2_app;
     GRANT UPDATE ("nombre", "activo", "actualizadoEn", "version") ON "MedioDePago" TO motor2_app;
     GRANT UPDATE ("estado", "cerradaEn", "cerradaPorId", "observacion") ON "SesionCaja" TO motor2_app;
   END IF;
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'motor2_plataforma') THEN
-    FOREACH t IN ARRAY ARRAY['Caja', 'MedioDePago', 'SesionCaja', 'MovimientoCaja', 'Cobranza', 'Cobro', 'ArqueoCaja', 'ArqueoBillete'] LOOP
-      EXECUTE format('REVOKE ALL ON %I FROM motor2_plataforma', t);
-    END LOOP;
+    REVOKE ALL ON "Caja" FROM motor2_plataforma;
+    REVOKE ALL ON "MedioDePago" FROM motor2_plataforma;
+    REVOKE ALL ON "SesionCaja" FROM motor2_plataforma;
+    REVOKE ALL ON "MovimientoCaja" FROM motor2_plataforma;
+    REVOKE ALL ON "Cobranza" FROM motor2_plataforma;
+    REVOKE ALL ON "Cobro" FROM motor2_plataforma;
+    REVOKE ALL ON "ArqueoCaja" FROM motor2_plataforma;
+    REVOKE ALL ON "ArqueoBillete" FROM motor2_plataforma;
   END IF;
 END
 $$;
