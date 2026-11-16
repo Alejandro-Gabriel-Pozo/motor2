@@ -58,6 +58,17 @@ describe("BotonActivarDesactivar: acciones de la altura del texto en escritorio"
     });
   }
 
+  it("`textoActivar` cambia solo el texto del botón que vuelve a activar (la ficha de producto dice «Reactivar», como Pedernal); sin él sigue «Activar» y «Desactivar» no cambia", () => {
+    const render = (activo: boolean, textoActivar?: string) =>
+      renderToStaticMarkup(<BotonActivarDesactivar activo={activo} ocupado={false} aviso="Saca el acceso." onCambiar={() => undefined} textoActivar={textoActivar} />);
+    expect(render(false, "Reactivar")).toContain("Reactivar");
+    expect(render(false, "Reactivar")).not.toMatch(/>Activar</);
+    expect(render(false)).toMatch(/Activar<\/button>/);
+    expect(render(false)).not.toContain("Reactivar");
+    expect(render(true, "Reactivar")).toContain("Desactivar");
+    expect(render(true, "Reactivar")).not.toContain("Reactivar");
+  });
+
   it("los cuatro botones del archivo (Activar, Desactivar, «Sí, desactivar» y Cancelar) usan tamano en-fila", () => {
     const etiquetas = etiquetasDeBoton(FUENTES.activarDesactivar);
     expect(etiquetas).toHaveLength(4);

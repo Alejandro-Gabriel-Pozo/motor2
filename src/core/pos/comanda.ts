@@ -75,6 +75,8 @@ export interface ItemParaComanda {
   promoTitulo?: string | null;
   /** El nombre compuesto y el detalle de la línea con opciones, y si es un adicional (opcionales: sin ellos, la comanda de siempre). `productoNombre` sigue siendo el del producto. */
   nombreDeLinea?: string;
+  /** El nombre con que la comanda nombra la línea cuando el producto tiene «Nombre de cocina» congelado (2026-11-15): gana sobre `nombreDeLinea` y `productoNombre`. Ausente = la comanda de siempre. */
+  nombreParaLaCocina?: string;
   detalleDeLinea?: string;
   esAdicional?: boolean;
   anulaciones: readonly { id: string; cantidad: number; motivoAnulacion: string | null; creadoPor: string | null }[];
@@ -91,12 +93,12 @@ export function armarComandas(envios: readonly { numero: number; items: readonly
     const autores = [...new Set(envio.items.flatMap((i) => (i.creadoPor ? [i.creadoPor] : [])))];
     const lineas: LineaDeComanda[] = envio.items
       .filter((i) => i.restante > 0)
-      .map((i) => ({ itemId: i.id, producto: i.nombreDeLinea ?? i.productoNombre, cantidad: i.restante, ...(i.promoTitulo ? { promoTitulo: i.promoTitulo } : {}), ...deOpciones(i) }));
+      .map((i) => ({ itemId: i.id, producto: i.nombreParaLaCocina ?? i.nombreDeLinea ?? i.productoNombre, cantidad: i.restante, ...(i.promoTitulo ? { promoTitulo: i.promoTitulo } : {}), ...deOpciones(i) }));
     const anulaciones: AnulacionDeComanda[] = envio.items.flatMap((item) =>
       item.anulaciones.map((a, n) => ({
         id: a.id,
         itemId: item.id,
-        producto: item.nombreDeLinea ?? item.productoNombre,
+        producto: item.nombreParaLaCocina ?? item.nombreDeLinea ?? item.productoNombre,
         cantidad: -a.cantidad,
         motivo: a.motivoAnulacion ?? "",
         por: a.creadoPor ?? "—",

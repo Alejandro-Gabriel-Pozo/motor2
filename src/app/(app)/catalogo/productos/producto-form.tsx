@@ -8,7 +8,7 @@ import { GestionPresentaciones } from "@/components/catalogo/gestion-presentacio
 import { CampoNumero } from "@/components/campo-numero";
 import { AyudaCampo } from "@/components/ayuda-campo";
 import { OBSERVACIONES_VISIBLES, PRESENTACIONES_VISIBLES } from "@/core/catalogo/public";
-import { CampoAlicuotaIva, alicuotasDelFormulario } from "./campo-alicuota-iva";
+import { CampoAlicuotaIva, alicuotasDelFormulario } from "./campo-alicuota-iva"; import { CampoNombreDeCocina, nombreDeCocinaDelFormulario } from "./campo-nombre-de-cocina";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { SincronizarPrecioGrupo } from "@/components/carta/sincronizar-precio-grupo";
 import { AvisoAltaSinPrecio, AvisoCamposSensibles, ValorSoloLectura } from "@/components/catalogo/campos-sensibles-solo-lectura";
@@ -157,7 +157,7 @@ export function ProductoForm({
         const sensiblesDeLaEdicion: Partial<DatosSensibles> = puedeEditarCamposSensibles ? (esBase ? delFormularioSinPrecio : delFormulario) : {};
         const datos: Omit<DatosProducto, CampoSensibleDelProducto> = {
           codigo: editando ? undefined : texto(form.get("codigo")) || undefined,
-          nombre: texto(form.get("nombre")),
+          nombre: texto(form.get("nombre")), ...nombreDeCocinaDelFormulario(form, tipo, editando), // nombre de cocina: solo un PV; vaciado en la edición = null (borra)
           tipo,
           categoriaId: categoriaId || null,
           insumoId: tipo === "MP" ? insumoId || null : null,
@@ -224,7 +224,7 @@ export function ProductoForm({
       )}
 
       {!editando && <Campo name="codigo" placeholder="Código (opcional, se autogenera)" aria-label="Código (opcional, se autogenera)" />}
-      <Campo name="nombre" placeholder="Nombre" aria-label="Nombre" defaultValue={productoExistente?.nombre} required />
+      <Campo name="nombre" placeholder="Nombre" aria-label="Nombre" defaultValue={productoExistente?.nombre} required /><CampoNombreDeCocina tipo={tipo} valorInicial={productoExistente?.nombreDeCocina} />
 
       <div className="flex items-center gap-2">
         <div className="flex-1">

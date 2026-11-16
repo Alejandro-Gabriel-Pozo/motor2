@@ -23,6 +23,7 @@ export function BotonActivarDesactivar({
   ocupado,
   aviso,
   onCambiar,
+  textoActivar = "Activar",
 }: {
   activo: boolean;
   /** Hay una llamada al servidor en curso para esta fila. */
@@ -30,6 +31,8 @@ export function BotonActivarDesactivar({
   /** Qué implica desactivar; se muestra junto a la confirmación. */
   aviso: string;
   onCambiar: () => void;
+  /** Texto del botón que vuelve a activar (por defecto «Activar»; la ficha de producto dice «Reactivar», igual que Pedernal: `catalogo.accion.reactivar`). Solo cambia el texto: la acción es la misma y sigue siendo directa, sin confirmación. */
+  textoActivar?: string;
 }) {
   const [confirmando, setConfirmando] = useState(false);
   const [activoPrevio, setActivoPrevio] = useState(activo);
@@ -68,7 +71,7 @@ export function BotonActivarDesactivar({
     return (
       <Boton variante="enlace" tamano="en-fila" onClick={onCambiar}>
         <IconoDeAccion id="activar" />
-        Activar
+        {textoActivar}
       </Boton>
     );
   }

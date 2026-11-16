@@ -135,7 +135,7 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
       "moduloEmpresa.findMany×1", // P18 / D18: el registro de módulos se lee SIEMPRE (una vez): decide si rige el descuento de producto (solo con Carta).
       "ocultamientoProducto.findMany×1", // «Ocultar» (diseño 2026-11-15, I-6): una lectura por producto SUELTO que se agrega, para rechazar un oculto. Nueva a propósito; el resto de las lecturas no cambia.
       "precioLocalProducto.findMany×1",
-      "producto.findMany×2", // GO-2b: lo que admite cada producto del pedido, en UNA lectura. — RECETA: +1, el nombre y si se produce cada producto del pedido.
+      "producto.findMany×3", // GO-2b: lo que admite cada producto del pedido, en UNA lectura. — RECETA: +1, el nombre y si se produce cada producto del pedido. — NOMBRE DE COCINA (2026-11-15): +1, el nombre de cocina de los productos del pedido, una lectura por pedido, para congelarlo en la línea.
       "producto.findUnique×1",
       "recetaSucursal.findMany×1", // RECETA (ADR-033, quinta edición): la receta vigente de cada producto del pedido, UNA vez por pedido.
       "recetaVersion.findMany×1", // RECETA: las versiones centrales de esos productos (sin receta propia habilitada, no hay una segunda).
@@ -177,7 +177,7 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
       "moduloEmpresa.findMany×1", // P18 / D18: UNA vez por pedido, no por ítem.
       "ocultamientoProducto.findMany×3", // «Ocultar» (diseño 2026-11-15, I-6): una lectura por producto SUELTO que se agrega, para rechazar un oculto. Nueva a propósito; el resto de las lecturas no cambia.
       "precioLocalProducto.findMany×3",
-      "producto.findMany×2", // GO-2b: UNA vez por pedido, no por ítem. — RECETA: +1, el nombre y si se produce cada producto del pedido.
+      "producto.findMany×3", // GO-2b: UNA vez por pedido, no por ítem. — RECETA: +1, el nombre y si se produce cada producto del pedido. — NOMBRE DE COCINA (2026-11-15): +1, el nombre de cocina de los productos del pedido, una lectura por pedido, para congelarlo en la línea.
       "producto.findUnique×3",
       "recetaSucursal.findMany×1", // RECETA (ADR-033, quinta edición): la receta vigente de cada producto del pedido, UNA vez por pedido.
       "recetaVersion.findMany×1", // RECETA: las versiones centrales de esos productos (sin receta propia habilitada, no hay una segunda).
@@ -198,7 +198,7 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
       "itemAgrupadoCarta.findMany×2",
       "moduloEmpresa.findMany×1", // S-22 / D2: se lee UNA vez el registro de módulos (Promociones prendido) y se comparte con la lectura de la promo.
       "precioLocalProducto.findMany×2",
-      "producto.findMany×4", // GO-2b: +1, lo que admiten los componentes de la promo (en v1 no llevan opciones: uno con un grupo obligatorio se rechaza). — RECETA: +1, el nombre y si se produce cada producto del pedido.
+      "producto.findMany×5", // GO-2b: +1, lo que admiten los componentes de la promo (en v1 no llevan opciones: uno con un grupo obligatorio se rechaza). — RECETA: +1, el nombre y si se produce cada producto del pedido. — NOMBRE DE COCINA (2026-11-15): +1, el nombre de cocina de los productos del pedido, una lectura por pedido, para congelarlo en la línea.
       "promoCarta.findFirst×1",
       "promoCarta.findMany×2",
       "promoCuenta.create×1",
@@ -225,7 +225,7 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
       "moduloEmpresa.findMany×1", // S-22 / D2: ídem (una sola lectura, compartida con la promo).
       "ocultamientoProducto.findMany×1", // «Ocultar» (diseño 2026-11-15, I-6): una lectura por producto SUELTO que se agrega, para rechazar un oculto. Nueva a propósito; el resto de las lecturas no cambia.
       "precioLocalProducto.findMany×3",
-      "producto.findMany×4", // GO-2b: +1, una sola lectura para el suelto y los componentes. — RECETA: +1, el nombre y si se produce cada producto del pedido.
+      "producto.findMany×5", // GO-2b: +1, una sola lectura para el suelto y los componentes. — RECETA: +1, el nombre y si se produce cada producto del pedido. — NOMBRE DE COCINA (2026-11-15): +1, el nombre de cocina de los productos del pedido, una lectura por pedido, para congelarlo en la línea.
       "producto.findUnique×1",
       "promoCarta.findFirst×1",
       "promoCarta.findMany×2",
@@ -255,7 +255,7 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
       "moduloEmpresa.findMany×1", // P18 / D18: se lee antes de validar el primer ítem.
       "ocultamientoProducto.findMany×1", // «Ocultar» (diseño 2026-11-15, I-6): una lectura por producto SUELTO que se agrega, para rechazar un oculto. Nueva a propósito; el resto de las lecturas no cambia.
       "precioLocalProducto.findMany×1",
-      "producto.findMany×2", // GO-2b: antes del primer ítem. — RECETA: +1, el nombre y si se produce cada producto del pedido.
+      "producto.findMany×3", // GO-2b: antes del primer ítem. — RECETA: +1, el nombre y si se produce cada producto del pedido. — NOMBRE DE COCINA (2026-11-15): +1, el nombre de cocina de los productos del pedido, una lectura por pedido, para congelarlo en la línea.
       "producto.findUnique×2",
       "recetaSucursal.findMany×1", // RECETA (ADR-033, quinta edición): la receta vigente de cada producto del pedido, UNA vez por pedido.
       "recetaVersion.findMany×1", // RECETA: las versiones centrales de esos productos (sin receta propia habilitada, no hay una segunda).
@@ -290,7 +290,7 @@ describe("agregarItems CON clave de idempotencia (P3, I3): +1 lectura y +1 escri
       "moduloEmpresa.findMany×1",
       "ocultamientoProducto.findMany×1", // «Ocultar» (diseño 2026-11-15, I-6): una lectura por producto SUELTO que se agrega, para rechazar un oculto. Nueva a propósito; el resto de las lecturas no cambia.
       "precioLocalProducto.findMany×1",
-      "producto.findMany×2", // GO-2b — RECETA: +1, el nombre y si se produce cada producto del pedido.
+      "producto.findMany×3", // GO-2b — RECETA: +1, el nombre y si se produce cada producto del pedido. — NOMBRE DE COCINA (2026-11-15): +1, el nombre de cocina de los productos del pedido, una lectura por pedido, para congelarlo en la línea.
       "producto.findUnique×1",
       "recetaSucursal.findMany×1", // RECETA (ADR-033, quinta edición): la receta vigente de cada producto del pedido, UNA vez por pedido.
       "recetaVersion.findMany×1", // RECETA: las versiones centrales de esos productos (sin receta propia habilitada, no hay una segunda).
@@ -347,7 +347,7 @@ describe("agregarItems CON opciones (GO-2b, cuarta edición): la línea configur
       "ocultamientoProducto.findMany×1", // «Ocultar» (diseño 2026-11-15, I-6): una lectura por producto SUELTO que se agrega, para rechazar un oculto. Nueva a propósito; el resto de las lecturas no cambia.
       "opcionElegidaEnLinea.createMany×1",
       "precioLocalProducto.findMany×1",
-      "producto.findMany×2", // RECETA: +1, el nombre y si se produce cada producto del pedido.
+      "producto.findMany×3", // RECETA: +1, el nombre y si se produce cada producto del pedido. — NOMBRE DE COCINA (2026-11-15): +1, el nombre de cocina de los productos del pedido, una lectura por pedido, para congelarlo en la línea.
       "producto.findUnique×1",
       "recetaSucursal.findMany×1", // RECETA (ADR-033, quinta edición): la receta vigente de cada producto del pedido, UNA vez por pedido.
       "recetaVersion.findMany×1", // RECETA: las versiones centrales de esos productos (sin receta propia habilitada, no hay una segunda).
@@ -372,7 +372,7 @@ describe("agregarItems CON opciones (GO-2b, cuarta edición): la línea configur
       "opcionElegidaEnLinea.createMany×1",
       "precioLocalDeOpcion.findMany×1",
       "precioLocalProducto.findMany×2",
-      "producto.findMany×2", // RECETA: +1, el nombre y si se produce cada producto del pedido.
+      "producto.findMany×3", // RECETA: +1, el nombre y si se produce cada producto del pedido. — NOMBRE DE COCINA (2026-11-15): +1, el nombre de cocina de los productos del pedido, una lectura por pedido, para congelarlo en la línea.
       "producto.findUnique×2",
       "recetaSucursal.findMany×1", // RECETA (ADR-033, quinta edición): la receta vigente de cada producto del pedido, UNA vez por pedido.
       "recetaVersion.findMany×1", // RECETA: las versiones centrales de esos productos (sin receta propia habilitada, no hay una segunda).

@@ -228,6 +228,7 @@ export default async function FichaProductoPage({
                 puedeCambiarDisponibilidad && d.sucursalId === ctx.sucursalId ? (
                   <ActivarDesactivarFila
                     activo={d.disponible}
+                    textoActivar="Reactivar"
                     aviso="Desactivar lo saca de los selectores, del stock consolidado y de la valuación de esta sucursal; en las demás no cambia nada. El historial se conserva. Si algo todavía depende de él acá (recetas vigentes, saldo), no se deja desactivar."
                     accion={async () => {
                       "use server";
