@@ -6,14 +6,15 @@ export type CodigoDeRechazoDeOrdenDeLaBase = "EXCEDE_LA_ORDEN_BLOQUEADA" | "EXCE
 
 /**
  * Compras, orden de compra: traduce lo que rechaza la BASE (los disparadores de la migración 20261117130000, que repiten las reglas del caso de uso como segunda barrera y deciden la carrera) a un rechazo de negocio. Los disparadores levantan
- * una excepción con SQLSTATE 23514 y el nombre de la restricción en `CONSTRAINT`; el adaptador de Prisma la entrega con ese nombre en el texto del error o de su causa. Solo se reconocen los nombres de la lista: cualquier otro error se vuelve a lanzar.
+ * una excepción con SQLSTATE 23514 y el nombre de la restricción en `CONSTRAINT`; el adaptador de Prisma la entrega con ese nombre en el texto del error o de su causa. Solo se reconocen los nombres (o los textos fijos de la excepción) de la lista: cualquier otro error se vuelve a lanzar.
  */
 
-const RECHAZOS: Readonly<Record<string, { codigo: CodigoDeRechazoDeOrdenDeLaBase; mensaje: string }>> = {
-  recepcion_excede_la_orden_bloqueada: { codigo: "EXCEDE_LA_ORDEN_BLOQUEADA", mensaje: MENSAJE_EXCEDE_LA_ORDEN_BLOQUEADA },
-  recepcion_excede_la_orden_sin_confirmar: { codigo: "EXCEDE_LA_ORDEN_SIN_CONFIRMAR", mensaje: MENSAJE_EXCEDE_LA_ORDEN_SIN_CONFIRMAR },
-  orden_no_pedida: { codigo: "ORDEN_NO_PEDIDA", mensaje: MENSAJE_VINCULO_ORDEN_NO_PEDIDA },
-};
+const RECHAZOS: readonly { restriccion: string; texto: string; codigo: CodigoDeRechazoDeOrdenDeLaBase; mensaje: string }[] = [
+  // «sin confirmar» va ANTES que «bloqueada»: su texto contiene el de la otra.
+  { restriccion: "recepcion_excede_la_orden_sin_confirmar", texto: "la recepción supera lo pedido y no se confirmó", codigo: "EXCEDE_LA_ORDEN_SIN_CONFIRMAR", mensaje: MENSAJE_EXCEDE_LA_ORDEN_SIN_CONFIRMAR },
+  { restriccion: "recepcion_excede_la_orden_bloqueada", texto: "la recepción supera lo pedido", codigo: "EXCEDE_LA_ORDEN_BLOQUEADA", mensaje: MENSAJE_EXCEDE_LA_ORDEN_BLOQUEADA },
+  { restriccion: "orden_no_pedida", texto: "se recibe contra una orden pedida", codigo: "ORDEN_NO_PEDIDA", mensaje: MENSAJE_VINCULO_ORDEN_NO_PEDIDA },
+];
 
 /** Todas las cadenas de texto del error y de su causa (mensaje, restricción, mensaje original): donde el nombre de la restricción puede aparecer según el adaptador. */
 function textosDelError(e: unknown, profundidad = 0): string[] {
@@ -33,6 +34,7 @@ function textosDelError(e: unknown, profundidad = 0): string[] {
 /** El rechazo de negocio que corresponde a un error de la base del control de exceso (o de que la orden ya no está pedida), o `null` si es otro error. */
 export function rechazoDeOrdenDeLaBase(e: unknown): { codigo: CodigoDeRechazoDeOrdenDeLaBase; mensaje: string } | null {
   const textos = textosDelError(e).join("\n");
-  for (const [nombre, rechazo] of Object.entries(RECHAZOS)) if (textos.includes(nombre)) return rechazo;
+  // El adaptador de Prisma entrega a veces el nombre de la restricción y a veces solo el texto de la excepción (que es el que escribe el disparador, fijo en la migración): se reconocen los dos, nada más.
+  for (const r of RECHAZOS) if (textos.includes(r.restriccion) || textos.includes(r.texto)) return { codigo: r.codigo, mensaje: r.mensaje };
   return null;
 }

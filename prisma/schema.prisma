@@ -3107,7 +3107,7 @@ model OrdenDeCompra {
   sucursal               Sucursal? @relation(fields: [empresaId, sucursalId], references: [empresaId, id], map: "OrdenDeCompra_sucursal_fkey")
   /// Fecha civil (día de Argentina).
   fechaDeEntregaPrevista DateTime? @db.Date
-  estado                 String    @default("BORRADOR")
+  estado                 String    @default(dbgenerated("'BORRADOR'::text"))
   cierreMotivo           String?
   claveIdempotencia      String    @unique
   payloadHash            String
@@ -3126,8 +3126,8 @@ model OrdenDeCompra {
   anuladaPor             User?     @relation("OrdenDeCompraAnuladaPor", fields: [anuladaPorId], references: [id], onDelete: Restrict)
   anuladaEn              DateTime? @db.Timestamptz(3)
   motivoDeAnulacion      String?
-  actualizadoEn          DateTime  @default(now()) @db.Timestamptz(3)
-  version                Int       @default(1)
+  actualizadoEn          DateTime  @default(dbgenerated("now()")) @db.Timestamptz(3)
+  version                Int       @default(dbgenerated("1"))
 
   lineas   LineaDeOrdenDeCompra[]
   saldos   SaldoDeLineaDeOrden[]
@@ -3151,7 +3151,7 @@ model LineaDeOrdenDeCompra {
   producto             Producto      @relation(fields: [empresaId, productoId], references: [empresaId, id], map: "LineaDeOrdenDeCompra_producto_fkey")
   cantidadPedida       Decimal       @db.Decimal(14, 4)
   precioPorUnidadStock Decimal?      @db.Decimal(14, 4)
-  retirada             Boolean       @default(false)
+  retirada             Boolean       @default(dbgenerated("false"))
 
   saldo    SaldoDeLineaDeOrden?
   vinculos VinculoDeRenglonConOrden[]
@@ -3218,7 +3218,7 @@ model NivelDeControl {
   actualizadoPorId String
   actualizadoPor   User     @relation("NivelDeControlActualizadoPor", fields: [actualizadoPorId], references: [id], onDelete: Restrict)
   actualizadoEn    DateTime @default(now()) @db.Timestamptz(3)
-  version          Int      @default(1)
+  version          Int      @default(dbgenerated("1"))
 
   @@unique([empresaId, id])
   @@unique([empresaId, control])
