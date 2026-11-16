@@ -54,13 +54,19 @@ function numerosPorTipo(formateador: Intl.DateTimeFormat, instante: Date): Recor
   return valores as Record<"year" | "month" | "day" | "hour" | "minute", number>;
 }
 
+/** ¿Es un `Date` de verdad? (`instanceof` falla con un `Date` de otro contexto; la etiqueta interna no se puede imitar con un objeto cualquiera.) */
+function esUnDate(valor: unknown): valor is Date {
+  return Object.prototype.toString.call(valor) === "[object Date]";
+}
+
 /** La fecha de negocio «AAAA-MM-DD» de `instante` en `zonaHoraria` con `horaDeCorte` («HH:MM»), o el primer error. */
 export function fechaDeNegocio(instante: Date, zonaHoraria: string, horaDeCorte: string): ResultadoDeRegla<string, ErrorDeJornada> {
-  const corte = FORMATO_DE_HORA.exec(horaDeCorte);
+  // Fallo cerrado: los tipos solo protegen en compilación; un dato que llega de afuera (`null`, un texto, un objeto con `toString`) no puede lanzar ni colarse.
+  const corte = typeof horaDeCorte === "string" ? FORMATO_DE_HORA.exec(horaDeCorte) : null;
   if (corte === null) return invalido("HORA_DE_CORTE_INVALIDA");
-  const formateador = formateadorDeZona(zonaHoraria);
+  const formateador = typeof zonaHoraria === "string" ? formateadorDeZona(zonaHoraria) : null;
   if (formateador === null) return invalido("ZONA_HORARIA_INVALIDA");
-  const ms = instante.getTime();
+  const ms = esUnDate(instante) ? instante.getTime() : Number.NaN;
   if (!(ms >= INSTANTE_MINIMO && ms <= INSTANTE_MAXIMO)) return invalido("INSTANTE_INVALIDO");
 
   const local = numerosPorTipo(formateador, instante);

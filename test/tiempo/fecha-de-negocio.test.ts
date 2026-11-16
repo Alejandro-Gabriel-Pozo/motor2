@@ -74,6 +74,31 @@ describe("fechaDeNegocio: errores cerrados y su orden", () => {
     expect(fechaDeNegocio(malo, AR, "00:00")).toEqual({ ok: false, error: "INSTANTE_INVALIDO" });
   });
 
+  it.each([[null], [undefined], ["2026-11-16T12:00:00Z"], [1_763_300_000_000], [{}], [{ getTime: () => 1_763_300_000_000 }], [[]], [true]])("un instante que no es un Date (%s) devuelve INSTANTE_INVALIDO y no lanza", (malo) => {
+    expect(fechaDeNegocio(malo as unknown as Date, AR, "00:00")).toEqual({ ok: false, error: "INSTANTE_INVALIDO" });
+  });
+
+  it("un Date de otro contexto (otro realm) sí vale", async () => {
+    const { runInNewContext } = await import("node:vm");
+    const ajeno = runInNewContext("new Date(Date.UTC(2026, 10, 16, 7, 0, 0))") as Date;
+    expect(ajeno instanceof Date).toBe(false);
+    expect(fechaDeNegocio(ajeno, AR, "04:00")).toEqual({ ok: true, valor: "2026-11-16" });
+  });
+
+  it.each([[null], [undefined], [4], [{ toString: () => "04:00" }], [["04:00"]]])("una hora de corte que no es texto (%s) devuelve HORA_DE_CORTE_INVALIDA y no lanza", (malo) => {
+    expect(fechaDeNegocio(new Date("2026-11-16T12:00:00Z"), AR, malo as unknown as string)).toEqual({ ok: false, error: "HORA_DE_CORTE_INVALIDA" });
+  });
+
+  it.each([[null], [undefined], [3], [{ toString: () => "UTC" }], [["UTC"]]])("una zona que no es texto (%s) devuelve ZONA_HORARIA_INVALIDA y no lanza", (malo) => {
+    expect(fechaDeNegocio(new Date("2026-11-16T12:00:00Z"), malo as unknown as string, "00:00")).toEqual({ ok: false, error: "ZONA_HORARIA_INVALIDA" });
+  });
+
+  it("GMT y EST5EDT se rechazan (forma canónica de Pedernal: UTC o Continente/Ciudad); Etc/GMT+3 y Etc/UTC valen", () => {
+    for (const zona of ["GMT", "EST5EDT", "PST8PDT"]) expect(en("2026-11-16T12:00:00Z", zona, "00:00")).toEqual({ ok: false, error: "ZONA_HORARIA_INVALIDA" });
+    expect(en("2026-11-16T12:00:00Z", "Etc/GMT+3", "00:00")).toEqual({ ok: true, valor: "2026-11-16" });
+    expect(en("2026-11-16T12:00:00Z", "Etc/UTC", "00:00")).toEqual({ ok: true, valor: "2026-11-16" });
+  });
+
   it("los límites del rango entran", () => {
     expect(fechaDeNegocio(new Date(INSTANTE_MINIMO), "UTC", "00:00").ok).toBe(true);
     expect(fechaDeNegocio(new Date(INSTANTE_MAXIMO), "UTC", "00:00").ok).toBe(true);
