@@ -19,7 +19,7 @@
 | 1.6 | Clasificación: «…él agregó departamento, la primitiva de departamento, la primitiva de categoría. Así que quiero que tengamos eso también.» (2026-11-13, CL §1 N-1; la propia pieza advierte «fuente: chat, no localizable por mí») | **CONFIRMADA** (cita de segunda mano) |
 | 1.7 | Clases: «Las 5 de Pedernal» (2026-11-13) y «Sí, copiar a Pedernal en esas cinco» (2026-11-15), «Unirlos par por par» (2026-11-15) (CS §1, §11) | **CONFIRMADA** (en dirección) |
 | 1.8 | Presentaciones: «El de Pedernal: presentación por producto» (2026-11-13) y, sobre comprar con dos de la misma unidad, «Como lo hace pedernal?» (2026-11-15) → d1 a d5 **no se construyen** | **CONFIRMADA**; **PROPUESTA** la lectura «no se construye» (la dice el orquestador) |
-| 1.9 | **Alcance.** Entra: las 14 unidades y su conversión exacta, la columna de equivalencia, la merma en bruto, el árbol de clasificación (E1 a E3), las clases y la unión de pares. **No entra** (sugerencias): fusionar unidades, nombre/peso variable de presentaciones, unidad de venta separada y porciones, filtros y reportes por departamento, responsable de departamento, departamento en la cuenta (**pregunta P1**) | **PROPUESTA** |
+| 1.9 | **Alcance.** (actualizado) Entra además: departamento en la cuenta (0048) y cálculo exacto de cantidades. Entra: las 14 unidades y su conversión exacta, la columna de equivalencia, la merma en bruto, el árbol de clasificación (E1 a E3), las clases y la unión de pares. **No entra** (sugerencias): fusionar unidades, nombre/peso variable de presentaciones, unidad de venta separada y porciones, filtros y reportes por departamento, responsable de departamento, porciones y unidad de venta (0051: **no se toma**, decisión del orquestador general) | **PROPUESTA** |
 | 1.10 | **Poda.** Una opción cuyas combinaciones dan lo mismo o no tiene necesidad escrita es candidata a ocultarse. Candidatas declaradas: la guardia por nombre (`PARES_DE_UNIDADES`) cuando exista equivalencia; la merma en opciones y combinaciones (ME §7, «etapas posteriores»). **No se podan acá** | **PROPUESTA** |
 
 **P0 — Lectura de «las unidades de clasificación».** Si el dueño quiso decir algo distinto de «unidades de medida y clasificación», el alcance cambia. Es la primera cosa que debe validar al leer este documento (no hace falta pregunta aparte: se corrige).
@@ -53,6 +53,8 @@
 | CU-7 | Crear / renombrar / mover / desactivar / reactivar un nodo de clasificación | E1 | CONFIRMADA (CL §1, §13; permisos 2026-11-14) |
 | CU-8 | Clasificar un producto («rige desde ahora», «Sin elegir» posible) | E2 | CONFIRMADA («solo desde ahora», 2026-11-13, de Pedernal) / **PROPUESTA** para Motor2 (P2) |
 | CU-9 | Sellar el camino de clasificación en cada renglón vendido | E3 | **PROPUESTA** (CL P3 la asumió el orquestador) |
+| CU-9b | **(actualizado)** Fijar el «Departamento» en la cuenta de venta al abrirla (Pedernal 0048); no cambia; no bloquea vender otro departamento | E3 | **CONFIRMADA** (dueño, 2026-11-16: «Sí, ya») |
+| CU-12 | **(actualizado)** Cálculo exacto de cantidades de stock (sin coma flotante) | A1b | **CONFIRMADA** (dueño, 2026-11-16) |
 | CU-10 | Elegir la **clase** al crear un producto; la clase no cambia | CS E2 | CONFIRMADA en dirección |
 | CU-11 | **Unir un par** materia prima + vendible en un producto de reventa (una transacción por par) | CS E6 | CONFIRMADA en dirección (2026-11-15) |
 
@@ -83,7 +85,7 @@ Todo nace cerrado (regla del 2026-11-11): sin equivalencia declarada, una unidad
 |---|---|---|
 | I-U1 | Los factores de las 14 no cambian nunca; una prueba compara el código con el `CHECK` de la base | PROPUESTA (CONFIRMADA en Pedernal) |
 | I-U2 | Convertir es **exacto o se rechaza**, en este orden: `DIMENSION_DISTINTA`, `CONVERSION_NO_EXACTA`, `FUERA_DE_RANGO`; aritmética `bigint`, nunca `number` | PROPUESTA (**V**: ya así en `unidades-de-medida.ts`) |
-| I-U3 | **Diferencia declarada:** Motor2 sigue redondeando el stock a `Unidad.decimales` en lo ya guardado (**datos existentes**); **no se toca** ninguna cantidad ni factor cargado | PROPUESTA |
+| I-U3 | **(actualizado)** La cuenta es **exacta con 4 decimales** como Pedernal, sin coma flotante: **CONFIRMADA** (dueño, 2026-11-16: «Pasar a cuenta exacta como Pedernal»). **No se toca** ninguna cantidad ni factor ya cargado (**datos existentes**). A cuántos decimales se **guarda** el stock nuevo (los de la unidad o 4 fijos): **PENDIENTE** (P2). Antes de aplicar: medir el Kardex en copia de solo lectura y regenerar `golden` con motivo | CONFIRMADA (cuenta exacta) / PENDIENTE (alcance) |
 | I-U4 | Una equivalencia solo entre unidades de la **misma dimensión** y relación 1 a 1 | PROPUESTA |
 | I-U5 | Nada se pierde: nombre original, `id`, decimales y toda fila que la referencia quedan idénticos | PROPUESTA |
 | I-U6 | Asignar/cambiar una equivalencia: permiso verificado en el servidor, **auditada** (quién, cuándo, de qué a qué), idempotente | PROPUESTA |
@@ -120,6 +122,7 @@ Columnas: **R**epetición · **C**oncurrencia · **T**iempo · **I**ncertidumbre
 | **Mover** (E1) | «ya estaba» si el padre es el mismo | candado por empresa: dos movimientos que juntos harían un ciclo: el segundo se rechaza | idem T7 | n/a | idempotente | todo o nada | departamento no se mueve; tope 4 contando la altura del subárbol | ídem |
 | **Desactivar / reactivar** (E1) | «ya estaba» | candado por empresa | los productos conservan su vínculo (el historial no cambia) | n/a | idempotente | todo o nada | con hijos activos → «Primero desactivá lo que tiene adentro.» | ídem |
 | **Clasificar un producto** (E2) | mismo `id` de la app = no duplica | `UNIQUE (empresa, producto, vigenteDesde)`: dos a la vez, una gana | rige **desde ahora** (instante del servidor, zona Argentina); no hay fecha futura | n/a | `id` de la app | **una transacción** con la copia en `Producto.categoriaId` | nodo desactivado → rechazo; `nodoId` nulo = «Sin elegir» | permiso de la ficha, servidor |
+| **Fijar el departamento en la cuenta** (0048, E3) | una sola vez al abrir; sin `UPDATE` | misma transacción que la apertura de la cuenta | no cambia después | sin elección: queda vacío (nunca inventa; con 0 o 1 departamentos no se pide) | por la clave de apertura de la cuenta | si falla, **no se abre la cuenta** | departamento desactivado → rechazo | permiso de abrir cuenta de hoy; sin clave nueva |
 | **Sellar el camino en la venta** (E3) | una sola vez al insertar; **sin `UPDATE`** | misma transacción que la venta | lo vendido no cambia | n/a | la venta ya es idempotente por su clave | si falla el sellado, **no hay venta** | producto «Sin elegir» → camino vacío (nunca inventa) | n/a |
 | **Unir un par** (CS E6) | el par ya unido → «ya estaba» | un par a la vez; lo toca el candado del producto | stock y costo **a esa fecha**; el nuevo costo arranca vacío | si el informe no cuadra, **no se une** | por par; no duplica el producto REVENTA | **una transacción por par**; los demás siguen | sin recetas que reapuntar → se une igual; sin costo → «pendiente de completar» | autorización expresa por base + permiso de edición |
 
@@ -127,4 +130,4 @@ Columnas: **R**epetición · **C**oncurrencia · **T**iempo · **I**ncertidumbre
 
 ## Pendiente (para el dueño, una por vez)
 
-La primera es la **P1** de la entrada (§8): **departamento en la cuenta de venta (Pedernal 0048)**, recomendada (a): no por ahora. Las siguientes (P2 a P4) están en fila. **P0** (lectura del pedido) se corrige leyendo este documento.
+**P1 y el redondeo ya están respondidos** (entrada §8). La que sigue es **P2**: si el stock se guarda a los decimales de la unidad (a, recomendada) o a 4 fijos como Pedernal (b). P3 a P5 en fila. **P0** (lectura del pedido) se corrige leyendo este documento.
