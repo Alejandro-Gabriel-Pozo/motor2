@@ -78,8 +78,8 @@ El orden sale de «lo más barato primero» y de que **las migraciones se aprueb
 | `Unidad` | columna `codigoFijo` (+ CHECK de 14 valores) | U1 |
 | `CategoriaProducto` | `padreId`, `nombreClave`, `version`, `creadoEn`, `actualizadoEn`, único nuevo | E1 |
 | `ProductoClasificacion` (nuevo) | vínculo de solo inserción | E2 |
-| `RecetaVersion`, `VersionDeOpcion`, `RecetaDeCombinacionVersion` | columna `baseDeCantidad` | M2 |
-| `RecetaIngrediente`, `RendimientoLocalIngrediente`, `ConsumoDeOpcion`, `RecetaDeCombinacionIngrediente` | `mermaPorcentaje` de `Decimal(6,2)` a `(7,4)` | M2b |
+| `RecetaVersion`, `VersionDeOpcion` | columna `baseDeCantidad` (la tabla de combinaciones, GO-3a, está retirada y no entra) | M2 |
+| `RecetaIngrediente`, `RendimientoLocalIngrediente`, `ConsumoDeOpcion` | `mermaPorcentaje` de `Decimal(6,2)` a `(7,4)` (la cuarta tabla, de combinaciones, está retirada) | M2b |
 
 **Modelos que se tocan pero NO son solo míos (se piden por turno al orquestador general; ver §3):** `CuentaItem` (E3: dos columnas del camino), `Cuenta` (**0048 confirmado**, entra con E3: se pide el turno al orquestador general), `Producto` (columna de clase y, si se retira, `categoriaId`), `MovimientoStock` y `Presentacion` (no se tocan: ver §3).
 
