@@ -154,8 +154,38 @@ export interface FilaDeAuditoria {
   sucursalId: string | null;
 }
 
+/** Lo que se guarda cuando un objeto o arreglo no se puede pasar a JSON (referencia circular, `getter` que falla): un texto fijo, nunca el contenido ni un error que corte el cambio que se audita. */
+export const TEXTO_DE_VALOR_NO_SERIALIZABLE = "[valor no serializable]";
+
+/** Objeto «plano» (literal o sin prototipo): los `Decimal`, `Date` y demás instancias de clase NO lo son y siguen yendo por `String(valor)`, como siempre. */
+function esObjetoPlano(valor: object): boolean {
+  const proto = Object.getPrototypeOf(valor);
+  return proto === Object.prototype || proto === null;
+}
+
+/** Copia con las claves de los objetos planos en orden alfabético, para que el mismo contenido dé siempre el mismo texto. Corre después de `toJSON` (una `Date` ya llega como texto ISO; un `Decimal`, como texto). */
+function ordenarClaves(_clave: string, valor: unknown): unknown {
+  if (typeof valor === "bigint") return valor.toString();
+  if (valor !== null && typeof valor === "object" && !Array.isArray(valor) && esObjetoPlano(valor)) {
+    const origen = valor as Record<string, unknown>;
+    return Object.fromEntries(Object.keys(origen).sort().map((k) => [k, origen[k]]));
+  }
+  return valor;
+}
+
+/**
+ * Un valor a texto. `null`/`undefined` → `null`; un objeto plano o un arreglo → JSON compacto con claves ordenadas (antes quedaba «[object Object]» y la fila era ilegible); todo lo demás
+ * (texto, número, booleano, `Date`, `Decimal`…) → `String(valor)`, EXACTAMENTE como antes. Un objeto que no se puede serializar (circular) da un texto fijo: la auditoría no corta el cambio.
+ */
 function aTexto(valor: unknown): string | null {
   if (valor === null || valor === undefined) return null;
+  if (typeof valor === "object" && (Array.isArray(valor) || esObjetoPlano(valor))) {
+    try {
+      return JSON.stringify(valor, ordenarClaves) ?? TEXTO_DE_VALOR_NO_SERIALIZABLE;
+    } catch {
+      return TEXTO_DE_VALOR_NO_SERIALIZABLE;
+    }
+  }
   return String(valor);
 }
 
