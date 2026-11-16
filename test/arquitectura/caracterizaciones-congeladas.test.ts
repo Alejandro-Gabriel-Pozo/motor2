@@ -995,6 +995,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Nombre de cocina (ADITIVO; migración 20261115170000_nombre_de_cocina; regenerado con REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1): las filas PRODUCTO y las líneas ITEM suman `nombreDeCocina=null` (nadie tiene nombre de cocina en este mundo). Verificado por programa: sin esa columna el contenido es IDÉNTICO al blob anterior.",
       },
+      {
+        blob: "322721c0f9c21f71ee6b4e8f022528d50d6efa94",
+        // Un commit no puede llevar su propio hash: es el commit de este mismo cambio (lote D del catálogo de textos), que cambia la línea y declara su regeneración en el commit hijo.
+        commit: "c32a3851",
+        motivo:
+          "Lote D del catálogo de textos (aceptado por el dueño el 2026-11-16: «Sí, una sola frase (Recomendada)»): el rechazo por nombre repetido del alta de un cliente pasa de «Ya existe un cliente llamado» con el nombre entre comillas rectas a «Ya existe un cliente llamado «Fulano». Elegí otro nombre.». Cambia SOLO esa línea del paso «cliente: alta repetida»; ningún dato ni efecto.",
+      },
     ],
   },
   "test/caracterizacion-precio-y-carta/precios.golden.txt": {
