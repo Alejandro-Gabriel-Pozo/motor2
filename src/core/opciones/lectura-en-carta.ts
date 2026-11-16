@@ -128,8 +128,12 @@ export function opcionesDelEje<O extends { esNinguna: boolean }>(g: { tipo: Tipo
 /** El tope de «se lee en la carta como» (CHECK `GrupoDeOpciones_prefijo_en_carta_chk`). */
 export const LARGO_MAXIMO_DEL_PREFIJO_EN_CARTA = 20;
 
-/** El tope de la descripción de una opción en la carta (CHECK `OpcionDeGrupo_descripcion_en_carta_chk`): una línea de hasta 120 caracteres. */
-export const LARGO_MAXIMO_DE_LA_DESCRIPCION_EN_CARTA = 120;
+/**
+ * El tope de la descripción de una opción en la carta: una línea de hasta 80 caracteres. Dueño, 2026-11-16, «Bajar a 80» (`motor2-docs`, «Datos E-1c»): baja de 120 a 80, como la ficha ELECCION de Pedernal. Lo ya
+ * guardado de más de 80 NO se toca y sigue mostrándose; se rechaza al EDITAR la descripción (hay que acortarla). El CHECK de la base (`OpcionDeGrupo_descripcion_en_carta_chk`) sigue en 120: es más flojo que el código a
+ * propósito (apretarlo sería una migración que puede chocar con lo ya guardado: etapa E-3).
+ */
+export const LARGO_MAXIMO_DE_LA_DESCRIPCION_EN_CARTA = 80;
 
 /** Solo un grupo de VARIANTES o de MEDIDA se lee con prefijo (decisión del dueño): en una INCLUIDA o un ADICIONAL la carta lleva un rótulo («Guarnición:», «Extras:»), que es otra cosa. */
 export function admitePrefijoEnCarta(tipo: TipoDeGrupoDeOpciones): boolean {

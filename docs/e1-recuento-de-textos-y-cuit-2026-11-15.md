@@ -213,13 +213,13 @@ En las ediciones el guard solo recorta, exige no vacío y el tope de la ficha; e
 |---|---|---|---|
 | `src/core/permisos/nombres-de-rol.ts` | validarTextoCatalogo | nombre de rol | rol: sin regla de Pedernal; decisión pendiente (NO VERIFICADO si Pedernal lo valida; no se encontró) |
 | `src/core/features/sucursales/sucursal.guard.ts` | validarTextoCatalogo | nombre de sucursal | sucursal: regla propia (NFC, recorte, 1 a 100 caracteres, rechaza controles con una lista de prohibidos; la base no limita): no es la ficha de catálogo y choca con «todo nace cerrado» |
-| `src/core/features/carta/contenido-producto.guard.ts` | RE_TEXTO_CATALOGO | «Nombre en la carta» del producto | nombre en la carta: sin regla de Pedernal; decisión pendiente (NO VERIFICADO) |
-| `src/core/features/catalogo/unidades.guard.ts` | nombreDeCatalogo | nombre de unidad | unidad: catálogo FIJO de 14 unidades (etapa E2, otra decisión) |
-| `src/core/features/movimientos/secciones.guard.ts` | nombreDeCatalogo | sección de movimientos | depósito de stock: usa la ficha de elección y la base lo repite; la equivalencia con la «sección» de Motor2 NO está verificada |
-| `src/core/features/movimientos/motivos.guard.ts` | nombreDeCatalogo | motivo de merma y destino de consumo | motivos de movimiento: catálogo FIJO sembrado por código (clase cerrada), no texto libre; merma y destino: no encontrado |
-| `src/core/carta/validaciones.ts` | validarTextoCatalogo | ítem agrupado y género de la carta | ítem agrupado y género: sin regla de Pedernal; decisión pendiente (no encontrado en Pedernal) |
-| `src/core/features/catalogo/insumos.guard.ts` | nombreDeCatalogo | insumo (conectado); grupo de insumos (viejo) | grupo de insumos: sin regla de Pedernal; decisión pendiente |
-| `src/core/features/catalogo/opciones-de-venta.guard.ts` | RE_TEXTO_CATALOGO, validarTextoCatalogo | grupo y opción de venta (conectado); descripción y prefijo «se lee en la carta como» (viejo, no son nombres) | descripción y prefijo en la carta: sin regla de Pedernal; decisión pendiente |
+| `src/core/features/carta/contenido-producto.guard.ts` | nombreDeFicha (ELECCION, desde el 2026-11-16) | «Nombre en la carta» del producto | nombre en la carta: sin regla de Pedernal; decisión pendiente (NO VERIFICADO) |
+| `src/core/features/catalogo/unidades.guard.ts` | nombreDeCatalogo → ficha ELECCION (desde el 2026-11-16) | nombre de unidad | unidad: catálogo FIJO de 14 unidades (etapa E2, otra decisión) |
+| `src/core/features/movimientos/secciones.guard.ts` | nombreDeCatalogo → ficha ELECCION (desde el 2026-11-16) | sección de movimientos | depósito de stock: usa la ficha de elección y la base lo repite; la equivalencia con la «sección» de Motor2 NO está verificada |
+| `src/core/features/movimientos/motivos.guard.ts` | nombreDeCatalogo → ficha ELECCION (desde el 2026-11-16) | motivo de merma y destino de consumo | motivos de movimiento: catálogo FIJO sembrado por código (clase cerrada), no texto libre; merma y destino: no encontrado |
+| `src/core/carta/validaciones.ts` | nombreDeFicha (ELECCION, desde el 2026-11-16) | ítem agrupado y género de la carta | ítem agrupado y género: sin regla de Pedernal; decisión pendiente (no encontrado en Pedernal) |
+| `src/core/features/catalogo/insumos.guard.ts` | nombreDeCatalogo → ficha ELECCION (desde el 2026-11-16) | insumo (conectado); grupo de insumos (viejo) | grupo de insumos: sin regla de Pedernal; decisión pendiente |
+| `src/core/features/catalogo/opciones-de-venta.guard.ts` | nombreDeFicha (ELECCION, desde el 2026-11-16) | grupo y opción de venta (conectado); descripción y prefijo «se lee en la carta como» (viejo, no son nombres) | descripción y prefijo en la carta: sin regla de Pedernal; decisión pendiente |
 
 ### 5.3 CUIT (fuera de la tabla que recorre el guardián de nombres)
 
