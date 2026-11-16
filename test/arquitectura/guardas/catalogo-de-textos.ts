@@ -6,7 +6,7 @@ import { parsearRegistro } from "./registro-de-decisiones";
  * Módulo PURO: recibe el catálogo, el texto del registro de decisiones y una función que lee archivos, para que el test ejerza cada regla con entradas inyectadas.
  *
  * Reglas (las revisa `catalogo-de-textos.test.ts`):
- *  - C1 la clave está bien formada (`rechazo.<CODIGO>` o `rotulo|accion|aviso|ayuda|titulo.<tema>`) y no hay dos claves que solo difieran en mayúsculas.
+ *  - C1 la clave está bien formada (`rechazo.<CODIGO>` o `rotulo|accion|aviso|ayuda|titulo|columna.<tema>`) y no hay dos claves que solo difieran en mayúsculas.
  *  - C2 el mismo valor (sin mayúsculas, tildes ni signos) bajo dos claves falla, salvo `homonimoDe` con motivo hacia una clave que existe y dice lo mismo.
  *  - C3 todo texto declara al menos un uso; cada uso nombra un archivo que existe, una función o constante que ese archivo declara y cita la clave.
  *  - C4 la fuente es `HEREDADO` (solo si la clave está en la línea base, que solo baja) o una DEC que existe en el registro y está ACEPTADA o CORREGIDA.
@@ -31,7 +31,7 @@ export interface ContextoDelCatalogo {
   readonly heredados: readonly string[];
 }
 
-const FORMA_DE_CLAVE = /^(?:rechazo\.[A-Z][A-Z0-9_]*|(?:rotulo|accion|aviso|ayuda|titulo)\.[a-z][a-z0-9_]*)$/;
+const FORMA_DE_CLAVE = /^(?:rechazo\.[A-Z][A-Z0-9_]*|(?:rotulo|accion|aviso|ayuda|titulo|columna)\.[a-z][a-z0-9_]*)$/;
 const TIPOS_DE_MARCADOR = ["texto", "causa"] as const;
 const ESTADOS_QUE_AUTORIZAN = ["ACEPTADA", "CORREGIDA"];
 const LARGO_MINIMO_DEL_MOTIVO = 10;
@@ -62,7 +62,7 @@ export function revisarCatalogo(catalogo: Readonly<Record<string, EntradaDelCata
   // C1
   const porMinusculas = new Map<string, string>();
   for (const clave of claves) {
-    if (!FORMA_DE_CLAVE.test(clave)) falla(clave, "la clave no tiene la forma `rechazo.<CODIGO>` ni `rotulo|accion|aviso|ayuda|titulo.<tema>` (C1).");
+    if (!FORMA_DE_CLAVE.test(clave)) falla(clave, "la clave no tiene la forma `rechazo.<CODIGO>` ni `rotulo|accion|aviso|ayuda|titulo|columna.<tema>` (C1).");
     const otra = porMinusculas.get(clave.toLowerCase());
     if (otra !== undefined) falla(clave, `la clave solo difiere en mayúsculas de «${otra}» (C1).`);
     else porMinusculas.set(clave.toLowerCase(), clave);

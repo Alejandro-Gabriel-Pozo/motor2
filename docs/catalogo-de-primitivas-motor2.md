@@ -165,3 +165,5 @@ Una fila por modelo de `prisma/schema.prisma` (112 modelos, 18 primitivas o grup
 | `Cobro` | Caja y cobro (C1) |
 | `ArqueoCaja` | Caja y cobro (C1) |
 | `ArqueoBillete` | Caja y cobro (C1) |
+| `CuentaDeCobro` | Caja y cobro (C3) |
+| `ValorDeLista` | Caja y cobro (C3) |

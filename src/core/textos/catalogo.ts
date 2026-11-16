@@ -4,7 +4,7 @@ import type { DefinicionDeTexto } from "./tipos";
  * El catálogo cerrado de textos de interfaz (diseño `docs/diseno-textos-en-codigo-2026-11-16.md`; DEC-0013). Una entrada por texto: la clave nombra UNA cosa; `ClaveDeTexto` se deduce de acá, así que pedir una
  * clave que no existe no compila. Hoy tiene la primera familia (R-11 del diseño): el rechazo de la etapa a2-1 de Presentaciones, unido en una sola causa con dos marcos.
  *
- * Convención de claves: `rechazo.<CODIGO>` (el `codigo` público de `fracaso`), o `rotulo.` / `accion.` / `aviso.` / `ayuda.` / `titulo.` más `<tema>` en minúsculas (lo comprueba
+ * Convención de claves: `rechazo.<CODIGO>` (el `codigo` público de `fracaso`), o `rotulo.` / `accion.` / `aviso.` / `ayuda.` / `titulo.` / `columna.` (encabezado de tabla) más `<tema>` en minúsculas (lo comprueba
  * `test/arquitectura/catalogo-de-textos.test.ts`). Un texto nuevo entra acá con sus `usos` y su `fuente`, no escrito a mano en el código.
  */
 export const CATALOGO = {
@@ -38,6 +38,70 @@ export const CATALOGO = {
   "aviso.oculto": { porDefecto: "Oculto", usos: [{ archivo: "src/components/catalogo/tarjeta-ocultar.tsx", nombre: "TarjetaOcultar" }], fuente: { decision: "DEC-0014" } },
   "aviso.oculto_en_la_empresa": { porDefecto: "Oculto en toda la empresa", usos: [{ archivo: "src/components/catalogo/tarjeta-ocultar.tsx", nombre: "TarjetaOcultar" }], fuente: { decision: "DEC-0014" } },
   "rechazo.TIENE_EXISTENCIA": { porDefecto: "Primero dejá la existencia en 0.", usos: [{ archivo: "src/server/actions/catalogo/casos-de-uso/ocultar-producto.ts", nombre: "ocultarProductoCasoDeUso" }], fuente: { decision: "DEC-0014" } },
+  // Lote E (DEC-0016): rótulos de dinero de columnas de reportes, con las MISMAS palabras que tenían (aceptado por el dueño, 2026-11-16).
+  "columna.importe": {
+    porDefecto: "Importe",
+    usos: [
+      { archivo: "src/app/(app)/reportes/categorias/tabla-categorias.tsx", nombre: "COLUMNAS" },
+      { archivo: "src/app/(app)/reportes/historial/como-se-vendio.tsx", nombre: "columnas" },
+      { archivo: "src/app/(app)/reportes/periodo/tabla-periodo.tsx", nombre: "COLUMNAS_VENTAS" },
+      { archivo: "src/app/(app)/reportes/periodo/tabla-periodo.tsx", nombre: "columnasCompras" },
+      { archivo: "src/app/(app)/reportes/periodo/tabla-periodo.tsx", nombre: "COLUMNAS_VENTAS_POR_OPCION" },
+      { archivo: "src/app/(app)/reportes/tabla-resumen.tsx", nombre: "COLUMNAS_TOP_PRODUCTOS" },
+      { archivo: "src/app/(app)/reportes/tabla-resumen.tsx", nombre: "COLUMNAS_TOP_PROVEEDORES" },
+      { archivo: "src/app/(app)/reportes/ventas-por-seccion/tabla-seccion.tsx", nombre: "COLUMNAS" },
+    ],
+    fuente: { decision: "DEC-0016" },
+  },
+  "columna.cobrado": {
+    porDefecto: "Cobrado",
+    usos: [
+      { archivo: "src/app/(app)/reportes/descuentos-clientes/tabla-descuentos-clientes.tsx", nombre: "COLUMNAS" },
+      { archivo: "src/app/(app)/reportes/descuentos-productos/tabla-descuentos-productos.tsx", nombre: "COLUMNAS" },
+      { archivo: "src/app/(app)/reportes/margen-promociones/tabla-margen-promociones.tsx", nombre: "COLUMNAS" },
+    ],
+    fuente: { decision: "DEC-0016" },
+  },
+  "columna.margen": {
+    porDefecto: "Margen",
+    usos: [
+      { archivo: "src/app/(app)/reportes/costos/tabla-costos.tsx", nombre: "COLUMNAS_PRODUCTOS" },
+      { archivo: "src/app/(app)/reportes/periodo/tabla-periodo.tsx", nombre: "COLUMNAS_VENTAS_POR_OPCION" },
+    ],
+    fuente: { decision: "DEC-0016" },
+  },
+  "columna.food_cost": {
+    porDefecto: "Food cost %",
+    usos: [
+      { archivo: "src/app/(app)/reportes/costos/tabla-costos.tsx", nombre: "COLUMNAS_PRODUCTOS" },
+      { archivo: "src/app/(app)/reportes/periodo/tabla-periodo.tsx", nombre: "COLUMNAS_IMPACTO_RECETA" },
+    ],
+    fuente: { decision: "DEC-0016" },
+  },
+  "columna.costo_unitario": {
+    porDefecto: "Costo unitario",
+    usos: [
+      { archivo: "src/app/(app)/reportes/costos/tabla-costos.tsx", nombre: "COLUMNAS_INSUMOS" },
+      { archivo: "src/app/(app)/reportes/valuacion/tabla-valuacion.tsx", nombre: "COLUMNAS_CON_COSTO" },
+    ],
+    fuente: { decision: "DEC-0016" },
+  },
+  "columna.a_precio_de_lista": {
+    porDefecto: "A precio de lista",
+    usos: [
+      { archivo: "src/app/(app)/reportes/descuentos-clientes/tabla-descuentos-clientes.tsx", nombre: "COLUMNAS" },
+      { archivo: "src/app/(app)/reportes/descuentos-productos/tabla-descuentos-productos.tsx", nombre: "COLUMNAS" },
+    ],
+    fuente: { decision: "DEC-0016" },
+  },
+  "columna.margen_real_cobrado": {
+    porDefecto: "Margen Real (cobrado)",
+    usos: [
+      { archivo: "src/app/(app)/reportes/descuentos-clientes/tabla-descuentos-clientes.tsx", nombre: "COLUMNAS" },
+      { archivo: "src/app/(app)/reportes/margen-promociones/tabla-margen-promociones.tsx", nombre: "COLUMNAS" },
+    ],
+    fuente: { decision: "DEC-0016" },
+  },
   // Lote A (DEC-0017): «No se encontró …» idénticos con el mismo código, una clave por código.
   "rechazo.MEMBRESIA_NO_ENCONTRADA": {
     porDefecto: "No se encontró esa membresía.",

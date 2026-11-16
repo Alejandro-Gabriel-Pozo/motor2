@@ -39,13 +39,14 @@ test("el orden se autosugiere al crear una sección y al elegir la sección de u
     // CARTA-MANT: los formularios de las secciones y la ficha de cada producto viven en Parametrización › Secciones.
     await page.goto("/carta/parametrizacion/secciones");
     const nuevaSeccion = page.locator("form", { has: page.getByRole("heading", { name: "Nueva sección de carta" }) });
-    await expect(nuevaSeccion.getByLabel("Orden")).toHaveValue(String(cantidadSecciones));
+    // Con `ALTA_DE_SECCION_SOLO_NOMBRE` no hay campo de orden: lo pone la página (al final).
+    await expect(nuevaSeccion.locator("input[name=orden]")).toHaveCount(0);
     await nuevaSeccion.getByLabel("Nombre", { exact: true }).fill(nombreSeccionNueva);
     await nuevaSeccion.getByRole("button", { name: "Crear sección" }).click();
     await expect(nuevaSeccion.getByRole("status")).toHaveText(`Sección de carta "${nombreSeccionNueva}" creada.`);
     expect((await prisma.seccionCarta.findFirstOrThrow({ where: { nombre: nombreSeccionNueva } })).orden).toBe(cantidadSecciones);
     // Tras el alta (y el refresco), el formulario vuelve a arrancar con el siguiente.
-    await expect(nuevaSeccion.getByLabel("Orden")).toHaveValue(String(cantidadSecciones + 1));
+    await expect(nuevaSeccion.locator("input[name=nombre]")).toHaveValue("");
 
     // DA6 en /carta: un PV oculto y sin sección (grupo «Ocultos, sin sección»).
     await page.locator(`[data-grupo-de-la-carta="Ocultos, sin sección"] > summary`).click();
