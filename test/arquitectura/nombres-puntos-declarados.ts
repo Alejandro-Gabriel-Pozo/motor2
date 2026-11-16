@@ -5,7 +5,7 @@
  *  - `viejos`: los validadores viejos (`validarTextoCatalogo`, `nombreDeCatalogo`, `validarNombreCatalogo`, `RE_TEXTO_CATALOGO`) que TODAVÍA usa y para qué dato, con lo que hace Pedernal con ese dato
  *    («sin regla de Pedernal; decisión pendiente»: el dueño decide con esa evidencia; no se conectan ni se inventan).
  */
-export type Ficha = "PRODUCTO" | "ELECCION" | "RAZON_SOCIAL";
+export type Ficha = "PRODUCTO" | "ELECCION" | "RAZON_SOCIAL" | "NOMBRE_DE_SUCURSAL" | "NOMBRE_DE_ROL";
 export type PuntoDeNombre = Readonly<{ pedernal: readonly Ficha[]; viejos: readonly string[]; dato: string; pedernalHace?: string }>;
 
 const SIN_REGLA = "sin regla de Pedernal; decisión pendiente";
@@ -28,8 +28,8 @@ export const PUNTOS_DE_NOMBRE: Readonly<Record<string, PuntoDeNombre>> = {
   "src/server/actions/catalogo/casos-de-uso/editar-grupo-de-opciones.ts": { pedernal: ["ELECCION"], viejos: [], dato: "edición de grupo de opciones (estricta solo si cambia)" },
   "src/server/actions/catalogo/casos-de-uso/editar-opcion-de-grupo.ts": { pedernal: ["ELECCION"], viejos: [], dato: "edición de opción (estricta solo si cambia)" },
   // --- Sin regla de Pedernal verificada: siguen con la regla vieja de Motor2 (NO se conectan ni se inventan) ---
-  "src/core/permisos/nombres-de-rol.ts": { pedernal: [], viejos: ["validarTextoCatalogo"], dato: "nombre de rol", pedernalHace: `rol: ${SIN_REGLA} (NO VERIFICADO si Pedernal lo valida; no se encontró)` },
-  "src/core/features/sucursales/sucursal.guard.ts": { pedernal: [], viejos: ["validarTextoCatalogo"], dato: "nombre de sucursal", pedernalHace: "sucursal: regla propia (NFC, recorte, 1 a 100 caracteres, rechaza controles con una lista de prohibidos; la base no limita): no es la ficha de catálogo y choca con «todo nace cerrado»" },
+  "src/core/permisos/nombres-de-rol.ts": { pedernal: ["NOMBRE_DE_ROL"], viejos: [], dato: "nombre de rol (dueño 2026-11-16, «Sí, así (Recomendada)»)", pedernalHace: "rol: Pedernal tiene tres roles fijos, sin nombre libre: no hay regla que copiar" },
+  "src/core/features/sucursales/sucursal.guard.ts": { pedernal: ["NOMBRE_DE_SUCURSAL"], viejos: [], dato: "nombre de sucursal (alta y renombrar; dueño 2026-11-16, «Sí, así (Recomendada)»)", pedernalHace: "sucursal: regla propia (NFC, recorte, 1 a 100, solo rechaza controles); acá rige la lista de permitidos común y el largo de 80 (diferencia declarada en fichas-de-texto.ts)" },
   "src/core/features/carta/contenido-producto.guard.ts": { pedernal: ["ELECCION"], viejos: [], dato: "«Nombre en la carta» del producto (E-1c, dueño 2026-11-16, «Sí, así (Recomendada)»)" },
   "src/core/features/catalogo/unidades.guard.ts": { pedernal: ["ELECCION"], viejos: [], dato: "nombre de unidad (ficha ELECCION por `nombreDeCatalogo`; el frente 2 cierra el alta a mano en U2)" },
   "src/core/features/movimientos/secciones.guard.ts": { pedernal: ["ELECCION"], viejos: [], dato: "sección de movimientos (ficha ELECCION por `nombreDeCatalogo`)" },

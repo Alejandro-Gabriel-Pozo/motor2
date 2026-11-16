@@ -15,7 +15,7 @@ const USOS_VIEJOS = /\b(validarTextoCatalogo|validarNombreCatalogo|RE_TEXTO_CATA
 // `nombreDeCatalogo` ya no es una regla vieja: desde E-1c (2026-11-16) es un envoltorio de la ficha ELECCION de Pedernal (`features/catalogo/nombre-de-catalogo.ts`).
 const USOS_NUEVOS = /\b(nombreDeFicha|nombreMinimoDeFicha|nombreDeFichaSiCambio|nombreDeCatalogo)\b/g;
 const ENVOLTORIO_DE_ELECCION = /\bnombreDeCatalogo\b/;
-const FICHAS = /"(PRODUCTO|ELECCION|RAZON_SOCIAL)"/g;
+const FICHAS = /"(PRODUCTO|ELECCION|RAZON_SOCIAL|NOMBRE_DE_SUCURSAL|NOMBRE_DE_ROL)"/g;
 /** Donde se DEFINEN los validadores: no son puntos de validación. */
 const DEFINICIONES = new Set(["src/core/texto.ts", "src/core/datos/nombre-catalogo.ts", "src/core/features/catalogo/nombre-de-catalogo.ts", "src/core/datos/nombre-de-ficha.ts"]);
 
