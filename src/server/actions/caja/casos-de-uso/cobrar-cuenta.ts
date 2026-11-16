@@ -1,5 +1,5 @@
 import "server-only";
-import { centavosDeImporte, repartirCobro, textoDeCentavos } from "@/core/caja/public";
+import { centavosDeImporte, decidirMovimiento, estadoDeSesion, repartirCobro, textoDeCentavos } from "@/core/caja/public";
 import type { ComandoCobrarCuenta, ResultadoCobrarCuenta } from "@/core/features/caja/caja.schema";
 import { calcularPayloadHash } from "@/core/movimientos/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";
@@ -7,7 +7,7 @@ import type { FuenteDeAzar } from "@/core/seguridad/azar";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
-import { cargarCajaDeSucursal, cargarCobranzaDeClave, cargarCobranzaDeCuenta, cargarSesionAbiertaDeCaja, cargarTiposDeMedios, insertarCobranza, insertarCobro, insertarMovimiento } from "@/server/persistencia/caja/caja";
+import { cargarCajaDeSucursal, cargarCobranzaDeClave, cargarCobranzaDeCuenta, cargarSesionSinCerrarDeCaja, cargarTiposDeMedios, insertarCobranza, insertarCobro, insertarMovimiento } from "@/server/persistencia/caja/caja";
 import { cargarCuentaParaCobrar } from "@/server/persistencia/caja/total-de-cuenta";
 
 /**
@@ -17,7 +17,7 @@ import { cargarCuentaParaCobrar } from "@/server/persistencia/caja/total-de-cuen
  * `import "server-only"` y SIN `"use server"`: la Server Action ya pidió el permiso y validó el formato. En UNA transacción SERIALIZABLE, en este orden:
  *  1. la clave de reintento se mira ANTES que el estado: misma clave y mismo pedido → el cobro ya hecho (`yaExistia`, sin escribir ni auditar de nuevo); misma clave con otro pedido → `CLAVE_REUTILIZADA`;
  *  2. la cuenta es de la sucursal activa, está cerrada y tuvo venta; si ya tiene cobro → `CUENTA_YA_COBRADA { cobranzaId }`; el total que vio quien cobra tiene que ser el actual (`TOTAL_CAMBIO`: nadie cobra un número viejo);
- *  3. hay una sesión de caja ABIERTA en la sucursal (`SIN_SESION_ABIERTA`) y todos los medios existen y están activos (`MEDIO_NO_HABILITADO`);
+ *  3. hay una sesión de caja ABIERTA en la sucursal (`SIN_SESION_ABIERTA`; con la sesión EN_CIERRE → `CAJA_EN_CIERRE`) y todos los medios existen y están activos (`MEDIO_NO_HABILITADO`);
  *  4. `repartirCobro` (suma = total, ni de más ni de menos: `COBRO_NO_CUADRA` con `falta` o `sobra`);
  *  5. inserta la cobranza (con el total congelado), un movimiento COBRO por renglón y su renglón de cobro, y la auditoría. TODO o nada: la base verifica además, al confirmar, que la suma da el total (disparador diferido).
  * Segunda barrera: los únicos por cuenta y por clave de la cobranza, `Cobranza_cuadra` y los disparadores de sesión abierta y de sucursal.
@@ -63,8 +63,10 @@ export async function cobrarCuentaCasoDeUso(
       if (totalActual !== comando.totalVistoEnCentavos) return { ...fracaso("TOTAL_CAMBIO", "El total de la cuenta cambió: volvé a mirarlo antes de cobrar."), totalActualEnCentavos: totalActual };
 
       const caja = await cargarCajaDeSucursal(tx, actor.empresaId, actor.sucursalId);
-      const sesion = caja ? await cargarSesionAbiertaDeCaja(tx, actor.empresaId, caja.id) : null;
+      const sesion = caja ? await cargarSesionSinCerrarDeCaja(tx, actor.empresaId, caja.id) : null;
       if (!sesion) return fracaso("SIN_SESION_ABIERTA", "No hay una caja abierta en esta sucursal: abrila antes de cobrar.");
+      // Se está contando el efectivo para cerrar: no entra ningún cobro hasta cancelar el cierre (decisión del dueño, 2026-11-16: «Frenar el cobro, como Pedernal»).
+      if (decidirMovimiento(estadoDeSesion(sesion.estado)) === "CAJA_EN_CIERRE") return { ...fracaso("CAJA_EN_CIERRE", "La caja está en cierre: se está contando el efectivo."), sesionId: sesion.id };
 
       const medios = await cargarTiposDeMedios(tx, actor.empresaId, comando.renglones.map((r) => r.medioDePagoId));
       if (comando.renglones.some((r) => medios.get(r.medioDePagoId)?.activo !== true)) return fracaso("MEDIO_NO_HABILITADO", "Hay un medio de pago que no está habilitado.");

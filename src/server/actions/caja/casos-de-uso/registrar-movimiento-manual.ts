@@ -1,5 +1,5 @@
 import "server-only";
-import { textoDeCentavos } from "@/core/caja/public";
+import { decidirMovimiento, estadoDeSesion, textoDeCentavos } from "@/core/caja/public";
 import type { ComandoMovimientoManual, ResultadoMovimientoManual } from "@/core/features/caja/caja.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { FuenteDeAzar } from "@/core/seguridad/azar";
@@ -13,7 +13,7 @@ import { cargarMedioEfectivo, cargarMovimientoDeClave, cargarSesion, insertarMov
  *
  * `import "server-only"` y SIN `"use server"`: la Server Action ya pidió el permiso y validó el formato. En UNA transacción SERIALIZABLE:
  *  1. la clave de reintento: se mira ANTES que el estado; el mismo pedido devuelve el movimiento ya hecho (`yaExistia`, sin escribir ni auditar de nuevo); la misma clave con otro pedido → `CLAVE_REUTILIZADA`;
- *  2. la sesión es de la sucursal activa y está ABIERTA (`SESION_NO_ENCONTRADA` / `SESION_CERRADA`);
+ *  2. la sesión es de la sucursal activa y está ABIERTA (`SESION_NO_ENCONTRADA` / `CAJA_EN_CIERRE` / `SESION_CERRADA`);
  *  3. inserta el movimiento (signo por sentido) y lo audita. Un egreso mayor al efectivo esperado se PERMITE: avisa (`superaElEfectivo`) y lo deja en la auditoría; nunca bloquea (igual que Pedernal, PROPUESTA).
  * Segunda barrera: la base rechaza un movimiento en una sesión cerrada o de otra sucursal, y el índice único de la clave.
  *
@@ -43,7 +43,9 @@ export async function registrarMovimientoManualCasoDeUso(
 
       const sesion = await cargarSesion(tx, actor.empresaId, comando.sesionId);
       if (!sesion || sesion.sucursalId !== actor.sucursalId) return fracaso("SESION_NO_ENCONTRADA", "No se encontró la sesión de caja.");
-      if (sesion.estado !== "ABIERTA") return fracaso("SESION_CERRADA", "La sesión de caja ya está cerrada.");
+      const entra = decidirMovimiento(estadoDeSesion(sesion.estado));
+      if (entra === "CAJA_EN_CIERRE") return fracaso("CAJA_EN_CIERRE", "La caja está en cierre: se está contando el efectivo.");
+      if (entra === "SESION_CERRADA") return fracaso("SESION_CERRADA", "La sesión de caja ya está cerrada.");
 
       const efectivo = await cargarMedioEfectivo(tx, actor.empresaId);
       if (!efectivo) throw new Error("registrarMovimientoManual: la sesión existe pero el medio efectivo no.");

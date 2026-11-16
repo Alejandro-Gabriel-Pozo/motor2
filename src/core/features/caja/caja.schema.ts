@@ -47,7 +47,7 @@ export interface ComandoCerrarSesion {
 export type CodigoDeFalloDeAbrirSesion = "CLAVE_REUTILIZADA" | "SUCURSAL_INACTIVA" | "CAJA_YA_ABIERTA" | "SUCURSAL_NO_ENCONTRADA";
 export type ResultadoAbrirSesion = Exito<{ sesionId: string; yaExistia: boolean }> | (Fracaso<CodigoDeFalloDeAbrirSesion> & { sesionId?: string });
 
-export type CodigoDeFalloDeMovimiento = "CLAVE_REUTILIZADA" | "SESION_NO_ENCONTRADA" | "SESION_CERRADA";
+export type CodigoDeFalloDeMovimiento = "CLAVE_REUTILIZADA" | "SESION_NO_ENCONTRADA" | "SESION_CERRADA" | "CAJA_EN_CIERRE";
 export type ResultadoMovimientoManual = Exito<{ movimientoId: string; yaExistia: boolean; superaElEfectivo: boolean }> | Fracaso<CodigoDeFalloDeMovimiento>;
 
 export type CodigoDeFalloDeAnulacion = CodigoDeFalloDeMovimiento | "MOVIMIENTO_NO_ENCONTRADO" | "MOVIMIENTO_NO_ANULABLE" | "MOVIMIENTO_YA_ANULADO" | "SIN_PERMISO_SOBRE_MOVIMIENTO_AJENO";
@@ -62,15 +62,29 @@ export type CodigoDeFalloDeCobro =
   | "NADA_PARA_COBRAR"
   | "TOTAL_CAMBIO"
   | "SIN_SESION_ABIERTA"
+  | "CAJA_EN_CIERRE"
   | "MEDIO_NO_HABILITADO"
   | "COBRO_NO_CUADRA"
   | "COBRO_SIN_RENGLONES"
   | "COBRO_CON_DEMASIADOS_RENGLONES"
   | "IMPORTE_INVALIDO";
-/** `totalActualEnCentavos` con `TOTAL_CAMBIO`; `falta` y `sobra` (centavos) con `COBRO_NO_CUADRA`. */
+/** `totalActualEnCentavos` con `TOTAL_CAMBIO`; `falta` y `sobra` (centavos) con `COBRO_NO_CUADRA`; `sesionId` con `CAJA_EN_CIERRE`. */
 export type ResultadoCobrarCuenta =
   | Exito<{ cobranzaId: string; yaExistia: boolean }>
-  | (Fracaso<CodigoDeFalloDeCobro> & { totalActualEnCentavos?: bigint; faltaEnCentavos?: bigint; sobraEnCentavos?: bigint; cobranzaId?: string });
+  | (Fracaso<CodigoDeFalloDeCobro> & { totalActualEnCentavos?: bigint; faltaEnCentavos?: bigint; sobraEnCentavos?: bigint; cobranzaId?: string; sesionId?: string });
 
-export type CodigoDeFalloDeCierre = "SESION_NO_ENCONTRADA" | "SESION_CERRADA" | "CONTEO_INVALIDO" | "CONFORME_FALTANTE";
+export interface ComandoIniciarCierre {
+  sesionId: string;
+}
+export type CodigoDeFalloDeCambioDeCierre = "SESION_NO_ENCONTRADA" | "SESION_CERRADA";
+/** `yaEstabaEnCierre`: repetir no escribe ni audita (idempotente por estado). */
+export type ResultadoIniciarCierre = Exito<{ sesionId: string; yaEstabaEnCierre: boolean }> | Fracaso<CodigoDeFalloDeCambioDeCierre>;
+
+export interface ComandoCancelarCierre {
+  sesionId: string;
+}
+/** `yaEstabaAbierta`: repetir no escribe ni audita (idempotente por estado). */
+export type ResultadoCancelarCierre = Exito<{ sesionId: string; yaEstabaAbierta: boolean }> | Fracaso<CodigoDeFalloDeCambioDeCierre>;
+
+export type CodigoDeFalloDeCierre = "SESION_NO_ENCONTRADA" | "SESION_CERRADA" | "SESION_NO_EN_CIERRE" | "CONTEO_INVALIDO" | "CONFORME_FALTANTE";
 export type ResultadoCerrarSesion = Exito<{ sesionId: string; yaEstabaCerrada: boolean; diferenciaEnEfectivoEnCentavos: bigint }> | Fracaso<CodigoDeFalloDeCierre>;

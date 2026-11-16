@@ -1,5 +1,5 @@
 import "server-only";
-import { textoDeCentavos } from "@/core/caja/public";
+import { decidirMovimiento, estadoDeSesion, textoDeCentavos } from "@/core/caja/public";
 import type { ComandoAnularMovimiento, ResultadoAnularMovimiento } from "@/core/features/caja/caja.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { FuenteDeAzar } from "@/core/seguridad/azar";
@@ -13,7 +13,7 @@ import { cargarMovimiento, cargarMovimientoDeClave, cargarSesion, insertarMovimi
  * nunca se anula desde la caja, I-9) y una sola vez, dentro de su misma sesión abierta.
  *
  * `puedeAnularAjenos` lo decide la Server Action con la acción `caja_anular_movimiento_ajeno`: sin ella solo se anula lo propio (igual que Pedernal, PROPUESTA).
- * En UNA transacción SERIALIZABLE: la clave se mira ANTES que el estado (mismo pedido → `yaExistia`); movimiento de la sucursal activa; clase anulable; sesión abierta; no anulado ya; inserta el espejo y audita.
+ * En UNA transacción SERIALIZABLE: la clave se mira ANTES que el estado (mismo pedido → `yaExistia`); movimiento de la sucursal activa; clase anulable; sesión abierta (`CAJA_EN_CIERRE` / `SESION_CERRADA` si no); no anulado ya; inserta el espejo y audita.
  * Segunda barrera: el único `MovimientoCaja_anula_key` (una anulación por movimiento) y el disparador que exige el espejo exacto.
  *
  * @contract Agrega exactamente una anulación por movimiento y por clave, o no escribe nada.
@@ -44,7 +44,9 @@ export async function anularMovimientoCasoDeUso(
 
       const sesion = await cargarSesion(tx, actor.empresaId, original.sesionId);
       if (!sesion) return fracaso("SESION_NO_ENCONTRADA", "No se encontró la sesión de caja.");
-      if (sesion.estado !== "ABIERTA") return fracaso("SESION_CERRADA", "La sesión de caja ya está cerrada.");
+      const entra = decidirMovimiento(estadoDeSesion(sesion.estado));
+      if (entra === "CAJA_EN_CIERRE") return fracaso("CAJA_EN_CIERRE", "La caja está en cierre: se está contando el efectivo.");
+      if (entra === "SESION_CERRADA") return fracaso("SESION_CERRADA", "La sesión de caja ya está cerrada.");
 
       const yaAnulado = await tx.movimientoCaja.findFirst({ where: { empresaId: actor.empresaId, anulaAId: original.id }, select: { id: true } });
       if (yaAnulado) return fracaso("MOVIMIENTO_YA_ANULADO", "Ese movimiento ya fue anulado.");
