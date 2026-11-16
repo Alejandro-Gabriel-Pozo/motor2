@@ -43,6 +43,10 @@ model User {
   opcionesApagadasEnSucursal OpcionApagadaEnSucursal[]
   entradasDelDiaActualizadas EntradaDelDiaDeCupo[]
   ocultamientosActualizados  OcultamientoProducto[]
+  sesionesDeCajaAbiertas     SesionCaja[]           @relation("SesionCajaAbiertaPor")
+  sesionesDeCajaCerradas     SesionCaja[]           @relation("SesionCajaCerradaPor")
+  movimientosDeCaja          MovimientoCaja[]       @relation("MovimientoCajaCreadoPor")
+  cobranzas                  Cobranza[]             @relation("CobranzaCreadaPor")
   recetasDeCombinacionCreadas RecetaDeCombinacionVersion[]
   ventas                     Venta[]
   facturasProvCreadas        FacturaProveedor[]   @relation("FacturaProveedorCreadaPor")
@@ -150,6 +154,13 @@ model Sucursal {
   frecuenciasConteo        FrecuenciaConteoProducto[]
   disponibilidadesProducto DisponibilidadProducto[]
   ocultamientosProducto    OcultamientoProducto[]
+  cajas                    Caja[]
+  sesionesDeCaja           SesionCaja[]
+  movimientosDeCaja        MovimientoCaja[]
+  cobranzas                Cobranza[]
+  cobros                   Cobro[]
+  arqueosDeCaja            ArqueoCaja[]
+  billetesDeArqueo         ArqueoBillete[]
   traspasosComoOrigen      TraspasoSucursal[]            @relation("TraspasoOrigen")
   traspasosComoDestino     TraspasoSucursal[]            @relation("TraspasoDestino")
   pagosConsignante         PagoConsignante[]
@@ -2432,6 +2443,8 @@ model Cuenta {
   agregados        AgregadoDeCuenta[]
   /// M2: la cabecera de venta de esta cuenta, una vez cerrada (a lo sumo una: `Venta.cuentaId` es único por empresa). `null` = abierta, o cerrada antes de M2.
   venta            Venta?
+  /// Caja C1: el cobro de esta cuenta cerrada (a lo sumo uno; sin fila = sin cobrar). Se agrega, nunca se edita.
+  cobranza         Cobranza?
 
   /// Cuántos comensales se sentaron (docs/plan-comensales-y-limite-mesas-2026-09-26.md). Obligatorio y SIN valor por defecto al abrir
   /// la cuenta (`abrirCuenta`) — un default sesgaría la métrica de rotación que existe para medir (Reportes › Rotación de mesas).
@@ -2624,6 +2637,14 @@ model Empresa {
   productoRel                    Producto[]
   disponibilidadProductoRel      DisponibilidadProducto[]
   ocultamientoProductoRel        OcultamientoProducto[]
+  cajas                          Caja[]
+  mediosDePago                   MedioDePago[]
+  sesionesDeCaja                 SesionCaja[]
+  movimientosDeCaja              MovimientoCaja[]
+  cobranzas                      Cobranza[]
+  cobros                         Cobro[]
+  arqueosDeCaja                  ArqueoCaja[]
+  billetesDeArqueo               ArqueoBillete[]
   insumoRel                      Insumo[]
   grupoRel                       Grupo[]
   categoriaProductoRel           CategoriaProducto[]
@@ -4087,4 +4108,195 @@ model CombinacionEnLinea {
 
   @@unique([empresaId, id])
   @@index([combinacionId])
+}
+
+// ===================================================================
+// CAJA Y COBRO, etapa C1 (docs/diseno-caja-y-cobro-paridad-pedernal-2026-11-16.md). Tablas nuevas con el molde de Datos (E-0): id uuid que genera la app, instantes TIMESTAMPTZ(3), SIN DELETE,
+// historial que solo agrega, clave de reintento. Dinero `Decimal(14,2)` en pesos (confirmado por el dueño 2026-11-16). Las reglas que la base hace cumplir van en la migración, a mano.
+// ===================================================================
+
+/// La caja de una sucursal: el lugar donde se cobra. C1 = UNA por sucursal (índice único `Caja_una_por_sucursal_key`; la etapa C4 lo reemplaza por la perilla de cantidad). Nunca se borra.
+model Caja {
+  id         String   @id @db.Uuid
+  empresaId  String   @default(dbgenerated("app_empresa_actual()"))
+  empresa    Empresa  @relation(fields: [empresaId], references: [id])
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  nombre     String
+  creadoEn   DateTime @default(now()) @db.Timestamptz(3)
+
+  sesiones SesionCaja[]
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, sucursalId], map: "Caja_una_por_sucursal_key")
+}
+
+/// Un medio de pago de la empresa. `tipo` cerrado (CHECK: EFECTIVO, TARJETA_DEBITO, TARJETA_CREDITO, TRANSFERENCIA, QR, OTRO) e inmutable; un solo EFECTIVO por empresa, que no se desactiva.
+/// La app solo cambia `nombre`, `activo`, `actualizadoEn` y `version`.
+model MedioDePago {
+  id            String   @id @db.Uuid
+  empresaId     String   @default(dbgenerated("app_empresa_actual()"))
+  empresa       Empresa  @relation(fields: [empresaId], references: [id])
+  tipo          String
+  nombre        String?
+  activo        Boolean  @default(true)
+  creadoEn      DateTime @default(now()) @db.Timestamptz(3)
+  actualizadoEn DateTime @default(now()) @db.Timestamptz(3)
+  version       Int      @default(1)
+
+  movimientos MovimientoCaja[]
+  cobros      Cobro[]
+  arqueos     ArqueoCaja[]
+
+  @@unique([empresaId, id])
+}
+
+/// Una sesión de caja: abierta con un fondo inicial, cerrada con el arqueo. A lo sumo UNA sin cerrar por caja (índice único parcial). `fechaDeNegocio` y `zonaHoraria` se sellan al abrir y no cambian.
+/// La clave de reintento (`claveIdempotencia`, única por empresa) y la huella del pedido hacen que abrir dos veces el mismo gesto sea una sola sesión. C1 no tiene «en cierre» ni jornada (etapa C2).
+model SesionCaja {
+  id                String    @id @db.Uuid
+  empresaId         String    @default(dbgenerated("app_empresa_actual()"))
+  empresa           Empresa   @relation(fields: [empresaId], references: [id])
+  sucursalId        String
+  sucursal          Sucursal  @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  cajaId            String    @db.Uuid
+  caja              Caja      @relation(fields: [empresaId, cajaId], references: [empresaId, id])
+  /// ABIERTA | CERRADA (CHECK). Solo cambia de ABIERTA a CERRADA, una vez (disparador).
+  estado            String
+  fechaDeNegocio    DateTime  @db.Date
+  zonaHoraria       String
+  abiertaEn         DateTime  @default(now()) @db.Timestamptz(3)
+  abiertaPorId      String
+  abiertaPor        User      @relation("SesionCajaAbiertaPor", fields: [abiertaPorId], references: [id])
+  cerradaEn         DateTime? @db.Timestamptz(3)
+  cerradaPorId      String?
+  cerradaPor        User?     @relation("SesionCajaCerradaPor", fields: [cerradaPorId], references: [id])
+  observacion       String?
+  claveIdempotencia String
+  huella            String
+
+  movimientos MovimientoCaja[]
+  cobranzas   Cobranza[]
+  arqueos     ArqueoCaja[]
+  billetes    ArqueoBillete[]
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, claveIdempotencia])
+  @@index([cajaId])
+}
+
+/// Un movimiento de dinero de una sesión. SOLO SE AGREGA (sin UPDATE ni DELETE): una anulación es otro movimiento, espejo del que anula (`anulaAId`, a lo sumo una vez). `importe` lleva signo
+/// (CHECK por clase): FONDO_INICIAL ≥ 0; COBRO e INGRESO_MANUAL > 0; EGRESO_MANUAL < 0; ANULACION ≠ 0. Moneda única: pesos.
+model MovimientoCaja {
+  id                String          @id @db.Uuid
+  empresaId         String          @default(dbgenerated("app_empresa_actual()"))
+  empresa           Empresa         @relation(fields: [empresaId], references: [id])
+  sucursalId        String
+  sucursal          Sucursal        @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  sesionId          String          @db.Uuid
+  sesion            SesionCaja      @relation(fields: [empresaId, sesionId], references: [empresaId, id])
+  /// FONDO_INICIAL | COBRO | INGRESO_MANUAL | EGRESO_MANUAL | ANULACION (CHECK).
+  clase             String
+  medioDePagoId     String          @db.Uuid
+  medioDePago       MedioDePago     @relation(fields: [empresaId, medioDePagoId], references: [empresaId, id])
+  importe           Decimal         @db.Decimal(14, 2)
+  motivo            String?
+  anulaAId          String?         @db.Uuid
+  anulaA            MovimientoCaja? @relation("MovimientoCajaAnulacion", fields: [empresaId, anulaAId], references: [empresaId, id])
+  anulaciones       MovimientoCaja[] @relation("MovimientoCajaAnulacion")
+  claveIdempotencia String?
+  creadoEn          DateTime        @default(now()) @db.Timestamptz(3)
+  creadoPorId       String
+  creadoPor         User            @relation("MovimientoCajaCreadoPor", fields: [creadoPorId], references: [id])
+
+  cobro Cobro?
+
+  @@unique([empresaId, id])
+  @@index([sesionId])
+}
+
+/// El cobro de una cuenta cerrada: una sola por cuenta (único). Congela el `total` cobrable (el de la venta al cerrar, con el descuento del cliente) y la suma de sus renglones (`Cobro`) tiene
+/// que dar ese total al centavo (disparador diferido). Solo se agrega.
+model Cobranza {
+  id                String     @id @db.Uuid
+  empresaId         String     @default(dbgenerated("app_empresa_actual()"))
+  empresa           Empresa    @relation(fields: [empresaId], references: [id])
+  sucursalId        String
+  sucursal          Sucursal   @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  cuentaId          String
+  cuenta            Cuenta     @relation(fields: [empresaId, cuentaId], references: [empresaId, id])
+  sesionId          String     @db.Uuid
+  sesion            SesionCaja @relation(fields: [empresaId, sesionId], references: [empresaId, id])
+  total             Decimal    @db.Decimal(14, 2)
+  claveIdempotencia String
+  huella            String
+  creadoEn          DateTime   @default(now()) @db.Timestamptz(3)
+  creadoPorId       String
+  creadoPor         User       @relation("CobranzaCreadaPor", fields: [creadoPorId], references: [id])
+
+  cobros Cobro[]
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, cuentaId])
+  @@unique([empresaId, claveIdempotencia])
+  @@index([sesionId])
+}
+
+/// Un renglón del cobro: un medio y un importe, 1 a 1 con su movimiento de caja de clase COBRO. Solo se agrega.
+model Cobro {
+  id            String         @id @db.Uuid
+  empresaId     String         @default(dbgenerated("app_empresa_actual()"))
+  empresa       Empresa        @relation(fields: [empresaId], references: [id])
+  sucursalId    String
+  sucursal      Sucursal       @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  cobranzaId    String         @db.Uuid
+  cobranza      Cobranza       @relation(fields: [empresaId, cobranzaId], references: [empresaId, id])
+  orden         Int
+  medioDePagoId String         @db.Uuid
+  medioDePago   MedioDePago    @relation(fields: [empresaId, medioDePagoId], references: [empresaId, id])
+  movimientoId  String         @db.Uuid
+  movimiento    MovimientoCaja @relation(fields: [empresaId, movimientoId], references: [empresaId, id])
+  importe       Decimal        @db.Decimal(14, 2)
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, cobranzaId, orden])
+  @@unique([empresaId, movimientoId])
+}
+
+/// El arqueo de una sesión cerrada, por medio de pago: lo esperado (calculado en el cierre) contra lo contado (EFECTIVO: por billetes y monedas) o «conforme» (los demás medios). `diferencia` se calcula
+/// (contado − esperado, en la consulta: NO se guarda) y nadie la escribe. Solo se agrega.
+model ArqueoCaja {
+  id            String      @id @db.Uuid
+  empresaId     String      @default(dbgenerated("app_empresa_actual()"))
+  empresa       Empresa     @relation(fields: [empresaId], references: [id])
+  sucursalId    String
+  sucursal      Sucursal    @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  sesionId      String      @db.Uuid
+  sesion        SesionCaja  @relation(fields: [empresaId, sesionId], references: [empresaId, id])
+  medioDePagoId String      @db.Uuid
+  medioDePago   MedioDePago @relation(fields: [empresaId, medioDePagoId], references: [empresaId, id])
+  esperado      Decimal     @db.Decimal(14, 2)
+  /// NULL con `conforme` (no se contó, se dio por bueno); el efectivo siempre se cuenta.
+  contado       Decimal?    @db.Decimal(14, 2)
+  contadoMonedas Decimal?   @db.Decimal(14, 2)
+  conforme      Boolean     @default(false)
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, sesionId, medioDePagoId])
+}
+
+/// Los billetes contados de una sesión, por denominación (CHECK: la lista de `src/core/caja/arqueo.ts`). Solo se agrega.
+model ArqueoBillete {
+  id           String     @id @db.Uuid
+  empresaId    String     @default(dbgenerated("app_empresa_actual()"))
+  empresa      Empresa    @relation(fields: [empresaId], references: [id])
+  sucursalId   String
+  sucursal     Sucursal   @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  sesionId     String     @db.Uuid
+  sesion       SesionCaja @relation(fields: [empresaId, sesionId], references: [empresaId, id])
+  denominacion Int
+  cantidad     Int
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, sesionId, denominacion])
 }
