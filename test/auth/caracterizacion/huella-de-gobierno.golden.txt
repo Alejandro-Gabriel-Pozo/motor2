@@ -182,8 +182,8 @@
   PERMISO operador:opciones_definir ver=false editar=false
   PERMISO operador:pagar_consignante ver=false editar=false
   PERMISO operador:partes_desactivar ver=false editar=false
-  PERMISO operador:partes_editar ver=false editar=false
-  PERMISO operador:partes_ver ver=false editar=false
+  PERMISO operador:partes_editar ver=true editar=true
+  PERMISO operador:partes_ver ver=true editar=true
   PERMISO operador:pos_abrir_cuenta ver=false editar=false
   PERMISO operador:pos_alta_mesa ver=false editar=false
   PERMISO operador:pos_anular_item ver=false editar=false
@@ -607,8 +607,8 @@
   PERMISO operador:opciones_definir ver=false editar=false
   PERMISO operador:pagar_consignante ver=false editar=false
   PERMISO operador:partes_desactivar ver=false editar=false
-  PERMISO operador:partes_editar ver=false editar=false
-  PERMISO operador:partes_ver ver=false editar=false
+  PERMISO operador:partes_editar ver=true editar=true
+  PERMISO operador:partes_ver ver=true editar=true
   PERMISO operador:pos_abrir_cuenta ver=false editar=false
   PERMISO operador:pos_alta_mesa ver=false editar=false
   PERMISO operador:pos_anular_item ver=false editar=false
