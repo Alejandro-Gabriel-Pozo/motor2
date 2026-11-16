@@ -54,7 +54,8 @@ const MAXIMOS = {
   // Sube a propósito de 37 a 38 con «Ocultar» (etapa d, 2026-11-16): `cargarLoQueMuestraOcultar` devuelve solo cuatro banderas, sin fila ni texto libre donde ir el marcador propio. DEUDA a la vista del dueño: el techo sigue siendo un trinquete.
   SIN_MARCA_PROPIA: 38,
   OK_SIN_EFECTO_POR_DISENO: 2,
-  EN_LA_SUCURSAL_VACIA: 2,
+  // Sube a propósito de 2 a 3 con la caja (C1): `abrirSesionDeCaja` se ejerce parada en la sucursal vacía (S1 ya tiene su caja abierta: la lectura de caja necesita esa sesión abierta como dato propio).
+  EN_LA_SUCURSAL_VACIA: 3,
 } as const;
 
 describe("GT-3b: la matriz de denegación por defecto cubre todo el inventario", () => {
