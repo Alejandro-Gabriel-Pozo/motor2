@@ -22,7 +22,8 @@ describe("Permisos: nota al pie OCULTA", () => {
     expect(MATRICES_AYUDAS_VISIBLES).toBe(false);
     const html = dibujar(PermisosMatriz);
     expect(html).not.toContain("Tocar «Editar» también prende «Ver»");
-    expect(html).toContain("Ver el resumen operativo");
+    // La descripción de la acción queda en la vista abierta (el módulo se pliega en la lectura: `PERMISOS_PLEGADOS`, cubierto en `matrices-plegadas-interruptor.test.tsx`).
+    expect(html).toContain("data-modulo-de-permisos");
     expect(html).toContain("Editar permisos");
   });
 });

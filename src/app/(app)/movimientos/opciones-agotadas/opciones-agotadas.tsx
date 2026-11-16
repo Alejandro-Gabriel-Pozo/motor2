@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
+import { OPCIONES_AGOTADAS_AYUDAS_VISIBLES, OPCIONES_AGOTADAS_PLEGADAS } from "@/core/catalogo/public";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { formatearCantidad } from "@/core/pos/public";
 import type { ResultadoAccion } from "@/server/actions/tipos";
@@ -47,6 +48,13 @@ export function OpcionesAgotadas({
   const [ultimo, setUltimo] = useState<{ opcionId: string; nombre: string; apagada: boolean; resultado: ResultadoAccion; deshacible: boolean } | null>(null);
   const [pendiente, startTransition] = useTransition();
   const enviando = useRef(false);
+  // Orden y apertura fijados al cargar (`OPCIONES_AGOTADAS_PLEGADAS`): los grupos con alguna agotada primero y abiertos; tocar una opción no mueve ni cierra su grupo.
+  const [alCargar] = useState(() => {
+    const conAgotadas = grupos.filter((g) => g.opciones.some((o) => o.agotada)).map((g) => g.grupoId);
+    return { abiertos: new Set(conAgotadas), orden: [...conAgotadas, ...grupos.filter((g) => !conAgotadas.includes(g.grupoId)).map((g) => g.grupoId)] };
+  });
+  const abiertosAlCargar = alCargar.abiertos;
+  const rango = (id: string) => (alCargar.orden.includes(id) ? alCargar.orden.indexOf(id) : alCargar.orden.length);
 
   /** Un toque: lo cambia el servidor; «Deshacer» es el cambio inverso (y ya no se puede deshacer). */
   const cambiar = (opcionId: string, nombre: string, apagada: boolean, deshacible: boolean) => {
@@ -66,7 +74,44 @@ export function OpcionesAgotadas({
   const filtro = normalizar(buscar.trim());
   const visibles = grupos
     .map((g) => ({ ...g, opciones: filtro ? g.opciones.filter((o) => normalizar(o.nombre).includes(filtro) || normalizar(g.nombre).includes(filtro)) : g.opciones }))
-    .filter((g) => g.opciones.length > 0);
+    .filter((g) => g.opciones.length > 0)
+    .sort((x, y) => (OPCIONES_AGOTADAS_PLEGADAS ? rango(x.grupoId) - rango(y.grupoId) : 0));
+
+  const lista = (g: GrupoParaAgotar) => (
+      <ul className="flex flex-col divide-y">
+        {g.opciones.map((o) => (
+          <li key={o.opcionId} className="flex flex-col gap-1 py-2" data-opcion-sucursal={o.nombre}>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-sm">
+                {o.nombre}
+                {o.esNinguna && <span className="text-tinta-suave"> (ninguna)</span>}
+              </span>
+              <Boton
+                variante="interruptor"
+                tamano="tactil"
+                aria-pressed={!o.agotada}
+                disabled={!puedeCambiar}
+                title={puedeCambiar ? undefined : "Tu rol puede ver esta pantalla pero no cambiar el estado de las opciones."}
+                onClick={() => cambiar(o.opcionId, o.nombre, !o.agotada, true)}
+                className="min-w-34"
+              >
+                <span className="sr-only">{o.nombre}: </span>
+                {o.agotada ? "Agotada" : "Disponible"}
+              </Boton>
+            </div>
+            {o.sinStockEnElSistema.map((i) => (
+              <p key={i.productoId} className="text-xs text-aviso-tinta" data-aviso-stock={i.nombre}>
+                {i.nombre}: el sistema dice {formatearCantidad(i.saldo)} {i.unidadNombre}. Si hay en el depósito,{" "}
+                <EnlaceInterno href="/movimientos/conteo-fisico" className="underline">
+                  hacé un conteo físico
+                </EnlaceInterno>
+                . La opción sigue disponible.
+              </p>
+            ))}
+          </li>
+        ))}
+      </ul>
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -78,52 +123,33 @@ export function OpcionesAgotadas({
           No hay opciones que coincidan.
         </Aviso>
       )}
-      {/* Propuesta (Frente 6): los grupos con alguna opción agotada van primero y abiertos; los que tienen todo disponible, plegados (se abren buscando o tocando el nombre). */}
-      {[...visibles]
-        .sort((a, b) => Number(b.opciones.some((o) => o.agotada)) - Number(a.opciones.some((o) => o.agotada)))
-        .map((g) => (
-        <details key={g.grupoId} open={buscar.trim() !== "" || g.opciones.some((o) => o.agotada)} className="flex flex-col gap-2 rounded border p-3" data-grupo-de-opciones={g.nombre}>
-          <summary className="flex min-h-11 cursor-pointer items-baseline gap-2">
+      {visibles.map((g) =>
+        OPCIONES_AGOTADAS_PLEGADAS ? (
+          <details key={g.grupoId} open={buscar.trim() !== "" || abiertosAlCargar.has(g.grupoId)} className="flex flex-col gap-2 rounded border p-3" data-grupo-de-opciones={g.nombre}>
+            <summary className="flex min-h-11 cursor-pointer items-baseline gap-2">
+              <h2 id={`grupo-${g.grupoId}`} className="font-medium">
+                {g.nombre}
+              </h2>
+              <span className="text-sm text-tinta-suave">
+                {OPCIONES_AGOTADAS_AYUDAS_VISIBLES
+                  ? ` · ${g.opciones.filter((o) => !o.agotada).length} de ${g.opciones.length} disponibles`
+                  : ` · ${g.opciones.length}${g.opciones.some((o) => o.agotada) ? "" : " · todas disponibles"}`}
+              </span>
+            </summary>
+            {lista(g)}
+          </details>
+        ) : (
+          <section key={g.grupoId} aria-labelledby={`grupo-${g.grupoId}`} className="flex flex-col gap-2 rounded border p-3">
             <h2 id={`grupo-${g.grupoId}`} className="font-medium">
               {g.nombre}
+              {OPCIONES_AGOTADAS_AYUDAS_VISIBLES && (
+                <span className="text-sm font-normal text-tinta-suave"> · {g.opciones.filter((o) => !o.agotada).length} de {g.opciones.length} disponibles</span>
+              )}
             </h2>
-            <span className="text-sm text-tinta-suave">· {g.opciones.length}{g.opciones.some((o) => o.agotada) ? "" : " · todas disponibles"}</span>
-          </summary>
-          <ul className="flex flex-col divide-y">
-            {g.opciones.map((o) => (
-              <li key={o.opcionId} className="flex flex-col gap-1 py-2" data-opcion-sucursal={o.nombre}>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-sm">
-                    {o.nombre}
-                    {o.esNinguna && <span className="text-tinta-suave"> (ninguna)</span>}
-                  </span>
-                  <Boton
-                    variante="interruptor"
-                    tamano="tactil"
-                    aria-pressed={!o.agotada}
-                    disabled={!puedeCambiar}
-                    title={puedeCambiar ? undefined : "Tu rol puede ver esta pantalla pero no cambiar el estado de las opciones."}
-                    onClick={() => cambiar(o.opcionId, o.nombre, !o.agotada, true)}
-                    className="min-w-34"
-                  >
-                    <span className="sr-only">{o.nombre}: </span>
-                    {o.agotada ? "Agotada" : "Disponible"}
-                  </Boton>
-                </div>
-                {o.sinStockEnElSistema.map((i) => (
-                  <p key={i.productoId} className="text-xs text-aviso-tinta" data-aviso-stock={i.nombre}>
-                    {i.nombre}: el sistema dice {formatearCantidad(i.saldo)} {i.unidadNombre}. Si hay en el depósito,{" "}
-                    <EnlaceInterno href="/movimientos/conteo-fisico" className="underline">
-                      hacé un conteo físico
-                    </EnlaceInterno>
-                    . La opción sigue disponible.
-                  </p>
-                ))}
-              </li>
-            ))}
-          </ul>
-        </details>
-      ))}
+            {lista(g)}
+          </section>
+        ),
+      )}
       {/* MOVIL (O.462): el resultado y «Deshacer» van PEGADOS AL BORDE DE ABAJO de la pantalla (`sticky bottom-3`), no arriba de la lista: quien toca una opción lejos, en una lista larga en el
           celular, los tenía fuera de la vista y no se enteraba de que se agotó ni podía deshacer. Sigue siendo `status` (o `alert` si falló), con el mismo texto. */}
       {ultimo && (
