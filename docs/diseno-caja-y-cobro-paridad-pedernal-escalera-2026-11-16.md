@@ -14,6 +14,7 @@ Estados: **CONFIRMADA** (dicha por el dueño, con cita literal y fecha) · **PRO
 | Q-4 | 2026-11-15 | «Sí, copiar a Pedernal en esas cinco (Recomendada)» | mismo archivo; `docs/diseno-factura-externa-n1-n2-2026-11-15.md` F-9 | Lo nuevo nace con uuid, `timestamptz` y solo inserción |
 | Q-5 | 2026-11-04 | La planilla de **caja chica** en papel con billetes de 10, 20, 50, 100, 200, 500, 1.000, 2.000, 10.000 y 20.000, un conteo por turno, «corrector» sobre una fila (resumen en `docs/diseno-caja-y-cobros-2026-11-04.md` §0.1 punto 10; no hay cita literal en este documento) | `docs/diseno-caja-y-cobros-2026-11-04.md` | Práctica actual confirmada; **las denominaciones difieren de Pedernal** (Q-DENOM) |
 | Q-6 | 2026-11-15 | «Solo lo que tiene ticket (salón y cuentas) (Recomendada)» (conciliación con la factura externa) | mismo archivo de decisiones, «Mostrador en la conciliación…» | El mostrador sin cuenta queda fuera de la conciliación; **no** dice nada sobre cobrar en mostrador |
+| Q-7 | 2026-11-16 | «Cobro aparte primero (Recomendada)» y «El de Motor2 hoy (Recomendada)» | `motor2-docs`, «segunda tanda» (relatado por el orquestador general) | C1: el cobro es un paso aparte de una cuenta cerrada; importes `Decimal(14,2)` | **CONFIRMADA** |
 
 No hay en el repo cita del dueño de Motor2 sobre: cantidad de cajas, vuelto, propina, datos del cobro, hora de corte ni cobrar-y-cerrar en un gesto. Esas decisiones son de Pedernal (9 a 15/11) y acá van como **PROPUESTA «igual a Pedernal»**, no como confirmadas.
 
@@ -54,7 +55,7 @@ Contexto: multiempresa con RLS por empresa y por sucursal; la **sucursal** es la
 | CU8 | Cierre del día: empezar el cierre, corregir el medio de un cobro, declarar totales, reconocer controles, cerrar | C2 | PROPUESTA |
 | CU9 | Datos opcionales del cobro (cupón, últimos 4, marca, cuotas, DNI) según el medio | C3 | PROPUESTA |
 | CU10 | Cuentas de cobro (terminal, QR, cuenta bancaria) | C3 | PROPUESTA |
-| CU11 | Mostrador: vender y cobrar en un gesto | C5, depende de Q1 | PENDIENTE |
+| CU11 | Cerrar y cobrar en un gesto (salón y mostrador) | C5 (posterior) | PROPUESTA: «Cobro aparte primero» CONFIRMADA 2026-11-16 |
 | CU12 | Vuelto (cálculo en pantalla, solo efectivo) | C1 (pantalla, Frente 6) | PROPUESTA |
 | CU13 | Ajuste a una jornada cerrada desde el día en curso | C2 | PROPUESTA |
 | CU14 | Cobro en partes, propina, seña, cuenta corriente, caja grande, devolución de dinero | — | NO ENTRA (ver nivel 1) |
@@ -99,7 +100,7 @@ Contexto: multiempresa con RLS por empresa y por sucursal; la **sucursal** es la
 
 ### Nivel 6. Historia y persistencia (PROPUESTA)
 
-Se diseña completo en papel y **se migra solo la etapa en curso**. Modelo completo: `Caja`, `MedioDePago`, `CuentaDeCobro`, `SesionCaja`, `MovimientoCaja`, `Cobranza` (una por cuenta, con `total` congelado y `clave`), `Cobro` (renglón: medio, cuenta de cobro opcional, importe, datos opcionales), `ArqueoCaja`, `ArqueoBillete`, `JornadaDeSucursal`, `ControlDeJornadaCerrada`, `CorreccionDeMedio`, `DeclaracionDeTotal`, `ConformeDeJornada`, y la lista global de marcas de tarjeta. Etapa C1 migra solo: `Caja`, `MedioDePago`, `SesionCaja`, `MovimientoCaja`, `Cobranza`, `Cobro` (renglón con medio e importe, **sin** datos opcionales ni cuenta de cobro hasta C3), `ArqueoCaja` y `ArqueoBillete`. Nada de tablas que nadie escribe. Migraciones aditivas, con `down.sql` y `verificacion-previa.sql`; ninguna se aplica a ninguna base real; timestamps reservados al pasar a Fase 2. Campos de forma: `Decimal(14,2)` en una sola constante (PROPUESTA; el ancho lo decide el dueño) y `CHECK` con tope; ids `@db.Uuid` y `TIMESTAMPTZ(3)` según el molde de Frente 3 (decidido por el orquestador general).
+Se diseña completo en papel y **se migra solo la etapa en curso**. Modelo completo: `Caja`, `MedioDePago`, `CuentaDeCobro`, `SesionCaja`, `MovimientoCaja`, `Cobranza` (una por cuenta, con `total` congelado y `clave`), `Cobro` (renglón: medio, cuenta de cobro opcional, importe, datos opcionales), `ArqueoCaja`, `ArqueoBillete`, `JornadaDeSucursal`, `ControlDeJornadaCerrada`, `CorreccionDeMedio`, `DeclaracionDeTotal`, `ConformeDeJornada`, y la lista global de marcas de tarjeta. Etapa C1 migra solo: `Caja`, `MedioDePago`, `SesionCaja`, `MovimientoCaja`, `Cobranza`, `Cobro` (renglón con medio e importe, **sin** datos opcionales ni cuenta de cobro hasta C3), `ArqueoCaja` y `ArqueoBillete`. Nada de tablas que nadie escribe. Migraciones aditivas, con `down.sql` y `verificacion-previa.sql`; ninguna se aplica a ninguna base real; timestamps reservados al pasar a Fase 2. Campos de forma: `Decimal(14,2)` en una sola constante (CONFIRMADA por el dueño, 2026-11-16) y `CHECK` con tope; ids `@db.Uuid` y `TIMESTAMPTZ(3)` según el molde de Frente 3 (decidido por el orquestador general).
 
 ### Nivel 7. Atomicidad y concurrencia (PROPUESTA)
 

@@ -39,7 +39,7 @@ Regla «primero lo más barato»: cada etapa se puede usar sola y no rompe lo ca
 | **C2 — Jornada y cierre del día** | Hora de corte por sucursal, jornada `ABIERTA`/`EN_AUDITORIA`/`CERRADA`, controles con severidad, corregir el medio de un cobro, declarar totales, conforme general, ajuste a jornada cerrada | `JornadaDeSucursal`, `ControlDeJornadaCerrada`, `CorreccionDeMedio`, `DeclaracionDeTotal`, `ConformeDeJornada` (+ columna de hora de corte en `Sucursal`, zona compartida) | Cierre del día como en Pedernal |
 | **C3 — Datos del cobro y cuentas de cobro** | Cupón, últimos 4, marca, cuotas 1 a 36, DNI según el medio (techo por tipo, nacen apagados), cuentas de cobro (terminal/QR/banco), marcas de tarjeta | `CuentaDeCobro`, lista global de marcas | Conciliar con la terminal |
 | **C4 — Varias cajas** | Perilla de plan de cantidad de cajas, alta/baja de cajas | (ninguna; usa `Caja`) | Sucursales con más de un puesto de cobro |
-| **C5 — Mostrador: vender y cobrar en un gesto** | Según Q1 | (ninguna o una) | |
+| **C5 — Cerrar y cobrar en un gesto (salón y mostrador)** | Etapa posterior (Pregunta 1: «cobro aparte primero») | (ninguna o una) | |
 | **Posterior, sin pedido en Motor2** | Cobro en partes (Pedernal lo decidió y no lo construyó), cuenta corriente, seña, folio de reservas, caja grande, depósitos, caja chica por turnos, obligatoriedad por dato del medio, ARCA | — | No entran hasta que el dueño los pida |
 
 **Qué se hace con el diseño del 04/11 (`docs/diseno-caja-y-cobros-2026-11-04.md`):** se conserva como antecedente. Sus niveles 1 a 5 confirmados el 04/11 que Pedernal tampoco tiene (cuenta corriente como medio, seña, caja chica en turnos con billetes de 10 a 20.000, caja grande) quedan **pendientes de decisión (Q-CC)**; ninguno entra en C1 a C4. Lo que ese diseño pide sobre factura externa sigue su propio documento (`docs/diseno-factura-externa-n1-n2-2026-11-15.md`) y depende de que cobrar exista.
@@ -103,12 +103,16 @@ Mensajes a enviar a los frentes 3, 4, 5 y 6 con rutas/modelos exactos: ver el av
 
 - **Frente 3:** las tablas de caja nacen con el molde E-0 de su PR #323 (uuid de la app, `TIMESTAMPTZ(3)`, sin DELETE, solo inserción por disparador, `claveIdempotencia`). Tipo exacto del uuid y ancho del dinero (`Decimal(14,2)` vs `(18,2)`) los resuelve el orquestador general; hasta entonces `(18,2)` es pregunta abierta. `fechaDeNegocio` la escribe Frente 3 en `src/core/tiempo/**`; la columna `Sucursal.horaDeCorte` la agrega este frente en C2. Este frente **no agrega columnas** a `Cuenta`, `Venta` ni `EjemplarTicket`.
 - **Frente 4:** el módulo `caja` en `src/core/modulos/catalogo.ts` lo escribe Frente 4 (no se pide al orquestador general), citando el pedido del dueño; la perilla `cajas_por_sucursal` es suya. Verificador propuesto: `crearCaja` y `reactivarCaja` rechazan con `LIMITE_DE_CAJAS`.
-- **Decisión del orquestador general (2026-11-16, información, no del dueño):** id `@db.Uuid` nativo; la hora de corte y el módulo `caja` quedan como arriba. **Ancho del dinero:** se diseña con `Decimal(14,2)` (el de Motor2 hoy) como PROPUESTA, parametrizado en **una sola constante** para cambiarlo a `(18,2)` sin rehacer; la decide el dueño (el orquestador general se lo lleva). Ya no vale la propuesta `(18,2)` de este documento.
+- **Decisión del orquestador general (2026-11-16, información, no del dueño):** id `@db.Uuid` nativo; la hora de corte y el módulo `caja` quedan como arriba. **Ancho del dinero:** `Decimal(14,2)`, **CONFIRMADA por el dueño** el 2026-11-16 («El de Motor2 hoy (Recomendada)»); se mantiene en una sola constante. Ya no vale la propuesta `(18,2)`.
 - **Frente 5:** puerto propuesto `registrarEgresoDeCajaEnTx(tx, {sucursalId, origenTipo, origenId, importe, motivo, claveIdempotencia})` en `src/server/actions/caja/puertos/`; no entra hasta después de C1 y con pedido citado del dueño.
 
 ## Preguntas al dueño (una por vez; solo las que cambian modelo de datos, dinero o permisos)
 
-**Pregunta 1 (la primera, abierta):** *Hoy, en Motor2, «cerrar cuenta» descuenta stock y numera el ticket pero no cobra. En Pedernal, en el salón, **cerrar y cobrar es un solo gesto** (si el pago no cuadra, la cuenta no se cierra). ¿En Motor2 querés que cerrar una cuenta pida cobrarla en el mismo momento (como Pedernal), o que se siga cerrando sin cobrar y el cobro se haga después, cuenta por cuenta (más simple de empezar y no cambia lo que ya anda)?* Mi recomendación para empezar, y la que está en el diseño: **cobro aparte** de una cuenta ya cerrada en C1, y el gesto único en C5 solo si lo pedís. Estado: **PENDIENTE**; cambia el modelo de datos y el dinero (el instante de cobro frente al de venta).
+**Pregunta 1 (RESUELTA, CONFIRMADA):** ¿cerrar una cuenta pide cobrarla en el mismo gesto o el cobro es aparte? Respuesta del dueño, 2026-11-16: «Cobro aparte primero (Recomendada)» (registrada en `motor2-docs`, «segunda tanda»; relatada por el orquestador general). Consecuencia: cerrar una cuenta sigue cerrando sin cobrar; el cobro es un paso aparte en C1; cerrar y cobrar en un gesto queda como etapa posterior (C5).
+
+**Tope de importe (RESUELTA, CONFIRMADA):** «El de Motor2 hoy (Recomendada)» (2026-11-16, misma fuente) → `Decimal(14,2)` para las tablas de caja. Ya no es propuesta.
+
+**Pregunta 2 (la abierta ahora):** qué pasa con un ticket ya cobrado si se lo corrige o anula (Q-ANU); ver `docs/sintesis-caja-y-cobro-para-el-dueno-2026-11-16.md`.
 
 Preguntas siguientes (en cola, **no abiertas**):
 
