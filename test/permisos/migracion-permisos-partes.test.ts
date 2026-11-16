@@ -6,7 +6,7 @@ import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/bas
 
 /**
  * Parte P1 (b) — migración de DATOS 20261115152000_permisos_partes: alta de las claves `partes_ver`, `partes_editar` (empresa, piso operario, semilla solo admin) y `partes_desactivar` (empresa, piso administrador, semilla admin)
- * y su siembra SOLO al rol de clave `admin` de cada empresa (todo nace cerrado): ni el operador ni un rol propio. Dos empresas para comprobar que cada fila lleva el `empresaId` de su rol. Base temporal armada migración por migración (las anteriores
+ * y su siembra SOLO al rol de clave `admin` de cada empresa (esta migración sola; desde 2026-11-16 el operador recibe `partes_ver` y `partes_editar` por la migración 20261116143000_permisos_partes_operador, probada aparte). Dos empresas para comprobar que cada fila lleva el `empresaId` de su rol. Base temporal armada migración por migración (las anteriores
  * aplicadas, la nuestra a mano). También comprueba su `down.sql`: borra la semilla pura y ABORTA si alguien configuró algo a mano.
  * Mutación: sembrar `partes_ver` al operador → rojo «NINGÚN otro rol»; sacar el `ON CONFLICT DO NOTHING` → rojo «es idempotente».
  */
@@ -44,12 +44,16 @@ describe("migración de datos Parte P1 (b): las claves partes_*", () => {
     for (const clave of CLAVES) expect(ACCIONES.find((a) => a.clave === clave)).toMatchObject({ contexto: "empresa", modulo: "proveedores_basico" });
   });
 
-  it("las tres claves las recibe SOLO el admin de cada empresa: NINGÚN otro rol (ni el operador ni el rol propio)", async () => {
+  it("ESTA migración siembra las tres claves SOLO al admin de cada empresa (nada al operador ni al rol propio: el operador lo suma la migración siguiente)", async () => {
     for (const clave of CLAVES) expect(await quienTiene(clave), clave).toEqual(["a-admin", "b-admin"]);
   });
 
-  it("coincide con la semilla del código (lo que recibe una empresa nueva): rolesEditarSemilla de cada clave", () => {
-    for (const clave of CLAVES) expect(ACCIONES.find((a) => a.clave === clave)!.rolesEditarSemilla, clave).toEqual(["admin"]);
+  it("coincide con la semilla del código en lo que le toca a ESTA migración (el admin); el operador (`partes_ver` y `partes_editar`, no `partes_desactivar`) lo siembra 20261116143000_permisos_partes_operador", () => {
+    for (const clave of CLAVES) expect(ACCIONES.find((a) => a.clave === clave)!.rolesEditarSemilla, clave).toContain("admin");
+    // Las dos migraciones juntas == la semilla del código: el admin las tres; el operador solo las de piso operario (probado en la migración nueva).
+    expect(ACCIONES.find((a) => a.clave === "partes_ver")!.rolesEditarSemilla).toEqual(["admin", "operador"]);
+    expect(ACCIONES.find((a) => a.clave === "partes_editar")!.rolesEditarSemilla).toEqual(["admin", "operador"]);
+    expect(ACCIONES.find((a) => a.clave === "partes_desactivar")!.rolesEditarSemilla).toEqual(["admin"]);
   });
 
   it("las filas nuevas tienen Ver y Editar y el empresaId de su rol (no cruza empresas); no copia CapacidadSucursal", async () => {
