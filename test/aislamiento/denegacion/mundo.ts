@@ -123,6 +123,8 @@ export interface KitDeSucursal {
   propuestaParaAceptarId: string;
   /** Pagos X0: una factura de proveedor «pendiente de pago» sin pago (a esa se le declara el pago). */
   facturaPendienteDePagoId: string;
+  /** Compras N3-a: una factura de proveedor cuya parte de ESTA sucursal está PENDIENTE de recibir (a esa se le confirma la recepción). */
+  facturaPorRecibirId: string;
   /** Pagos X0: un pago VIGENTE de otra factura pendiente de pago (ese se anula). */
   pagoDeFacturaId: string;
   pagoConsignanteId: string;
@@ -180,6 +182,7 @@ const CAMPOS_DE_SUCURSAL_REGISTRO: Record<keyof KitDeSucursal, true> = {
   facturaEnviadaId: true,
   propuestaParaAceptarId: true,
   facturaPendienteDePagoId: true,
+  facturaPorRecibirId: true,
   pagoDeFacturaId: true,
   pagoConsignanteId: true,
   precioLocalId: true,
@@ -492,12 +495,14 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   }
   // Pagos X0: dos facturas «pendiente de pago» de la empresa (sin propuestas): una sin pago, para declararle uno, y otra con un pago vigente, para anularlo. El día de la factura es ayer; el pago, de ayer.
   const facturasPendientes: Record<string, string> = {};
-  for (const sufijo of ["factura-pendiente-de-pago", "factura-con-pago"]) {
+  for (const sufijo of ["factura-pendiente-de-pago", "factura-con-pago", "factura-por-recibir"]) {
     const factura = await db.facturaProveedor.create({
       data: { id: id(sufijo), empresaId, proveedorId: k.proveedorId, nroFactura: `Factura ${marca} ${sufijo}`, nroFacturaNormalizado: id(sufijo), fecha: enElPasado(DIA_MS), importeTotal: 100, condicionPago: "PENDIENTE_DE_PAGO", estado: "CONFIRMADA", confirmadaEn: enElPasado(DIA_MS), confirmadaPorId: miembro.id, creadoPorId: miembro.id },
     });
     facturasPendientes[sufijo] = factura.id;
   }
+  // Compras N3-a (recepción separada): la parte de ESTA sucursal de la factura «por recibir» nace PENDIENTE (el valor por defecto de la columna), sin compra ni stock.
+  await db.facturaProveedorSucursal.create({ data: { id: id("factura-por-recibir-parte"), empresaId, facturaProveedorId: facturasPendientes["factura-por-recibir"]!, sucursalId, porcentajeDeclaradoBp: 10000 } });
   const pagoDeFactura = await db.pagoDeFacturaProveedor.create({
     data: { id: id("pago-de-factura"), empresaId, facturaProveedorId: facturasPendientes["factura-con-pago"]!, fechaPago: enElPasado(DIA_MS), medio: "TRANSFERENCIA", claveIdempotencia: id("pago-de-factura-clave"), payloadHash: "h", resultadoMensaje: "Pago declarado.", creadoPorId: miembro.id },
   });
@@ -576,6 +581,7 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
     facturaEnviadaId: facturasE3a["factura-enviada"].facturaId,
     propuestaParaAceptarId: facturasE3a["factura-para-aceptar"].propuestaId,
     facturaPendienteDePagoId: facturasPendientes["factura-pendiente-de-pago"]!,
+    facturaPorRecibirId: facturasPendientes["factura-por-recibir"]!,
     pagoDeFacturaId: pagoDeFactura.id,
     pagoConsignanteId: pago.id,
     precioLocalId: precioLocal.id,
