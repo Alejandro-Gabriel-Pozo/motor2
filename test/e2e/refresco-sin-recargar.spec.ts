@@ -1,4 +1,5 @@
 import { test, expect } from "./fixtures/auth";
+import { abrirPlegables } from "./fixtures/plegables";
 import { crearMembresia } from "../setup/membresia";
 import { prisma } from "./fixtures/db";
 import { prismaAdmin } from "../setup/cliente-duenio";
@@ -225,6 +226,7 @@ test("capacidades por sucursal: el ✅/⛔ cambia sin recargar la página (y sol
     const indice = columnas.findIndex((t) => t.trim() === nombre);
     expect(indice, "no apareció la columna de la sucursal propia").toBeGreaterThan(1);
     const celda = page.locator("tr", { has: page.getByRole("cell", { name: "stock_minimo", exact: true }) }).locator("td").nth(indice);
+    await abrirPlegables(celda);
 
     // Sin ninguna fila, la acción está habilitada; «el botón ES el estado», así que si no se refresca queda mostrando el estado viejo.
     await expect(celda.getByRole("button")).toHaveText("✅");

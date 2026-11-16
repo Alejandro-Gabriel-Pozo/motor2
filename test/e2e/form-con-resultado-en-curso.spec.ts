@@ -1,4 +1,5 @@
 import { test, expect } from "./fixtures/auth";
+import { abrirPlegables } from "./fixtures/plegables";
 import AxeBuilder from "@axe-core/playwright";
 import type { Page, Route } from "@playwright/test";
 import { prisma } from "./fixtures/db";
@@ -99,6 +100,7 @@ test("aviso compartido: FormConAviso también marca el formulario en curso y no 
     await page.goto("/administracion/capacidades-sucursal");
     await expect(page.getByRole("heading", { name: /Capacidades por sucursal/ })).toBeVisible();
     const celda = page.locator("tr", { has: page.getByRole("cell", { name: "stock_minimo", exact: true }) }).locator("td").nth(1);
+    await abrirPlegables(celda);
     const form = celda.locator("form");
     const accion = await retenerAcciones(page, "**/administracion/capacidades-sucursal");
 

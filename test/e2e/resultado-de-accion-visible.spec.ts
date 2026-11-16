@@ -1,4 +1,5 @@
 import { test, expect } from "./fixtures/auth";
+import { abrirPlegables } from "./fixtures/plegables";
 import { prisma } from "./fixtures/db";
 
 /**
@@ -111,6 +112,7 @@ test("capacidades: si no se pudo cambiar un ✅/⛔ se avisa, y el botón sigue 
     await page.goto("/administracion/capacidades-sucursal");
     await expect(page.getByRole("heading", { name: /Capacidades por sucursal/ })).toBeVisible();
     const celda = page.locator("tr", { has: page.getByRole("cell", { name: "stock_minimo", exact: true }) }).locator("td").nth(1); // columna «Default»
+    await abrirPlegables(celda);
     await expect(celda.getByRole("button")).toHaveText("✅");
 
     await celda.getByRole("button").click();

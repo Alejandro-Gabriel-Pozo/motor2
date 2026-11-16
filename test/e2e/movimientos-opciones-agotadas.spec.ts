@@ -1,4 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
+import { abrirPlegables } from "./fixtures/plegables";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { abrirComoRol } from "./fixtures/rol-pos";
@@ -36,6 +37,7 @@ test("agotar en «Central»: el aviso del producto que no se puede vender, «Des
     await page.goto("/movimientos/opciones-agotadas");
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Opciones agotadas en «Central»");
     const fila = page.locator(`[data-opcion-sucursal='Papas fritas ${m}']`);
+    await abrirPlegables(fila);
     // El sistema no registra papas (0): AVISA, con el conteo físico a mano, y la opción sigue disponible.
     await expect(fila.locator(`[data-aviso-stock='${papasMp.nombre}']`)).toContainText("el sistema dice 0 kg. Si hay en el depósito, hacé un conteo físico");
     await expect(fila.getByRole("link", { name: "hacé un conteo físico" })).toHaveAttribute("href", "/movimientos/conteo-fisico");
@@ -54,11 +56,13 @@ test("agotar en «Central»: el aviso del producto que no se puede vender, «Des
     await page.getByLabel("Sucursal activa").selectOption(segunda.id);
     await page.waitForURL((url) => url.pathname === "/movimientos/opciones-agotadas");
     await expect(page.getByRole("heading", { level: 1 })).toContainText(segunda.nombre);
+    await abrirPlegables(page.locator(`[data-opcion-sucursal='Papas fritas ${m}']`));
     await expect(page.locator(`[data-opcion-sucursal='Papas fritas ${m}']`).getByRole("button", { name: `Papas fritas ${m}: Disponible` })).toBeVisible();
 
     // De vuelta en «Central», «Deshacer» la vuelve a prender.
     await page.getByLabel("Sucursal activa").selectOption(sucursalId);
     await page.waitForURL((url) => url.pathname === "/movimientos/opciones-agotadas");
+    await abrirPlegables(page.locator(`[data-opcion-sucursal='Papas fritas ${m}']`));
     await page.locator(`[data-opcion-sucursal='Papas fritas ${m}']`).getByRole("button", { name: `Papas fritas ${m}: Agotada` }).click();
     await page.getByRole("button", { name: "Deshacer" }).click();
     await expect(page.locator(`[data-opcion-sucursal='Papas fritas ${m}']`).getByRole("button", { name: `Papas fritas ${m}: Agotada` })).toBeVisible();
@@ -77,11 +81,13 @@ test("el encargado con la clave delegada puede agotar; con solo «Ver» la píld
   const sinClave = await abrirComoRol(browser, baseURL, sucursalId, { pos_mesas: "ver" });
   try {
     await encargado.page.goto("/movimientos/opciones-agotadas");
+    await abrirPlegables(encargado.page.locator(`[data-opcion-sucursal='Papas fritas ${m}']`));
     await encargado.page.locator(`[data-opcion-sucursal='Papas fritas ${m}']`).getByRole("button", { name: `Papas fritas ${m}: Disponible` }).click();
     await expect(encargado.page.getByRole("status").filter({ hasText: "quedó agotada" })).toBeVisible();
     expect((await prisma.opcionApagadaEnSucursal.findFirstOrThrow({ where: { opcionId, sucursalId } })).actualizadoPorId).toBe(encargado.usuario.id);
 
     await soloVe.page.goto("/movimientos/opciones-agotadas");
+    await abrirPlegables(soloVe.page.locator(`[data-opcion-sucursal='Papas fritas ${m}']`));
     await expect(soloVe.page.locator(`[data-opcion-sucursal='Papas fritas ${m}']`).getByRole("button", { name: `Papas fritas ${m}: Agotada` })).toBeDisabled();
 
     await sinClave.page.goto("/movimientos/opciones-agotadas");
