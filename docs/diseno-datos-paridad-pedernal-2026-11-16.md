@@ -1,5 +1,7 @@
 # Diseño: forma de los datos como Pedernal (frente 3, «el tema de datos») — Fase 1, solo documento
 
+**Actualización 2026-11-16 (tarde):** se incorporan tres decisiones del dueño y una técnica del orquestador general, registradas en `motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, «Fase 1 de los frentes: cuatro decisiones del dueño (2026-11-16)»: ids de las tablas viejas («También las viejas»), cantidad exacta («Pasar a cuenta exacta como Pedernal»), tipo del id de tabla nueva (`@db.Uuid`). Cambios: §2.2, N1-2/N1-5, N4-3, §4 (E-1b y E-8 nuevas, se saca el «NO se propone»), §5, §6, §7 y §8. Lo demás no cambia.
+
 Estado: SOLO DOCUMENTO. No hay código, migración ni DEC. Nada se aplicó a ninguna base. La tabla «¿qué pasa si…?», los niveles 6 a 10 en borrador y el oráculo están en el anexo `docs/diseno-datos-paridad-pedernal-anexo-2026-11-16.md`.
 
 ## 0. Pedido y fuentes
@@ -37,7 +39,7 @@ Estados: igual / difiere en resultado / difiere en forma / falta en Motor2 / fal
 
 | Punto | Pedernal | Motor2 | Estado | ¿Reescribe datos? |
 |---|---|---|---|---|
-| Clave primaria | `uuid` con `DEFAULT gen_random_uuid()`; en las altas **lo manda la app** («es la idempotencia del alta», 0025, 0028, 0045) | 110 de 114 modelos con `@default(cuid())` (lo genera Prisma al insertar). Nuevas: `Parte.id @db.Uuid` (nativo) y `OcultamientoProducto.id` TEXT con CHECK de forma uuid | difiere en forma; **las dos tablas nuevas difieren entre sí** (nativo vs TEXT+CHECK) | cambiar el tipo de las claves viejas es DESTRUCTIVO (todas las FK compuestas `[empresaId, id]`); el plan ya lo puso en poda (2026-11-14, «Decisión expresa del dueño») |
+| Clave primaria | `uuid` con `DEFAULT gen_random_uuid()`; en las altas **lo manda la app** («es la idempotencia del alta», 0025, 0028, 0045) | 110 de 114 modelos con `@default(cuid())` (lo genera Prisma al insertar). Nuevas: `Parte.id @db.Uuid` (nativo) y `OcultamientoProducto.id` TEXT con CHECK de forma uuid | difiere en forma; **las dos tablas nuevas difieren entre sí** (nativo vs TEXT+CHECK) | cambiar el tipo de las claves viejas es DESTRUCTIVO (todas las FK compuestas `[empresaId, id]`). **El dueño lo decidió el 2026-11-16: «También las viejas»** (CONFIRMADA); sale de la poda y entra como E-8 |
 | Idempotencia de las altas viejas | el id mismo | `claveIdempotencia` en ~25 lugares del esquema; varias nullable («rollout gradual», p. ej. líneas 801, 1595, 2903), otras `String @unique` (2808, 3091…) | difiere en forma, **mismo resultado donde la clave es obligatoria** | NO para volver obligatoria una clave: sí si hay filas viejas sin clave (diseño `diseno-idempotencia-obligatoria-movimientos-2026-10-27.md`) |
 | Generación | `uuidV5` determinista y marcas por tipo | `azar.uuid()` en `src/lib/azar.ts` (puerto de azar, `randomUUID`); `esIdentificador` = string no vacío, tope 64 | difiere en forma | NO |
 
@@ -80,6 +82,8 @@ Estados: CONFIRMADA (dicha por el dueño, con cita y fecha), PROPUESTA, PENDIENT
 | N1-2 | Toda tabla NUEVA nace con la forma (id de la app, `timestamptz`, versión si se edita, sin DELETE, textos con función de base). Cita: «Sí, copiar a Pedernal en esas cinco» (2026-11-15, relatada, E5) | CONFIRMADA (en dirección) |
 | N1-3 | Las tablas EXISTENTES se convierten solo por etapas, cada una aditiva y reversible; las que reescriben datos piden autorización por base. Cita: «las migraciones van a estar aprobadas cuando ya tengamos todo el código igual» (2026-11-16) | CONFIRMADA (el momento); el orden y el alcance son PROPUESTA |
 | N1-4 | Fuera de alcance: dinero en `bigint` (poda 2026-11-14), unidades (frente 2), clasificación (frente 2), planes (frente 4) | CONFIRMADA (poda, relatada) |
+| N1-5 | También las ~110 tablas existentes pasan a id generado por la aplicación (`uuid`). Cita: «También las viejas» (2026-11-16, AskUserQuestion, `motor2-docs`, «Fase 1 de los frentes»). Migración grande que reescribe datos: autorización expresa por base, con respaldo y ensayo; al final, por turno, tabla por tabla con el frente dueño; nada se aplica a ninguna base real | CONFIRMADA |
+| N1-6 | La cantidad pasa a aritmética exacta con 4 decimales, como Pedernal; este frente provee la primitiva y el frente 2 la aplica en `transiciones.ts:173`. Cita: «Pasar a cuenta exacta como Pedernal» (2026-11-16, mismo lugar). Cambia resultados del Kardex: se mide antes con la copia de solo lectura y los goldens se regeneran con motivo declarado | CONFIRMADA |
 
 ### Nivel 2 — Actores y contexto
 | # | Decisión | Estado |
@@ -96,7 +100,8 @@ C1 alta con id de la aplicación; C2 guardar un texto; C3 intento de borrar; C4 
 |---|---|---|
 | N4-1 | «Anular» = fila nueva o estado con quién, cuándo y motivo; nunca DELETE. Una configuración que hoy se borra (p. ej. stock mínimo) pasa a «desactivar» o a poner el valor en vacío con rastro | PROPUESTA (NO VERIFICADO cómo lo resuelve Pedernal para cada una de las 13) |
 | N4-2 | Un instante es un `timestamptz`; un día es `date`; una fecha de negocio es `((instante AT TIME ZONE zona) - corte)::date` | PROPUESTA (igual a Pedernal `fecha-de-negocio.ts`) |
-| N4-3 | El id de un alta lo genera la aplicación con `azar.uuid()`; la base lo valida por tipo `uuid` (no TEXT+CHECK) | PROPUESTA: hay que elegir UNA forma, ver §6 D-ID |
+| N4-3 | El id de un alta lo genera la aplicación con `azar.uuid()`; la base lo valida por tipo `uuid` nativo `@db.Uuid` (como `Parte`), no TEXT+CHECK. `OcultamientoProducto` se alinea antes de aplicarse a ninguna base real | Decisión técnica del orquestador general (I8, 2026-11-16; el dueño la corrige). El aviso al frente Ocultar lo coordina el orquestador general |
+| N4-4 | Cantidad: 4 decimales fijos, aritmética exacta (decimal, nunca `number` en el cálculo), redondeo declarado; la conversión de compras ya lo hace con `Decimal` (`transiciones.ts`, `ROUND_HALF_CEIL`). Qué regla de empate rige para la cantidad de Kardex hay que fijarla igual a Pedernal (`cantidad/redondeo-entero.ts`) | PROPUESTA (el nombre de la función y el empate se definen en Fase 2, NO VERIFICADO el empate de Pedernal) |
 
 ### Nivel 5 — Invariantes y políticas
 | # | Invariante | Estado |
@@ -121,7 +126,9 @@ C1 alta con id de la aplicación; C2 guardar un texto; C3 intento de borrar; C4 
 | E-5 | `version` + disparador en tablas editables viejas. | sí, aditiva | no |
 | E-6 | Convertir los ~122 instantes viejos a `timestamptz` (una sola migración, un solo turno sobre `schema.prisma`, **al final**, cuando nadie más tenga una migración abierta). | sí | **SÍ** (reescribe tablas; autorización por base con respaldo y ensayo) |
 | E-7 | Primitivas «marcadas» (Importe, Cantidad…): solo como forma de código, sin cambiar columnas; no antes de que el dueño lo pida. | no | no |
-| NO se propone | cuid → uuid en tablas viejas (destructivo; poda). Cambiar dinero a `bigint` (poda). | — | — |
+| **E-1b** (nueva) | Primitiva de cantidad exacta con 4 decimales (N1-6, N4-4). Este frente la escribe en `src/core/datos/` con su oráculo, **recibiendo los decimales como parámetro** (el frente 2 le pregunta al dueño si el stock va a 4 decimales fijos o a los de cada unidad; así sirve a las dos respuestas); el frente 2 la aplica en `redondearACantidadDeUnidad`. Quién edita `transiciones.ts` (zona de stock): lo acuerdan los frentes 2 y 3 y lo declaran; hasta entonces nadie lo toca. Antes de aplicar: medir el efecto en el Kardex con la copia de solo lectura. | no | no (cambia resultados hacia adelante; lo ya guardado no se toca) |
+| **E-8** (nueva) | Ids de las ~110 tablas viejas: de `cuid` a `uuid` generado por la aplicación (N1-5). Hay que generar un uuid nuevo por fila, reapuntar todas las FK (simples y compuestas `[empresaId, id]`) y decidir qué pasa con los ids viejos citados en `RegistroAuditoria` y en lo ya impreso (tabla de equivalencias que no se borra). Es el cambio más grande del frente: se diseña a nivel 6 recién cuando el dueño confirme 1 a 5 de esta etapa, y entra al final, tabla por tabla con el frente dueño, junto con E-6 en el mismo turno de cada tabla si conviene. | sí | **SÍ** (reescribe claves y relaciones; autorización por base, respaldo y ensayo) |
+| NO se propone | Cambiar dinero a `bigint` (poda). | — | — |
 
 ## 5. Orden respecto de los otros cinco frentes y contratos que se ofrecen
 
@@ -135,12 +142,14 @@ C1 alta con id de la aplicación; C2 guardar un texto; C3 intento de borrar; C4 
 - Frente 5: las tablas de recepción, orden de compra y nota de crédito nacen con el molde; `claveIdempotencia` obligatoria desde el alta.
 - Frente 6: la fecha que se muestra sale de `fechaParaMostrar`; ningún texto que se imprime usa `RE_TEXTO_DE_UNA_LINEA`.
 
-**Migraciones que REESCRIBEN datos («requiere autorización expresa por base, con respaldo y ensayo»):** E-3 (limpiar nombres) y E-6 (tipo de columna de ~122 instantes). El resto es aditivo o solo quita privilegios.
+**Contrato nuevo al frente 2:** la primitiva de cantidad exacta (E-1b) la provee este frente; el frente 2 la aplica en su carril. No hay nombre de función todavía: se fija al pasar a Fase 2.
+
+**Migraciones que REESCRIBEN datos («requiere autorización expresa por base, con respaldo y ensayo»):** E-3 (limpiar nombres), E-6 (tipo de columna de ~122 instantes) y E-8 (ids de las ~110 tablas). El resto es aditivo o solo quita privilegios. **Orden al final:** E-5 → E-4 → E-6 + E-8, por tabla y con el frente dueño; E-8 recorre las mismas tablas que E-6, así que se hacen en el mismo turno de cada tabla para no reescribirla dos veces.
 
 ## 6. Carril de escritura (declaración) y dependencias
 
 **Rutas donde este frente puede escribir en Fase 2 (exclusivas):**
-- `src/core/datos/**` (solo `texto-de-catalogo.ts`, `fichas-de-texto.ts`, `nombre-de-ficha.ts`, `resultado-de-regla.ts`, `identificador.ts`, `clave-idempotencia.ts`, `limites.ts`; las reglas de otros frentes las toca su dueño)
+- `src/core/datos/**` (más la primitiva de cantidad exacta de E-1b; solo `texto-de-catalogo.ts`, `fichas-de-texto.ts`, `nombre-de-ficha.ts`, `resultado-de-regla.ts`, `identificador.ts`, `clave-idempotencia.ts`, `limites.ts`; las reglas de otros frentes las toca su dueño)
 - `src/core/tiempo/**`, `src/core/texto.ts`, `src/lib/azar.ts`
 - `test/core/oraculo-texto-de-catalogo.ts`, `test/core/texto-de-catalogo*`, `test/tiempo/**`, y guardianes nuevos con prefijo `test/arquitectura/datos-*`
 - `docs/diseno-datos-paridad-pedernal-*`
@@ -156,9 +165,9 @@ C1 alta con id de la aplicación; C2 guardar un texto; C3 intento de borrar; C4 
 
 ## 7. Preguntas al dueño (una por vez)
 
-Solo la primera se hace ahora; las demás quedan encoladas para cuando haga falta.
+Una por vez; las demás quedan encoladas. **La 1 ya fue respondida** (2026-11-16, «También las viejas»). La próxima que sube al dueño es la 2.
 
-1. **(ahora) Ids de las tablas que ya existen.** Pedernal manda el id desde la aplicación y usa `uuid`. En Motor2 lo hacen así las tablas nuevas (Parte y Ocultar). Las ~110 anteriores tienen ids que genera Prisma y se protegen del doble clic con una «clave de reintento». Convertirlas es destructivo (hay que reescribir todas las claves y relaciones) y no mejora nada que se vea. ¿Alcanza con que las nuevas nazcan con id de la aplicación y las viejas sigan con clave de reintento (recomendada), o querés que también las viejas pasen a `uuid`?
+1. **(RESPONDIDA, CONFIRMADA) Ids de las tablas que ya existen.** Texto original de la pregunta: Pedernal manda el id desde la aplicación y usa `uuid`. En Motor2 lo hacen así las tablas nuevas (Parte y Ocultar). Las ~110 anteriores tienen ids que genera Prisma y se protegen del doble clic con una «clave de reintento». Convertirlas es destructivo (hay que reescribir todas las claves y relaciones) y no mejora nada que se vea. ¿Alcanza con que las nuevas nazcan con id de la aplicación y las viejas sigan con clave de reintento (recomendada), o querés que también las viejas pasen a `uuid`?
 2. (encolada) Cuando un dato hoy se borra de verdad (stock mínimo, descuento por producto, ítems de la carta, líneas de una cuenta sin enviar, etc.), ¿pasa a «desactivar» con rastro como en Pedernal? Cambia lo que ve el usuario al quitarlo.
 3. (encolada) Zona horaria: ¿las empresas nuevas nacen con Buenos Aires como Pedernal y solo se cambia desde la consola?
 4. (encolada, frente 1) Hora de corte de la jornada por sucursal: la pregunta es del frente de caja.
@@ -168,4 +177,6 @@ Solo la primera se hace ahora; las demás quedan encoladas para cuando haga falt
 - NO VERIFICADO: que todas las columnas `TIMESTAMP(3)` hayan guardado UTC (E-6 depende de eso; se mide antes con una consulta de solo lectura que el dueño autorice).
 - NO VERIFICADO: los privilegios reales de `motor2_app` en producción (el script de rol más las migraciones dicen 61 tablas con DELETE, la base viva puede diferir).
 - NO VERIFICADO: cómo resuelve Pedernal cada uno de los 13 borrados; hay que leerlos antes de E-4(2).
+- E-8 es la pieza más riesgosa del programa: reescribe claves de ~110 tablas y todas sus relaciones, incluido lo citado en la auditoría. NO VERIFICADO cuántas FK hay ni qué columnas de texto guardan ids ajenos (`RegistroAuditoria.entidadId`, JSON de auditoría, URLs ya impresas). Hay que medirlo (solo lectura) antes del nivel 6.
+- E-1b cambia resultados del Kardex hacia adelante: la medición con la copia de solo lectura y la regeneración de goldens con motivo declarado son condición, no opcional.
 - Riesgo de ordenar mal: convertir `schema.prisma` (E-6) con otro frente editándolo causa conflictos en 138 líneas: por eso va último y en un turno.
