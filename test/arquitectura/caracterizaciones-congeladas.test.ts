@@ -535,6 +535,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "«Ocultar» como Pedernal, E3c2 (docs/diseno-ocultar-como-pedernal-2026-11-15.md, O-5 y R-8; CAMBIA SOLO LA LÍNEA `lecturas` de los 5 pasos de anulación y conteo): anular una venta lee ahora `ocultamientoProducto.findMany` ×1 antes de escribir (para rechazar devolver existencia a un producto oculto). Verificado línea por línea: cada una de las 5 líneas gana ese único token y su contador sube en 1; ni un resultado, ni una fila, ni una escritura, ni un mensaje cambian.",
       },
+      {
+        blob: "0bd0ea83eec52d1b38a5873f0b9157226b18a8ed",
+        // El commit PADRE de este (3967f844) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "3967f844",
+        motivo:
+          "Auditoría legible (CAMBIA SOLO el texto guardado en `valorNuevo` de la auditoría `campo=reparto` de la carga de una factura de proveedor, en 115 líneas AUDITORIA): `registrarCambioAuditado` guardaba un arreglo de objetos con `String(valor)` («[object Object]», ilegible); ahora un objeto plano o un arreglo se guarda como JSON compacto con las claves ordenadas, p. ej. `[{\"estado\":\"RECIBIDA\",\"importe\":320,\"porcentajeDeclaradoBp\":10000,\"sucursal\":\"Central\"}]`. Verificado: quitando `valorNuevo=…` de esas líneas, idéntico al anterior; ninguna otra línea cambia.",
+      },
     ],
   },
   "test/reportes/caracterizacion/reportes-c0.golden.txt": {
