@@ -112,7 +112,7 @@ export async function cerrarCuentaCasoDeUso(
         detalle: puesto.detalle,
         lineas: lineasVenta,
       },
-      { permitirStockNegativo: true }
+      { permitirStockNegativo: true, permitirOcultosYaCargados: true }
     );
     // El núcleo valida todo antes de escribir: un rechazo no dejó nada escrito y la cuenta sigue abierta.
     // RECETA (ADR-033): un PV que perdió su receta entre el pedido y el cobro sale con `PRODUCTO_SIN_RECETA` (la cuenta sigue abierta: el núcleo no escribió nada).
