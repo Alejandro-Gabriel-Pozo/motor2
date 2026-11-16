@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { asignarConsumo, crearLibroDeStock, faltantesDe, type SaldoLote, type SeccionCandidata } from "@/core/movimientos/origen-venta";
+import { redondearCantidadExacta } from "@/core/datos/cantidad-exacta";
 import { asignarConsumoReferencia } from "./fixtures/origen-venta-referencia";
+
+/**
+ * Etapa aparte de A1b 2026-11-16 (único cambio a este archivo): el `asignarConsumo` real resta el resto con aritmética exacta
+ * (`restar` en origen-venta.ts); la referencia congelada conserva la resta en float, que deja ruido de 1e-16 (0,2368 vs
+ * 0,23680000000000012). Se compara redondeando a 8 decimales (la cota del resto): cualquier diferencia de estructura, orden, lote o
+ * cantidad real (≥ 1e-8) sigue fallando. Los casos donde el float PIERDE un resto están en test/core/origen-venta.test.ts.
+ */
+const r8 = (n: number) => redondearCantidadExacta(n, 8);
+const limpias = <T extends { cantidad: number }>(partes: T[]): T[] => partes.map((p) => ({ ...p, cantidad: r8(p.cantidad) }));
 
 /**
  * Test DIFERENCIAL (docs/plan-sustitucion-insumos-receta-2026-09-26.md, paso 1): compara el `asignarConsumo` REAL contra la
@@ -123,7 +133,7 @@ describe("asignarConsumo real vs. referencia congelada (diferencial, PRNG de sem
         const partesReal = asignarConsumo(libroReal, pedido);
         const partesRef = asignarConsumoReferencia(libroRef, pedido);
         try {
-          expect(partesReal).toStrictEqual(partesRef);
+          expect(limpias(partesReal)).toStrictEqual(limpias(partesRef));
         } catch (e) {
           throw new Error(`Escenario ${i}, pedido ${j}: resultado distinto.\n${(e as Error).message}`);
         }
@@ -132,7 +142,7 @@ describe("asignarConsumo real vs. referencia congelada (diferencial, PRNG de sem
       try {
         expect(libroReal.cargados()).toStrictEqual(libroRef.cargados());
         for (const { productoId, seccionId } of libroReal.cargados()) {
-          expect(libroReal.cargado(productoId, seccionId)).toBe(libroRef.cargado(productoId, seccionId));
+          expect(r8(libroReal.cargado(productoId, seccionId))).toBe(r8(libroRef.cargado(productoId, seccionId)));
         }
         expect(faltantesDe(libroReal, productoIds)).toStrictEqual(faltantesDe(libroRef, productoIds));
       } catch (e) {

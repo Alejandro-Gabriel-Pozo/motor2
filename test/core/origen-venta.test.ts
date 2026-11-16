@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { asignarConsumo, crearLibroDeStock, elegirSeccionDeStockPropio, faltantesDe, type SaldoLote, type SeccionCandidata } from "../../src/core/movimientos/origen-venta";
+import { redondearCantidadExacta } from "../../src/core/datos/cantidad-exacta";
 import { redondearACantidadDeUnidad } from "../../src/core/movimientos/transiciones";
 
 /**
@@ -198,5 +199,32 @@ describe("elegirSeccionDeStockPropio (PV que se produce)", () => {
       ["TORTA", COCINA.id, "2026-10-01", 1],
       ["TORTA", COCINA.id, null, 4],
     ]);
+  });
+});
+
+// Etapa aparte de A1b (2026-11-16): `restante -= tomar` restaba en float y perdía restos de más de 4 decimales
+// (0,00015 − 0,0001 = 4,9999999999999996e-5, que el redondeo exacto lleva a 0 en vez de 0,0001).
+describe("asignarConsumo — resta exacta del resto (pedidos con más de 4 decimales)", () => {
+  const SIN_PERDIDA = (partes: { cantidad: number }[]) => redondearCantidadExacta(partes.reduce((suma, p) => suma + p.cantidad, 0), 8);
+
+  it("0,00015 con un lote de 0,0001 y otro de 1: el resto de 0,00005 sale del segundo lote (no se pierde)", () => {
+    const libro = crearLibroDeStock([saldo("A", COCINA, OCT, 0.0001), saldo("A", COCINA, NOV, 1)]);
+    const partes = asignarConsumo(libro, { productoId: "A", familia: ["A"], cantidad: 0.00015, seccionHabitual: COCINA, respaldos: [], seccionParaFaltanteId: COCINA.id });
+    expect(SIN_PERDIDA(partes)).toBe(0.00015);
+    expect(partes.map((p) => p.loteVencimiento?.toISOString().slice(0, 10))).toEqual(["2026-10-01", "2026-11-01"]);
+  });
+
+  it("0,00005 con el único lote en 0: el pedido completo queda como faltante (no se pierde)", () => {
+    const libro = crearLibroDeStock([saldo("A", COCINA, OCT, 0)]);
+    const partes = asignarConsumo(libro, { productoId: "A", familia: ["A"], cantidad: 0.00005, seccionHabitual: COCINA, respaldos: [], seccionParaFaltanteId: COCINA.id });
+    expect(SIN_PERDIDA(partes)).toBe(0.00005);
+  });
+
+  it("repetir el mismo reparto con un libro nuevo da el mismo resultado (idempotente)", () => {
+    const armar = () => {
+      const libro = crearLibroDeStock([saldo("A", COCINA, OCT, 0.0001), saldo("A", COCINA, NOV, 1)]);
+      return asignarConsumo(libro, { productoId: "A", familia: ["A"], cantidad: 0.00015, seccionHabitual: COCINA, respaldos: [], seccionParaFaltanteId: COCINA.id });
+    };
+    expect(armar()).toEqual(armar());
   });
 });
