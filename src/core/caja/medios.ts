@@ -2,7 +2,7 @@ import { invalido, valido, type ResultadoDeRegla } from "@/core/datos/resultado-
 
 /**
  * Medios de pago y cuentas de cobro (etapa C3, docs/diseno-caja-c3-cuenta-de-cobro-y-marcas-2026-11-16.md), como las decidió Pedernal (`src/modulos/caja/dominio/medios.ts`, decisiones 124, 129 y 151). Los vocabularios
- * son cerrados y cada tabla repite un CHECK o una función de la migración 20261117130000_caja_c3_cuenta_de_cobro: `test/caja/oraculo-de-combinaciones-del-cobro.test.ts` compara el código, el oráculo escrito aparte y la base.
+ * son cerrados y cada tabla repite un CHECK o una función de la migración 20261117112000_caja_c3_cuenta_de_cobro: `test/caja/oraculo-de-combinaciones-del-cobro.test.ts` compara el código, el oráculo escrito aparte y la base.
  *
  * Puro: sin reloj, sin azar, sin I/O.
  */

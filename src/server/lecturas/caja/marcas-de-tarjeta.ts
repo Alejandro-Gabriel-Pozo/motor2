@@ -3,7 +3,7 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 
 /**
  * Lectura de las MARCAS DE TARJETA (etapa C3): la lista global `MARCAS_DE_TARJETA` que administra la plataforma y ven todas las empresas (`ValorDeLista`, sin `empresaId`: la app solo lee, lo exigen los privilegios de la
- * migración 20261117130000_caja_c3_cuenta_de_cobro). Sin reglas de negocio ni permiso propio: quien la consuma (la pantalla de cobro, cuando exista) pide el «Ver» de su pantalla. Solo lectura.
+ * migración 20261117112000_caja_c3_cuenta_de_cobro). Sin reglas de negocio ni permiso propio: quien la consuma (la pantalla de cobro, cuando exista) pide el «Ver» de su pantalla. Solo lectura.
  */
 export interface MarcaDeTarjeta {
   id: string;

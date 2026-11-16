@@ -16,10 +16,10 @@
 -- la cuenta de un cobro es de la sucursal del movimiento, está activa y es compatible; qué datos puede pedir cada tipo de medio (`MedioDePago_datos_chk`); un dato que el medio no pidió se rechaza al guardar el cobro; la
 -- marca es una marca de tarjeta ACTIVA; el arqueo se lleva por (medio, cuenta) y al cerrar cuadra contra los movimientos de cada par.
 -- QUÉ DECIDE EL CASO DE USO: permisos, alcance de sucursal, forma de cada dato, huella del pedido, auditoría (solo qué datos se completaron, nunca sus valores).
--- Las políticas de alcance de sucursal de `CuentaDeCobro` van en la migración siguiente (20261117131000), salida exacta del generador.
+-- Las políticas de alcance de sucursal de `CuentaDeCobro` van en la migración siguiente (20261117113000), salida exacta del generador.
 --
 -- Requiere PostgreSQL 15 o más (NULLS NOT DISTINCT; la base local y la de CI son 17) y soporte ICU para la collation de la lista. Reversa: down.sql (a mano, como dueño, con `psql -1 -v ON_ERROR_STOP=1`;
--- después `prisma migrate resolve --rolled-back 20261117130000_caja_c3_cuenta_de_cobro`). Bajar ANTES la de políticas (20261117131000). La reversa ABORTA si se perdería algún dato.
+-- después `prisma migrate resolve --rolled-back 20261117112000_caja_c3_cuenta_de_cobro`). Bajar ANTES la de políticas (20261117113000). La reversa ABORTA si se perdería algún dato.
 
 -- ===== CuentaDeCobro =====
 CREATE TABLE "CuentaDeCobro" (
@@ -253,7 +253,7 @@ BEGIN
   RETURN NULL;
 END $$;
 
--- ===== RLS por empresa de CuentaDeCobro (la de sucursal va en 20261117131000). `ValorDeLista` es GLOBAL: sin RLS. =====
+-- ===== RLS por empresa de CuentaDeCobro (la de sucursal va en 20261117113000). `ValorDeLista` es GLOBAL: sin RLS. =====
 ALTER TABLE "CuentaDeCobro" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY aislamiento_empresa ON "CuentaDeCobro" USING ("empresaId" = (SELECT app_empresa_actual())) WITH CHECK ("empresaId" = (SELECT app_empresa_actual()));
 

@@ -162,7 +162,7 @@ Archivo: `test/caja/oraculo-de-combinaciones-del-cobro.ts` (no importa nada de `
 
 ## 6. Persistencia y migración (nivel 6)
 
-Migración **aditiva y reversible** `20261117130000_caja_c3_cuenta_de_cobro` (`migration.sql`, `down.sql` que aborta si se perdería algo y es idempotente, `verificacion-previa.sql` solo lectura) y `20261117131000_rls_sucursal_caja_c3` (salida exacta del generador). Tablas nuevas: `CuentaDeCobro` (por empresa y sucursal, RLS) y `ValorDeLista` (global, sin RLS). Columnas nuevas, todas opcionales o con default `false`: `MedioDePago.pide*`, `MovimientoCaja.cuentaDeCobroId`, `Cobro.{cuentaDeCobroId,cupon,ultimos4,marcaDeTarjetaId,cuotas,dni}`, `ArqueoCaja.cuentaDeCobroId`. Reemplaza tres funciones de C1 (`MovimientoCaja_validar`, `Cobro_validar`, `SesionCaja_verificar_cierre`); la reversa las restaura byte por byte (la prueba compara el código con `md5(prosrc)`). Requiere Postgres 15 o más (`NULLS NOT DISTINCT`; CI y local usan 17) y ICU (collation de la lista).
+Migración **aditiva y reversible** `20261117112000_caja_c3_cuenta_de_cobro` (`migration.sql`, `down.sql` que aborta si se perdería algo y es idempotente, `verificacion-previa.sql` solo lectura) y `20261117113000_rls_sucursal_caja_c3` (salida exacta del generador). Tablas nuevas: `CuentaDeCobro` (por empresa y sucursal, RLS) y `ValorDeLista` (global, sin RLS). Columnas nuevas, todas opcionales o con default `false`: `MedioDePago.pide*`, `MovimientoCaja.cuentaDeCobroId`, `Cobro.{cuentaDeCobroId,cupon,ultimos4,marcaDeTarjetaId,cuotas,dni}`, `ArqueoCaja.cuentaDeCobroId`. Reemplaza tres funciones de C1 (`MovimientoCaja_validar`, `Cobro_validar`, `SesionCaja_verificar_cierre`); la reversa las restaura byte por byte (la prueba compara el código con `md5(prosrc)`). Requiere Postgres 15 o más (`NULLS NOT DISTINCT`; CI y local usan 17) y ICU (collation de la lista).
 
 Privilegios: la app lee y agrega `CuentaDeCobro` (UPDATE por columna: nombre, identificador, sucursal, activa, versión); lee `ValorDeLista` y nada más; `MedioDePago` suma el UPDATE de las cinco columnas `pide*`. Plataforma: sin privilegios hasta que exista la consola.
 
@@ -201,3 +201,16 @@ Privilegios: la app lee y agrega `CuentaDeCobro` (UPDATE por columna: nombre, id
 | `caja.version_desactualizada` | Cambió mientras lo mirabas: volvé a abrirlo antes de editarlo. | `VERSION_DESACTUALIZADA` |
 
 (Los textos están hoy en los casos de uso como mensajes de `fracaso`; la pantalla los traduce por el código estable.)
+
+
+## Decisiones del dueño asentadas (2026-11-16, literales; registradas en `motor2-docs`, «Caja C3: tres respuestas del dueño» y «Caja C3»; relatadas por el orquestador general)
+
+| Pregunta | Respuesta literal | Estado |
+|---|---|---|
+| Q-C3-7 quién ve DNI y últimos 4 | «También quien cobra» | **CONFIRMADA:** el operador que cobró lo ve, además de gerente y administrador. Son datos personales: lectura solo dentro de su empresa y sucursal (RLS); nunca en listados ni con su valor en la auditoría (solo los nombres de los datos). La Server Action de lectura (PR-B) lo hace cumplir. |
+| Q-C3-6 una cuenta de cobro por sucursal | «Una cuenta por sucursal (Recomendada)» | **CONFIRMADA** |
+| Q-C3-4/5 cuotas y cupón | «Sí, como Pedernal (Recomendada)» | **CONFIRMADA:** tope de 36 cuotas y cupón sin espacios ni 13 dígitos seguidos |
+| Q-C3-2/3 marcas iniciales | «Esas seis (Recomendada)» | **CONFIRMADA:** Visa, Mastercard, American Express, Cabal, Naranja X y «Otra»; una marca nueva la agrega la plataforma y, hasta que exista su pantalla, se carga con un cambio técnico avisando antes al dueño |
+| Q-C3-1 caracteres de los nombres | cubierta por la lista de nombres confirmada | **CONFIRMADA** |
+
+**Orden de migraciones (decisión del orquestador, 2026-11-16):** esta etapa va como `20261117112000` y `20261117113000`; C2 va después (`20261117114000` y `20261117115000`) y fusiona la función `"MovimientoCaja_validar"` partiendo de la de esta etapa.

@@ -1,4 +1,4 @@
--- Verificación previa de 20261117130000_caja_c3_cuenta_de_cobro (SOLO LECTURA; correr como dueño ANTES de aplicarla en una base real).
+-- Verificación previa de 20261117112000_caja_c3_cuenta_de_cobro (SOLO LECTURA; correr como dueño ANTES de aplicarla en una base real).
 -- Esperado: C1 aplicada (las ocho tablas existen), las dos tablas nuevas NO existen todavía, versión de Postgres 15 o más, ICU disponible y ningún dato de C1 que la migración pueda violar (todas las columnas nuevas son NULL o false).
 SELECT 'tablas_de_c1_presentes' AS control, count(*) AS cantidad
   FROM information_schema.tables

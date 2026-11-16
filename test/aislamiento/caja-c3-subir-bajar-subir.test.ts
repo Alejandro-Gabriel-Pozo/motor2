@@ -12,8 +12,8 @@ import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/bas
  */
 const RAIZ = join(__dirname, "../../prisma/migrations");
 const C1 = "20261117110000_caja_c1";
-const TABLA = "20261117130000_caja_c3_cuenta_de_cobro";
-const RLS = "20261117131000_rls_sucursal_caja_c3";
+const TABLA = "20261117112000_caja_c3_cuenta_de_cobro";
+const RLS = "20261117113000_rls_sucursal_caja_c3";
 const E = "empresa_c3";
 const UUID = "00000000-0000-4000-8000-0000000000";
 
@@ -168,7 +168,7 @@ describe("Caja C3: subir, bajar y subir (cuenta de cobro, marcas de tarjeta y da
 
     await base.cliente.query(`INSERT INTO "CuentaDeCobro" ("id","empresaId","sucursalId","tipo","nombre") VALUES ('${UUID}10',$1,'suc_a','TERMINAL','Posnet')`, [E]);
     const conCuenta = await foto();
-    await expect(correr(TABLA, "down.sql")).rejects.toThrow(/No se puede bajar 20261117130000_caja_c3_cuenta_de_cobro: CuentaDeCobro tiene 1 fila/);
+    await expect(correr(TABLA, "down.sql")).rejects.toThrow(/No se puede bajar 20261117112000_caja_c3_cuenta_de_cobro: CuentaDeCobro tiene 1 fila/);
     expect(await foto(), "la reversa abortada no tocó nada").toEqual(conCuenta);
     await base.cliente.query(`DELETE FROM "CuentaDeCobro"`);
 

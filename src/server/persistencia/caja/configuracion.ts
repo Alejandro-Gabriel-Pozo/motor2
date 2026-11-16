@@ -5,7 +5,7 @@ import type { Prisma } from "@prisma/client";
 
 /**
  * Persistencia de la CONFIGURACIÓN de caja (etapa C3): medios de pago y cuentas de cobro. Mismo contrato que `caja.ts`: el cliente es el PRIMER parámetro, `data` literal, sin reglas de negocio ni auditoría. La base decide lo que
- * ninguna lectura puede asegurar (ver la migración 20261117130000_caja_c3_cuenta_de_cobro): nombre único sin mayúsculas, un solo efectivo que no se desactiva, el tipo que no cambia y el techo de datos por tipo. Los cambios se
+ * ninguna lectura puede asegurar (ver la migración 20261117112000_caja_c3_cuenta_de_cobro): nombre único sin mayúsculas, un solo efectivo que no se desactiva, el tipo que no cambia y el techo de datos por tipo. Los cambios se
  * condicionan a la versión (`updateMany` con `version`): 0 filas = otro cambió antes.
  */
 

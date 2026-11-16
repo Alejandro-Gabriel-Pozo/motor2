@@ -1,5 +1,5 @@
--- Reversa de 20261117130000_caja_c3_cuenta_de_cobro (Caja y cobro, etapa C3). A mano, como dueño, con `psql -1 -v ON_ERROR_STOP=1`; después `prisma migrate resolve --rolled-back 20261117130000_caja_c3_cuenta_de_cobro`.
--- Bajar ANTES 20261117131000_rls_sucursal_caja_c3 (sus políticas cuelgan de CuentaDeCobro).
+-- Reversa de 20261117112000_caja_c3_cuenta_de_cobro (Caja y cobro, etapa C3). A mano, como dueño, con `psql -1 -v ON_ERROR_STOP=1`; después `prisma migrate resolve --rolled-back 20261117112000_caja_c3_cuenta_de_cobro`.
+-- Bajar ANTES 20261117113000_rls_sucursal_caja_c3 (sus políticas cuelgan de CuentaDeCobro).
 -- ABORTA si se perdería algún dato: cuentas de cobro cargadas; movimientos, cobros o arqueos con cuenta; cobros con cupón, últimos 4, marca, cuotas o DNI; medios que piden algún dato; o una lista de marcas distinta de sus
 -- semillas. Con todo eso vacío el estado resultante es el de C1. Bajarla dos veces no falla (todo es condicional a que exista).
 DO $$
@@ -7,28 +7,28 @@ DECLARE n bigint;
 BEGIN
   IF to_regclass('"CuentaDeCobro"') IS NOT NULL THEN
     SELECT count(*) INTO n FROM "CuentaDeCobro";
-    IF n > 0 THEN RAISE EXCEPTION 'No se puede bajar 20261117130000_caja_c3_cuenta_de_cobro: CuentaDeCobro tiene % fila(s)', n; END IF;
+    IF n > 0 THEN RAISE EXCEPTION 'No se puede bajar 20261117112000_caja_c3_cuenta_de_cobro: CuentaDeCobro tiene % fila(s)', n; END IF;
   END IF;
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'MovimientoCaja' AND column_name = 'cuentaDeCobroId') THEN
     SELECT count(*) INTO n FROM "MovimientoCaja" WHERE "cuentaDeCobroId" IS NOT NULL;
-    IF n > 0 THEN RAISE EXCEPTION 'No se puede bajar 20261117130000_caja_c3_cuenta_de_cobro: % movimiento(s) con cuenta de cobro', n; END IF;
+    IF n > 0 THEN RAISE EXCEPTION 'No se puede bajar 20261117112000_caja_c3_cuenta_de_cobro: % movimiento(s) con cuenta de cobro', n; END IF;
   END IF;
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ArqueoCaja' AND column_name = 'cuentaDeCobroId') THEN
     SELECT count(*) INTO n FROM "ArqueoCaja" WHERE "cuentaDeCobroId" IS NOT NULL;
-    IF n > 0 THEN RAISE EXCEPTION 'No se puede bajar 20261117130000_caja_c3_cuenta_de_cobro: % arqueo(s) con cuenta de cobro', n; END IF;
+    IF n > 0 THEN RAISE EXCEPTION 'No se puede bajar 20261117112000_caja_c3_cuenta_de_cobro: % arqueo(s) con cuenta de cobro', n; END IF;
   END IF;
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Cobro' AND column_name = 'cupon') THEN
     SELECT count(*) INTO n FROM "Cobro" WHERE "cuentaDeCobroId" IS NOT NULL OR "cupon" IS NOT NULL OR "ultimos4" IS NOT NULL OR "marcaDeTarjetaId" IS NOT NULL OR "cuotas" IS NOT NULL OR "dni" IS NOT NULL;
-    IF n > 0 THEN RAISE EXCEPTION 'No se puede bajar 20261117130000_caja_c3_cuenta_de_cobro: % cobro(s) con cuenta o datos', n; END IF;
+    IF n > 0 THEN RAISE EXCEPTION 'No se puede bajar 20261117112000_caja_c3_cuenta_de_cobro: % cobro(s) con cuenta o datos', n; END IF;
   END IF;
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'MedioDePago' AND column_name = 'pideCupon') THEN
     SELECT count(*) INTO n FROM "MedioDePago" WHERE "pideCupon" OR "pideUltimos4" OR "pideMarca" OR "pideCuotas" OR "pideDni";
-    IF n > 0 THEN RAISE EXCEPTION 'No se puede bajar 20261117130000_caja_c3_cuenta_de_cobro: % medio(s) piden datos', n; END IF;
+    IF n > 0 THEN RAISE EXCEPTION 'No se puede bajar 20261117112000_caja_c3_cuenta_de_cobro: % medio(s) piden datos', n; END IF;
   END IF;
   IF to_regclass('"ValorDeLista"') IS NOT NULL THEN
     SELECT count(*) INTO n FROM "ValorDeLista";
     IF n <> 6 OR EXISTS (SELECT 1 FROM "ValorDeLista" WHERE "version" > 1 OR NOT "activo" OR "nombre" NOT IN ('Visa', 'Mastercard', 'American Express', 'Cabal', 'Naranja X', 'Otra')) THEN
-      RAISE EXCEPTION 'No se puede bajar 20261117130000_caja_c3_cuenta_de_cobro: la lista de marcas ya no es la sembrada';
+      RAISE EXCEPTION 'No se puede bajar 20261117112000_caja_c3_cuenta_de_cobro: la lista de marcas ya no es la sembrada';
     END IF;
   END IF;
 END

@@ -63,7 +63,7 @@ export const MIGRACIONES_DE_POLITICAS_POSTERIORES: readonly { readonly migracion
   // Caja y cobro C1: las tablas de dinero de una sucursal (la caja, su sesión, sus movimientos, el cobro de una cuenta y el arqueo) (PROPIA).
   { migracion: "20261117111000_rls_sucursal_caja_c1", tablas: ["Caja", "SesionCaja", "MovimientoCaja", "Cobranza", "Cobro", "ArqueoCaja", "ArqueoBillete"] },
   // Caja y cobro C3: la cuenta de cobro (terminal, QR o cuenta bancaria) de una sucursal (PROPIA).
-  { migracion: "20261117131000_rls_sucursal_caja_c3", tablas: ["CuentaDeCobro"] },
+  { migracion: "20261117113000_rls_sucursal_caja_c3", tablas: ["CuentaDeCobro"] },
 ];
 
 /** Las migraciones previas que la prueba de subir/bajar/subir baja DESPUÉS de B1 (en este orden: P3 y después M.2). Ambas reversas son destructivas. */
