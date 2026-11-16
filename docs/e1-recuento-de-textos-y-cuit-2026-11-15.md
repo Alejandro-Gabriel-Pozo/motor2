@@ -211,8 +211,8 @@ En las ediciones el guard solo recorta, exige no vacío y el tope de la ficha; e
 
 | Archivo | Validador viejo | Dato | Qué hace Pedernal |
 |---|---|---|---|
-| `src/core/permisos/nombres-de-rol.ts` | validarTextoCatalogo | nombre de rol | rol: sin regla de Pedernal; decisión pendiente (NO VERIFICADO si Pedernal lo valida; no se encontró) |
-| `src/core/features/sucursales/sucursal.guard.ts` | validarTextoCatalogo | nombre de sucursal | sucursal: regla propia (NFC, recorte, 1 a 100 caracteres, rechaza controles con una lista de prohibidos; la base no limita): no es la ficha de catálogo y choca con «todo nace cerrado» |
+| `src/core/permisos/nombres-de-rol.ts` | nombreDeFicha (NOMBRE_DE_ROL, desde el 2026-11-16; antes validarTextoCatalogo) | nombre de rol | rol: sin regla de Pedernal; decisión pendiente (NO VERIFICADO si Pedernal lo valida; no se encontró) |
+| `src/core/features/sucursales/sucursal.guard.ts` | nombreDeFicha (NOMBRE_DE_SUCURSAL, desde el 2026-11-16; antes validarTextoCatalogo) | nombre de sucursal | sucursal: regla propia (NFC, recorte, 1 a 100 caracteres, rechaza controles con una lista de prohibidos; la base no limita): no es la ficha de catálogo y choca con «todo nace cerrado» |
 | `src/core/features/carta/contenido-producto.guard.ts` | RE_TEXTO_CATALOGO | «Nombre en la carta» del producto | nombre en la carta: sin regla de Pedernal; decisión pendiente (NO VERIFICADO) |
 | `src/core/features/catalogo/unidades.guard.ts` | nombreDeCatalogo | nombre de unidad | unidad: catálogo FIJO de 14 unidades (etapa E2, otra decisión) |
 | `src/core/features/movimientos/secciones.guard.ts` | nombreDeCatalogo | sección de movimientos | depósito de stock: usa la ficha de elección y la base lo repite; la equivalencia con la «sección» de Motor2 NO está verificada |

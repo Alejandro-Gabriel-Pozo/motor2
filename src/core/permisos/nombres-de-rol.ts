@@ -1,4 +1,5 @@
-import { texto, validarTextoCatalogo } from "@/core/texto";
+import { nombreDeFicha } from "@/core/datos/nombre-de-ficha";
+import { texto } from "@/core/texto";
 import { CLAVE_ROL_ADMIN, CLAVE_ROL_OPERADOR } from "./jerarquia";
 
 /**
@@ -24,8 +25,8 @@ export function normalizarNombreDeRol(nombre: unknown): string {
 /** El mensaje de rechazo del nombre (ya normalizado) para un rol con esa `clave` (`null` si se crea a mano), o `null` si se puede usar. */
 export function mensajeSiNombreDeRolNoPermitido(nombre: string, clave: string | null): string | null {
   if (!nombre) return "El nombre del rol no puede estar vacío.";
-  const invalido = validarTextoCatalogo(nombre, "El nombre del rol");
-  if (invalido) return invalido;
+  const valido = nombreDeFicha(nombre, "NOMBRE_DE_ROL", "El nombre del rol no puede estar vacío.");
+  if (!valido.ok) return valido.mensaje;
   if (Object.hasOwn(NOMBRES_RESERVADOS, nombre) && NOMBRES_RESERVADOS[nombre] !== clave) return `El nombre «${nombre}» está reservado: no se puede usar en este rol.`;
   return null;
 }
