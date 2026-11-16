@@ -10,7 +10,7 @@
 --
 -- QUÉ DECIDE LA BASE (no depende de que el caso de uso se acuerde): la fecha de negocio de la sesión es la de la fórmula `((abiertaEn AT TIME ZONE zona) - corte)::date` con la zona de la empresa y el corte de la sucursal; la sesión solo se abre con su jornada ABIERTA; un movimiento solo entra con la jornada de su sesión
 -- ABIERTA; la jornada solo cambia ABIERTA → EN_AUDITORIA, EN_AUDITORIA → ABIERTA y EN_AUDITORIA → CERRADA, y CERRADA no se toca; la foto de controles solo entra con la jornada pasando a CERRADA en la misma transacción; corregir medio, declarar total y dar el conforme solo con la jornada EN_AUDITORIA;
--- la secuencia de correcciones y de declaraciones sigue sin huecos y la corrección parte del medio vigente; el efectivo no se declara; un AJUSTE que corrige una jornada exige que exista, esté CERRADA y sea anterior a la de su sesión.
+-- la secuencia de correcciones y de declaraciones sigue sin huecos y la corrección parte del medio vigente; el efectivo no se declara; un AJUSTE exige corregir una jornada que exista, esté CERRADA y sea anterior a la de su sesión (el ajuste común sin jornada no existe).
 -- QUÉ DECIDE EL CASO DE USO: permisos (quién ajusta), alcance, la huella de los controles y su comparación, qué se reconoce, la clave de reintento y la auditoría. La base NO sabe qué controles aportan los módulos.
 -- Las políticas de alcance de sucursal (RLS por sucursal) van en la migración siguiente (20261117115000), salida exacta del generador.
 --
@@ -51,8 +51,8 @@ ALTER TABLE "MovimientoCaja" DROP CONSTRAINT "MovimientoCaja_motivo_chk";
 ALTER TABLE "MovimientoCaja" ADD CONSTRAINT "MovimientoCaja_motivo_chk" CHECK (
   ("clase" IN ('INGRESO_MANUAL', 'EGRESO_MANUAL', 'AJUSTE', 'ANULACION') AND "motivo" IS NOT NULL AND char_length("motivo") BETWEEN 1 AND 500)
   OR ("clase" IN ('FONDO_INICIAL', 'COBRO') AND "motivo" IS NULL));
--- Solo un AJUSTE puede explicar una jornada cerrada.
-ALTER TABLE "MovimientoCaja" ADD CONSTRAINT "MovimientoCaja_corrige_chk" CHECK ("corrigeJornada" IS NULL OR "clase" = 'AJUSTE');
+-- Un AJUSTE SIEMPRE explica una jornada cerrada (decisión del dueño, 2026-11-16: «Solo sobre días cerrados»); ninguna otra clase lleva el enlace.
+ALTER TABLE "MovimientoCaja" ADD CONSTRAINT "MovimientoCaja_corrige_chk" CHECK (("clase" = 'AJUSTE') = ("corrigeJornada" IS NOT NULL));
 
 -- ===== La fecha de negocio: la fórmula de Pedernal, en la base =====
 CREATE FUNCTION caja_fecha_de_negocio(p_instante timestamptz, p_zona text, p_corte time) RETURNS date LANGUAGE sql STABLE AS
@@ -408,7 +408,7 @@ BEGIN
     IF o."clase" IS NULL OR o."clase" NOT IN ('INGRESO_MANUAL', 'EGRESO_MANUAL', 'AJUSTE') THEN RAISE EXCEPTION 'anulacion_de_movimiento_no_anulable' USING ERRCODE = '23514'; END IF;
     IF o."sesionId" <> NEW."sesionId" OR o."medioDePagoId" <> NEW."medioDePagoId" OR o."importe" <> -NEW."importe" THEN RAISE EXCEPTION 'anulacion_no_es_el_espejo' USING ERRCODE = '23514'; END IF;
   END IF;
-  IF NEW."corrigeJornada" IS NOT NULL THEN
+  IF NEW."clase" = 'AJUSTE' THEN
     SELECT j."estado" INTO v_estado_a_corregir FROM "JornadaDeSucursal" j WHERE j."empresaId" = NEW."empresaId" AND j."sucursalId" = v_sucursal AND j."fechaDeNegocio" = NEW."corrigeJornada";
     IF v_estado_a_corregir IS NULL THEN RAISE EXCEPTION 'ajuste_corrige_jornada_inexistente' USING ERRCODE = '23514'; END IF;
     IF v_estado_a_corregir <> 'CERRADA' THEN RAISE EXCEPTION 'ajuste_corrige_jornada_no_cerrada' USING ERRCODE = '23514'; END IF;

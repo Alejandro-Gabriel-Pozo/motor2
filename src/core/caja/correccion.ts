@@ -53,15 +53,15 @@ export function motivoObligatorio(texto: string | null | undefined): { ok: true;
 type ErrorDeJornadaACorregir = "JORNADA_A_CORREGIR_NO_ENCONTRADA" | "JORNADA_A_CORREGIR_NO_CERRADA" | "JORNADA_A_CORREGIR_NO_ANTERIOR";
 
 /**
- * Un ajuste (e3 §3.11.3): dinero real sin otro registro, de cualquier medio, con signo distinto de cero, dentro del tope y con motivo obligatorio. Si corrige una jornada ya cerrada, esa jornada existe, está CERRADA y es ANTERIOR a la de la sesión
+ * Un ajuste (e3 §3.11.3): dinero real sin otro registro, de cualquier medio, con signo distinto de cero, dentro del tope y con motivo obligatorio. Siempre corrige una jornada ya cerrada (decisión del dueño, 2026-11-16: «Solo sobre días cerrados»): esa jornada existe, está CERRADA y es ANTERIOR a la de la sesión
  * donde se registra (la jornada cerrada no cambia: el ajuste cae en el día en curso y queda enlazado). La base repite estas reglas (`MovimientoCaja_validar`).
  */
 export function decidirAjuste(
   entrada: Readonly<{
     importeEnCentavos: bigint;
     motivo: string | null | undefined;
-    /** «AAAA-MM-DD» de la jornada cerrada que explica, o `null` (ajuste común). */
-    corrigeJornada: string | null;
+    /** «AAAA-MM-DD» de la jornada cerrada que explica (obligatoria: el ajuste solo se acepta sobre un día cerrado). */
+    corrigeJornada: string;
     /** El estado de esa jornada en la sucursal de la caja, o `null` si no existe. */
     estadoDeLaJornadaACorregir: string | null;
     fechaDeLaSesion: string;
@@ -70,11 +70,9 @@ export function decidirAjuste(
   if (entrada.importeEnCentavos === BigInt(0) || entrada.importeEnCentavos >= TOPE_EN_CENTAVOS || entrada.importeEnCentavos <= -TOPE_EN_CENTAVOS) return { ok: false, error: "IMPORTE_INVALIDO" };
   const motivo = motivoObligatorio(entrada.motivo);
   if (!motivo.ok) return motivo;
-  if (entrada.corrigeJornada !== null) {
-    if (entrada.estadoDeLaJornadaACorregir === null) return { ok: false, error: "JORNADA_A_CORREGIR_NO_ENCONTRADA" };
-    if (entrada.estadoDeLaJornadaACorregir !== "CERRADA") return { ok: false, error: "JORNADA_A_CORREGIR_NO_CERRADA" };
-    // «AAAA-MM-DD» ordena como texto igual que como fecha.
-    if (entrada.corrigeJornada >= entrada.fechaDeLaSesion) return { ok: false, error: "JORNADA_A_CORREGIR_NO_ANTERIOR" };
-  }
+  if (entrada.estadoDeLaJornadaACorregir === null) return { ok: false, error: "JORNADA_A_CORREGIR_NO_ENCONTRADA" };
+  if (entrada.estadoDeLaJornadaACorregir !== "CERRADA") return { ok: false, error: "JORNADA_A_CORREGIR_NO_CERRADA" };
+  // «AAAA-MM-DD» ordena como texto igual que como fecha.
+  if (entrada.corrigeJornada >= entrada.fechaDeLaSesion) return { ok: false, error: "JORNADA_A_CORREGIR_NO_ANTERIOR" };
   return { ok: true, valor: { motivo: motivo.valor } };
 }

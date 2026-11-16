@@ -15,16 +15,16 @@ BEGIN
       RAISE EXCEPTION 'No se puede bajar 20261117114000_caja_c2_jornada: la tabla % tiene % fila(s)', t, filas;
     END IF;
   END LOOP;
-  IF to_regclass('"JornadaDeSucursal"') IS NOT NULL THEN
-    EXECUTE 'SELECT count(*) FROM "JornadaDeSucursal" WHERE "estado" <> ''ABIERTA''' INTO filas;
-    IF filas > 0 THEN
-      RAISE EXCEPTION 'No se puede bajar 20261117114000_caja_c2_jornada: hay % jornada(s) en cierre o cerrada(s)', filas;
-    END IF;
-  END IF;
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'MovimientoCaja' AND column_name = 'corrigeJornada') THEN
     EXECUTE 'SELECT count(*) FROM "MovimientoCaja" WHERE "clase" = ''AJUSTE''' INTO filas;
     IF filas > 0 THEN
       RAISE EXCEPTION 'No se puede bajar 20261117114000_caja_c2_jornada: hay % movimiento(s) AJUSTE', filas;
+    END IF;
+  END IF;
+  IF to_regclass('"JornadaDeSucursal"') IS NOT NULL THEN
+    EXECUTE 'SELECT count(*) FROM "JornadaDeSucursal" WHERE "estado" <> ''ABIERTA''' INTO filas;
+    IF filas > 0 THEN
+      RAISE EXCEPTION 'No se puede bajar 20261117114000_caja_c2_jornada: hay % jornada(s) en cierre o cerrada(s)', filas;
     END IF;
   END IF;
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Sucursal' AND column_name = 'horaDeCorte') THEN

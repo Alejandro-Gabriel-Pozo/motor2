@@ -12,11 +12,11 @@ import { cargarJornada } from "@/server/persistencia/caja/jornada";
 
 /**
  * Caso de uso «registrar un ajuste de caja» (etapa C2, CU13; Pedernal `caja/casos-de-uso/registrar-ajuste.ts`, e3 §3.2 y §3.11.3): dinero real sin otro registro, de cualquier medio activo, con signo y motivo, en una sesión ABIERTA. Si corrige una jornada ya
- * cerrada (`corrigeJornada`), el ajuste cae igual en la sesión de hoy y en SU fecha de negocio: la jornada cerrada NO cambia, solo queda enlazada (el error de un día cerrado se corrige con un ajuste del día en curso). Sin `corrigeJornada` es el ajuste común.
+ * cerrada (`corrigeJornada`), el ajuste cae igual en la sesión de hoy y en SU fecha de negocio: la jornada cerrada NO cambia, solo queda enlazada (el error de un día cerrado se corrige con un ajuste del día en curso). `corrigeJornada` es obligatoria (decisión del dueño, 2026-11-16, «Solo sobre días cerrados»): no hay ajuste común.
  *
  * `puedeAjustar` lo decide la Server Action con la acción de ajustar (solo gerente y administrador): sin ella, cierra por defecto (`SIN_PERMISO_PARA_AJUSTAR`), antes de mirar nada. En UNA transacción SERIALIZABLE, en este orden:
  *  1. validación del pedido (importe con signo y distinto de cero, motivo por lista de permitidos, fecha del enlace) y de la sesión (de la sucursal activa);
- *  2. si corrige una jornada: existe, está CERRADA y es ANTERIOR a la de la sesión (`JORNADA_A_CORREGIR_NO_ENCONTRADA`, `JORNADA_A_CORREGIR_NO_CERRADA`, `JORNADA_A_CORREGIR_NO_ANTERIOR`);
+ *  2. la jornada que corrige: existe, está CERRADA y es ANTERIOR a la de la sesión (`JORNADA_A_CORREGIR_NO_ENCONTRADA`, `JORNADA_A_CORREGIR_NO_CERRADA`, `JORNADA_A_CORREGIR_NO_ANTERIOR`);
  *  3. la clave de reintento se mira ANTES que el estado: misma clave y mismo pedido → el ajuste ya hecho (`yaExistia`); misma clave con otro pedido → `CLAVE_REUTILIZADA`;
  *  4. la sesión está ABIERTA (`SESION_CERRADA`) y el medio existe y está activo (`MEDIO_NO_HABILITADO`); inserta el movimiento AJUSTE y audita.
  * Segunda barrera: el CHECK de clase y signo, el disparador `MovimientoCaja_validar` (jornada de la sesión abierta, medio activo, enlace válido) y el único de la clave.
@@ -34,7 +34,7 @@ export async function registrarAjusteCasoDeUso(
   azar: FuenteDeAzar,
 ): Promise<ResultadoRegistrarAjuste> {
   if (!puedeAjustar) return fracaso("SIN_PERMISO_PARA_AJUSTAR", "Solo un gerente o un administrador puede registrar un ajuste.");
-  if (comando.corrigeJornada !== null && !esDiaISOReal(comando.corrigeJornada)) return fracaso("FECHA_INVALIDA", "La fecha de la jornada que se corrige no es válida.");
+  if (typeof comando.corrigeJornada !== "string" || !esDiaISOReal(comando.corrigeJornada)) return fracaso("FECHA_INVALIDA", "La fecha de la jornada que se corrige no es válida.");
 
   return conTransaccionSerializable(
     actor.transaccion,
@@ -42,7 +42,7 @@ export async function registrarAjusteCasoDeUso(
       const sesion = await cargarSesion(tx, actor.empresaId, comando.sesionId);
       if (!sesion || sesion.sucursalId !== actor.sucursalId) return fracaso("SESION_NO_ENCONTRADA", "No se encontró la sesión de caja.");
 
-      const jornadaACorregir = comando.corrigeJornada === null ? null : await cargarJornada(tx, actor.empresaId, actor.sucursalId, comando.corrigeJornada);
+      const jornadaACorregir = await cargarJornada(tx, actor.empresaId, actor.sucursalId, comando.corrigeJornada);
       const ajuste = decidirAjuste({ importeEnCentavos: comando.importeEnCentavos, motivo: comando.motivo, corrigeJornada: comando.corrigeJornada, estadoDeLaJornadaACorregir: jornadaACorregir?.estado ?? null, fechaDeLaSesion: diaDeColumnaDate(sesion.fechaDeNegocio) });
       if (!ajuste.ok) return fracaso(ajuste.error, "El ajuste no es válido.");
 
@@ -75,7 +75,7 @@ export async function registrarAjusteCasoDeUso(
       await registrarCambioAuditado(tx, {
         entidad: "MovimientoCaja",
         entidadId: movimientoId,
-        descripcion: `Ajuste de caja${comando.corrigeJornada === null ? "" : ` (corrige el día ${comando.corrigeJornada})`}: ${ajuste.valor.motivo}`,
+        descripcion: `Ajuste de caja (corrige el día ${comando.corrigeJornada}): ${ajuste.valor.motivo}`,
         campo: "ajuste",
         valorAnterior: null,
         valorNuevo: textoDeCentavos(comando.importeEnCentavos),

@@ -124,8 +124,8 @@ export interface ComandoRegistrarAjuste {
   /** Con signo y distinto de cero: el ajuste suma o resta al esperado del medio. */
   importeEnCentavos: bigint;
   motivo: string;
-  /** «AAAA-MM-DD» de la jornada ya cerrada que este ajuste explica; `null` es el ajuste común de la sesión abierta. */
-  corrigeJornada: string | null;
+  /** «AAAA-MM-DD» de la jornada ya cerrada que este ajuste explica (obligatoria: el ajuste solo se acepta sobre un día cerrado). */
+  corrigeJornada: string;
 }
 
 type CodigoDeJornada = "FECHA_INVALIDA" | "JORNADA_NO_ENCONTRADA" | "JORNADA_CERRADA";

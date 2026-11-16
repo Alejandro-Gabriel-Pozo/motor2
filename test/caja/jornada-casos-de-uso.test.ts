@@ -59,7 +59,7 @@ const declarar = (medioDePagoId: string, importe: number, clave = randomUUID(), 
 const conforme = (clave = randomUUID(), fecha = D) => darConformeGeneralCasoDeUso(actor(), { claveIdempotencia: clave, fechaDeNegocio: fecha }, azarDelProceso);
 const cerrarJornada = (huellaVista: string, reconocimientos: { clave: string; texto: string | null }[] = [], observacion: string | null = null, fecha = D) =>
   cerrarJornadaCasoDeUso(actor(), { fechaDeNegocio: fecha, huellaVista, reconocimientos, observacion }, azarDelProceso);
-const ajustar = (sesionId: string, medioDePagoId: string, importe: number, corrigeJornada: string | null, puede = true, clave = randomUUID(), motivo = "Falto un vale") =>
+const ajustar = (sesionId: string, medioDePagoId: string, importe: number, corrigeJornada: string, puede = true, clave = randomUUID(), motivo = "Falto un vale") =>
   registrarAjusteCasoDeUso(actor(), { claveIdempotencia: clave, sesionId, medioDePagoId, importeEnCentavos: c(importe), motivo, corrigeJornada }, puede, azarDelProceso);
 
 const jornadaDe = (fecha = D) => prismaAdmin.jornadaDeSucursal.findFirst({ where: { sucursalId: s.sucursalId, fechaDeNegocio: col(fecha) } });
@@ -543,21 +543,35 @@ describe("ajuste a una jornada cerrada (oráculo: permiso × sesión × jornada 
     expect(await anularMovimientoCasoDeUso(actor(), { claveIdempotencia: randomUUID(), movimientoId: mov.id, motivo: "Me equivoque" }, true, azarDelProceso)).toMatchObject({ ok: true });
   });
 
-  it("el ajuste común (sin jornada que corregir) puede ser de cualquier medio activo, con signo; el importe cero, sin motivo o con motivo fuera de la lista se rechazan", async () => {
+  it("un ajuste puede ser de cualquier medio activo y con signo; el importe cero, sin motivo, con motivo fuera de la lista, de otra sesión o con fecha inválida se rechazan", async () => {
     const a = await abrir(100_00);
     if (!a.ok) throw new Error("no abrió");
+    await forzarJornada("2026-01-08", "CERRADA");
     const tarjeta = await medio("TARJETA_CREDITO");
-    expect(await ajustar(a.datos.sesionId, tarjeta.id, 15_00, null)).toMatchObject({ ok: true });
-    expect(await ajustar(a.datos.sesionId, await efectivoId(), -5_00, null)).toMatchObject({ ok: true });
-    expect(await ajustar(a.datos.sesionId, tarjeta.id, 0, null)).toMatchObject({ ok: false, codigo: "IMPORTE_INVALIDO" });
-    expect(await ajustar(a.datos.sesionId, tarjeta.id, 1_00, null, true, randomUUID(), "")).toMatchObject({ ok: false, codigo: "MOTIVO_INVALIDO" });
-    expect(await ajustar(a.datos.sesionId, tarjeta.id, 1_00, null, true, randomUUID(), "con <html>")).toMatchObject({ ok: false, codigo: "MOTIVO_INVALIDO" });
-    expect(await ajustar(a.datos.sesionId, (await medio("QR", { activo: false })).id, 1_00, null)).toMatchObject({ ok: false, codigo: "MEDIO_NO_HABILITADO" });
-    expect(await ajustar(randomUUID(), tarjeta.id, 1_00, null)).toMatchObject({ ok: false, codigo: "SESION_NO_ENCONTRADA" });
+    expect(await ajustar(a.datos.sesionId, tarjeta.id, 15_00, "2026-01-08")).toMatchObject({ ok: true });
+    expect(await ajustar(a.datos.sesionId, await efectivoId(), -5_00, "2026-01-08")).toMatchObject({ ok: true });
+    expect(await ajustar(a.datos.sesionId, tarjeta.id, 0, "2026-01-08")).toMatchObject({ ok: false, codigo: "IMPORTE_INVALIDO" });
+    expect(await ajustar(a.datos.sesionId, tarjeta.id, 1_00, "2026-01-08", true, randomUUID(), "")).toMatchObject({ ok: false, codigo: "MOTIVO_INVALIDO" });
+    expect(await ajustar(a.datos.sesionId, tarjeta.id, 1_00, "2026-01-08", true, randomUUID(), "con <html>")).toMatchObject({ ok: false, codigo: "MOTIVO_INVALIDO" });
+    expect(await ajustar(a.datos.sesionId, (await medio("QR", { activo: false })).id, 1_00, "2026-01-08")).toMatchObject({ ok: false, codigo: "MEDIO_NO_HABILITADO" });
+    expect(await ajustar(randomUUID(), tarjeta.id, 1_00, "2026-01-08")).toMatchObject({ ok: false, codigo: "SESION_NO_ENCONTRADA" });
     expect(await ajustar(a.datos.sesionId, tarjeta.id, 1_00, "2026-02-30")).toMatchObject({ ok: false, codigo: "FECHA_INVALIDA" });
-    // El ajuste común entra en lo esperado por medio de la sesión.
+    // El ajuste entra en lo esperado por medio de la sesión de hoy.
     const esperado = (await prismaAdmin.movimientoCaja.groupBy({ by: ["medioDePagoId"], where: { sesionId: a.datos.sesionId }, _sum: { importe: true } })).map((g) => [g.medioDePagoId === tarjeta.id ? "tarjeta" : "efectivo", Number(g._sum.importe)]);
     expect(esperado.sort()).toEqual([["efectivo", 95], ["tarjeta", 15]]);
+  });
+
+  it("NO existe el ajuste sin jornada que corregir: sin fecha el caso de uso rechaza y la base no deja insertarlo", async () => {
+    const a = await abrir(100_00);
+    if (!a.ok) throw new Error("no abrió");
+    const ef = await efectivoId();
+    const sinFecha = { claveIdempotencia: randomUUID(), sesionId: a.datos.sesionId, medioDePagoId: ef, importeEnCentavos: c(-5_00), motivo: "Falto un vale", corrigeJornada: null as unknown as string };
+    expect(await registrarAjusteCasoDeUso(actor(), sinFecha, true, azarDelProceso)).toMatchObject({ ok: false, codigo: "FECHA_INVALIDA" });
+    const crudo = { id: randomUUID(), empresaId: EMPRESA, sucursalId: s.sucursalId, sesionId: a.datos.sesionId, clase: "AJUSTE", medioDePagoId: ef, importe: "-5.00", motivo: "x", creadoPorId: s.admin.id };
+    await expect(prismaAdmin.movimientoCaja.create({ data: crudo as never })).rejects.toThrow(/ajuste_corrige_jornada_inexistente|MovimientoCaja_corrige_chk/);
+    // Y el enlace tampoco lo lleva una clase que no es AJUSTE.
+    await expect(prismaAdmin.movimientoCaja.create({ data: { ...crudo, clase: "INGRESO_MANUAL", importe: "5.00", corrigeJornada: col("2026-01-08") } as never })).rejects.toThrow(/MovimientoCaja_corrige_chk/);
+    expect(await prismaAdmin.movimientoCaja.count({ where: { clase: "AJUSTE" } })).toBe(0);
   });
 });
 
@@ -626,9 +640,10 @@ describe("idempotencia y concurrencia (carreras de verdad)", () => {
   it("seis registrarAjuste a la vez con la MISMA clave dejan un solo ajuste y todos responden bien", async () => {
     const a = await abrir(100_00);
     if (!a.ok) throw new Error("no abrió");
+    await forzarJornada("2026-01-08", "CERRADA");
     const clave = randomUUID();
     const ef = await efectivoId();
-    const rs = await Promise.allSettled(Array.from({ length: 6 }, () => registrarAjusteCasoDeUso(actor(), { claveIdempotencia: clave, sesionId: a.datos.sesionId, medioDePagoId: ef, importeEnCentavos: c(-10_00), motivo: "Falto un vale", corrigeJornada: null }, true, azarDelProceso)));
+    const rs = await Promise.allSettled(Array.from({ length: 6 }, () => registrarAjusteCasoDeUso(actor(), { claveIdempotencia: clave, sesionId: a.datos.sesionId, medioDePagoId: ef, importeEnCentavos: c(-10_00), motivo: "Falto un vale", corrigeJornada: "2026-01-08" }, true, azarDelProceso)));
     expect(rs.every((x) => x.status === "fulfilled" && x.value.ok)).toBe(true);
     expect(await prismaAdmin.movimientoCaja.count({ where: { clase: "AJUSTE" } })).toBe(1);
     expect(await prismaAdmin.registroAuditoria.count({ where: { entidad: "MovimientoCaja", campo: "ajuste" } })).toBe(1);

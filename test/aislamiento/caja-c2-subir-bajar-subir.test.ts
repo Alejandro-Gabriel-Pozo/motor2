@@ -210,11 +210,13 @@ describe("Caja C2: subir, bajar y subir (cinco tablas y tres columnas, con su mi
 
     // (d) un movimiento AJUSTE
     await base.cliente.query(`INSERT INTO "MedioDePago" ("id","empresaId","tipo") VALUES ('${U}e2',$1,'QR')`, [E]);
-    await base.cliente.query(`INSERT INTO "MovimientoCaja" ("id","empresaId","sucursalId","sesionId","clase","medioDePagoId","importe","motivo","creadoPorId") VALUES ('${U}a2',$1,'suc_a','${U}51','AJUSTE','${U}e2',5,'Prueba','u_caja2')`, [E]);
+    await base.cliente.query(`INSERT INTO "JornadaDeSucursal" ("id","empresaId","sucursalId","fechaDeNegocio","estado","auditoriaIniciadaEn","auditoriaIniciadaPorId","cerradaEn","cerradaPorId","huellaDeCierre") VALUES ('${U}f9',$1,'suc_a','2026-01-10','CERRADA',now(),'u_caja2',now(),'u_caja2','${"b".repeat(64)}')`, [E]);
+    await base.cliente.query(`INSERT INTO "MovimientoCaja" ("id","empresaId","sucursalId","sesionId","clase","medioDePagoId","importe","motivo","corrigeJornada","creadoPorId") VALUES ('${U}a2',$1,'suc_a','${U}51','AJUSTE','${U}e2',5,'Prueba','2026-01-10','u_caja2')`, [E]);
     conDatos = await foto();
     await expect(correr(TABLA, "down.sql")).rejects.toThrow(/hay 1 movimiento\(s\) AJUSTE/);
     expect(await foto(), "la reversa abortada no tocó nada").toEqual(conDatos);
     await base.cliente.query(`DELETE FROM "MovimientoCaja" WHERE "clase" = 'AJUSTE'`);
+    await base.cliente.query(`DELETE FROM "JornadaDeSucursal" WHERE "id" = '${U}f9'`);
     await base.cliente.query(`DELETE FROM "MedioDePago" WHERE "id" = '${U}e2'`);
   });
 

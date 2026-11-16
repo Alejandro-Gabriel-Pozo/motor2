@@ -204,8 +204,8 @@ describe("corrección de medio, declaración de total y ajuste", () => {
     }
   });
 
-  it("el ajuste: importe con signo y distinto de cero, dentro del tope; motivo obligatorio; el ajuste común no mira jornadas", () => {
-    const ok = { motivo: "Falto un vale", corrigeJornada: null, estadoDeLaJornadaACorregir: null, fechaDeLaSesion: "2026-01-15" };
+  it("el ajuste: importe con signo y distinto de cero, dentro del tope; motivo obligatorio; siempre sobre una jornada cerrada y anterior", () => {
+    const ok = { motivo: "Falto un vale", corrigeJornada: "2026-01-10", estadoDeLaJornadaACorregir: "CERRADA", fechaDeLaSesion: "2026-01-15" };
     expect(decidirAjuste({ ...ok, importeEnCentavos: c(0) })).toEqual({ ok: false, error: "IMPORTE_INVALIDO" });
     expect(decidirAjuste({ ...ok, importeEnCentavos: TOPE_EN_CENTAVOS })).toEqual({ ok: false, error: "IMPORTE_INVALIDO" });
     expect(decidirAjuste({ ...ok, importeEnCentavos: -TOPE_EN_CENTAVOS })).toEqual({ ok: false, error: "IMPORTE_INVALIDO" });

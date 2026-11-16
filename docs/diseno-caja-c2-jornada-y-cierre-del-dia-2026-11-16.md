@@ -42,7 +42,7 @@ Leído completo en `/home/user/zuluhub-erp` y `/home/user/zuluhub-docs`:
 | 9 | Corrección de medio | `(cobro, secuencia)`, antes/después con cuenta de cobro | `CorreccionDeMedio` `(cobroId, secuencia)`, antes/después **solo medio** | DIFIERE-RESULTADO acotado: no hay cuenta de cobro hasta C3 |
 | 10 | Declaración de total, conforme general | por par (medio, cuenta); uno por jornada | por medio; uno por jornada | idem (sin cuenta) |
 | 11 | Ajuste a jornada cerrada | `AJUSTE` con `corrige_jornada`, solo gerente y administrador | igual; el permiso entra como parámetro booleano del caso de uso (`puedeAjustar`), como `puedeAnularAjenos` de C1 | IGUAL (el permiso real lo pide la Server Action, que no existe todavía) |
-| 12 | Ajuste común (sin jornada a corregir) | mismo caso de uso, `corrige_jornada` nulo | igual, mismo caso de uso | IGUAL. **PROPUESTA** a confirmar (P-AJUSTE): C1 dejó `AJUSTE` para C2; si el dueño lo quiere solo para jornadas cerradas se hace `corrigeJornada` obligatorio (cambio de una línea) |
+| 12 | Ajuste común (sin jornada a corregir) | mismo caso de uso, `corrige_jornada` nulo | **no existe**: `corrigeJornada` es obligatoria, en el caso de uso y en la base (CHECK `MovimientoCaja_corrige_chk`) | DIFIERE-RESULTADO por decisión del dueño (2026-11-16): «Solo sobre días cerrados (Recomendada)» |
 | 13 | Anular un ajuste | el disparador deja anular `AJUSTE` | igual | IGUAL |
 | 14 | Controles de caja | 6 (`sesiones_sin_cerrar` BLOQUEA; `diferencia_de_arqueo`, `conciliacion_por_medio`, `cobrado_contra_ticket` RECONOCIBLE; `cobros_corregidos`, `ajustes_a_jornadas_cerradas` INFORMA) | los mismos 6, claves idénticas | IGUAL |
 | 15 | Controles de ventas | 6 (`cuentas_abiertas`, `tickets_por_cobrar`, `cortesias`, `anulaciones`, `correcciones`, `pendientes_de_facturar`) | solo `ventas.cuentas_abiertas` BLOQUEA y `ventas.tickets_por_cobrar` RECONOCIBLE, sobre `Cuenta` y `Cobranza` | DIFIERE-RESULTADO acotado: Motor2 no tiene cortesías, ticket con estado ni facturación; el encargo pide solo estos dos |
@@ -118,15 +118,15 @@ El oráculo vive en `test/caja/oraculo-de-jornada.ts` como tablas de datos legib
 
 **Dimensiones que cambian dinero, permisos, visibilidad o stock:**
 1. estado de la jornada (`SIN_ACTIVIDAD`, `ABIERTA`, `EN_AUDITORIA`, `CERRADA`) × comando (`abrirSesion`, `cobrarCuenta`, `iniciarAuditoria`, `cancelarAuditoria`, `corregirMedioDeCobro`, `declararTotal`, `darConformeGeneral`, `cerrarJornada`).
-2. `registrarAjuste`: permiso (sí, no) × estado de la sesión (`ABIERTA`, `CERRADA`) × jornada a corregir (relación con la de la sesión: anterior, igual, posterior × estado de esa jornada).
+2. `registrarAjuste` (siempre sobre una jornada cerrada): permiso (sí, no) × estado de la sesión (`ABIERTA`, `CERRADA`) × jornada a corregir (relación con la de la sesión: anterior, igual, posterior × estado de esa jornada).
 3. control: severidad (`BLOQUEA`, `RECONOCIBLE`, `INFORMA`) × hay hallazgos (sí, no) × reconocido (sí, no) → permite cerrar o el código de rechazo.
 4. fecha de negocio: instante × hora de corte × zona (incluido el pasaje de medianoche UTC contra Argentina y `05:59:59.999` contra `06:00:00.000`).
 5. clase de movimiento × signo del importe (ya cubierto en C1; ahora con `AJUSTE`).
 
-## 6. Preguntas abiertas para el dueño (no se asumieron)
+## 6. Decisiones del dueño (2026-11-16) y preguntas abiertas
 
-- **P-FOTO.** ¿El cierre debe congelar también la conciliación por medio (las tres tablas de foto de Pedernal)? Hoy solo se guarda la foto de los controles (con cantidades y quién reconoció). Costo de agregarlo después: una migración aditiva más.
-- **P-AJUSTE.** ¿El ajuste común (sin jornada cerrada que corregir) entra en C2? Se construyó igual que Pedernal (mismo caso de uso); si no, `corrigeJornada` pasa a obligatorio.
+Respondidas por el dueño, con sus palabras (CONFIRMADAS): **P-CORTE** «00:00; la cambia el gerente o administrador (Recomendada)» (la hora de corte por defecto es 00:00; cambiarla es una pantalla de otro turno); **P-CTA** «Sí, hay que cobrarla o anularla antes de cerrar (Recomendada)» (una cuenta abierta frena el cierre: `ventas.cuentas_abiertas` BLOQUEA); **P-FOTO** «También la conciliación por medio, como Pedernal» (se construye en la etapa C2b, §7); **P-AJUSTE** «Solo sobre días cerrados (Recomendada)» (`corrigeJornada` obligatoria).
+
+Sigue abierta:
+
 - **P-POS.** «Mientras la jornada está en cierre no se abre cuenta» (ficha de Pedernal): no se toca el POS en esta etapa. ¿Se pide en el frente del POS?
-- **P-CTA.** ¿Una cuenta de mostrador puede quedar abierta de por vida? Si sí, `ventas.cuentas_abiertas` BLOQUEA el cierre para siempre; la salida en Pedernal es anular la cuenta.
-- **P-CORTE.** ¿Qué hora de corte usa cada sucursal? Hoy todas 00:00 (como Pedernal). Quién y cómo la cambia es una pantalla de otro turno.
