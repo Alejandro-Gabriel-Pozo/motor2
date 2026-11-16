@@ -75,7 +75,12 @@ Todas aditivas y reversibles (`down.sql` y `verificacion-previa.sql`), sin aplic
 | Roles P1 Parte / Roles P2 | Que `compra_recibir`, `compras.configurar` y los permisos de saldo respeten «gerente/administrador» y los nombres visibles | — | Roles P2 `rolesPropiosMax` (nace 0): compras no crea roles. |
 | Textos T2… | Textos de recepción, control, diferencias, saldo (23 ya aprobados en Pedernal sin clave) | — | Alta por catálogo T1 vía orquestador general. |
 
-Mensajes a los vecinos (1, 2, 4, 6): se envían junto con el aviso de PR, por `send_message`, con la ruta/modelo exacto de este carril.
+Mensajes a los vecinos (1, 2, 4, 6): enviados el 2026-11-16 con la ruta/modelo exacto de este carril. Lo que otra sesión ofrece es información, no una orden; quedó así:
+
+- **Frente 1 (caja):** ofrece, solo si el dueño lo pide y no en su C1, `registrarEgresoDeCajaEnTx(tx, {origenTipo, origenId, importe, motivo, claveIdempotencia})` en `src/server/actions/caja/` (PR #327). Compras no reutiliza `MEDIOS_DE_PAGO` de proveedores como libro de caja. Frente 1 no toca `PagoDeFacturaProveedor`.
+- **Frente 2 (unidades):** no cambia firmas en Fase 1. Ofrece `convertirCantidadExacta` y `UNIDADES_DE_MEDIDA` (`src/core/catalogo/unidades-de-medida.ts`, sin consumidor hoy). Observa que Pedernal elige la unidad de compra **por línea de recepción** y Motor2 la tiene en `Producto`: al rediseñar la línea (COR-1/COR-2) conviene no depender de `Producto.unidadCompraId`. Las funciones de conversión de `armar-linea-de-movimiento.ts` y `src/core/movimientos/transiciones.ts` quedan del lado de compras/movimientos.
+- **Frente 3 (datos):** los modelos nuevos de compras nacen con id uuid de la app, `TIMESTAMPTZ(3)`, sin DELETE, `version` y `claveIdempotencia` desde el alta; una FK hacia una tabla vieja mantiene su tipo (cuid como texto). Tipo exacto (`@db.Uuid` nativo o TEXT+CHECK): **único punto pendiente**, lo resuelve el orquestador general. Compras no suma borrados físicos.
+- **Frente 4 (perillas):** ofrece, en su E1 y solo con la confirmación del dueño, `recepcion_separada` y `conciliacion_de_tres_vias` (INTERRUPTOR, base apagada, requiere la primera) y `exigirPerilla(db, empresaId, perilla)` dentro de la transacción, que falla cerrado con `FUNCION_NO_INCLUIDA`. Verificador propuesto por compras: `recepcion_separada` la exigen registrar con parte PENDIENTE y confirmar la recepción; `conciliacion_de_tres_vias`, las órdenes, tres vías, tolerancias, diferencias, notas, devolución ligada y saldo. Compras **no** agrega columnas en `Empresa`: un interruptor interino se pide al frente 4 (por el orquestador general) y solo si el dueño lo pide.
 
 ## Qué entra al producto
 
