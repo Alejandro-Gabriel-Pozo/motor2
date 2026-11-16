@@ -1,6 +1,6 @@
 import "server-only";
 import { centavosDeImporte, conciliarJornada, controlesDelDia, ordenarControles } from "@/core/caja/public";
-import type { ControlDelDia, DatosParaLosControles } from "@/core/caja/public";
+import type { ControlDelDia, DatosParaLosControles, LineaDeConciliacion } from "@/core/caja/public";
 import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import {
@@ -30,6 +30,10 @@ import { cargarCuentaParaCobrar } from "@/server/persistencia/caja/total-de-cuen
  */
 export interface ControlesDeLaJornada {
   controles: readonly ControlDelDia[];
+  /** La conciliación por medio de la jornada (la que se congela al cerrar, C2b). */
+  conciliacion: readonly LineaDeConciliacion[];
+  /** Las cobranzas del día cuyo cobrado difiere del total vigente de su ticket (las que se congelan al cerrar, C2b). */
+  origenesConDiferencia: readonly { cobranzaId: string; cobradoEnCentavos: bigint; totalDelTicketEnCentavos: bigint }[];
   /** sha256 (hex) de la lista ordenada `(clave, severidad, cantidad, detalle)` de los controles: lo que la pantalla vio y lo que `cerrarJornada` vuelve a calcular. */
   huella: string;
 }
@@ -77,5 +81,5 @@ export async function leerControlesDeLaJornada(
     cuentasPorCobrar: await cargarCuentasPorCobrar(db, { empresaId, sucursalId, fecha: fechaDeNegocio, zonaHoraria: args.zonaHoraria, horaDeCorte: horaDeCorteDeColumna(sucursal.horaDeCorte) }),
   });
   const huella = createHash("sha256").update(JSON.stringify(["HUELLA_DE_CONTROLES_DE_JORNADA", empresaId, sucursalId, fechaDeNegocio, ordenarControles(controles).map((c) => [c.clave, c.severidad, c.cantidad, c.detalle])])).digest("hex");
-  return { controles, huella };
+  return { controles, conciliacion, origenesConDiferencia: cobradoContraTicket.filter((t) => t.cobradoEnCentavos !== t.totalDelTicketEnCentavos), huella };
 }

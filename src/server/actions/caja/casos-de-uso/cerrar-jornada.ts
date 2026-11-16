@@ -1,5 +1,5 @@
 import "server-only";
-import { decidirCierre, explicacionDesdeTexto, reconocimientosValidos, repiteElCierre } from "@/core/caja/public";
+import { decidirCierre, explicacionDesdeTexto, lineaPorExplicar, reconocimientosValidos, repiteElCierre } from "@/core/caja/public";
 import type { ControlDelDia } from "@/core/caja/public";
 import type { ComandoCerrarJornada, ControlDeJornadaVisto, ResultadoCerrarJornada } from "@/core/features/caja/caja.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
@@ -9,7 +9,7 @@ import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { leerControlesDeLaJornada } from "./controles-de-la-jornada";
-import { bloquearJornadaParaCambiar, cargarControlesGuardados, cerrarJornadaEnBase, insertarControles } from "@/server/persistencia/caja/jornada";
+import { bloquearJornadaParaCambiar, cargarControlesGuardados, cerrarJornadaEnBase, insertarCierreDeCaja, insertarControles, insertarLineasDeConciliacion, insertarOrigenesDeConciliacion } from "@/server/persistencia/caja/jornada";
 
 /** Un control como lo ve quien cierra (sin el detalle ni las referencias: el detalle lo da la consulta de cada control). */
 function aVisto(c: ControlDelDia, reconocido: boolean, texto: string | null): ControlDeJornadaVisto {
@@ -27,7 +27,8 @@ function aVisto(c: ControlDelDia, reconocido: boolean, texto: string | null): Co
  *  4. `EN_AUDITORIA`: recalcula los controles y su huella; distinta de la que se vio → `CONTROLES_CAMBIARON` (con los controles de ahora); con `BLOQUEA` → `CONTROLES_QUE_BLOQUEAN`; con `RECONOCIBLE` sin reconocer → `CONTROLES_SIN_RECONOCER`
  *     (el texto es opcional); reconocer lo que no corresponde → `RECONOCIMIENTO_INVALIDO`;
  *  5. la jornada pasa a `CERRADA` con su huella, se guarda la foto de TODOS los controles (también los de cantidad 0 y los que solo informan) con quién y cuándo reconoció, y se audita. La jornada NUNCA se cierra sola al llegar la hora de corte.
- * Segunda barrera: `JornadaDeSucursal_validar_cambio` (CERRADA queda congelada) y `ControlDeJornadaCerrada_validar` (la foto solo entra con la jornada pasando a CERRADA en esta misma transacción).
+ *     y, desde C2b, la FOTO DE LA CONCILIACIÓN por medio (cabecera, una línea por medio y las cobranzas cuyo cobrado difiere del total del ticket), con la explicación copiada del reconocimiento; todo o nada;
+ * Segunda barrera: `JornadaDeSucursal_validar_cambio` (CERRADA queda congelada), `CierreDeCajaDeJornada_validar` y el disparador diferido `CierreDeCajaDeJornada_verificar` (al confirmar recalcula la foto y la compara) y `ControlDeJornadaCerrada_validar` (la foto solo entra con la jornada pasando a CERRADA en esta misma transacción).
  *
  * @contract Cierra la jornada una sola vez con la foto de los controles que se vieron, o no escribe nada.
  * @idempotency Por estado y huella: repetir el mismo pedido sobre la jornada ya cerrada devuelve `yaEstabaCerrada`; otro contenido recibe `JORNADA_CERRADA`; el `FOR UPDATE` serializa dos cierres a la vez.
@@ -63,7 +64,7 @@ export async function cerrarJornadaCasoDeUso(
       }
       if (jornada.estado === "ABIERTA") return fracaso("JORNADA_NO_EN_AUDITORIA", "Para cerrar el día primero hay que empezar el cierre.");
 
-      const { controles, huella } = await leerControlesDeLaJornada(tx, { empresaId: actor.empresaId, sucursalId: actor.sucursalId, fechaDeNegocio: comando.fechaDeNegocio, jornadaId: jornada.id, zonaHoraria: actor.empresaZonaHoraria, ahora: actor.ahora });
+      const { controles, huella, conciliacion, origenesConDiferencia } = await leerControlesDeLaJornada(tx, { empresaId: actor.empresaId, sucursalId: actor.sucursalId, fechaDeNegocio: comando.fechaDeNegocio, jornadaId: jornada.id, zonaHoraria: actor.empresaZonaHoraria, ahora: actor.ahora });
       const decision = decidirCierre({ controles, huellaActual: huella, huellaVista: comando.huellaVista, reconocimientos: reconocimientos.valor });
       if (!decision.ok) {
         const e = decision.error;
@@ -75,6 +76,32 @@ export async function cerrarJornadaCasoDeUso(
 
       await cerrarJornadaEnBase(tx, { empresaId: actor.empresaId, id: jornada.id, cerradaEn: actor.ahora, cerradaPorId: actor.usuarioId, huella, observacion: observacion.valor });
       await insertarControles(tx, { empresaId: actor.empresaId, sucursalId: actor.sucursalId, jornadaId: jornada.id, controles: decision.valor, ids: decision.valor.map(() => azar.uuid()), reconocePorId: actor.usuarioId, ahora: actor.ahora });
+      // C2b: la foto de la conciliación por medio, en la MISMA transacción y con la jornada ya cerrada (la base lo exige y, al confirmar, la recalcula y compara). La explicación opcional se copia del reconocimiento del control que cuenta cada línea.
+      const explicacionDe = (clave: string) => reconocimientos.valor.find((r) => r.clave === clave)?.texto ?? null;
+      const cierreId = azar.uuid();
+      await insertarCierreDeCaja(tx, { id: cierreId, empresaId: actor.empresaId, sucursalId: actor.sucursalId, jornadaId: jornada.id, congeladoEn: actor.ahora, congeladoPorId: actor.usuarioId });
+      await insertarLineasDeConciliacion(tx, {
+        empresaId: actor.empresaId,
+        sucursalId: actor.sucursalId,
+        cierreId,
+        lineas: conciliacion.map((l) => ({ id: azar.uuid(), medioDePagoId: l.medioDePagoId, registradoEnCentavos: l.registradoEnCentavos, correccionesEnCentavos: l.correccionesEnCentavos, declaradoEnCentavos: l.declaradoEnCentavos, estadoDeConteo: l.estado, conformePorId: l.conformePorId, conformeEn: l.conformeEn, explicacion: lineaPorExplicar(l) ? explicacionDe("caja.conciliacion_por_medio") : null })),
+      });
+      await insertarOrigenesDeConciliacion(tx, {
+        empresaId: actor.empresaId,
+        sucursalId: actor.sucursalId,
+        cierreId,
+        origenes: origenesConDiferencia.map((o) => ({ id: azar.uuid(), cobranzaId: o.cobranzaId, cobradoEnCentavos: o.cobradoEnCentavos, totalDelTicketEnCentavos: o.totalDelTicketEnCentavos, explicacion: explicacionDe("caja.cobrado_contra_ticket") })),
+      });
+      await registrarCambioAuditado(tx, {
+        entidad: "CierreDeCajaDeJornada",
+        entidadId: cierreId,
+        descripcion: `Conciliación por medio del día ${comando.fechaDeNegocio} congelada`,
+        campo: "congelado",
+        valorAnterior: null,
+        valorNuevo: `medios=${conciliacion.length}; cobradasConDiferencia=${origenesConDiferencia.length}`,
+        actorId: actor.usuarioId,
+        sucursalId: actor.sucursalId,
+      });
       const conHallazgos = decision.valor.filter((c) => c.cantidad > 0).map((c) => `${c.clave}=${c.cantidad}${c.reconocido ? " reconocido" : ""}`);
       await registrarCambioAuditado(tx, {
         entidad: "JornadaDeSucursal",

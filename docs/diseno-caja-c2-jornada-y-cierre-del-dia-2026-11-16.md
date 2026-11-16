@@ -38,7 +38,7 @@ Leído completo en `/home/user/zuluhub-erp` y `/home/user/zuluhub-docs`:
 | 5 | Quién inicia y cierra = persona del contexto de la base (`app_persona_id()`) | por disparador | lo pone el caso de uso (`actor.usuarioId`); la base no sabe quién es la persona | DIFIERE-FORMA: el contexto de la base de Motor2 solo lleva empresa y sucursales (RLS), no persona |
 | 6 | `version` y `actualizado_en` de la jornada | sí | no | DIFIERE-FORMA: nada los lee (poda: sin columnas a ciegas); la jornada cambia tres veces y cada cambio queda en `RegistroAuditoria` |
 | 7 | Foto de controles | solo inserción, solo al cerrar, en la misma transacción (`xmin`) | `ControlDeJornadaCerrada`, mismo disparador (`xmin`) | IGUAL |
-| 8 | Foto de la conciliación de caja (`cierre_de_caja_de_jornada`, `conciliacion_de_jornada`, `conciliacion_de_cobro_por_origen`) | se congela al cerrar | **no entra** | PENDIENTE: no está en la lista de piezas del encargo. Todo lo que la compone es inmutable (movimientos, correcciones, declaraciones, conforme, arqueos), salvo el total vigente del ticket; la cantidad de cada control sí queda en la foto de controles. Ver pregunta P-FOTO |
+| 8 | Foto de la conciliación de caja (`cierre_de_caja_de_jornada`, `conciliacion_de_jornada`, `conciliacion_de_cobro_por_origen`) | se congela al cerrar | **entra en C2b** (§7) | CONFIRMADA: P-FOTO «También la conciliación por medio, como Pedernal» (2026-11-16) |
 | 9 | Corrección de medio | `(cobro, secuencia)`, antes/después con cuenta de cobro | `CorreccionDeMedio` `(cobroId, secuencia)`, antes/después **solo medio** | DIFIERE-RESULTADO acotado: no hay cuenta de cobro hasta C3 |
 | 10 | Declaración de total, conforme general | por par (medio, cuenta); uno por jornada | por medio; uno por jornada | idem (sin cuenta) |
 | 11 | Ajuste a jornada cerrada | `AJUSTE` con `corrige_jornada`, solo gerente y administrador | igual; el permiso entra como parámetro booleano del caso de uso (`puedeAjustar`), como `puedeAnularAjenos` de C1 | IGUAL (el permiso real lo pide la Server Action, que no existe todavía) |
@@ -130,3 +130,44 @@ Respondidas por el dueño, con sus palabras (CONFIRMADAS): **P-CORTE** «00:00; 
 Sigue abierta:
 
 - **P-POS.** «Mientras la jornada está en cierre no se abre cuenta» (ficha de Pedernal): no se toca el POS en esta etapa. ¿Se pide en el frente del POS?
+
+## 7. Etapa C2b: la foto congelada de la conciliación por medio (migraciones `20261117116000_caja_c2b_conciliacion` y `20261117117000_rls_sucursal_caja_c2b`)
+
+Necesidad (nivel 1): el dueño pidió «También la conciliación por medio, como Pedernal» (2026-11-16, respuesta a P-FOTO). Qué es: al cerrar el día se congela, por medio de pago, lo registrado, las correcciones, el total declarado y la diferencia, más las cobranzas cuyo cobrado difiere del total del ticket. Así el cierre de un día queda con la conciliación tal como se vio al cerrarlo, aunque después cambie el total vigente de un ticket.
+
+### 7.1 Auditoría contra Pedernal (lo que se reproduce y lo que cambia)
+
+| Pedernal | Motor2 | Motivo de la diferencia |
+|---|---|---|
+| Cabecera `cierre_de_caja_de_jornada`, una por jornada | `CierreDeCajaDeJornada` (`jornadaId` único), con `id` propio | Prisma pide clave propia en la cabecera; la unicidad por jornada se mantiene |
+| `conciliacion_de_jornada`: una línea por medio, con `estado_de_conteo` CONTADO / DECLARADO / CONFORME / SIN_DATO | `ConciliacionDeJornada`, mismos estados, único por (empresa, cabecera, medio) | igual |
+| `diferencia` = declarado − (registrado + correcciones) | columna generada por la base (`diferencia`), nunca escrita por la app | igual resultado; la base la calcula |
+| `conciliacion_de_cobro_por_origen` con `origen_tipo` / `origen_id` / `ticket_id` | `ConciliacionDeCobroPorOrigen` con `cobranzaId` (clave foránea a la `Cobranza`) | en Motor2 el origen de un cobro es la cobranza de la cuenta; no hay origen opaco (impone el modelo de datos existente) |
+| ids texto o uuid | uuid | lo que usa Motor2 |
+| Importes | `Decimal(14,2)` | lo que usa Motor2 |
+| Conforme de la línea: «por» y «en» | del cierre de caja de la sesión (`cerradaPorId`, `cerradaEn`) o del conforme general; desempate por mayor id | determinismo igual en el núcleo y en la base |
+| La foto puede escribirse con la jornada en cierre o cerrada | SOLO con la jornada pasando a `CERRADA` en la misma transacción (`xmin = pg_current_xact_id()`) | decisión de diseño más estricta: la foto no se puede sembrar antes ni agregar después. Diferencia declarada, sin cita del dueño: es una barrera de la base, no una función |
+| Chequeo de persona | no hay | Motor2 audita con `RegistroAuditoria` |
+
+### 7.2 Tabla «¿qué pasa si…?» de la foto (parte de `cerrarJornada`)
+
+| Situación | Qué pasa |
+|---|---|
+| Repetición | el segundo `cerrarJornada` ve la jornada `CERRADA` y devuelve `yaEstabaCerrada` sin escribir: una sola cabecera |
+| Concurrencia (seis cierres a la vez) | `FOR UPDATE` sobre la jornada: uno escribe la foto, los demás ven cerrada; índice único por jornada como segunda barrera |
+| Tiempo | la foto lleva `congeladoEn` = el instante del cierre; lo que cambie después (total del ticket) no la toca |
+| Incertidumbre (hay un medio sin dato) | el cierre exige reconocer `caja.conciliacion_por_medio`; esa explicación se copia SOLO a las líneas SIN_DATO / con diferencia; sin reconocimiento no se cierra y no queda nada de la foto |
+| Reintento tras caída | la transacción es una sola (estado, controles y foto): o está todo o no hay nada |
+| Error parcial | si falla cualquier escritura de la foto o el disparador diferido `CierreDeCajaDeJornada_verificar` (recalcula y compara) se deshace el cierre entero |
+| Datos faltantes | una línea sin el medio con movimientos o con un medio de más: `caja_conciliacion_incompleta`; un valor alterado: `caja_conciliacion_no_cuadra` |
+| Cambio de permisos | la app solo puede leer y agregar (privilegios SELECT e INSERT; sin UPDATE, DELETE ni TRUNCATE); RLS por empresa y por sucursal |
+| Foto fuera del cierre | con la jornada abierta o con una foto de antes: `foto_de_caja_solo_al_cerrar_la_jornada` / `lineas_de_la_foto_solo_con_su_cabecera_en_la_misma_transaccion` |
+| Un día sin movimientos | cabecera sin líneas |
+
+### 7.3 Oráculo del conteo (escrito aparte del código)
+
+`test/caja/oraculo-de-jornada.ts` (`ORACULO_DE_CONTEO`, `ESTADO_DEL_EFECTIVO`): el efectivo es siempre CONTADO; en los demás medios manda la declaración vigente, después el conforme general, después lo derivado de los cierres de caja (todos contados: DECLARADO; todos conformes: CONFORME; mezcla o nada: SIN_DATO). Las 16 combinaciones se recorren en `nucleo-de-jornada.test.ts`; la base y el caso de uso se prueban en `conciliacion-congelada.test.ts` y el subir/bajar/subir en `test/aislamiento/caja-c2b-subir-bajar-subir.test.ts`. El guardián de columnas del oráculo falla si aparece una columna nueva de las tres tablas sin declarar. Alcance de la prueba: el caso «todos contados» en un medio que no es efectivo no se da con C1 (la sesión da por conforme los demás medios) y solo se prueba en el núcleo puro.
+
+### 7.4 Orden de migraciones
+
+C2b va después de C2 y C3 usa 112000 y 113000: al rebasar sobre C3, la función `"MovimientoCaja_validar"` la reemplazan C3 y C2 (ver `114000`); lo resuelve quien integra, no esta etapa.

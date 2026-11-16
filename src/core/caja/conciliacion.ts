@@ -78,7 +78,8 @@ function conteoDelMedio(medioId: string, entrada: EntradaDeConciliacion, vigente
   if (cierres.length > 0 && contadas.length === cierres.length) return declarado(sumaDeContados(cierres));
   const conformes = cierres.flatMap((c) => (c.conforme ? [c] : []));
   if (cierres.length > 0 && conformes.length === cierres.length) {
-    const ultimo = conformes.reduce((mejor, c) => (c.conformeEn > mejor.conformeEn ? c : mejor));
+    // El último en cerrar; con el mismo instante, el de mayor id de quien cerró (la base ordena igual: `CierreDeCajaDeJornada_verificar`).
+    const ultimo = conformes.reduce((mejor, c) => (c.conformeEn > mejor.conformeEn || (c.conformeEn.getTime() === mejor.conformeEn.getTime() && c.conformePorId > mejor.conformePorId) ? c : mejor));
     return conforme(ultimo.conformePorId, ultimo.conformeEn);
   }
   return SIN_DATO;

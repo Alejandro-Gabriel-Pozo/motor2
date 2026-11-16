@@ -147,6 +147,60 @@ export async function insertarControles(
   });
 }
 
+/** La cabecera de la foto de la conciliación (C2b): solo con la jornada pasando a CERRADA en esta misma transacción (la base lo exige). */
+export async function insertarCierreDeCaja(db: Prisma.TransactionClient, args: { id: string; empresaId: string; sucursalId: string; jornadaId: string; congeladoEn: Date; congeladoPorId: string }): Promise<void> {
+  await db.cierreDeCajaDeJornada.create({ data: args, select: { id: true } });
+}
+
+export interface LineaDeFoto {
+  id: string;
+  medioDePagoId: string;
+  registradoEnCentavos: bigint;
+  correccionesEnCentavos: bigint;
+  declaradoEnCentavos: bigint | null;
+  estadoDeConteo: string;
+  conformePorId: string | null;
+  conformeEn: Date | null;
+  explicacion: string | null;
+}
+
+/** Una línea por medio de la foto de la conciliación. La `diferencia` la calcula la base (columna generada): acá no se escribe. */
+export async function insertarLineasDeConciliacion(db: Prisma.TransactionClient, args: { empresaId: string; sucursalId: string; cierreId: string; lineas: readonly LineaDeFoto[] }): Promise<void> {
+  if (args.lineas.length === 0) return;
+  await db.conciliacionDeJornada.createMany({
+    data: args.lineas.map((l) => ({
+      id: l.id,
+      empresaId: args.empresaId,
+      sucursalId: args.sucursalId,
+      cierreId: args.cierreId,
+      medioDePagoId: l.medioDePagoId,
+      registrado: textoDeCentavos(l.registradoEnCentavos),
+      correcciones: textoDeCentavos(l.correccionesEnCentavos),
+      declarado: l.declaradoEnCentavos === null ? null : textoDeCentavos(l.declaradoEnCentavos),
+      estadoDeConteo: l.estadoDeConteo,
+      conformePorId: l.conformePorId,
+      conformeEn: l.conformeEn,
+      explicacion: l.explicacion,
+    })),
+  });
+}
+
+export interface OrigenDeFoto {
+  id: string;
+  cobranzaId: string;
+  cobradoEnCentavos: bigint;
+  totalDelTicketEnCentavos: bigint;
+  explicacion: string | null;
+}
+
+/** Los orígenes (cobranzas) cuyo cobrado difiere del total vigente de su ticket. La `diferencia` la calcula la base. */
+export async function insertarOrigenesDeConciliacion(db: Prisma.TransactionClient, args: { empresaId: string; sucursalId: string; cierreId: string; origenes: readonly OrigenDeFoto[] }): Promise<void> {
+  if (args.origenes.length === 0) return;
+  await db.conciliacionDeCobroPorOrigen.createMany({
+    data: args.origenes.map((o) => ({ id: o.id, empresaId: args.empresaId, sucursalId: args.sucursalId, cierreId: args.cierreId, cobranzaId: o.cobranzaId, cobrado: textoDeCentavos(o.cobradoEnCentavos), totalDelTicket: textoDeCentavos(o.totalDelTicketEnCentavos), explicacion: o.explicacion })),
+  });
+}
+
 export interface CobroParaCorregir {
   cobroId: string;
   sucursalId: string;

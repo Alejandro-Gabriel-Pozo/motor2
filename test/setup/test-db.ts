@@ -67,6 +67,9 @@ export const EMPRESA_POR_DEFECTO_ID = EMPRESA_DE_PRUEBA_ID;
  */
 export async function limpiarBaseDeTest() {
   // Caja y cobro C2 (jornada y cierre del día): lo que cuelga de la jornada y de un cobro, antes que lo de C1 (referencian a Cobro, MedioDePago y JornadaDeSucursal).
+  await prismaAdmin.conciliacionDeCobroPorOrigen.deleteMany();
+  await prismaAdmin.conciliacionDeJornada.deleteMany();
+  await prismaAdmin.cierreDeCajaDeJornada.deleteMany();
   await prismaAdmin.controlDeJornadaCerrada.deleteMany();
   await prismaAdmin.correccionDeMedio.deleteMany();
   await prismaAdmin.declaracionDeTotal.deleteMany();

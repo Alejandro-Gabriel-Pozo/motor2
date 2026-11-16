@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CONTROLES_DEL_DIA, ESTADOS_DE_JORNADA, TOPE_EN_CENTAVOS, TRANSICIONES_DE_JORNADA, conciliarJornada, controlesDelDia, decidirAjuste, decidirCancelar, decidirCierre, decidirCorreccionDeMedio, decidirDeclaracion, decidirIniciar, explicacionDesdeTexto, fechaDeNegocio, medioVigenteDelCobro, ordenarControles, reconocimientosValidos, repiteElCierre } from "@/core/caja/public";
 import type { ControlDelDia } from "@/core/caja/public";
-import { ORACULO_DE_AJUSTE, ORACULO_DE_CONTROLES, ORACULO_DE_FECHA_DE_NEGOCIO, ORACULO_DE_SEVERIDAD } from "./oraculo-de-jornada";
+import { ESTADO_DEL_EFECTIVO, ORACULO_DE_AJUSTE, ORACULO_DE_CONTEO, ORACULO_DE_CONTROLES, ORACULO_DE_FECHA_DE_NEGOCIO, ORACULO_DE_SEVERIDAD } from "./oraculo-de-jornada";
 
 /**
  * Núcleo puro de la jornada y el cierre del día (caja C2), recorrido contra las tablas del ORÁCULO escritas aparte (`oraculo-de-jornada.ts`). Sin base de datos.
@@ -212,5 +212,52 @@ describe("corrección de medio, declaración de total y ajuste", () => {
     expect(decidirAjuste({ ...ok, importeEnCentavos: c(-500) })).toEqual({ ok: true, valor: { motivo: "Falto un vale" } });
     expect(decidirAjuste({ ...ok, importeEnCentavos: c(500), motivo: null })).toEqual({ ok: false, error: "MOTIVO_INVALIDO" });
     expect(decidirAjuste({ ...ok, importeEnCentavos: c(500), motivo: "x<y" })).toEqual({ ok: false, error: "MOTIVO_INVALIDO" });
+  });
+});
+
+describe("conciliación por medio: cómo se sabe el total (oráculo de conteo), exhaustivo", () => {
+  const SESION_CIERRA = new Date("2026-01-15T20:00:00Z");
+  const cierresDe = (medio: string, forma: "ninguno" | "todos_contados" | "todos_conformes" | "mezcla") => {
+    const contado = { medioDePagoId: medio, conforme: false as const, contadoEnCentavos: c(310000) };
+    const conforme = { medioDePagoId: medio, conforme: true as const, conformePorId: "u1", conformeEn: SESION_CIERRA };
+    return forma === "ninguno" ? [] : forma === "todos_contados" ? [contado] : forma === "todos_conformes" ? [conforme] : [contado, conforme];
+  };
+  const entradaDe = (medio: string, declaracion: boolean, conformeGeneral: boolean, cierres: "ninguno" | "todos_contados" | "todos_conformes" | "mezcla") => ({
+    efectivoId: "ef",
+    movimientos: [{ medioDePagoId: medio, importeEnCentavos: c(300000) }],
+    correcciones: [],
+    declaraciones: declaracion ? [{ medioDePagoId: medio, secuencia: 1, importeEnCentavos: c(299000) }] : [],
+    conformeGeneral: conformeGeneral ? { porId: "g1", en: new Date("2026-01-15T22:00:00Z") } : null,
+    cierres: cierresDe(medio, cierres),
+  });
+
+  for (const f of ORACULO_DE_CONTEO) {
+    it(`medio que no es efectivo: declaración ${f.declaracion ? "sí" : "no"}, conforme general ${f.conformeGeneral ? "sí" : "no"}, cierres ${f.cierres} → ${f.estado}`, () => {
+      const [l] = conciliarJornada(entradaDe("t", f.declaracion, f.conformeGeneral, f.cierres));
+      expect(l?.estado).toBe(f.estado);
+      expect(l?.diferenciaEnCentavos !== null, "la diferencia solo existe con CONTADO o DECLARADO").toBe(f.conDiferencia);
+      expect((l?.estado === "CONFORME") === (l?.conformePorId !== null), "CONFORME lleva quién; los demás no").toBe(true);
+    });
+  }
+
+  for (const declaracion of [true, false]) {
+    for (const conformeGeneral of [true, false]) {
+      for (const cierres of ["ninguno", "todos_contados", "todos_conformes", "mezcla"] as const) {
+        it(`el efectivo es siempre ${ESTADO_DEL_EFECTIVO}: declaración ${declaracion ? "sí" : "no"}, conforme general ${conformeGeneral ? "sí" : "no"}, cierres ${cierres}`, () => {
+          const [l] = conciliarJornada(entradaDe("ef", declaracion, conformeGeneral, cierres));
+          expect(l?.estado).toBe(ESTADO_DEL_EFECTIVO);
+          expect(l?.diferenciaEnCentavos).not.toBeNull();
+          expect(l?.conformePorId).toBeNull();
+        });
+      }
+    }
+  }
+
+  it("con el mismo instante de cierre manda el mayor id de quien cerró (determinista, igual que la base)", () => {
+    const mismoInstante = (porId: string) => ({ medioDePagoId: "t", conforme: true as const, conformePorId: porId, conformeEn: SESION_CIERRA });
+    const a = conciliarJornada({ ...entradaDe("t", false, false, "ninguno"), cierres: [mismoInstante("u1"), mismoInstante("u9"), mismoInstante("u5")] });
+    const b = conciliarJornada({ ...entradaDe("t", false, false, "ninguno"), cierres: [mismoInstante("u9"), mismoInstante("u5"), mismoInstante("u1")] });
+    expect(a[0]?.conformePorId).toBe("u9");
+    expect(b[0]?.conformePorId).toBe("u9");
   });
 });

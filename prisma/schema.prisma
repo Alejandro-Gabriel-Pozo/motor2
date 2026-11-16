@@ -50,6 +50,8 @@ model User {
   jornadasEnCierreIniciadas  JornadaDeSucursal[]    @relation("JornadaIniciadaPor")
   jornadasCerradas           JornadaDeSucursal[]    @relation("JornadaCerradaPor")
   controlesReconocidos       ControlDeJornadaCerrada[] @relation("ControlReconocidoPor")
+  cierresDeCajaCongelados    CierreDeCajaDeJornada[] @relation("CierreDeCajaCongeladoPor")
+  conciliacionesConformes    ConciliacionDeJornada[] @relation("ConciliacionConformePor")
   correccionesDeMedio        CorreccionDeMedio[]    @relation("CorreccionDeMedioPor")
   declaracionesDeTotal       DeclaracionDeTotal[]   @relation("DeclaracionDeTotalPor")
   conformesDeJornada         ConformeDeJornada[]    @relation("ConformeDeJornadaPor")
@@ -175,6 +177,9 @@ model Sucursal {
   correccionesDeMedio      CorreccionDeMedio[]
   declaracionesDeTotal     DeclaracionDeTotal[]
   conformesDeJornada       ConformeDeJornada[]
+  cierresDeCajaDeJornada   CierreDeCajaDeJornada[]
+  conciliacionesDeJornada  ConciliacionDeJornada[]
+  conciliacionesPorOrigen  ConciliacionDeCobroPorOrigen[]
   traspasosComoOrigen      TraspasoSucursal[]            @relation("TraspasoOrigen")
   traspasosComoDestino     TraspasoSucursal[]            @relation("TraspasoDestino")
   pagosConsignante         PagoConsignante[]
@@ -2664,6 +2669,9 @@ model Empresa {
   correccionesDeMedio            CorreccionDeMedio[]
   declaracionesDeTotal           DeclaracionDeTotal[]
   conformesDeJornada             ConformeDeJornada[]
+  cierresDeCajaDeJornada         CierreDeCajaDeJornada[]
+  conciliacionesDeJornada        ConciliacionDeJornada[]
+  conciliacionesPorOrigen        ConciliacionDeCobroPorOrigen[]
   insumoRel                      Insumo[]
   grupoRel                       Grupo[]
   categoriaProductoRel           CategoriaProducto[]
@@ -4169,6 +4177,7 @@ model MedioDePago {
   correccionesAntes   CorreccionDeMedio[] @relation("CorreccionMedioAntes")
   correccionesDespues CorreccionDeMedio[] @relation("CorreccionMedioDespues")
   declaraciones       DeclaracionDeTotal[]
+  conciliaciones      ConciliacionDeJornada[]
 
   @@unique([empresaId, id])
 }
@@ -4261,6 +4270,8 @@ model Cobranza {
   creadoPor         User       @relation("CobranzaCreadaPor", fields: [creadoPorId], references: [id])
 
   cobros Cobro[]
+  /// Caja C2b: la diferencia de lo cobrado contra el total vigente del ticket que quedó congelada al cerrar el día (si la hubo).
+  conciliaciones ConciliacionDeCobroPorOrigen[]
 
   @@unique([empresaId, id])
   @@unique([empresaId, cuentaId])
@@ -4360,6 +4371,7 @@ model JornadaDeSucursal {
   correcciones  CorreccionDeMedio[]
   declaraciones DeclaracionDeTotal[]
   conforme      ConformeDeJornada?
+  cierreDeCaja  CierreDeCajaDeJornada?
 
   @@unique([empresaId, id])
   @@unique([empresaId, sucursalId, fechaDeNegocio], map: "JornadaDeSucursal_una_por_dia_key")
@@ -4466,4 +4478,82 @@ model ConformeDeJornada {
   @@unique([empresaId, id])
   @@unique([empresaId, jornadaId])
   @@unique([empresaId, claveIdempotencia])
+}
+
+// ===================================================================
+// CAJA Y COBRO, ETAPA C2b — la foto congelada de la conciliación por medio (docs/diseno-caja-c2-jornada-y-cierre-del-dia-2026-11-16.md §7; Pedernal 0027_caja.sql y e3b §4.4 y §4.6)
+// ===================================================================
+
+/// La cabecera de lo que caja congeló al cerrar el día: una por jornada, solo se agrega y solo con la jornada pasando a CERRADA en la misma transacción. Un disparador diferido verifica al confirmar que las líneas son lo que resulta de los datos.
+model CierreDeCajaDeJornada {
+  id             String            @id @db.Uuid
+  empresaId      String            @default(dbgenerated("app_empresa_actual()"))
+  empresa        Empresa           @relation(fields: [empresaId], references: [id])
+  sucursalId     String
+  sucursal       Sucursal          @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  jornadaId      String            @db.Uuid
+  jornada        JornadaDeSucursal @relation(fields: [empresaId, jornadaId], references: [empresaId, id])
+  congeladoEn    DateTime          @db.Timestamptz(3)
+  congeladoPorId String
+  congeladoPor   User              @relation("CierreDeCajaCongeladoPor", fields: [congeladoPorId], references: [id])
+  creadoEn       DateTime          @default(now()) @db.Timestamptz(3)
+
+  lineas   ConciliacionDeJornada[]
+  origenes ConciliacionDeCobroPorOrigen[]
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, jornadaId])
+}
+
+/// Una línea por medio con movimientos, correcciones o declaración: lo REGISTRADO, las CORRECCIONES de medio, lo DECLARADO y el estado de conteo (efectivo: CONTADO; los demás: DECLARADO, CONFORME o SIN_DATO). `diferencia` la calcula la base (columna
+/// generada: declarado − (registrado + correcciones) con CONTADO o DECLARADO; nula con CONFORME o SIN_DATO) y nadie la escribe. Solo se agrega.
+model ConciliacionDeJornada {
+  id             String                @id @db.Uuid
+  empresaId      String                @default(dbgenerated("app_empresa_actual()"))
+  empresa        Empresa               @relation(fields: [empresaId], references: [id])
+  sucursalId     String
+  sucursal       Sucursal              @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  cierreId       String                @db.Uuid
+  cierre         CierreDeCajaDeJornada @relation(fields: [empresaId, cierreId], references: [empresaId, id])
+  medioDePagoId  String                @db.Uuid
+  medioDePago    MedioDePago           @relation(fields: [empresaId, medioDePagoId], references: [empresaId, id])
+  registrado     Decimal               @db.Decimal(14, 2)
+  correcciones   Decimal               @db.Decimal(14, 2)
+  /// Nulo con CONFORME o SIN_DATO.
+  declarado      Decimal?              @db.Decimal(14, 2)
+  /// CONTADO | DECLARADO | CONFORME | SIN_DATO (CHECK).
+  estadoDeConteo String
+  conformePorId  String?
+  conformePor    User?                 @relation("ConciliacionConformePor", fields: [conformePorId], references: [id])
+  conformeEn     DateTime?             @db.Timestamptz(3)
+  /// Generada por la base; nula con CONFORME o SIN_DATO.
+  diferencia     Decimal?              @db.Decimal(14, 2) @default(dbgenerated())
+  /// Explicación opcional de quien reconoció el control `caja.conciliacion_por_medio` (lista de permitidos, 1 a 500); solo en una línea que había que explicar.
+  explicacion    String?
+  creadoEn       DateTime              @default(now()) @db.Timestamptz(3)
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, cierreId, medioDePagoId])
+}
+
+/// Solo las cobranzas del día cuyo cobrado difiere del total vigente de su ticket (control `caja.cobrado_contra_ticket`). `diferencia` la calcula la base (cobrado − total del ticket). Solo se agrega.
+model ConciliacionDeCobroPorOrigen {
+  id             String                @id @db.Uuid
+  empresaId      String                @default(dbgenerated("app_empresa_actual()"))
+  empresa        Empresa               @relation(fields: [empresaId], references: [id])
+  sucursalId     String
+  sucursal       Sucursal              @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  cierreId       String                @db.Uuid
+  cierre         CierreDeCajaDeJornada @relation(fields: [empresaId, cierreId], references: [empresaId, id])
+  cobranzaId     String                @db.Uuid
+  cobranza       Cobranza              @relation(fields: [empresaId, cobranzaId], references: [empresaId, id])
+  cobrado        Decimal               @db.Decimal(14, 2)
+  totalDelTicket Decimal               @db.Decimal(14, 2)
+  /// Generada por la base: cobrado − total del ticket.
+  diferencia     Decimal?              @db.Decimal(14, 2) @default(dbgenerated())
+  explicacion    String?
+  creadoEn       DateTime              @default(now()) @db.Timestamptz(3)
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, cierreId, cobranzaId])
 }

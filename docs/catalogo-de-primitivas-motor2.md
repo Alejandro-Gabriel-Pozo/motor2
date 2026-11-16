@@ -170,3 +170,6 @@ Una fila por modelo de `prisma/schema.prisma` (112 modelos, 18 primitivas o grup
 | `CorreccionDeMedio` | Caja y cobro (C2) |
 | `DeclaracionDeTotal` | Caja y cobro (C2) |
 | `ConformeDeJornada` | Caja y cobro (C2) |
+| `CierreDeCajaDeJornada` | Caja y cobro (C2b) |
+| `ConciliacionDeJornada` | Caja y cobro (C2b) |
+| `ConciliacionDeCobroPorOrigen` | Caja y cobro (C2b) |

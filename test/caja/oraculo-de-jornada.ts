@@ -144,6 +144,47 @@ export const ORACULO_DE_FECHA_DE_NEGOCIO: readonly FilaDeFecha[] = [
   { instanteUtc: "2026-01-16T02:59:00.000Z", corte: "23:59", fecha: "2026-01-15", porQue: "23:59 en punto del 15: ya es la jornada del 15" },
 ];
 
+// ===== Conciliación por medio (C2b): cómo se sabe el total de un medio =====
+
+export type CierresDelMedio = "ninguno" | "todos_contados" | "todos_conformes" | "mezcla";
+export type EstadoDeConteo = "CONTADO" | "DECLARADO" | "CONFORME" | "SIN_DATO";
+
+export interface FilaDeConteo {
+  readonly declaracion: boolean;
+  readonly conformeGeneral: boolean;
+  readonly cierres: CierresDelMedio;
+  readonly estado: EstadoDeConteo;
+  /** ¿La línea lleva diferencia (declarado − (registrado + correcciones))? Solo con CONTADO o DECLARADO. */
+  readonly conDiferencia: boolean;
+}
+
+/**
+ * Un medio que NO es efectivo: declaración vigente × conforme general × cierres de caja (Pedernal e3b §4.4, en este orden de prioridad: la declaración gana siempre, después el conforme general, después lo derivado de los cierres; la mezcla o nada es SIN_DATO).
+ * El efectivo no está acá: es SIEMPRE CONTADO con cualquier combinación (`ESTADO_DEL_EFECTIVO`). Las 16 combinaciones.
+ * Nota: «todos_contados» de un medio que no es efectivo no se da con C1 (la caja da por «conforme» los demás medios y la base lo exige al cerrar la sesión): se prueba en el núcleo puro, no contra la base.
+ */
+export const ORACULO_DE_CONTEO: readonly FilaDeConteo[] = [
+  { declaracion: true, conformeGeneral: true, cierres: "ninguno", estado: "DECLARADO", conDiferencia: true },
+  { declaracion: true, conformeGeneral: true, cierres: "todos_contados", estado: "DECLARADO", conDiferencia: true },
+  { declaracion: true, conformeGeneral: true, cierres: "todos_conformes", estado: "DECLARADO", conDiferencia: true },
+  { declaracion: true, conformeGeneral: true, cierres: "mezcla", estado: "DECLARADO", conDiferencia: true },
+  { declaracion: true, conformeGeneral: false, cierres: "ninguno", estado: "DECLARADO", conDiferencia: true },
+  { declaracion: true, conformeGeneral: false, cierres: "todos_contados", estado: "DECLARADO", conDiferencia: true },
+  { declaracion: true, conformeGeneral: false, cierres: "todos_conformes", estado: "DECLARADO", conDiferencia: true },
+  { declaracion: true, conformeGeneral: false, cierres: "mezcla", estado: "DECLARADO", conDiferencia: true },
+  { declaracion: false, conformeGeneral: true, cierres: "ninguno", estado: "CONFORME", conDiferencia: false },
+  { declaracion: false, conformeGeneral: true, cierres: "todos_contados", estado: "CONFORME", conDiferencia: false },
+  { declaracion: false, conformeGeneral: true, cierres: "todos_conformes", estado: "CONFORME", conDiferencia: false },
+  { declaracion: false, conformeGeneral: true, cierres: "mezcla", estado: "CONFORME", conDiferencia: false },
+  { declaracion: false, conformeGeneral: false, cierres: "ninguno", estado: "SIN_DATO", conDiferencia: false },
+  { declaracion: false, conformeGeneral: false, cierres: "todos_contados", estado: "DECLARADO", conDiferencia: true },
+  { declaracion: false, conformeGeneral: false, cierres: "todos_conformes", estado: "CONFORME", conDiferencia: false },
+  { declaracion: false, conformeGeneral: false, cierres: "mezcla", estado: "SIN_DATO", conDiferencia: false },
+];
+
+/** El efectivo es siempre CONTADO (con diferencia) con cualquier combinación de declaración, conforme general y cierres. */
+export const ESTADO_DEL_EFECTIVO: EstadoDeConteo = "CONTADO";
+
 // ===== Guardián: columnas de las tablas nuevas y de lo que C2 tocó, con su declaración «afecta / no afecta» =====
 
 /** Declaración de cada columna: ¿cambia dinero, permisos, visibilidad o stock? `motivo` es por qué. Una columna nueva sin entrada acá hace fallar al guardián. */
@@ -216,6 +257,43 @@ export const COLUMNAS_DECLARADAS: Readonly<Record<string, Readonly<Record<string
     conformeEn: { afecta: false, motivo: "constancia" },
     claveIdempotencia: { afecta: false, motivo: "reintento; no cambia el resultado" },
     huella: { afecta: false, motivo: "reintento; no cambia el resultado" },
+    creadoEn: { afecta: false, motivo: "constancia" },
+  },
+  CierreDeCajaDeJornada: {
+    id: { afecta: false, motivo: "identidad" },
+    empresaId: { afecta: true, motivo: "aislamiento por empresa (RLS)" },
+    sucursalId: { afecta: true, motivo: "aislamiento por sucursal (RLS)" },
+    jornadaId: { afecta: true, motivo: "solo entra con la jornada pasando a CERRADA en la misma transacción: tabla de estado × comando" },
+    congeladoEn: { afecta: false, motivo: "constancia" },
+    congeladoPorId: { afecta: false, motivo: "constancia" },
+    creadoEn: { afecta: false, motivo: "constancia" },
+  },
+  ConciliacionDeJornada: {
+    id: { afecta: false, motivo: "identidad" },
+    empresaId: { afecta: true, motivo: "aislamiento por empresa (RLS)" },
+    sucursalId: { afecta: true, motivo: "aislamiento por sucursal (RLS)" },
+    cierreId: { afecta: false, motivo: "enlace a la cabecera" },
+    medioDePagoId: { afecta: true, motivo: "el efectivo es siempre CONTADO y los demás nunca: oráculo de conteo" },
+    registrado: { afecta: true, motivo: "Σ de los movimientos del medio: entra en la diferencia" },
+    correcciones: { afecta: true, motivo: "traslados de medio: entra en la diferencia" },
+    declarado: { afecta: true, motivo: "el total contra el que se calcula la diferencia: oráculo de conteo" },
+    estadoDeConteo: { afecta: true, motivo: "decide cómo se sabe el total del medio: oráculo de conteo" },
+    conformePorId: { afecta: false, motivo: "constancia; sigue al estado por CHECK" },
+    conformeEn: { afecta: false, motivo: "constancia; sigue al estado por CHECK" },
+    diferencia: { afecta: true, motivo: "columna generada: declarado − (registrado + correcciones); la base la calcula" },
+    explicacion: { afecta: false, motivo: "texto opcional de la lista de permitidos" },
+    creadoEn: { afecta: false, motivo: "constancia" },
+  },
+  ConciliacionDeCobroPorOrigen: {
+    id: { afecta: false, motivo: "identidad" },
+    empresaId: { afecta: true, motivo: "aislamiento por empresa (RLS)" },
+    sucursalId: { afecta: true, motivo: "aislamiento por sucursal (RLS)" },
+    cierreId: { afecta: false, motivo: "enlace a la cabecera" },
+    cobranzaId: { afecta: true, motivo: "qué cobro difiere de su ticket" },
+    cobrado: { afecta: true, motivo: "Σ real de los cobros: la base lo verifica al confirmar" },
+    totalDelTicket: { afecta: true, motivo: "total vigente del ticket al cerrar (de ventas)" },
+    diferencia: { afecta: true, motivo: "columna generada: cobrado − total del ticket" },
+    explicacion: { afecta: false, motivo: "texto opcional de la lista de permitidos" },
     creadoEn: { afecta: false, motivo: "constancia" },
   },
 };

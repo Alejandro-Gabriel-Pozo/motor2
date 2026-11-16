@@ -267,7 +267,8 @@ describe("repetir sobre la misma jornada: por estado, sin escribir ni auditar de
       expect(unico(b)).toBe(ORACULO_REPETICION[comando].segunda);
       expect(b).toMatchObject({ ok: true, datos: { [ORACULO_REPETICION[comando].yaEstaba]: true } });
       expect(a).toMatchObject({ ok: true, datos: { [ORACULO_REPETICION[comando].yaEstaba]: false } });
-      expect(auditoriaDespues - auditoriaAntes, "la primera audita").toBe(1);
+      // cerrarJornada audita el cierre y, desde C2b, la foto de la conciliación.
+      expect(auditoriaDespues - auditoriaAntes, "la primera audita").toBe(comando === "cerrarJornada" ? 2 : 1);
       expect(await prismaAdmin.registroAuditoria.count(), "la segunda no audita").toBe(auditoriaDespues);
     });
   }
