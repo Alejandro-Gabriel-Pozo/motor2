@@ -76,7 +76,7 @@ Categorías: **IGUAL** (mismo resultado y forma) · **DIFIERE-RESULTADO** · **D
 | 9 | Mostrador: venta rápida con cobro en una transacción | `venderYCobrar` | mostrador es una mesa; cierra sin cobrar | DIFIERE-RESULTADO | Depende de Q1 |
 | 10 | Vuelto (solo efectivo, a caja el neto) | `calcularVuelto` | no existe | FALTA-M2 | Presentación; el servidor solo valida `Σ=total` |
 | 11 | Propina | decidida «no debe estar» (09/11) | no existe | IGUAL (no existe) | No entra |
-| 12 | Arqueo por billetes + monedas | 7 denominaciones (100 a 20.000) | no existe | FALTA-M2 | **Conflicto de datos:** la planilla del dueño del 04/11 lista 10 denominaciones (10 a 20.000); Pedernal 7. Q-DENOM |
+| 12 | Arqueo por billetes + monedas | 7 denominaciones (100 a 20.000); Motor2 usa las 10 de la planilla del dueño (CONFIRMADA 2026-11-16) | no existe | FALTA-M2 | **Conflicto de datos:** la planilla del dueño del 04/11 lista 10 denominaciones (10 a 20.000); Pedernal 7. Q-DENOM |
 | 13 | Cierre de sesión con diferencia permitido y auditado | `cerrarSesion` | no existe | FALTA-M2 | |
 | 14 | Corrección de medio del cobro | `corregirMedioDeCobro` | no existe | FALTA-M2 | Etapa de cierre del día |
 | 15 | Jornada de sucursal y cierre del día | `jornada_de_sucursal` | no existe | FALTA-M2 | Necesita hora de corte (§D.3) |
