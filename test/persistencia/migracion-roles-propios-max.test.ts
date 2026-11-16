@@ -54,6 +54,6 @@ describe("migración de la perilla de roles propios", () => {
     expect((await q(`SELECT count(*)::int AS n FROM information_schema.columns WHERE table_name = 'Empresa' AND column_name = 'rolesPropiosMax'`)).rows[0].n).toBe(0);
     await q(leer("down.sql")); // idempotente
     await q(leer("migration.sql"));
-    expect((await q(`SELECT count(*)::int AS n FROM "Empresa" WHERE "rolesPropiosMax" = 0`)).rows[0].n).toBe(3);
+    expect((await q(`SELECT count(*)::int AS n FROM "Empresa" WHERE "rolesPropiosMax" = 0`)).rows[0].n).toBe(4); // emp-a, emp-b, emp-c y la empresa que sembró una migración anterior
   });
 });
