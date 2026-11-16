@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   decidirSobreProducto,
+  esAdministracionConAlcanceTotal,
   marcasDeOcultar,
   MOTIVOS_DE_RECHAZO,
   OPERACIONES_DE_ADMINISTRACION,
@@ -132,5 +133,23 @@ describe("ocultoPor y marcasDeOcultar (I-3, I-2)", () => {
     const conEmpresa = [...filas, { sucursalId: null, oculto: true }];
     expect(ocultoPor(conEmpresa, "s1")).toBe("EMPRESA");
     expect(ocultoPor(conEmpresa, "sucursal-creada-despues")).toBe("EMPRESA");
+  });
+});
+
+describe("esAdministracionConAlcanceTotal (O-10: solo administración puede ocultar en toda la empresa)", () => {
+  const admin = (sucursalId: string) => ({ sucursalId, esAdmin: true });
+  const operador = (sucursalId: string) => ({ sucursalId, esAdmin: false });
+  it("administrador en TODAS las sucursales activas: sí", () => {
+    expect(esAdministracionConAlcanceTotal([admin("s1"), admin("s2")], ["s1", "s2"])).toBe(true);
+  });
+  it("administrador en una y operador en otra: no", () => {
+    expect(esAdministracionConAlcanceTotal([admin("s1"), operador("s2")], ["s1", "s2"])).toBe(false);
+  });
+  it("administrador solo en algunas de las sucursales de la empresa (le falta una): no", () => {
+    expect(esAdministracionConAlcanceTotal([admin("s1")], ["s1", "s2"])).toBe(false);
+  });
+  it("sin sucursales activas o sin membresías: no (falla cerrado)", () => {
+    expect(esAdministracionConAlcanceTotal([admin("s1")], [])).toBe(false);
+    expect(esAdministracionConAlcanceTotal([], ["s1"])).toBe(false);
   });
 });
