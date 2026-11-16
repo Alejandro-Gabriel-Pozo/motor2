@@ -128,7 +128,7 @@ export default async function UnaSeccionDeCartaPage({ params }: { params: Promis
                   <EnlaceInterno href={`/catalogo/productos/${p.id}/en-la-carta`} className="font-medium underline [overflow-wrap:anywhere]">
                     {p.nombre}
                   </EnlaceInterno>
-                  {p.contenido && !p.contenido.visibleEnCarta && <span className="text-tinta-suave">oculto</span>}
+                  {p.contenido && !p.contenido.visibleEnCarta && <span className="text-tinta-suave">Fuera de carta</span>}
                 </li>
               ))}
               {!productos.length && <li className="text-sm text-tinta-tenue">Todavía no tiene productos en esta sucursal.</li>}
