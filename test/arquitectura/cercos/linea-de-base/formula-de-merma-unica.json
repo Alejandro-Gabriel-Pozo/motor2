@@ -1,0 +1,8 @@
+{
+  "regla": "formula-de-merma-unica",
+  "meta": "0 (el factor 1 + merma/100 se calcula en un solo lugar: src/core/catalogo/merma.ts). Alcanzada en M0",
+  "total": 0,
+  "entradas": 0,
+  "porTipo": {},
+  "cuentas": {}
+}

@@ -656,8 +656,16 @@ model Presentacion {
   producto         Producto @relation(fields: [empresaId, productoId], references: [empresaId, id])
   unidadCompraId   String
   unidadCompra     Unidad   @relation(fields: [empresaId, unidadCompraId], references: [empresaId, id])
+  /// Cantidad FIJA en la unidad base del producto (otra cantidad = otra presentación; con `pesoVariable`, el peso aproximado). > 0 (CHECK en la base).
   factorConversion Decimal  @db.Decimal(14, 4)
   activa           Boolean  @default(true)
+  /// Nombre propio («Caja x12»), 1 a 80, único por (empresa, producto) sin distinguir mayúsculas: índice `Presentacion_empresaId_productoId_nombre_lower_key` (a mano en la migración, Prisma no declara
+  /// índices por expresión). Nullable: lo anterior a la migración 20261115150000 se rellenó con el nombre de la unidad; el código nuevo siempre lo escribe.
+  nombre           String?
+  /// De peso variable: el stock entra por el peso REAL al recibir; `factorConversion` es solo el aproximado para pedir.
+  pesoVariable     Boolean  @default(false)
+  /// Control de versión optimista (el caso de uso edita con `versionEsperada`).
+  version          Int      @default(1)
 
   @@unique([productoId, unidadCompraId])
   @@unique([empresaId, id])

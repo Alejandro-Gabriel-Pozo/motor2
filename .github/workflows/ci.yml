@@ -50,6 +50,7 @@ env:
 jobs:
   estatico:
     name: Estático (tipos, lint, arquitectura, código muerto)
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CI_EN_MAIN != 'si') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # knip carga `playwright.config.ts` para descubrir los specs, y esa config valida (sin conectarse) la forma de estas URLs: sin ellas no se
@@ -92,6 +93,7 @@ jobs:
   # su propio Postgres con los mismos pasos de preparación que `integracion`. Ya no corre antes de los tests, y no hace falta: cada job tiene su base y esta nunca recibe los datos de prueba.
   build:
     name: Build (npm run build + plataforma:build)
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CI_EN_MAIN != 'si') }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     services:
@@ -147,6 +149,7 @@ jobs:
   # partes juntas corrieron todos los archivos una sola vez.
   integracion:
     name: Integración (npm test, parte ${{ matrix.parte }} de ${{ strategy.job-total }})
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CI_EN_MAIN != 'si') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -233,6 +236,7 @@ jobs:
   # El job `gate` comprueba después que las partes juntas corrieron todos los specs una sola vez. Cada parte sigue con 1 worker (`playwright.config.ts`): el reparto es entre jobs, no dentro de uno.
   e2e:
     name: E2E (Playwright, parte ${{ matrix.parte }} de ${{ strategy.job-total }})
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CI_EN_MAIN != 'si') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
@@ -326,7 +330,8 @@ jobs:
   gate:
     name: Gate (requerido)
     needs: [estatico, build, integracion, e2e]
-    if: always()
+    # Perilla CI_EN_MAIN (docs/ci-perilla-ci-en-main-2026-11-15.md): con la perilla apagada, el push a main omite los cuatro jobs y el gate con la MISMA condición; en pull_request, ci/** y workflow_dispatch nunca se omite.
+    if: ${{ always() && !(github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CI_EN_MAIN != 'si') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:

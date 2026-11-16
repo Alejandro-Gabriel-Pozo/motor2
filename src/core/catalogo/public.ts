@@ -11,6 +11,8 @@
  */
 export { cumplePaso, decimalesDelPaso, mensajeCantidadNoCumplePaso, validarPasoVenta } from "./venta-fraccionada";
 export { rendimientoEfectivo } from "./rendimiento-local";
+// La fórmula única del factor de merma (1 + merma/100): M0 del diseño de merma; el cerco `formula-de-merma-unica` impide escribirla a mano en otro lado.
+export { factorDeMerma, factorDeMermaExacto } from "./merma";
 // Interruptor de las presentaciones de compra (decisión del dueño, 2026-11-06): apagadas, ni se ven ni se pueden escribir.
 export { MENSAJE_PRESENTACIONES_APAGADAS, PRESENTACIONES_VISIBLES } from "./presentaciones-visibles";
 export { OBSERVACIONES_VISIBLES } from "./observaciones-visibles";
