@@ -14,8 +14,8 @@ import { duplicarProductoCasoDeUso } from "./casos-de-uso/duplicar-producto";
  * (`casos-de-uso/duplicar-producto.ts`) → `aResultadoAccion`, y si salió bien el id y el nombre del producto nuevo (`okConId`: la pantalla lo lleva a su ficha).
  *
  * El permiso de cada cosa que se copia lo resuelve el servidor, nunca el pedido: `alta_producto` para crear (el envoltorio), `guardar_receta` si se pide copiar la receta y `producto_opciones_admitidas` si se piden las opciones
- * (las dos, DENTRO del envoltorio y antes de formatear o leer nada, con `exigirTambienPermisoDeEmpresa`). Si falta alguno se rechaza el pedido ENTERO: no se copia «lo que se pueda». El precio lo decide `producto_campos_sensibles`
- * (`puedeEditarCamposSensiblesDelProducto`, la fuente única): sin la clave el producto nace con precio 0 y sin disponibilidad. La condición `=== true` es la misma que acepta el guard: lo que llega a copiarse fue verificado.
+ * (las dos, DENTRO del envoltorio y antes de formatear o leer nada, con `exigirTambienPermisoDeEmpresa`). Si falta alguno se rechaza el pedido ENTERO: no se copia «lo que se pueda». El precio se copia siempre (decisión del dueño, 2026-11-16); `producto_campos_sensibles`
+ * (`puedeEditarCamposSensiblesDelProducto`, la fuente única) solo decide si se puede elegir otro: sin la clave el pedido no puede traer precio y el producto nace sin disponibilidad. La condición `=== true` es la misma que acepta el guard: lo que llega a copiarse fue verificado.
  *
  * Nunca recibe la empresa ni el permiso: salen de la sesión. `duplicadoId` lo genera la pantalla al abrir el diálogo (es el id del producto nuevo: el doble clic y el reintento caen sobre el mismo producto).
  */
