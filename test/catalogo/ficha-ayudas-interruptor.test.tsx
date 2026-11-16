@@ -18,7 +18,9 @@ vi.mock("../../src/server/actions/catalogo/insumos", () => ({ crearInsumo: vi.fn
 vi.mock("../../src/server/actions/catalogo/categorias-producto", () => ({ crearCategoriaProducto: vi.fn() }));
 vi.mock("../../src/server/actions/catalogo/proveedores", () => ({ altaProveedor: vi.fn() }));
 
+import { readFileSync } from "node:fs";
 import { FICHA_AYUDAS_VISIBLES } from "../../src/core/catalogo/public";
+import { AvisoAltaSinPrecio } from "../../src/components/catalogo/campos-sensibles-solo-lectura";
 import { ProductoForm, type ProductoExistente } from "../../src/app/(app)/catalogo/productos/producto-form";
 
 /**
@@ -77,5 +79,24 @@ describe("ficha del producto, Datos: ayudas ENCENDIDAS (reversibilidad)", () => 
     const html = dibujar(FormEncendido, harina);
     for (const a of AYUDAS) expect(html, a).toContain(a);
     expect(dibujar(FormEncendido)).toContain("queda disponible en las 3 sucursales");
+  });
+});
+
+/**
+ * El AVISO del alta («No se va a poder vender todavía…», quien no puede cargar precio) NO es una ayuda: es un aviso condicional y se queda aunque el interruptor esté apagado (Frente 6, paso 2: solo se ocultan las AYUDAS permanentes).
+ * Aparece cuando la persona elige «Producto de venta» en el alta (estado del cliente), así que el recorrido completo lo prueba el e2e; acá se cubre lo que se puede sin navegador: el aviso se dibuja solo, sin pasar por el
+ * interruptor, y en el formulario va FUERA de `AyudaDeFicha` (si alguien lo metiera adentro, desaparecería con el interruptor apagado y esta prueba falla).
+ */
+describe("ficha del producto, alta: el aviso «No se va a poder vender todavía» NO se oculta con el interruptor", () => {
+  it("el aviso se dibuja solo, con su texto, sin depender de FICHA_AYUDAS_VISIBLES", () => {
+    expect(FICHA_AYUDAS_VISIBLES).toBe(false);
+    const html = renderToStaticMarkup(<AvisoAltaSinPrecio />);
+    expect(html).toContain("data-aviso-alta-sin-precio");
+    expect(html).toContain("No se va a poder vender todavía.");
+  });
+
+  it("en el formulario va como rama propia, fuera de `AyudaDeFicha`", () => {
+    const fuente = readFileSync("src/app/(app)/catalogo/productos/producto-form.tsx", "utf-8");
+    expect(fuente).toMatch(/naceSinPoderVenderse \? \(\s*<AvisoAltaSinPrecio \/>\s*\) : \(\s*<AyudaDeFicha>/);
   });
 });
