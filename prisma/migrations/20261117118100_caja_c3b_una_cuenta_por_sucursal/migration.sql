@@ -6,6 +6,6 @@
 -- No lo expresa Prisma (índice parcial): vive solo acá y se documenta en schema.prisma.
 -- Si ya hay una sucursal con más de una cuenta activa la creación del índice FALLA (23505) y no cambia nada: correr ANTES verificacion-previa.sql y desactivar las sobrantes.
 -- La app ya tiene los privilegios necesarios (INSERT y UPDATE de "activa" y "sucursalId" de C3): no hay GRANT nuevo.
--- Reversa: down.sql (a mano, como dueño, con `psql -1 -v ON_ERROR_STOP=1`; después `prisma migrate resolve --rolled-back 20261117120000_caja_c3b_una_cuenta_por_sucursal`).
+-- Reversa: down.sql (a mano, como dueño, con `psql -1 -v ON_ERROR_STOP=1`; después `prisma migrate resolve --rolled-back 20261117118100_caja_c3b_una_cuenta_por_sucursal`).
 
 CREATE UNIQUE INDEX "CuentaDeCobro_una_activa_por_sucursal_key" ON "CuentaDeCobro"("empresaId", "sucursalId") WHERE "activa";

@@ -11,7 +11,7 @@ import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/bas
  * MUTACIÓN que debe dejarlo en ROJO: quitar el `WHERE "activa"` del índice de la migración (medido el 2026-11-16: 2 de 5 en rojo, «2. SUBIR» y «4. SUBIR OTRA VEZ»: la definición del índice cambia y la base rechaza la inactiva extra) o borrar el `CREATE UNIQUE INDEX` (la base deja de rechazar la segunda activa).
  */
 const RAIZ = join(__dirname, "../../prisma/migrations");
-const NUEVA = "20261117120000_caja_c3b_una_cuenta_por_sucursal";
+const NUEVA = "20261117118100_caja_c3b_una_cuenta_por_sucursal";
 const INDICE = "CuentaDeCobro_una_activa_por_sucursal_key";
 const E = "empresa_c3b";
 const UUID = "00000000-0000-4000-8000-0000000000";
