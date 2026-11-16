@@ -59,14 +59,17 @@ describe("arqueo", () => {
     expect(x).toEqual({ ok: true, centavos: c(20000 * 100 + 1500 * 100 + 250) });
   });
   it("rechaza denominaciones y cantidades fuera de la lista permitida", () => {
-    expect(totalContadoEnCentavos({ billetes: { 50: 1 } as never, monedasEnCentavos: c(0) })).toEqual({ ok: false, error: "DENOMINACION_DESCONOCIDA" });
+    expect(totalContadoEnCentavos({ billetes: { 5: 1 } as never, monedasEnCentavos: c(0) })).toEqual({ ok: false, error: "DENOMINACION_DESCONOCIDA" });
     expect(totalContadoEnCentavos({ billetes: { 100: -1 }, monedasEnCentavos: c(0) })).toEqual({ ok: false, error: "CANTIDAD_DE_BILLETES_INVALIDA" });
     expect(totalContadoEnCentavos({ billetes: { 100: 1.5 }, monedasEnCentavos: c(0) })).toEqual({ ok: false, error: "CANTIDAD_DE_BILLETES_INVALIDA" });
     expect(totalContadoEnCentavos({ billetes: {}, monedasEnCentavos: c(-1) })).toEqual({ ok: false, error: "MONEDAS_INVALIDAS" });
   });
+  it("cuenta los billetes chicos de la planilla del dueño ($10, $20 y $50)", () => {
+    expect(totalContadoEnCentavos({ billetes: { 10: 3, 20: 2, 50: 1 }, monedasEnCentavos: BigInt(0) })).toEqual({ ok: true, centavos: BigInt(12000) });
+  });
   it("la diferencia es contado − esperado", () => {
     expect(diferenciaDeArqueo(c(900), c(1000))).toBe(c(-100));
-    expect(DENOMINACIONES_DE_BILLETE).toHaveLength(7);
+    expect(DENOMINACIONES_DE_BILLETE).toHaveLength(10);
   });
 });
 

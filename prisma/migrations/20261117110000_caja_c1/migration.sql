@@ -344,8 +344,8 @@ ALTER TABLE "ArqueoCaja" ADD CONSTRAINT "ArqueoCaja_contado_o_conforme_chk" CHEC
   ("conforme" AND "contado" IS NULL AND "contadoMonedas" IS NULL)
   OR (NOT "conforme" AND "contado" IS NOT NULL AND "contado" >= 0 AND ("contadoMonedas" IS NULL OR "contadoMonedas" >= 0)));
 
--- ArqueoBillete: las denominaciones que se cuentan (src/core/caja/arqueo.ts) y la cantidad.
-ALTER TABLE "ArqueoBillete" ADD CONSTRAINT "ArqueoBillete_denominacion_chk" CHECK ("denominacion" IN (20000, 10000, 2000, 1000, 500, 200, 100));
+-- ArqueoBillete: las denominaciones que se cuentan (src/core/caja/arqueo.ts; las 10 de la planilla del dueño, confirmadas el 2026-11-16) y la cantidad.
+ALTER TABLE "ArqueoBillete" ADD CONSTRAINT "ArqueoBillete_denominacion_chk" CHECK ("denominacion" IN (20000, 10000, 2000, 1000, 500, 200, 100, 50, 20, 10));
 ALTER TABLE "ArqueoBillete" ADD CONSTRAINT "ArqueoBillete_cantidad_chk" CHECK ("cantidad" BETWEEN 0 AND 99999);
 
 -- ===== Disparadores =====

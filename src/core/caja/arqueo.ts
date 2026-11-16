@@ -6,10 +6,10 @@
  */
 
 /**
- * Las denominaciones que se cuentan, en pesos. Decisión PENDIENTE del dueño (Q-DENOM, sin DEC): por ahora son las 7 de Pedernal (`arqueo_billete_denominacion_ck`); la planilla de papel del 04/11 listaba 10
- * (desde 10 y 20). La pregunta «¿cuáles cuenta la caja?» (Q-DENOM) está abierta; cambiar la lista es cambiar esta constante y el CHECK de la migración.
+ * Las denominaciones que se cuentan, en pesos: las 10 de la planilla de papel del dueño. Decisión CONFIRMADA por el dueño el 2026-11-16 («Las 10 de tu planilla»); Pedernal cuenta solo 7 (de 100 a 20.000): diferencia declarada,
+ * motivo = decisión del dueño. Cambiar la lista es cambiar esta constante y el CHECK `ArqueoBillete_denominacion_chk` de la migración.
  */
-export const DENOMINACIONES_DE_BILLETE = [20000, 10000, 2000, 1000, 500, 200, 100] as const;
+export const DENOMINACIONES_DE_BILLETE = [20000, 10000, 2000, 1000, 500, 200, 100, 50, 20, 10] as const;
 type DenominacionDeBillete = (typeof DENOMINACIONES_DE_BILLETE)[number];
 
 /** Cuántos billetes de una denominación se aceptan por conteo (como Pedernal: 0 a 99999). */

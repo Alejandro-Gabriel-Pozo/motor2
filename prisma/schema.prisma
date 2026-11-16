@@ -4285,7 +4285,7 @@ model ArqueoCaja {
   @@unique([empresaId, sesionId, medioDePagoId])
 }
 
-/// Los billetes contados de una sesión, por denominación (CHECK: la lista de `src/core/caja/arqueo.ts`). Solo se agrega.
+/// Los billetes contados de una sesión, por denominación (CHECK: la lista de `src/core/caja/arqueo.ts`, las 10 de la planilla del dueño). Solo se agrega.
 model ArqueoBillete {
   id           String     @id @db.Uuid
   empresaId    String     @default(dbgenerated("app_empresa_actual()"))
