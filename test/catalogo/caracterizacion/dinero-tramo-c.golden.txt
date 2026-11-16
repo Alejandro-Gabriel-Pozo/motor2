@@ -353,7 +353,7 @@
 ### presentación: alta de la caja de 25 kg
   resultado: {"ok":true,"mensaje":"Presentación agregada."}
   efectos: revalidarCartasPublicas=0 refrescar=0
-  + PRESENTACION presentacion1 activa=true empresaId=empresa factorConversion=25 productoId=harina unidadCompraId=caja
+  + PRESENTACION presentacion1 activa=true empresaId=empresa factorConversion=25 nombre=null pesoVariable=false productoId=harina unidadCompraId=caja version=1
   AUDITORIA actorId=admin campo=factorConversion descripcion=Producto "Harina 000": factor de conversión de una presentación de compra empresaId=empresa entidad=Presentacion entidadId=presentacion1 sucursalId=null valorAnterior=null valorNuevo=25
 ### presentación: la misma caja otra vez
   resultado: {"ok":true,"mensaje":"Presentación agregada."}
@@ -361,8 +361,8 @@
 ### presentación: la caja pasa a 30 kg
   resultado: {"ok":true,"mensaje":"Presentación agregada."}
   efectos: revalidarCartasPublicas=0 refrescar=0
-  - PRESENTACION presentacion1 activa=true empresaId=empresa factorConversion=25 productoId=harina unidadCompraId=caja
-  + PRESENTACION presentacion1 activa=true empresaId=empresa factorConversion=30 productoId=harina unidadCompraId=caja
+  - PRESENTACION presentacion1 activa=true empresaId=empresa factorConversion=25 nombre=null pesoVariable=false productoId=harina unidadCompraId=caja version=1
+  + PRESENTACION presentacion1 activa=true empresaId=empresa factorConversion=30 nombre=null pesoVariable=false productoId=harina unidadCompraId=caja version=1
   AUDITORIA actorId=admin campo=factorConversion descripcion=Producto "Harina 000": factor de conversión de una presentación de compra empresaId=empresa entidad=Presentacion entidadId=presentacion1 sucursalId=null valorAnterior=25 valorNuevo=30
 ### presentación: factor inválido (tres decimales en kg)
   resultado: {"ok":false,"mensaje":"El factor de conversión admite como máximo 2 decimales (unidad \"kg\")."}
@@ -370,13 +370,13 @@
 ### presentación: desactivada
   resultado: {"ok":true,"mensaje":"Presentación desactivada."}
   efectos: revalidarCartasPublicas=0 refrescar=0
-  - PRESENTACION presentacion1 activa=true empresaId=empresa factorConversion=30 productoId=harina unidadCompraId=caja
-  + PRESENTACION presentacion1 activa=false empresaId=empresa factorConversion=30 productoId=harina unidadCompraId=caja
+  - PRESENTACION presentacion1 activa=true empresaId=empresa factorConversion=30 nombre=null pesoVariable=false productoId=harina unidadCompraId=caja version=1
+  + PRESENTACION presentacion1 activa=false empresaId=empresa factorConversion=30 nombre=null pesoVariable=false productoId=harina unidadCompraId=caja version=1
 ### presentación: la caja reactivada al volver a agregarla
   resultado: {"ok":true,"mensaje":"Presentación agregada."}
   efectos: revalidarCartasPublicas=0 refrescar=0
-  - PRESENTACION presentacion1 activa=false empresaId=empresa factorConversion=30 productoId=harina unidadCompraId=caja
-  + PRESENTACION presentacion1 activa=true empresaId=empresa factorConversion=30 productoId=harina unidadCompraId=caja
+  - PRESENTACION presentacion1 activa=false empresaId=empresa factorConversion=30 nombre=null pesoVariable=false productoId=harina unidadCompraId=caja version=1
+  + PRESENTACION presentacion1 activa=true empresaId=empresa factorConversion=30 nombre=null pesoVariable=false productoId=harina unidadCompraId=caja version=1
 ### unidad: alta del litro (decimales por defecto)
   resultado: {"ok":true,"mensaje":"Unidad \"litro\" creada.","id":"unidad1","nombre":"litro"}
   efectos: revalidarCartasPublicas=0 refrescar=1

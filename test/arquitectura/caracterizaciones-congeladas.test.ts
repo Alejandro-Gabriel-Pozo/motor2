@@ -926,9 +926,16 @@ const CONGELADAS: Record<string, Congelada> = {
           "Regla del dueño (2026-11-10, dinero siempre con 2 decimales vía `formatearMonto`; SOLO FORMATO, no cambia ningún valor ni el rechazo): los 3 mensajes del piso de la promo («$0.02», «$0,01», «$0.03», «$0.1») salen como «$ 0,02», «$ 0,01», «$ 0,03», «$ 0,10». Cambian 7 líneas: las 3 del piso y las 4 de «Precio de … en esta sucursal: $7000.» (y $9000, $0.05), que pasan a «$ 7.000,00.», «$ 9.000,00.», «$ 0,05.»; regenerado con REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1 contra Postgres local.",
       },
       {
-        blob: "fb9613aab31ed67c69468563cb1fe390bf06aef5",
-        // El commit PADRE de este (c17744e) es el último antes de la regeneración; el cambio es la columna nueva del nombre de cocina (migración 20261115170000_nombre_de_cocina, 2026-11-15).
-        commit: "c17744e",
+        blob: "b371081ad4313f88b6c07b6fe312d8265c43db79",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, ed5fe754 (integra main en la rama de la presentación de compra por producto).
+        commit: "ed5fe754",
+        motivo:
+          "Presentación de compra por producto, etapa (a) (migración 20261115150000_presentacion_de_compra_por_producto; ADITIVO, no cambia comportamiento; precedente fb34499b): la huella vuelca las filas de Presentacion con todas sus columnas y las tres columnas nuevas (`nombre`, `pesoVariable`, `version`) aparecen con su valor por defecto (` nombre=null pesoVariable=false` y ` version=1`) en las 7 líneas PRESENTACION del paso de presentaciones. Verificado con `git diff`: quitando esas tres columnas de las líneas PRESENTACION, el contenido es IDÉNTICO al anterior (blob previo en el historial de esta entrada); ninguna otra línea cambia (la línea UNIDAD «litro» ya estaba en el golden, no es nueva); ningún importe, factor ni regla de dinero cambia.",
+      },
+      {
+        blob: "8f6cb4b9c333e90d216b92f93e74b72828bade6f",
+        // El commit PADRE de este es 499cc1f (main con la presentación de compra por producto, #304), el último antes del cambio; el cambio es la columna nueva del nombre de cocina (migración 20261115170000_nombre_de_cocina, 2026-11-15).
+        commit: "499cc1f",
         motivo:
           "Nombre de cocina (ADITIVO; migración 20261115170000_nombre_de_cocina; regenerado con REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1): las filas PRODUCTO y las líneas ITEM suman `nombreDeCocina=null` (nadie tiene nombre de cocina en este mundo). Verificado por programa: sin esa columna el contenido es IDÉNTICO al blob anterior.",
       },

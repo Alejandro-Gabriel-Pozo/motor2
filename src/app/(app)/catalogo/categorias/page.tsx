@@ -1,6 +1,5 @@
 import { IconoDeAccion } from "@/components/iconos";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
-import { CajaDesplazable } from "@/components/catalogo/caja-desplazable";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
@@ -12,6 +11,7 @@ import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { Campo } from "@/ui/primitivas/campo";
+import { TablaDeDatos, type ColumnaDeTabla } from "@/ui/componentes/datos/tabla-de-datos";
 
 /**
  * Catálogo › Maestros › Categorías (DEC-13): el rubro comercial de cada producto. Ver ≠ escribir (DEC-33): «Activar/Desactivar» se dibuja con el «Editar» de `categorias` y el alta con el de
@@ -32,6 +32,34 @@ export default async function CategoriasPage() {
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "categoria_alta", ctx.db),
   ]);
 
+  // Los closures "use server" capturan solo textos y ids. En celular cada categoría es una tarjeta (el nombre largo se parte; no se pisa con «Activa»); desde 640 px, la tabla de siempre.
+  const columnas: ColumnaDeTabla<(typeof categorias)[number]>[] = [
+    { id: "nombre", encabezado: "Nombre", titulo: true, celda: (c) => c.nombre },
+    { id: "activa", encabezado: "Activa", celda: (c) => (c.activo ? "Sí" : "No") },
+    ...(puedeActivar
+      ? [
+          {
+            id: "acciones",
+            encabezado: "Acciones",
+            accion: true,
+            celda: (c: (typeof categorias)[number]) => (
+              <FormConResultado
+                accion={async () => {
+                  "use server";
+                  return actualizarActivaCategoriaProducto(c.id, !c.activo);
+                }}
+              >
+                <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
+                  <IconoDeAccion id="activar" />
+                  {c.activo ? "Desactivar" : "Activar"}
+                </BotonDeServidor>
+              </FormConResultado>
+            ),
+          },
+        ]
+      : []),
+  ];
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4">
@@ -43,47 +71,7 @@ export default async function CategoriasPage() {
         {!puedeActivar && !puedeDarDeAlta && <AvisoSoloLecturaDeCatalogo que="las categorías" />}
       </div>
 
-      <CajaDesplazable etiqueta="Tabla de categorías">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-tinta-tenue">
-              <th className="py-2">Nombre</th>
-              <th>Activa</th>
-              <th><span className="sr-only">Acciones</span></th>
-            </tr>
-          </thead>
-          <tbody>
-            {categorias.map((c) => (
-              <tr key={c.id} className="border-b">
-                <td className="py-2">{c.nombre}</td>
-                <td>{c.activo ? "Sí" : "No"}</td>
-                <td>
-                  {puedeActivar && (
-                    <FormConResultado
-                      accion={async () => {
-                        "use server";
-                        return actualizarActivaCategoriaProducto(c.id, !c.activo);
-                      }}
-                    >
-                      <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
-                        <IconoDeAccion id="activar" />
-                        {c.activo ? "Desactivar" : "Activar"}
-                      </BotonDeServidor>
-                    </FormConResultado>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {!categorias.length && (
-              <tr>
-                <td className="py-2 text-tinta-tenue" colSpan={3}>
-                  Todavía no hay categorías.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </CajaDesplazable>
+      <TablaDeDatos titulo="Tabla de categorías" columnas={columnas} filas={categorias} claveDeFila={(c) => c.id} vacio="Todavía no hay categorías." />
 
       {puedeDarDeAlta && (
         <FormConResultado
