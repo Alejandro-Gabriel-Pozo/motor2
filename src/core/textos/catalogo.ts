@@ -31,6 +31,13 @@ export const CATALOGO = {
     usos: [{ archivo: "src/server/actions/catalogo/casos-de-uso/agregar-presentacion-alternativa.ts", nombre: "agregarPresentacionAlternativaCasoDeUso" }],
     fuente: { decision: "DEC-0013" },
   },
+  // «Ocultar» (tarjeta de la ficha del producto; los cinco de la tabla T13 de Pedernal y el rechazo por existencia). Una sola cosa cada uno.
+  "accion.ocultar": { porDefecto: "Ocultar", usos: [{ archivo: "src/components/catalogo/tarjeta-ocultar.tsx", nombre: "TarjetaOcultar" }], fuente: { decision: "DEC-0014" } },
+  "accion.volver_a_mostrar": { porDefecto: "Volver a mostrar", usos: [{ archivo: "src/components/catalogo/tarjeta-ocultar.tsx", nombre: "TarjetaOcultar" }], fuente: { decision: "DEC-0014" } },
+  "accion.ocultar_en_la_empresa": { porDefecto: "Ocultar en toda la empresa", usos: [{ archivo: "src/components/catalogo/tarjeta-ocultar.tsx", nombre: "TarjetaOcultar" }], fuente: { decision: "DEC-0014" } },
+  "aviso.oculto": { porDefecto: "Oculto", usos: [{ archivo: "src/components/catalogo/tarjeta-ocultar.tsx", nombre: "TarjetaOcultar" }], fuente: { decision: "DEC-0014" } },
+  "aviso.oculto_en_la_empresa": { porDefecto: "Oculto en toda la empresa", usos: [{ archivo: "src/components/catalogo/tarjeta-ocultar.tsx", nombre: "TarjetaOcultar" }], fuente: { decision: "DEC-0014" } },
+  "rechazo.TIENE_EXISTENCIA": { porDefecto: "Primero dejá la existencia en 0.", usos: [{ archivo: "src/server/actions/catalogo/casos-de-uso/ocultar-producto.ts", nombre: "ocultarProductoCasoDeUso" }], fuente: { decision: "DEC-0014" } },
   // Rótulos del historial de la consola de plataforma para las acciones de los planes versionados (frente 4, M1). Los escribe `scripts/plan-de-plataforma.ts`; solo los ve la plataforma (la empresa NO ve ese historial).
   "rotulo.plan_creado": {
     porDefecto: "Plan creado",

@@ -5,7 +5,6 @@ import { ENTERO_MAXIMO_RAZONABLE, validarTopeDeLista, LARGO_MAXIMO_DE_ID } from 
 import { contextoDeCantidad, numeroDeEntrada, tieneALoSumoDecimales } from "@/core/datos/numero-tecleado";
 import { validarFactorDeEscala, validarPorcentajeDeDiferencia } from "@/core/datos/porcentaje-y-factor";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
-import { RE_TEXTO_CATALOGO, validarTextoCatalogo } from "@/core/texto";
 import {
   CANTIDAD_MAXIMA_DE_OPCION,
   LARGO_MAXIMO_DE_LA_DESCRIPCION_EN_CARTA,
@@ -189,9 +188,8 @@ function prefijoEnCarta(valor: unknown): ResultadoDato<string | null | undefined
   if (valor.trim() === "") return aceptar(null);
   if (valor !== valor.trim()) return rechazar("formato", `${etiqueta} no puede empezar ni terminar con espacios: borralos y volvé a guardar.`);
   if (Array.from(valor).length > LARGO_MAXIMO_DEL_PREFIJO_EN_CARTA) return rechazar("largo", `${etiqueta} tiene hasta ${LARGO_MAXIMO_DEL_PREFIJO_EN_CARTA} caracteres: acortalo (por ejemplo «De» o «Con»).`);
-  const invalido = validarTextoCatalogo(valor, etiqueta);
-  if (invalido) return rechazar("formato", invalido);
-  return aceptar(valor);
+  const prefijo = nombreDeFicha(valor, "ELECCION", `${etiqueta} no puede estar vacío.`);
+  return prefijo.ok ? aceptar(prefijo.valor) : rechazar("formato", prefijo.mensaje);
 }
 
 export function guardComandoCrearGrupoDeOpciones(entrada: { nombre: unknown; tipo: unknown; cantidadMinima: unknown; cantidadMaxima: unknown; prefijoEnCarta?: unknown }): ResultadoDato<ComandoCrearGrupoDeOpciones> {
@@ -242,7 +240,7 @@ export function guardComandoEditarGrupoDeOpciones(entrada: {
 
 /**
  * Carta «B», E3: la descripción de una opción en la carta («lechuga, tomate, cebolla»). Ausente (`undefined`) queda ausente (editar otra cosa no la toca); `null`, vacío o solo espacios es «sin descripción»
- * (`null`); si no, UNA línea (sin saltos), sin espacios a los costados (no se recorta: se avisa), de hasta 120 caracteres y con el juego de caracteres del catálogo (letras, números, espacios y `- . , ( ) % & / ' _`:
+ * (`null`); si no, UNA línea (sin saltos), sin espacios a los costados (no se recorta: se avisa), de hasta 80 caracteres (desde el 2026-11-16, «Bajar a 80»; antes 120) y con la ficha ELECCION de Pedernal, en su forma canónica; el juego de caracteres del catálogo viejo (letras, números, espacios y `- . , ( ) % & / ' _`:
  * nunca HTML). El CHECK `OpcionDeGrupo_descripcion_en_carta_chk` de la base repite el tope, los costados y los saltos.
  */
 function descripcionEnCarta(valor: unknown): ResultadoDato<string | null | undefined> {
@@ -253,9 +251,8 @@ function descripcionEnCarta(valor: unknown): ResultadoDato<string | null | undef
   if (valor.trim() === "") return aceptar(null);
   if (valor !== valor.trim()) return rechazar("formato", `${etiqueta} no puede empezar ni terminar con espacios: borralos y volvé a guardar.`);
   if (Array.from(valor).length > LARGO_MAXIMO_DE_LA_DESCRIPCION_EN_CARTA) return rechazar("largo", `${etiqueta} tiene hasta ${LARGO_MAXIMO_DE_LA_DESCRIPCION_EN_CARTA} caracteres: acortala.`);
-  if (!RE_TEXTO_CATALOGO.test(valor)) return rechazar("formato", `${etiqueta} tiene caracteres no permitidos (va en una sola línea: sin saltos de línea). Se admiten letras, números, espacios y - . , ( ) % & / '`);
-  if (valor.startsWith("-")) return rechazar("formato", `${etiqueta} no puede empezar con "-".`);
-  return aceptar(valor);
+  const descripcion = nombreDeFicha(valor, "ELECCION", `${etiqueta} no puede estar vacía.`);
+  return descripcion.ok ? aceptar(descripcion.valor) : rechazar("formato", descripcion.mensaje);
 }
 
 export function guardComandoCrearOpcionDeGrupo(entrada: {

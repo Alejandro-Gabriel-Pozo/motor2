@@ -13,6 +13,13 @@ export const ENTIDADES_AUDITABLES = [
   "DisponibilidadProducto",
   // "OcultamientoProducto": «Ocultar» / «Volver a mostrar» un producto en un local o en toda la empresa — `entidadId` es `${sucursalId | "EMPRESA"}:${productoId}`, `campo: "oculto"`, con `sucursalId` (nulo = toda la empresa).
   "OcultamientoProducto",
+  // Caja y cobro C1: `SesionCaja` (apertura con fondo y cierre con arqueo), `MovimientoCaja` (ingreso, egreso y anulación manual) y `Cobranza` (el cobro de una cuenta) — `entidadId` es el id de la fila, con `sucursalId`. Nunca llevan datos personales.
+  "SesionCaja",
+  "MovimientoCaja",
+  "Cobranza",
+  // Caja y cobro C3: `CuentaDeCobro` (alta, edición, activar/desactivar; `entidadId` es el id, con `sucursalId` de la cuenta) y `MedioDePago` (alta, edición con los datos que pide, activar/desactivar; `sucursalId` null: es de la empresa). Nunca llevan datos personales ni el identificador externo.
+  "CuentaDeCobro",
+  "MedioDePago",
   "PermisoRol",
   "CapacidadSucursal",
   "Rol",
@@ -150,8 +157,38 @@ export interface FilaDeAuditoria {
   sucursalId: string | null;
 }
 
+/** Lo que se guarda cuando un objeto o arreglo no se puede pasar a JSON (referencia circular, `getter` que falla): un texto fijo, nunca el contenido ni un error que corte el cambio que se audita. */
+export const TEXTO_DE_VALOR_NO_SERIALIZABLE = "[valor no serializable]";
+
+/** Objeto «plano» (literal o sin prototipo): los `Decimal`, `Date` y demás instancias de clase NO lo son y siguen yendo por `String(valor)`, como siempre. */
+function esObjetoPlano(valor: object): boolean {
+  const proto = Object.getPrototypeOf(valor);
+  return proto === Object.prototype || proto === null;
+}
+
+/** Copia con las claves de los objetos planos en orden alfabético, para que el mismo contenido dé siempre el mismo texto. Corre después de `toJSON` (una `Date` ya llega como texto ISO; un `Decimal`, como texto). */
+function ordenarClaves(_clave: string, valor: unknown): unknown {
+  if (typeof valor === "bigint") return valor.toString();
+  if (valor !== null && typeof valor === "object" && !Array.isArray(valor) && esObjetoPlano(valor)) {
+    const origen = valor as Record<string, unknown>;
+    return Object.fromEntries(Object.keys(origen).sort().map((k) => [k, origen[k]]));
+  }
+  return valor;
+}
+
+/**
+ * Un valor a texto. `null`/`undefined` → `null`; un objeto plano o un arreglo → JSON compacto con claves ordenadas (antes quedaba «[object Object]» y la fila era ilegible); todo lo demás
+ * (texto, número, booleano, `Date`, `Decimal`…) → `String(valor)`, EXACTAMENTE como antes. Un objeto que no se puede serializar (circular) da un texto fijo: la auditoría no corta el cambio.
+ */
 function aTexto(valor: unknown): string | null {
   if (valor === null || valor === undefined) return null;
+  if (typeof valor === "object" && (Array.isArray(valor) || esObjetoPlano(valor))) {
+    try {
+      return JSON.stringify(valor, ordenarClaves) ?? TEXTO_DE_VALOR_NO_SERIALIZABLE;
+    } catch {
+      return TEXTO_DE_VALOR_NO_SERIALIZABLE;
+    }
+  }
   return String(valor);
 }
 

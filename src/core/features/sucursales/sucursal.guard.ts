@@ -1,5 +1,6 @@
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
-import { texto, validarTextoCatalogo } from "@/core/texto";
+import { nombreDeFicha } from "@/core/datos/nombre-de-ficha";
+import { texto } from "@/core/texto";
 
 /** El comando «dar de alta una sucursal con su primer admin» ya validado: el nombre recortado y el email recortado en minúsculas. */
 export interface ComandoCrearSucursal {
@@ -13,29 +14,25 @@ export interface ComandoCrearSucursal {
  * formato. Puro: sin Prisma ni permisos.
  *
  * Son EXACTAMENTE las validaciones que antes corrían en línea en `src/server/actions/auth/sucursales.ts`, en el MISMO orden y con los MISMOS textos: el nombre
- * (vacío, charset y largo de catálogo) y el email del primer admin (obligatorio; se compara en minúsculas). Que el nombre esté libre y que el email sea de
+ * (vacío; y charset, largo y letra por la ficha NOMBRE_DE_SUCURSAL de Pedernal, desde el 2026-11-16: dueño, «Sí, así (Recomendada)») y el email del primer admin (obligatorio; se compara en minúsculas). Que el nombre esté libre y que el email sea de
  * alguien de la empresa son datos de la base: los resuelve el caso de uso. `input.nombre` se lee igual que antes (un `input` ausente sigue lanzando).
  */
 export function guardComandoCrearSucursal(input: { nombre: string; emailPrimerAdmin: string }): ResultadoDato<ComandoCrearSucursal> {
-  const nombre = texto(input.nombre);
-  if (!nombre) return rechazar("vacio", "El nombre de la sucursal no puede estar vacío.");
-  const invalido = validarTextoCatalogo(nombre, "El nombre de la sucursal");
-  if (invalido) return rechazar("formato", invalido);
+  const nombre = nombreDeFicha(input.nombre, "NOMBRE_DE_SUCURSAL", "El nombre de la sucursal no puede estar vacío.");
+  if (!nombre.ok) return rechazar(nombre.codigo === "vacio" ? "vacio" : "formato", nombre.mensaje);
 
   const email = texto(input.emailPrimerAdmin).toLowerCase();
   if (!email) return rechazar("vacio", "El email del primer admin de la sucursal es obligatorio.");
-  return aceptar({ nombre, email });
+  return aceptar({ nombre: nombre.valor, email });
 }
 
 /**
  * Guard del comando «renombrar una sucursal» (Hito 3, Fase I, I.4): el nombre nuevo, recortado, con EXACTAMENTE las validaciones y los textos que antes
- * corrían en línea en `renombrarSucursal` (vacío —con su propio mensaje, distinto del alta—, charset y largo de catálogo). Lo llama la Server Action DENTRO
+ * corrían en línea en `renombrarSucursal` (vacío —con su propio mensaje, distinto del alta—; y desde el 2026-11-16 charset, largo y letra por la ficha NOMBRE_DE_SUCURSAL). Lo llama la Server Action DENTRO
  * de `conPermisoDeEmpresa("renombrar_sucursal", …)`. Que la sucursal exista y que el nombre esté libre los resuelve el caso de uso contra la base.
  */
 export function guardComandoRenombrarSucursal(nombreNuevo: string): ResultadoDato<{ nombre: string }> {
-  const nombre = texto(nombreNuevo);
-  if (!nombre) return rechazar("vacio", "El nombre no puede estar vacío.");
-  const invalido = validarTextoCatalogo(nombre, "El nombre de la sucursal");
-  if (invalido) return rechazar("formato", invalido);
-  return aceptar({ nombre });
+  const nombre = nombreDeFicha(nombreNuevo, "NOMBRE_DE_SUCURSAL", "El nombre no puede estar vacío.");
+  if (!nombre.ok) return rechazar(nombre.codigo === "vacio" ? "vacio" : "formato", nombre.mensaje);
+  return aceptar({ nombre: nombre.valor });
 }

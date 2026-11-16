@@ -11,9 +11,11 @@ import { PUNTOS_DE_NOMBRE } from "./nombres-puntos-declarados";
  * LÍMITES: lee texto, no tipos; una validación escrita con una expresión regular propia (no con estos nombres) no se ve (la cubre el cerco de lista de permitidos); un archivo que valida un nombre
  * llamando a otro validador sin estos nombres no se ve; no comprueba que la ficha elegida sea la correcta, solo que esté declarada.
  */
-const USOS_VIEJOS = /\b(nombreDeCatalogo|validarTextoCatalogo|validarNombreCatalogo|RE_TEXTO_CATALOGO)\b/g;
-const USOS_NUEVOS = /\b(nombreDeFicha|nombreMinimoDeFicha|nombreDeFichaSiCambio)\b/g;
-const FICHAS = /"(PRODUCTO|ELECCION|RAZON_SOCIAL)"/g;
+const USOS_VIEJOS = /\b(validarTextoCatalogo|validarNombreCatalogo|RE_TEXTO_CATALOGO)\b/g;
+// `nombreDeCatalogo` ya no es una regla vieja: desde E-1c (2026-11-16) es un envoltorio de la ficha ELECCION de Pedernal (`features/catalogo/nombre-de-catalogo.ts`).
+const USOS_NUEVOS = /\b(nombreDeFicha|nombreMinimoDeFicha|nombreDeFichaSiCambio|nombreDeCatalogo)\b/g;
+const ENVOLTORIO_DE_ELECCION = /\bnombreDeCatalogo\b/;
+const FICHAS = /"(PRODUCTO|ELECCION|RAZON_SOCIAL|NOMBRE_DE_SUCURSAL|NOMBRE_DE_ROL)"/g;
 /** Donde se DEFINEN los validadores: no son puntos de validación. */
 const DEFINICIONES = new Set(["src/core/texto.ts", "src/core/datos/nombre-catalogo.ts", "src/core/features/catalogo/nombre-de-catalogo.ts", "src/core/datos/nombre-de-ficha.ts"]);
 
@@ -37,13 +39,16 @@ export function usosEn(fuente: string): { pedernal: string[]; viejos: string[] }
   const codigo = codigoSinComentarios(fuente);
   const nuevos = new Set([...codigo.matchAll(USOS_NUEVOS)].map((m) => m[1]!));
   const viejos = [...new Set([...codigo.matchAll(USOS_VIEJOS)].map((m) => m[1]!))].sort();
-  return { pedernal: nuevos.size === 0 ? [] : [...new Set([...codigo.matchAll(FICHAS)].map((m) => m[1]!))].sort(), viejos };
+  const fichas = new Set([...codigo.matchAll(FICHAS)].map((m) => m[1]!));
+  if (ENVOLTORIO_DE_ELECCION.test(codigo)) fichas.add("ELECCION");
+  return { pedernal: nuevos.size === 0 ? [] : [...fichas].sort(), viejos };
 }
 
 describe("guardián de puntos de validación de nombres: el detector", () => {
   it("ve la regla de Pedernal con su ficha y los validadores viejos, y no ve comentarios ni imports", () => {
     expect(usosEn('import { nombreDeFicha } from "x";\nconst r = nombreDeFicha(v, "PRODUCTO", "a", "b");')).toEqual({ pedernal: ["PRODUCTO"], viejos: [] });
-    expect(usosEn("const r = validarTextoCatalogo(v, e);\nnombreDeCatalogo(v, a, b);")).toEqual({ pedernal: [], viejos: ["nombreDeCatalogo", "validarTextoCatalogo"] });
+    expect(usosEn("const r = validarTextoCatalogo(v, e);\nnombreDeCatalogo(v, a);")).toEqual({ pedernal: ["ELECCION"], viejos: ["validarTextoCatalogo"] });
+    expect(usosEn("const r = nombreDeCatalogo(v, a);")).toEqual({ pedernal: ["ELECCION"], viejos: [] });
     expect(usosEn('// nombreDeFicha(v, "PRODUCTO")\n/* validarTextoCatalogo(v) */\nconst x = 1;')).toEqual({ pedernal: [], viejos: [] });
   });
 });
@@ -53,7 +58,7 @@ describe("guardián de puntos de validación de nombres: el código coincide con
   for (const ruta of archivos("src")) {
     if (DEFINICIONES.has(ruta)) continue;
     const usos = usosEn(readFileSync(ruta, "utf8"));
-    if (usos.pedernal.length > 0 || usos.viejos.length > 0 || /\b(nombreDeFicha|nombreMinimoDeFicha|nombreDeFichaSiCambio)\b/.test(codigoSinComentarios(readFileSync(ruta, "utf8")))) delCodigo.set(ruta, usos);
+    if (usos.pedernal.length > 0 || usos.viejos.length > 0 || /\b(nombreDeFicha|nombreMinimoDeFicha|nombreDeFichaSiCambio|nombreDeCatalogo)\b/.test(codigoSinComentarios(readFileSync(ruta, "utf8")))) delCodigo.set(ruta, usos);
   }
 
   it("la búsqueda encuentra puntos (no mira un árbol vacío)", () => {

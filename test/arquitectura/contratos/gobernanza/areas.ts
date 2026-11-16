@@ -78,6 +78,7 @@ export const AREAS: DeclaracionDeAreas = {
   "core/movimientos": [],
   "core/navegacion": [],
   "core/opciones": [],
+  "core/caja": [],
   "core/permisos": [],
   "core/plataforma": [],
   "core/pos": [],

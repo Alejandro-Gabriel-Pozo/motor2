@@ -19,7 +19,7 @@ const LARGO_MAXIMO_DESCRIPCION = 300;
 
 /** El nombre (recortado, no vacío, charset y largo de catálogo, con la etiqueta de cada catálogo) y después la descripción (recortada, hasta 300; vacía → `null`). */
 function comandoCrearMotivo(entrada: { nombre: unknown; descripcion: unknown }, etiqueta: string): ResultadoDato<ComandoCrearMotivo> {
-  const nombre = nombreDeCatalogo(entrada.nombre, `${etiqueta} no puede estar vacío.`, etiqueta);
+  const nombre = nombreDeCatalogo(entrada.nombre, `${etiqueta} no puede estar vacío.`);
   if (!nombre.ok) return rechazar(nombre.codigo, nombre.mensaje);
   const d = texto(entrada.descripcion);
   const errorDescripcion = validarLargoTexto(d, "La descripción", LARGO_MAXIMO_DESCRIPCION);

@@ -113,7 +113,7 @@ Mensajes a enviar a los frentes 3, 4, 5 y 6 con rutas/modelos exactos: ver el av
 Preguntas siguientes (en cola, **no abiertas**):
 
 - **Q-ANU:** ¿qué pasa si se corrige o anula un ticket ya cobrado? (Pedernal: anular todo deja la diferencia a explicar en el cierre del día; no mueve la caja.)
-- **Q-DENOM:** ¿qué billetes cuenta la caja? Pedernal usa 100, 200, 500, 1.000, 2.000, 10.000 y 20.000 más monedas; tu planilla del 04/11 listaba además 10, 20 y 50.
+- **Q-DENOM (RESUELTA, CONFIRMADA):** billetes, respuesta del dueño 2026-11-16: «Las 10 de tu planilla» → $10, $20, $50, $100, $200, $500, $1.000, $2.000, $10.000 y $20.000, más las monedas como un solo importe (registrada en `motor2-docs`, «Caja y Datos: dos respuestas más»; relatada por el orquestador general). Difiere de Pedernal (7) por decisión del dueño.
 - **Q-CC:** de lo que pediste el 04/11 y Pedernal no tiene (cuenta corriente, seña, caja chica en tres turnos, caja grande, depósitos): ¿entra alguna, y cuándo?
 - **Q-ARCA:** ¿la facturación electrónica con ARCA es otro frente? (Hoy: «facturan en otro sistema, Motor2 no emite», vigente; emisión propia = etapa futura sin decidir.) **No lo asumí.**
 - **Q-ANT:** las cuentas ya cerradas antes de activar caja: ¿quedan como «anterior a la caja» o se cobran después?

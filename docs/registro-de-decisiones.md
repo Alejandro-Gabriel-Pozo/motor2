@@ -136,6 +136,26 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 - **Estado:** ACEPTADA
 - **Cita del dueño:** «Los textos encargarte vos trata de reducir, textos, inventariar y empezar a reutilizar y que representen 1 sola cosa, definir primitivas e invariantes en texto igual que pedernal; Sí, confirmo esos límites (Recomendada)» — 2026-11-16 — chat del dueño con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, secciones «Textos: el orquestador se encarga…» y «Textos: límites de la delegación confirmados»); lote aceptado por el orquestador por delegación (2026-11-16)
 
+### DEC-0014
+- **Fecha:** 2026-11-16
+- **Quién:** la sesión Sonnet de la etapa (d) de «Ocultar» (la tarjeta de la ficha del producto); lote aceptado por el orquestador por delegación del dueño, dentro de los límites confirmados (no toca dinero, permisos, texto fiscal ni una decisión previa del dueño).
+- **Qué decidió:** seis textos nuevos en el catálogo de textos (`src/core/textos/catalogo.ts`) para la tarjeta de Ocultar: cinco de la tabla T13 de Pedernal —«Ocultar», «Volver a mostrar», «Ocultar en toda la empresa», «Oculto», «Oculto en toda la empresa»— y un sexto, «Primero dejá la existencia en 0.» (el rechazo de ocultar con existencia; no existía un texto de Motor2 con ese sentido: el de desactivar es una frase armada con los motivos). Los demás rechazos (sin permiso, la empresa lo oculta, versión desactualizada, datos inválidos) usan el genérico ya aceptado del catálogo (`MENSAJE_GENERICO`, DEC-0013) y «No se encontró el producto.» ya existe. La tarjeta no lleva título propio (la nombra su `aria-label` con «Ocultar») ni rótulos nuevos: las filas se rotulan con el nombre de la sucursal (un dato).
+- **Por qué:** el dueño decidió la pantalla de Ocultar como Pedernal (tarjeta en la ficha, fila «este local» y fila «toda la empresa») y pidió reutilizar textos y que cada uno represente una sola cosa; los cinco primeros son los de Pedernal (A15, `11-especificaciones/ficha-de-pantalla-ocultar.md`, T13) y el sexto es el que Pedernal aprobó el 2026-11-12 para el mismo rechazo (regla de stock, no dinero ni permisos).
+- **Costo de revertir:** bajo: borrar las seis entradas del catálogo y volver a escribir los textos en la tarjeta y en la acción; sin migración ni datos.
+- **Dónde:** `src/core/textos/catalogo.ts`, `src/components/catalogo/tarjeta-ocultar.tsx`, `src/server/actions/catalogo/casos-de-uso/ocultar-producto.ts`
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Los textos encargarte vos trata de reducir, textos, inventariar y empezar a reutilizar y que representen 1 sola cosa, definir primitivas e invariantes en texto igual que pedernal; Sí, confirmo esos límites (Recomendada)» — 2026-11-16 — chat del dueño con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, «Palabras literales del dueño» y «Respuesta literal del dueño»; la pantalla: «CONFIRMADA — Pantalla de Ocultar», mismo archivo); lote aceptado por el orquestador por delegación (2026-11-16)
+
+### DEC-0018
+- **Fecha:** 2026-11-16
+- **Quién:** la sesión Sonnet de los lotes del catálogo de textos (F1' de permisos); aceptación directa del dueño y forma aprobada por el orquestador.
+- **Qué decidió:** las 133 descripciones de los permisos (`src/core/permisos/acciones.ts`) NO se mueven al catálogo de textos: `acciones.ts` queda como la lista única de esos textos, con las mismas palabras de hoy. Se cubre con un guardián propio (`test/arquitectura/permisos-descripciones.test.ts`): toda acción con descripción sin espacios de más y sin repetir, y las 133 frases fijadas en un oráculo (`test/textos/oraculo-de-permisos.ts`); cambiar una descripción, sumar un permiso o sacarlo sin tocar el oráculo pone el CI en rojo. No cambia nada que vea el cliente ni toca `src/`.
+- **Por qué:** el dueño dijo «Sí, mismas palabras (Recomendada)» para las descripciones de permisos; copiarlas al catálogo las escribiría tres veces (acciones.ts, catálogo y un mapa) y obligaría a que `acciones.ts` importe `core/textos`, que la carta pública alcanzaría (contrato de arquitectura `ALCANCE_CARTA_PUBLICA`, que no se cambia sin pedirlo). Regla del dueño: la opción más barata primero.
+- **Costo de revertir:** muy bajo: borrar el guardián, su guarda y el oráculo; no hay migración ni datos. Si más adelante se quieren leer por `textoDe`, se hace con el OK del dueño y del contrato de arquitectura de la carta.
+- **Dónde:** `test/arquitectura/permisos-descripciones.test.ts`, `test/textos/oraculo-de-permisos.ts`
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Sí, mismas palabras (Recomendada)» — 2026-11-16 — chat del dueño con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, «Textos: cuatro respuestas del dueño sobre la lista única»)
+
 ### DEC-0015
 - **Fecha:** 2026-11-16
 - **Quién:** la sesión Sonnet del frente 4 (planes y perillas); los cuatro rótulos los aceptó el dueño directamente.
