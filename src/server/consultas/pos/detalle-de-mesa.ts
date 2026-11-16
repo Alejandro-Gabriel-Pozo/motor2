@@ -70,6 +70,7 @@ async function leerDetalle(db: Db, donde: { id?: string; sucursalId: string; tip
           promoCuenta: i.promoCuenta,
           lineaPadreId: i.lineaPadreId,
           opcionesElegidas: i.opcionesElegidas,
+          nombreDeCocina: i.nombreDeCocina,
         })),
       })),
     },

@@ -203,6 +203,7 @@ export async function duplicarProductoCasoDeUso(
           alicuotaIvaVenta: origen.alicuotaIvaVenta,
           alicuotaIvaCompra: origen.alicuotaIvaCompra,
           pasoVenta: origen.pasoVenta,
+          nombreDeCocina: origen.nombreDeCocina,
           seProduce: origen.seProduce,
         });
         // SUPUESTO(DEC-0007): sin tilde en pantalla; disponible en todas con la clave, apagado sin ella. Un producto de venta sin la clave nace APAGADO en todas las sucursales (M.2-A4); con ella (o una materia prima), disponible en todas, como el alta con el tilde por defecto.
