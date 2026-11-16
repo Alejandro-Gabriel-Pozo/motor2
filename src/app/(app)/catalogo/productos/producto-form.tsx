@@ -7,6 +7,7 @@ import { AsistenteHermanar } from "@/components/catalogo/asistente-hermanar";
 import { GestionPresentaciones } from "@/components/catalogo/gestion-presentaciones";
 import { CampoNumero } from "@/components/campo-numero";
 import { AyudaCampo } from "@/components/ayuda-campo";
+import { AyudaDeFicha } from "@/components/catalogo/ayuda-de-ficha";
 import { OBSERVACIONES_VISIBLES, PRESENTACIONES_VISIBLES } from "@/core/catalogo/public";
 import { CampoAlicuotaIva, alicuotasDelFormulario } from "./campo-alicuota-iva"; import { CampoNombreDeCocina, nombreDeCocinaDelFormulario } from "./campo-nombre-de-cocina";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
@@ -204,10 +205,9 @@ export function ProductoForm({
       {editando ? (
         <div className="flex flex-col gap-1">
           <p className="text-sm">{tipo === "MP" ? "Materia prima (MP)" : "Producto de venta (PV)"}</p>
-          <AyudaCampo>
-            El tipo no se puede cambiar una vez creado el producto — recetas, ventas y stock ya asumen cuál es. Si te equivocaste de tipo, dá de
-            baja este producto y creá uno nuevo con el tipo correcto.
-          </AyudaCampo>
+          <AyudaDeFicha>
+            El tipo no se puede cambiar una vez creado el producto — recetas, ventas y stock ya asumen cuál es. Si te equivocaste de tipo, dá de baja este producto y creá uno nuevo con el tipo correcto.
+          </AyudaDeFicha>
         </div>
       ) : (
         <OpcionesExcluyentes
@@ -284,10 +284,10 @@ export function ProductoForm({
               setInsumoId(id);
             }}
           />
-          <AyudaCampo>
+          <AyudaDeFicha>
             Agrupa esta materia prima con otras que sean, en la práctica, la misma (ej. comprada a proveedores distintos) — comparten stock
             automáticamente si una se queda sin stock, y se comparan sus precios entre sí.
-          </AyudaCampo>
+          </AyudaDeFicha>
         </div>
       )}
 
@@ -327,11 +327,11 @@ export function ProductoForm({
               </ValorSoloLectura>
             ))}
         </div>
-        <AyudaCampo>
+        <AyudaDeFicha>
           {tipo === "MP"
             ? "Stock: en qué unidad se mide el inventario (ej. kg). Compra: en qué unidad la facturás (ej. \"bolsa\") — el Factor de conversión de abajo pasa de una a la otra."
             : "En qué unidad se mide el inventario de este producto (ej. unidad, kg)."}
-        </AyudaCampo>
+        </AyudaDeFicha>
       </div>
 
       <div className="flex flex-col gap-1">
@@ -351,10 +351,10 @@ export function ProductoForm({
             {formatearCantidad(productoExistente?.factorConversion ?? 1)}
           </ValorSoloLectura>
         )}
-        <AyudaCampo>
+        <AyudaDeFicha>
           Cuántas unidades de stock entran en 1 unidad de compra — ej. 25 si comprás bolsas de 25kg y controlás el stock en kg. Si comprás y
           controlás en la misma unidad, dejalo en 1.
-        </AyudaCampo>
+        </AyudaDeFicha>
       </div>
 
       {tipo === "PV" && venta && (
@@ -431,10 +431,10 @@ export function ProductoForm({
             ariaLabel="Paso de venta"
             defaultValue={productoExistente?.pasoVenta != null ? String(productoExistente.pasoVenta) : ""}
           />
-          <AyudaCampo>
+          <AyudaDeFicha>
             Dejalo vacío para vender siempre de a una unidad entera (lo habitual). Con un paso (ej. 0,5), se puede vender esa fracción —
             0,5 vende media unidad al 50% del precio — y cualquier cantidad que no sea múltiplo exacto del paso se rechaza al cargarla.
-          </AyudaCampo>
+          </AyudaDeFicha>
         </div>
       )}
 
@@ -458,11 +458,11 @@ export function ProductoForm({
           {naceSinPoderVenderse ? (
             <AvisoAltaSinPrecio />
           ) : (
-            <AyudaCampo>
+            <AyudaDeFicha>
               {activoEnTodas
                 ? `Tildado (lo habitual, para insumos y platos compartidos como harina o sal): queda disponible en las ${cantidadSucursales ?? "?"} sucursales que existen hoy.`
                 : `Sin tildar: solo queda disponible en "${nombreSucursalActual ?? "esta sucursal"}" — en las demás no va a aparecer hasta que un admin de esa sucursal lo active ahí.`}
-            </AyudaCampo>
+            </AyudaDeFicha>
           )}
         </div>
       )}
@@ -470,10 +470,10 @@ export function ProductoForm({
       {puedeGestionarConsignacion ? (
         <div className="flex flex-col gap-1">
           <Casilla checked={esConsignacion} onChange={(e) => setEsConsignacion(e.target.checked)} etiqueta="Es consignación" />
-          <AyudaCampo>
+          <AyudaDeFicha>
             El producto queda en tu depósito pero sigue siendo propiedad del proveedor hasta que se vende — recién ahí se liquida (se le paga por
             lo vendido, no por lo entregado).
-          </AyudaCampo>
+          </AyudaDeFicha>
         </div>
       ) : (
         editando && (
@@ -520,7 +520,7 @@ export function ProductoForm({
               tipo="importe"
               etiqueta="El precio de consignación"
             />
-            <AyudaCampo>Lo que le pagás al proveedor por cada unidad vendida — no tiene por qué ser igual al precio al que vos la vendés.</AyudaCampo>
+            <AyudaDeFicha>Lo que le pagás al proveedor por cada unidad vendida — no tiene por qué ser igual al precio al que vos la vendés.</AyudaDeFicha>
           </div>
         </>
       )}
