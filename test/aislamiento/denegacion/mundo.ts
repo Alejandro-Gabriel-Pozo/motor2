@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { limpiarBaseDeTest, prismaAdmin, prismaSinEmpresa, sembrarBase, EMPRESA_POR_DEFECTO_ID } from "../../setup/test-db";
 import { crearEmpresa } from "../../setup/crear-empresa";
 import { crearMembresia } from "../../setup/membresia";
-import { activarTodosLosModulos } from "../../setup/modulos";
+import { activarTodosLosModulos, fijarModulosActivos, MODULOS_VENDIBLES } from "../../setup/modulos";
 import { enElPasado, HORA_MS, DIA_MS } from "../../setup/tiempo";
 import { ZONA_ARGENTINA, diaDeCalendario, fechaDeColumnaDate, sumarDias } from "../../../src/core/tiempo/zona-horaria";
 
@@ -503,6 +503,10 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   }
   // Compras N3-a (recepción separada): la parte de ESTA sucursal de la factura «por recibir» nace PENDIENTE (el valor por defecto de la columna), sin compra ni stock.
   await db.facturaProveedorSucursal.create({ data: { id: id("factura-por-recibir-parte"), empresaId, facturaProveedorId: facturasPendientes["factura-por-recibir"]!, sucursalId, porcentajeDeclaradoBp: 10000 } });
+  // …y un renglón de mercadería (el producto de la empresa, habilitado en la sucursal) para que la confirmación tenga qué recibir: sin renglones el caso de uso responde «no tiene mercadería para recibir».
+  await db.facturaProveedorRenglon.create({
+    data: { id: id("factura-por-recibir-renglon"), empresaId, facturaProveedorId: facturasPendientes["factura-por-recibir"]!, orden: 1, naturaleza: "MERCADERIA", productoId: k.productoId, cantidadStock: 2, precioPorUnidadStock: 50, detalle: "Compra", precioTotal: 100 },
+  });
   const pagoDeFactura = await db.pagoDeFacturaProveedor.create({
     data: { id: id("pago-de-factura"), empresaId, facturaProveedorId: facturasPendientes["factura-con-pago"]!, fechaPago: enElPasado(DIA_MS), medio: "TRANSFERENCIA", claveIdempotencia: id("pago-de-factura-clave"), payloadHash: "h", resultadoMensaje: "Pago declarado.", creadoPorId: miembro.id },
   });
@@ -609,6 +613,9 @@ export async function sembrarMundo(): Promise<Mundo> {
   const rolAdminE1Id = base.admin.id;
   const rolOperadorE1Id = base.operador.id;
   await activarTodosLosModulos(e1Id);
+  // Compras N3-a: `recepcion_de_compras` nace apagado (`activarTodosLosModulos` no lo enciende). E1 lo tiene ENCENDIDO para que la puerta `confirmarRecepcionDeFactura` tenga control positivo; con él, cargar una factura de una sola parte propia deja la parte
+  // pendiente (las puertas de carga lo siguen rechazando con ids ajenos: la sección que viene en el pedido se valida igual).
+  await fijarModulosActivos(e1Id, [...MODULOS_VENDIBLES, "recepcion_de_compras"]);
   const miembroDeLaEmpresa = (usuarioId: string, empresaId: string) => prismaAdmin.usuarioEmpresa.create({ data: { usuarioId, empresaId } });
 
   // E1: tres sucursales (S1 = «Central» de sembrarBase) y los usuarios.

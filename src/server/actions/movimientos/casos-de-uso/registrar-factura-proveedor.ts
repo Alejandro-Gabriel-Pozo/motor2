@@ -90,8 +90,12 @@ export async function registrarFacturaProveedorCasoDeUso(
   const moduloEncendido = propia ? (await modulosEfectivosDeEmpresa(actor.empresaId, actor.db)).has("recepcion_de_compras") : false;
   const pendienteDeRecibir = propia ? estadoInicialDeLaParte({ moduloEncendido, hayPartesAjenas: ajenas.length > 0 }) === "PENDIENTE" : false;
 
-  const seccion = propia && !pendienteDeRecibir ? await obtenerSeccionPropia(datos.seccionId as string, actor.sucursalId, actor.db) : null;
-  if (propia && !pendienteDeRecibir && !seccion) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección.");
+  // Fallo cerrado: si el pedido TRAE una sección, se valida a quién pertenece aunque la parte nazca pendiente y la sección no se use para escribir stock; un id ajeno (de otra sucursal o empresa) o inexistente nunca es ok
+  // (SECCION_NO_ENCONTRADA) y una desactivada tampoco (SECCION_INACTIVA, más abajo). Solo si NO viene sección y la parte nace pendiente no se exige: se elige al confirmar la recepción.
+  const seccionIdDelPedido = typeof datos.seccionId === "string" ? datos.seccionId.trim() : "";
+  const hayQueValidarSeccion = Boolean(propia) && (!pendienteDeRecibir || seccionIdDelPedido !== "");
+  const seccion = hayQueValidarSeccion ? await obtenerSeccionPropia(seccionIdDelPedido, actor.sucursalId, actor.db) : null;
+  if (hayQueValidarSeccion && !seccion) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección.");
 
   const payloadHash = calcularPayloadHash("FACTURA_PROVEEDOR", actor.sucursalId, { ...datos, claveIdempotencia: undefined });
   // Un reenvío de una carga que YA se hizo tiene que devolver su mensaje, no el «ya hay una factura con ese número» (la factura repetida es ella misma). El chequeo que vale es el de adentro de la

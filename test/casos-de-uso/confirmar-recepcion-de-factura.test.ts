@@ -107,10 +107,10 @@ beforeEach(async () => {
 });
 
 describe("cargar con el módulo recepcion_de_compras encendido", () => {
-  it("una sola parte propia: nace PENDIENTE, sin compra ni stock ni costo; la sección que venga se ignora; el vínculo con el proveedor y la auditoría quedan", async () => {
+  it("una sola parte propia: nace PENDIENTE, sin compra ni stock ni costo; sin sección en el pedido no se exige; el vínculo con el proveedor y la auditoría quedan", async () => {
     await encenderRecepcion();
 
-    const r = await registrarFacturaProveedorCasoDeUso(actor3(), datosDeFactura({ seccionId: "una-seccion-que-no-existe" }));
+    const r = await registrarFacturaProveedorCasoDeUso(actor3(), datosDeFactura({ seccionId: undefined }));
 
     expect(r).toMatchObject({ ok: true, mensaje: "Factura cargada: queda pendiente de recibir. El stock entra cuando un gerente o administrador la confirma.", datos: { repetida: false, operacionPropiaId: null, movimientosPropios: 0 } });
     const facturaId = (r.ok && r.datos.facturaId) as string;
@@ -125,6 +125,31 @@ describe("cargar con el módulo recepcion_de_compras encendido", () => {
     expect(await prisma.proveedorPorProducto.count({ where: { proveedorId } })).toBe(2);
     const auditoria = await prisma.registroAuditoria.findFirstOrThrow({ where: { entidad: "FacturaProveedor", entidadId: facturaId, campo: "reparto" } });
     expect(auditoria.descripcion).toBe("Factura de proveedor A-00001-00000100 cargada en «Central»");
+  });
+
+  it("fallo cerrado: con una sección en el pedido, la carga pendiente la valida: de OTRA sucursal, de OTRA empresa, inexistente o desactivada se rechaza y no queda nada escrito; una propia activa carga pendiente", async () => {
+    await encenderRecepcion();
+    await prisma.empresa.create({ data: { id: "empresa_b", nombre: "Empresa B", slug: "empresa-b", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "PROVISIONING" } });
+    const sucursalOtraEmpresa = await prismaAdmin.sucursal.create({ data: { empresaId: "empresa_b", nombre: "Sucursal ajena" } });
+    const seccionOtraEmpresa = (await prismaAdmin.seccion.create({ data: { empresaId: "empresa_b", sucursalId: sucursalOtraEmpresa.id, nombre: "Ajena" } })).id;
+    const inactiva = (await prisma.seccion.create({ data: { sucursalId: s3, nombre: "Vieja", activa: false } })).id;
+
+    const ajenaSucursal = await registrarFacturaProveedorCasoDeUso(actor3(), datosDeFactura({ seccionId: sec4 }));
+    const ajenaEmpresa = await registrarFacturaProveedorCasoDeUso(actor3(), datosDeFactura({ seccionId: seccionOtraEmpresa }));
+    const inexistente = await registrarFacturaProveedorCasoDeUso(actor3(), datosDeFactura({ seccionId: "una-seccion-que-no-existe" }));
+    const desactivada = await registrarFacturaProveedorCasoDeUso(actor3(), datosDeFactura({ seccionId: inactiva }));
+
+    for (const r of [ajenaSucursal, ajenaEmpresa, inexistente]) expect(r).toMatchObject({ ok: false, codigo: "SECCION_NO_ENCONTRADA", mensaje: "No se encontró la sección." });
+    expect(desactivada).toMatchObject({ ok: false, codigo: "SECCION_INACTIVA" });
+    expect(await prisma.facturaProveedor.count()).toBe(0);
+    expect(await prisma.facturaProveedorSucursal.count()).toBe(0);
+    expect(await comprasDeStock()).toBe(0);
+    expect(await movimientosDeCompra()).toBe(0);
+
+    const buena = await registrarFacturaProveedorCasoDeUso(actor3(), datosDeFactura({ seccionId: sec3 }));
+    expect(buena.ok, buena.mensaje).toBe(true);
+    expect((await parteDe((buena.ok && buena.datos.facturaId) as string)).estadoRecepcion).toBe("PENDIENTE");
+    expect(await comprasDeStock()).toBe(0);
   });
 
   it("módulo APAGADO (no regresión): la parte nace RECIBIDA con su compra y el stock entra al cargar, como siempre", async () => {
