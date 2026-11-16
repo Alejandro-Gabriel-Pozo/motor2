@@ -165,6 +165,16 @@ export const CATALOGO = {
     ],
     fuente: { decision: "DEC-0020" },
   },
+  // Lote D (DEC-0022): «Ya existe {un/una} … llamado «X». Elegí otro nombre.», una sola frase (aceptado por el dueño). Hoy lo usan los casos de uso de `clientes/`; el resto de los NOMBRE_REPETIDO son de carta y catálogo.
+  "rechazo.NOMBRE_REPETIDO": {
+    porDefecto: "Ya existe {entidad:un} llamado «{nombre}». Elegí otro nombre.",
+    marcadores: { entidad: "entidad", nombre: "texto" },
+    usos: [
+      { archivo: "src/server/actions/clientes/casos-de-uso/actualizar-cliente.ts", nombre: "actualizarClienteCasoDeUso" },
+      { archivo: "src/server/actions/clientes/casos-de-uso/alta-cliente.ts", nombre: "altaClienteCasoDeUso" },
+    ],
+    fuente: { decision: "DEC-0022" },
+  },
 } as const satisfies Readonly<Record<string, DefinicionDeTexto>>;
 
 export type ClaveDeTexto = keyof typeof CATALOGO;

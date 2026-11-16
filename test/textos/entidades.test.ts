@@ -11,7 +11,12 @@ describe("textoDe con entidad: el género de la cosa", () => {
       expect(esperado, `falta la fila de «${clave}» en el oráculo`).toBeDefined();
       expect(entidad.genero, clave).toBe(esperado!.genero);
       expect(textoDe("rechazo.NO_ENCONTRADO", { entidad }), clave).toBe(esperado!.noSeEncontro);
+      if (esperado!.yaExiste !== undefined) expect(textoDe("rechazo.NOMBRE_REPETIDO", { entidad, nombre: "Fulano" }), clave).toBe(esperado!.yaExiste);
     }
+  });
+
+  it("el artículo indefinido concuerda con el género (hoy solo el cliente se repite por nombre: «llamado» queda fijo, como lo eligió el dueño)", () => {
+    expect(textoDe("rechazo.NOMBRE_REPETIDO", { entidad: ENTIDADES.cliente, nombre: "A" })).toBe("Ya existe un cliente llamado «A». Elegí otro nombre.");
   });
 
   it("guardián de dimensiones: el oráculo no tiene entidades que ya no existen y los géneros son m o f", () => {

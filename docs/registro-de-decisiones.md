@@ -205,3 +205,13 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 - **Dónde:** `src/core/textos/catalogo.ts`, `src/core/textos/entidades.ts`
 - **Estado:** ACEPTADA
 - **Cita del dueño:** «Sí, un solo molde (Recomendada)» — 2026-11-16 — chat del dueño con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, «Textos: cuatro respuestas del dueño sobre la lista única»)
+
+### DEC-0022
+- **Fecha:** 2026-11-16
+- **Quién:** la sesión Sonnet de los lotes de reducción del catálogo de textos (lote D); aceptación directa del dueño.
+- **Qué decidió:** el rechazo por nombre repetido de los casos de uso de clientes (alta y edición: 4 sitios en 2 archivos) pasa a la frase única `rechazo.NOMBRE_REPETIDO`: «Ya existe {un/una} {entidad} llamado «{nombre}». Elegí otro nombre.» (marcador `entidad` con artículo indefinido, `{entidad:un}`). Lo que ve distinto el personal: antes «Ya existe un cliente llamado "X".», ahora «Ya existe un cliente llamado «X». Elegí otro nombre.» (comillas «» y la cola «Elegí otro nombre.»). «llamado» queda fijo, como lo escribió el dueño; hoy solo se repite por nombre un cliente (masculino). Los otros 12 sitios de `NOMBRE_REPETIDO` (carta y catálogo) quedan literales hasta que cierren esos frentes. Regenera el golden `dinero-tramo-c.golden.txt` (una línea: el mensaje de «cliente: alta repetida»), declarado en `caracterizaciones-congeladas.test.ts`.
+- **Por qué:** el dueño eligió una sola frase para «ya existe» (`docs/diseno-textos-en-datos-2026-11-16.md`, D-10); hoy hay 16 versiones con comillas y colas distintas.
+- **Costo de revertir:** bajo: volver a escribir la frase literal en los 4 sitios, la prueba y el golden y sacar la clave; no hay migración ni datos.
+- **Dónde:** `src/core/textos/catalogo.ts`, `src/server/actions/clientes/casos-de-uso/alta-cliente.ts`
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Sí, una sola frase (Recomendada)» — 2026-11-16 — chat del dueño con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, «Textos: cuatro respuestas del dueño sobre la lista única»)
