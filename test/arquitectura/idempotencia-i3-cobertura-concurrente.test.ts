@@ -46,6 +46,8 @@ const SIN_RAMA_DE_DUPLICADO_TODAVIA: Record<string, string> = {
   // que no hay un campo `repetido` que mostrar y agregarlo cambiaría el tipo del resultado sin que nadie lo use. El duplicado SÍ se prueba: el reintento devuelve el mensaje original, no agrega ítems ni comprobantes y no
   // vuelve a leer nada de la cuenta (`test/pos/agregar-items-idempotencia.test.ts`, `agregar-items-consultas.test.ts` y la carrera real de `cuenta-concurrencia.test.ts`, (e) y (f)).
   "server/actions/pos/casos-de-uso/agregar-items.ts": "el resultado no lleva `repetido` (dato null, contrato congelado); el duplicado se prueba por mensaje, ítems y comprobantes",
+  "server/actions/caja/casos-de-uso/abrir-sesion.ts": "el resultado lleva `yaExistia` (el nombre que usa Pedernal, regla de paridad), no `repetida`; el duplicado SÍ se prueba: misma clave y mismo pedido devuelve la sesión ya abierta, sin escribir ni auditar de nuevo (test/caja/caja-casos-de-uso.test.ts)",
+  "server/actions/caja/casos-de-uso/cobrar-cuenta.ts": "el resultado lleva `yaExistia` (el nombre que usa Pedernal, regla de paridad), no `repetida`; el duplicado SÍ se prueba: misma clave y mismo pedido devuelve el cobro ya hecho, sin duplicar movimientos (test/caja/caja-casos-de-uso.test.ts)",
   "server/actions/partes/casos-de-uso/alta-de-parte.ts": "el resultado lleva `yaExistia` (el nombre que usa Pedernal en `crearParte`, regla de paridad), no `repetida`; el duplicado SÍ se prueba: misma clave y mismos datos devuelve la ficha ya creada sin escribir ni auditar de nuevo, y seis reintentos a la vez dejan una sola ficha (`test/casos-de-uso/partes.test.ts`)",
 };
 

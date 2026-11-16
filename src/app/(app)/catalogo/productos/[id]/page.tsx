@@ -15,6 +15,9 @@ import { OBSERVACIONES_VISIBLES } from "@/core/catalogo/public";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
 import { actualizarDisponibilidadProducto } from "@/server/actions/catalogo/productos";
+import { ocultarProducto } from "@/server/actions/catalogo/ocultar-producto";
+import { TarjetaOcultar } from "@/components/catalogo/tarjeta-ocultar";
+import { cargarLoQueMuestraOcultar } from "@/server/consultas/catalogo/ocultar-producto";
 import { disponibilidadPorSucursalDeProducto } from "@/server/consultas/catalogo/disponibilidad";
 import { obtenerFichaProducto, obtenerSeccionHabitualEnSucursal } from "@/server/consultas/catalogo/productos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
@@ -88,6 +91,8 @@ export default async function FichaProductoPage({
     // `producto_opciones_admitidas` (cortesía: esa pantalla exige el permiso por su cuenta).
     p.tipo === "PV" ? cargarOpcionesDelProducto(ctx.db, p.id, ctx.sucursalId) : Promise.resolve(null),
   ]);
+  // «Ocultar» (tarjeta, etapa d): se lee dónde está oculto y quién puede cambiarlo. Todo es cortesía de la interfaz (el servidor decide cada pedido). Falla CERRADO: si no se pudo leer, la tarjeta no se muestra y la ficha sigue igual.
+  const ocultar = await cargarLoQueMuestraOcultar(ctx, p.id, puedeCambiarDisponibilidad);
   const disponibleAca = disponibilidadPorSucursal.find((d) => d.sucursalId === ctx.sucursalId)?.disponible ?? false;
   const esDeRespaldo = opcionesDeVenta?.producto.esAnclaDeAdicional ?? false;
 
@@ -241,6 +246,8 @@ export default async function FichaProductoPage({
         />
       </section>
 
+      {ocultar && !esDeRespaldo && <TarjetaOcultar {...ocultar} sucursalNombre={ctx.sucursalNombre} accion={ocultarProducto.bind(null, productoId)} />}
+
       {duplicar && (
         <div className="flex justify-end">
           <DuplicarProducto
@@ -345,3 +352,4 @@ async function cargarLoQuePideDuplicar(ctx: ContextoUsuario, productoId: string)
   ]);
   return { puedeCopiarReceta: receta.editar && !sinModuloDeRecetas, puedeCopiarOpciones: opciones.editar, puedeFijarPrecio, sucursalesDeLaReceta, resumen };
 }
+

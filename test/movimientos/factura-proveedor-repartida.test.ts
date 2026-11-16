@@ -130,6 +130,22 @@ describe("cargar factura", () => {
     }
   });
 
+  it("la auditoría de la carga repartida guarda el reparto como JSON legible (nunca «[object Object]»), con claves ordenadas y sin nada de más", async () => {
+    await comoOp3();
+    const r = await registrarFacturaProveedor(factura());
+    expect(r.ok, r.mensaje).toBe(true);
+    const cab = await prisma.facturaProveedor.findFirstOrThrow();
+    const fila = await prisma.registroAuditoria.findFirstOrThrow({ where: { entidad: "FacturaProveedor", entidadId: cab.id, campo: "reparto" } });
+    expect(fila.valorAnterior).toBeNull();
+    expect(fila.valorNuevo).not.toContain("[object Object]");
+    const nombre3 = (await prisma.sucursal.findUniqueOrThrow({ where: { id: s3 } })).nombre;
+    const reparto = JSON.parse(fila.valorNuevo!) as Array<Record<string, unknown>>;
+    expect(reparto.map((p) => [p.sucursal, p.importe, p.estado])).toEqual([[nombre3, 1_500_000, "RECIBIDA"], ["Sucursal 4", 1_000_000, "PROPUESTA"], ["Sucursal 6", 500_000, "PROPUESTA"]]);
+    // Lista cerrada de claves, en orden alfabético: lo guardado es exactamente esto y nada más.
+    for (const parte of reparto) expect(Object.keys(parte)).toEqual(["estado", "importe", "porcentajeDeclaradoBp", "sucursal"]);
+    expect(fila.valorNuevo).toBe(JSON.stringify(reparto));
+  });
+
   it("la prueba del dueño: 3.000.000 = 2.000.000 + 1.000.000 EXACTO, la parte de la 4 recién al aceptar", async () => {
     await comoOp3();
     const r = await registrarFacturaProveedor(factura({ reparto: { modo: "IMPORTE", partes: [{ sucursalId: s3, valor: 2_000_000 }, { sucursalId: s4, valor: 1_000_000 }] } }));

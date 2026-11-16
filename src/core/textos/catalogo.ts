@@ -31,7 +31,14 @@ export const CATALOGO = {
     usos: [{ archivo: "src/server/actions/catalogo/casos-de-uso/agregar-presentacion-alternativa.ts", nombre: "agregarPresentacionAlternativaCasoDeUso" }],
     fuente: { decision: "DEC-0013" },
   },
-  // Lote A (DEC-0016): «No se encontró …» idénticos con el mismo código, una clave por código.
+  // «Ocultar» (tarjeta de la ficha del producto; los cinco de la tabla T13 de Pedernal y el rechazo por existencia). Una sola cosa cada uno.
+  "accion.ocultar": { porDefecto: "Ocultar", usos: [{ archivo: "src/components/catalogo/tarjeta-ocultar.tsx", nombre: "TarjetaOcultar" }], fuente: { decision: "DEC-0014" } },
+  "accion.volver_a_mostrar": { porDefecto: "Volver a mostrar", usos: [{ archivo: "src/components/catalogo/tarjeta-ocultar.tsx", nombre: "TarjetaOcultar" }], fuente: { decision: "DEC-0014" } },
+  "accion.ocultar_en_la_empresa": { porDefecto: "Ocultar en toda la empresa", usos: [{ archivo: "src/components/catalogo/tarjeta-ocultar.tsx", nombre: "TarjetaOcultar" }], fuente: { decision: "DEC-0014" } },
+  "aviso.oculto": { porDefecto: "Oculto", usos: [{ archivo: "src/components/catalogo/tarjeta-ocultar.tsx", nombre: "TarjetaOcultar" }], fuente: { decision: "DEC-0014" } },
+  "aviso.oculto_en_la_empresa": { porDefecto: "Oculto en toda la empresa", usos: [{ archivo: "src/components/catalogo/tarjeta-ocultar.tsx", nombre: "TarjetaOcultar" }], fuente: { decision: "DEC-0014" } },
+  "rechazo.TIENE_EXISTENCIA": { porDefecto: "Primero dejá la existencia en 0.", usos: [{ archivo: "src/server/actions/catalogo/casos-de-uso/ocultar-producto.ts", nombre: "ocultarProductoCasoDeUso" }], fuente: { decision: "DEC-0014" } },
+  // Lote A (DEC-0017): «No se encontró …» idénticos con el mismo código, una clave por código.
   "rechazo.MEMBRESIA_NO_ENCONTRADA": {
     porDefecto: "No se encontró esa membresía.",
     usos: [
@@ -39,7 +46,7 @@ export const CATALOGO = {
       { archivo: "src/server/actions/auth/casos-de-uso/actualizar-notas-membresia.ts", nombre: "actualizarNotasMembresiaCasoDeUso" },
       { archivo: "src/server/actions/auth/casos-de-uso/invitar-a-vincular.ts", nombre: "invitarAVincularCasoDeUso" },
     ],
-    fuente: { decision: "DEC-0016" },
+    fuente: { decision: "DEC-0017" },
   },
   "rechazo.SUCURSAL_NO_ENCONTRADA": {
     porDefecto: "No se encontró esa sucursal.",
@@ -47,7 +54,7 @@ export const CATALOGO = {
       { archivo: "src/server/actions/auth/casos-de-uso/actualizar-activo-sucursal.ts", nombre: "actualizarActivoSucursalCasoDeUso" },
       { archivo: "src/server/actions/auth/casos-de-uso/renombrar-sucursal.ts", nombre: "renombrarSucursalCasoDeUso" },
     ],
-    fuente: { decision: "DEC-0016" },
+    fuente: { decision: "DEC-0017" },
   },
   "rechazo.CONTEO_NO_ENCONTRADO": {
     porDefecto: "No se encontró ese conteo.",
@@ -55,7 +62,7 @@ export const CATALOGO = {
       { archivo: "src/server/actions/movimientos/casos-de-uso/cancelar-conteo-fisico.ts", nombre: "cancelarConteoFisicoCasoDeUso" },
       { archivo: "src/server/actions/movimientos/casos-de-uso/resolver-conteo-pendiente.ts", nombre: "resolverConteoPendienteCasoDeUso" },
     ],
-    fuente: { decision: "DEC-0016" },
+    fuente: { decision: "DEC-0017" },
   },
   "rechazo.PRODUCTO_NO_ENCONTRADO": {
     porDefecto: "No se encontró el producto.",
@@ -64,7 +71,7 @@ export const CATALOGO = {
       { archivo: "src/server/actions/stock/casos-de-uso/set-seccion-habitual.ts", nombre: "setSeccionHabitualCasoDeUso" },
       { archivo: "src/server/actions/stock/casos-de-uso/set-stock-minimo-producto.ts", nombre: "setStockMinimoProductoCasoDeUso" },
     ],
-    fuente: { decision: "DEC-0016" },
+    fuente: { decision: "DEC-0017" },
   },
 } as const satisfies Readonly<Record<string, DefinicionDeTexto>>;
 

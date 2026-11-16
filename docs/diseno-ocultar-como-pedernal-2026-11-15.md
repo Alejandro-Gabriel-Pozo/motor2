@@ -396,6 +396,39 @@ Las tres preguntas que este documento dejó abiertas quedaron **respondidas el 2
 9. **`conteo abierto` (§4.6):** no implementar hasta verificar qué es `EstadoConteo.PENDIENTE`; hoy la regla de existencia cubre el pedido.
 10. **Ancla de adicional (I-15):** tratar como cualquier producto; si la prueba muestra que ocultarla rompe una venta por adicional, se rechaza ocultarla con el mismo criterio que activarla.
 
+## Etapa (d) — La tarjeta de la ficha (2026-11-16)
+
+**Qué es (CONFIRMADA por el dueño, 2026-11-16, vía el orquestador):** una tarjeta en la ficha del producto (`/catalogo/productos/[id]`), sin ruta propia, con dos filas —la sucursal con la que se trabaja y toda la empresa— y un botón por fila («Ocultar» / «Volver a mostrar», «Ocultar en toda la empresa»). Paralelo de Pedernal: A15 (`ZuluHub-docs/11-especificaciones/ficha-de-pantalla-ocultar.md`). **No entra** (lo que Pedernal también dejó afuera): la lista de ocultos, el filtro «Oculto», el aviso «Oculto con existencia negativa» (necesita una lectura de existencia que no existe; pregunta pendiente en Pedernal, P-1).
+
+**Textos:** los cinco aceptados por delegación (DEC-0014) más «Primero dejá la existencia en 0.» (6º, mismo lote). Sin título de tarjeta (la nombra su `aria-label`) y las filas se rotulan con el nombre de la sucursal (un dato). El resto de los rechazos usa el genérico del catálogo (`MENSAJE_GENERICO`).
+
+**Quién ve qué (cortesía de la interfaz; el servidor vuelve a decidir cada pedido):** la fila del local, quien tiene `producto_disponibilidad` EDITAR en la sucursal activa; la fila de toda la empresa, solo quien además es gerente o administrador con membresía en todas las sucursales activas (`puedeOcultarEnLaEmpresa`, la regla pura `esGerenteOAdministradorConAlcanceTotal`). Un operador ve el aviso si el producto está oculto, nunca el botón de la empresa. Mientras la empresa lo oculta, la fila del local no tiene botón (R-15).
+
+**Decisión técnica (I8, aprobada por el orquestador):** para «toda la empresa» el caso de uso ensancha SOLO la lectura de verificación (`lecturaDeVerificacionEnLaEmpresa`: el sí/no de existencia y las marcas del producto); la marca de la empresa (`sucursalId` nulo) se escribe con el alcance normal. Entra en la lista `VERIFICACION` del guardián de ensanches.
+
+### Tabla «¿qué pasa si…?» de la tarjeta
+
+| ¿Qué pasa si…? | Resultado |
+|---|---|
+| **Repetición:** doble clic en «Ocultar» (o reintento tras un corte) | El botón ignora el segundo clic mientras hay un pedido en curso (`cargando`); si igual llegara, el servidor fija un ESTADO: la segunda llamada ve «ya estaba», no escribe ni audita. Una marca, un registro. |
+| **Concurrencia:** dos pestañas, una con la pantalla vieja | La vieja pide «Ocultar» sobre algo ya oculto: «ya estaba», sin error; al refrescar dice «Volver a mostrar». Dos personas distintas a la vez: SERIALIZABLE con la fila del producto tomada; una espera o reintenta, no quedan dos marcas (único por producto y alcance). |
+| **Concurrencia con stock:** alguien suma existencia mientras otro oculta | Ocultar es SERIALIZABLE y el disparador de la base (c3) rechaza la entrada a un producto oculto: no puede quedar «oculto y con existencia». |
+| **Tiempo:** la persona deja la pantalla abierta y cambian los datos | La tarjeta muestra el estado leído al abrir; cada pedido se decide con el estado real del servidor, nunca con el de la pantalla. |
+| **Incertidumbre:** no se puede leer dónde está oculto | La tarjeta no se muestra y la ficha sigue igual (falla cerrado); se deja el error en el registro del servidor. |
+| **Reintento:** falla la red a mitad del pedido | La transacción es todo o nada; el reintento es el mismo pedido de estado (idempotente). |
+| **Error parcial:** la existencia aparece después de escribir la marca | Se deshace la transacción entera (marca y auditoría): el rechazo dice «Primero dejá la existencia en 0.». |
+| **Datos faltantes:** producto de otra empresa o inexistente | «No se encontró el producto.» (el aislamiento por empresa lo da la RLS); un alcance o un estado que no sean exactamente los permitidos se rechazan con el genérico. |
+| **Cambio de permisos:** a un operador le sacan el permiso con la pantalla abierta | El botón sigue dibujado pero el servidor rechaza (genérico) sin tocar nada; al refrescar la fila desaparece. |
+| **Cambio de permisos:** el administrador pierde la membresía de una sucursal | La fila de la empresa deja de ofrecerse y el servidor rechaza «toda la empresa» (alcance total). |
+| **Otra sucursal:** se abre la ficha desde otro local | La fila del local es la de ese local (la sucursal sale de la sesión, nunca del navegador). |
+
+### Diferencias con Pedernal (cada una con su motivo)
+
+1. **Gerente y administrador exigen membresía en todas las sucursales activas** (Pedernal: la acción `vidrieras.ocultar_en_empresa` + alcance TODAS). Motivo: Motor2 no tiene la acción de módulo; el dueño pidió el mismo criterio con roles (O-13, 2026-11-16) y la regla de alcance total ya estaba en el caso de uso.
+2. **El éxito no lleva texto:** la tarjeta se redibuja con el estado nuevo (Pedernal tampoco muestra un aviso de éxito). Motivo: no inventar un texto que el dueño no aprobó.
+3. **Sin conteo abierto** (Pedernal: «Hay un conteo abierto con este producto.»): Motor2 no lo implementa (decisión técnica 9 de este documento).
+4. **Los rechazos distintos de «existencia» dicen el genérico** del catálogo (DEC-0013) y no «Esta acción no está permitida» (texto de permisos, fuera de la delegación).
+
 ## Lo que se verificó y lo que no
 
 **Verificado (V):** el modelo y la semántica de `DisponibilidadProducto`; el caso de uso de Desactivar y su permiso; los puntos que rechazan un producto no disponible; el hueco de `anularVentaEnTx`; los cuatro escritores de movimientos; `ConteoFisico` y su ausencia de «conteo abierto»; los guardianes de arquitectura que obligan a declarar un modelo nuevo; el precedente de RLS con fila de empresa; en Pedernal, `0043`, `0049`, `ocultar-producto.ts`, `cotizar-para-vender.ts`, que anular un oculto lo rechaza **el disparador**, y que no hay rechazo por desactivado; en los documentos de Pedernal, la Revisión 3 de la carta real y la decisión del 2026-11-13.

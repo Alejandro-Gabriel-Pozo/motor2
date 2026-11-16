@@ -29,6 +29,9 @@
       // RESERVADO — `@auth/core` llega con `next-auth` (no es dependencia directa). Lo importa SOLO `test/auth/contrato-authjs-vinculacion.test.ts`, por ruta de archivo,
       // para fijar el contrato de Auth.js que E8 necesita (`handleLoginOrRegister`, que el paquete no exporta): si una actualización lo cambia, ese test falla.
       "ignoreDependencies": ["@auth/core"],
+      // RESERVADO — `psql` es un programa del sistema (no un paquete de npm): lo lanza `test/operaciones/informes-de-paridad-con-base.test.ts` para correr, de verdad, los informes de solo lectura
+      // `scripts/operaciones/informe-*.sql` (son scripts de psql: `\echo`, `\if`, `\gset`; no los puede correr el ejecutor de `pg`). El test se omite con motivo si falta.
+      "ignoreBinaries": ["psql"],
   "entry": [
     // Scripts que se corren a mano (con `tsx` o como "test" de una config de Vitest propia): nadie los importa.
     "scripts/*.ts",
