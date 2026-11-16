@@ -33,6 +33,7 @@
     "db:studio": "prisma studio",
     "plataforma:crear-admin": "tsx scripts/plataforma/crear-primer-admin.ts",
     "politica-empresa": "tsx scripts/politica-empresa.ts",
+    "plan-de-plataforma": "tsx scripts/plan-de-plataforma.ts",
     "modulos-empresa": "tsx scripts/modulos-empresa.ts",
     "detectar-cuentas-vinculadas": "tsx scripts/detectar-cuentas-vinculadas.ts",
     "medir-precargados": "tsx scripts/medir-precargados-sin-google.ts",

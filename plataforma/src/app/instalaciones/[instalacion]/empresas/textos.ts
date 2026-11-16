@@ -2,6 +2,7 @@ import type { EstadoEfectivoDeInvitacion } from "@/core/features/empresa/invitac
 import { formatearCuit } from "@/core/fiscal/public";
 import { esModuloDelCatalogo } from "@/core/modulos/catalogo";
 import { nombreDeModulo } from "@/core/modulos/vista-de-modulos";
+import { textoDe } from "@/core/textos/texto-de";
 import type { FilaDeEmpresa } from "../../../../servidor/empresas";
 import type { CoincidenciaDeCuit } from "../../../../servidor/cuit-en-instalaciones";
 import type { Instalacion } from "../../../../entorno";
@@ -41,10 +42,10 @@ export const ACCION_DE_AUDITORIA: Record<string, string> = {
   // S-33: lo escribe `scripts/politica-empresa.ts` (no la consola); el historial lo muestra junto a lo demás.
   "politica-cambiada": "Política de la empresa cambiada",
   // Planes versionados (M1): los escribe `scripts/plan-de-plataforma.ts`.
-  "plan-creado": "Plan creado",
-  "plan-borrador-guardado": "Borrador de plan guardado",
-  "plan-version-publicada": "Versión de plan publicada",
-  "plan-asignado": "Plan asignado a la empresa",
+  "plan-creado": textoDe("rotulo.plan_creado"),
+  "plan-borrador-guardado": textoDe("rotulo.plan_borrador_guardado"),
+  "plan-version-publicada": textoDe("rotulo.plan_version_publicada"),
+  "plan-asignado": textoDe("rotulo.plan_asignado"),
 };
 
 export const ETIQUETA_DE_FILTRO: Record<string, string> = {
