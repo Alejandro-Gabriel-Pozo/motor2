@@ -23,7 +23,7 @@ Pedido del dueño (2026-11-16, chat con el orquestador): «Los textos encargarte
 | Entradas que desaparecerían si se unieran TODOS los repetidos (cota máxima; muchos son homónimos legítimos) | 1.397 |
 | Textos con partes que cambian (`${…}`) | 1.207 |
 | Mensajes de error / de éxito de acciones y casos de uso (`ok`, `error`, `exito`, `fracaso`) | 396 de error + 163 de éxito |
-| …`fracaso(codigo, mensaje)` con código público | 364, con 167 códigos distintos |
+| …`fracaso(codigo, "frase literal")` (de 675 `fracaso(` en `src/`: las otras 311 pasan el mensaje por variable, constante o función y no se ven †) | 364, con 167 códigos distintos |
 | Códigos con MÁS DE UN texto distinto (misma causa, frases distintas) | 46 de 167 |
 | Textos estáticos de 12 o más caracteres, distintos | 2.747 |
 | …de ellos, citados literalmente en algún archivo de `test/` (los fija una prueba) | 1.132 |
