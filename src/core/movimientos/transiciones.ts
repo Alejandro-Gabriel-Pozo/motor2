@@ -169,22 +169,34 @@ export const ACCION_POR_PROCESO: Partial<Record<Proceso, AccionDeSucursal>> = {
   DEVOLUCION_PROVEEDOR: "proceso_devolucion_proveedor",
 };
 
-/** Port de redondearACantidadDeUnidad_ — la cantidad que entra al Kardex se redondea a los decimales que acepta su unidad de stock (Unidad.decimales). */
-export function redondearACantidadDeUnidad(cantidad: number, decimales: number): number {
-  const factor = 10 ** decimales;
-  return Math.round(cantidad * factor) / factor;
-}
-
 /** Clon propio de decimal.js (mismo patrón que `core/moneda.ts`): no depende de la configuración global y 40 dígitos sobran para cantidad × factor. */
 const D = Decimal.clone({ precision: 40, rounding: Decimal.ROUND_HALF_UP });
+
+/**
+ * Los decimales con que se guarda una cantidad de STOCK NUEVA: 4 fijos, como Pedernal (`numeric(18,4)`), y no «los de cada unidad» (`Unidad.decimales`).
+ * Dueño, 2026-11-16: «4 decimales fijos como Pedernal» (`docs/diseno-unidades-y-clasificacion-paridad-pedernal-2026-11-16.md` §8b). Las columnas de
+ * cantidad ya son `Decimal(14,4)`: no hay migración y lo ya guardado no se reescribe. Es la ÚNICA fuente de esta cifra.
+ */
+export const DECIMALES_DE_STOCK = 4;
+
+/**
+ * Redondea una cantidad a `decimales` con aritmética decimal EXACTA (nunca coma flotante) y el empate ALEJÁNDOSE DEL CERO (`MITAD_SUBE_SIMETRICA` de
+ * Pedernal; igual que `NUMERIC` de Postgres): 0,00005 → 0,0001 y −0,00005 → −0,0001 con 4 decimales. Antes usaba `Math.round(x·10ⁿ)/10ⁿ` (float, empate
+ * hacia +∞, y `1,005 × 100 = 100,49999999999999`). Nunca devuelve −0 (el Kardex no guarda signo en un cero). El `number` de entrada se lee por su
+ * representación decimal más corta (`String(n)`): el valor tecleado o venido de la base, no su expansión binaria. El nombre se conserva por compatibilidad:
+ * lo llaman con 4 (stock), con 8 (arrastre de redondeo) y con otros decimales.
+ */
+export function redondearACantidadDeUnidad(cantidad: number, decimales: number): number {
+  const redondeada = new D(cantidad).toDecimalPlaces(decimales, Decimal.ROUND_HALF_UP).toNumber();
+  return redondeada === 0 ? 0 : redondeada;
+}
 
 /**
  * Conversión de una compra de su unidad de compra a la unidad de stock, en decimal EXACTO (nunca float): `cantidadComprada × factor`
  * redondeado a los decimales de la unidad de stock.
  *
- * REGLA DE REDONDEO (la MISMA de `redondearACantidadDeUnidad`, que usaba `Math.round`): el empate va hacia +∞ (`Decimal.ROUND_HALF_CEIL`:
- * 2,5 → 3 y −2,5 → −2; 0,125 → 0,13 pero −0,125 → −0,12 con 2 decimales). Lo único que cambia es que ahora el empate se detecta bien: con
- * float, `1,005 × 100` da `100,49999999999999` y se redondeaba para abajo; y `0,1 × 3` arrastraba `0,30000000000000004`.
+ * REGLA DE REDONDEO (la MISMA de `redondearACantidadDeUnidad`): el empate se ALEJA DEL CERO (`Decimal.ROUND_HALF_UP`, como Pedernal: 2,5 → 3 y −2,5 → −3).
+ * Desde 2026-11-16 reemplaza al empate hacia +∞ (`ROUND_HALF_CEIL`) que venía de `Math.round`; solo cambia el resultado de un empate NEGATIVO exacto.
  *
  * Devuelve las dos cantidades: `exacta` (el producto sin redondear, para el texto del detalle) y `redondeada` (la que entra al Kardex).
  * Entran y salen `number` (el borde del dominio); el `Decimal` no sale de acá. Los `number` de entrada se leen por su representación
@@ -192,7 +204,7 @@ const D = Decimal.clone({ precision: 40, rounding: Decimal.ROUND_HALF_UP });
  */
 export function convertirCantidadAUnidadDeStock(cantidadComprada: number, factor: number, decimales: number): { exacta: number; redondeada: number } {
   const exacta = new D(cantidadComprada).times(factor);
-  return { exacta: exacta.toNumber(), redondeada: exacta.toDecimalPlaces(decimales, Decimal.ROUND_HALF_CEIL).toNumber() };
+  return { exacta: exacta.toNumber(), redondeada: exacta.toDecimalPlaces(decimales, Decimal.ROUND_HALF_UP).toNumber() };
 }
 
 /**
