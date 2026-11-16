@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { OPCIONES_AGOTADAS_AYUDAS_VISIBLES } from "@/core/catalogo/public";
 import { useRef, useState, useTransition } from "react";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { formatearCantidad } from "@/core/pos/public";
@@ -81,7 +82,10 @@ export function OpcionesAgotadas({
       {visibles.map((g) => (
         <section key={g.grupoId} aria-labelledby={`grupo-${g.grupoId}`} className="flex flex-col gap-2 rounded border p-3">
           <h2 id={`grupo-${g.grupoId}`} className="font-medium">
-            {g.nombre} <span className="text-sm font-normal text-tinta-suave">· {g.opciones.filter((o) => !o.agotada).length} de {g.opciones.length} disponibles</span>
+            {g.nombre}
+            {OPCIONES_AGOTADAS_AYUDAS_VISIBLES && (
+              <span className="text-sm font-normal text-tinta-suave"> · {g.opciones.filter((o) => !o.agotada).length} de {g.opciones.length} disponibles</span>
+            )}
           </h2>
           <ul className="flex flex-col divide-y">
             {g.opciones.map((o) => (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { MATRICES_AYUDAS_VISIBLES } from "@/core/permisos/matrices-ayudas-visibles";
 import { Fragment, useEffect, useMemo, useState, useTransition } from "react";
 import { guardarPermisos } from "@/server/actions/permisos/permisos";
 import { nivelMinimoDeAccion, claveEnCatalogo, esAccionSoloVer } from "@/core/permisos/acciones";
@@ -270,11 +271,11 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-tinta-tenue">
+      {(editando || MATRICES_AYUDAS_VISIBLES) && (<p className="text-xs text-tinta-tenue">
         Tocar «Editar» también prende «Ver», y sacar «Ver» saca «Editar» (Ver ⊇ Editar). «gestion_permisos», «gestion_roles», «gestion_usuarios», «activar_usuario_sucursal», «notas_usuario_sucursal» y «apagar_cuenta_empresa» siempre conservan Editar para el rol administrador (🔒). Las acciones con «Piso» no se le pueden dar a un rol de un nivel más bajo (🚫): las de piso «administrador» y «administrador de sistema» (el gobierno de la empresa: usuarios, roles, permisos, sucursales y auditoría) no se le dan a un rol de nivel operario, y las de piso «gerente» las tiene solo el gerente.
         {" Las claves de solo ver (los reportes) no tienen «Editar»: se muestran con un guion."}
         {editando && " Lo marcado en amarillo es lo que cambiaste."}
-      </p>
+      </p>)}
     </div>
   );
 }
