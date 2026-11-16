@@ -82,3 +82,15 @@ Los SQL 0037, 0030, 0007 y 0025 de Pedernal (`es_atajo`, `compras_hija_en_la_tra
 
 - **Migración 20261117120000 y N3-a (rama local, PR a abrir):** no se cambian sin aviso. Las diferencias D-1/D-2/D-5 se tratan como **etapas siguientes** (cambian un comando ya construido); si el dueño las pide, se hacen como PR aparte sobre N3-a.
 - **Diseño N3-b/OC (`#341`):** se corrige según §3 antes de construir cualquier etapa.
+
+## 8. Respuestas del dueño y decisiones del orquestador general (2026-11-16)
+
+Literales del dueño (AskUserQuestion; las registra el orquestador general en `motor2-docs`):
+- **Exceso contra la orden (D-4a):** «Como Pedernal: permitir, configurable (Recomendada)» — CONFIRMADA. PERMITIR por defecto; configurable PERMITIR/AVISAR/BLOQUEAR con `confirmo_exceso` por línea, como Pedernal; configurar: solo gerente y administrador.
+- **Rechazadas (D-3):** «Registrarla en un depósito común (Recomendada)» — CONFIRMADA. La línea rechazada **entra al stock** en un depósito que se elige al recibir y **no cuenta contra la orden**; cuando exista el depósito de rechazo/cuarentena (0064, etapa propia) se mueve ahí.
+
+Decisiones del orquestador general (declaradas; el dueño las corrige):
+- **D-4b** precio de línea de orden `>= 0` (NULL = sin precio), como Pedernal.
+- **D-8 / 7c** la temperatura del control **no entra** (no pedida; «lo que el dueño no pidió no entra»): queda como sugerencia.
+- **D-1** el control por línea se carga **antes** de confirmar y no se exige en todas las líneas; **D-2** un depósito por línea y fraccionar una línea entre depósitos: **se alinean con Pedernal** por la regla del 2026-11-13 («Necesitamos ser iguales [a Pedernal] en todo»). Como N3-a todavía no está pusheado, se corrige el **comando construido** antes de pushear.
+- La diferencia (1) «recepción = parte de la factura» queda declarada con la cita del dueño «Toda compra sigue llevando factura (Recomendada)» (2026-11-16).
