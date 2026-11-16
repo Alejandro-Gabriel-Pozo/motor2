@@ -1,9 +1,6 @@
+import { CLASES_DE_MOVIMIENTO, DENOMINACIONES_DE_BILLETE, MAXIMO_DE_RENGLONES_DE_COBRO, TOPE_EN_CENTAVOS, centavosDeImporte, diferenciaDeArqueo, importeDeCentavos, importeValidoParaClase, repartirCobro, signoDeClase, totalContadoEnCentavos } from "@/core/caja/public";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { totalContadoEnCentavos, diferenciaDeArqueo, DENOMINACIONES_DE_BILLETE } from "@/core/caja/arqueo";
-import { repartirCobro, MAXIMO_DE_RENGLONES_DE_COBRO } from "@/core/caja/cobro";
-import { centavosDeImporte, importeDeCentavos, TOPE_EN_CENTAVOS } from "@/core/caja/dinero-de-caja";
-import { CLASES_DE_MOVIMIENTO, importeValidoParaClase, signoDeClase } from "@/core/caja/sesion";
 
 const c = (n: number) => BigInt(n);
 

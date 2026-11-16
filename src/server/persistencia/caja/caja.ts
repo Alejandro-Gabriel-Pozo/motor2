@@ -1,7 +1,7 @@
 import "server-only";
+import { textoDeCentavos } from "@/core/caja/public";
+import type { ClaseDeMovimiento } from "@/core/caja/public";
 import type { Prisma } from "@prisma/client";
-import { textoDeCentavos } from "@/core/caja/dinero-de-caja";
-import type { ClaseDeMovimiento } from "@/core/caja/sesion";
 
 /**
  * Persistencia de la CAJA (etapa C1, docs/diseno-caja-y-cobro-paridad-pedernal-2026-11-16.md). Mismo contrato que el resto de `server/persistencia/`: el cliente es el PRIMER parámetro, `data` literal, sin reglas de negocio ni
@@ -11,7 +11,7 @@ import type { ClaseDeMovimiento } from "@/core/caja/sesion";
 
 /** Un `Decimal` de Prisma (2 decimales) a centavos enteros, sin pasar por `number`. */
 export function centavosDeDecimal(d: Prisma.Decimal): bigint {
-  return BigInt(d.mul(100).toFixed(0));
+  return BigInt(d.mul(100).toDecimalPlaces(0).toString());
 }
 
 export const SELECCION_DE_SESION = {
@@ -37,10 +37,6 @@ export async function cargarMedioEfectivo(db: Prisma.TransactionClient, empresaI
 /** Crea el medio EFECTIVO si no hay (ON CONFLICT DO NOTHING sobre `MedioDePago_efectivo_key`). */
 export async function asegurarMedioEfectivo(db: Prisma.TransactionClient, args: { id: string; empresaId: string }): Promise<void> {
   await db.medioDePago.createMany({ data: [{ id: args.id, empresaId: args.empresaId, tipo: "EFECTIVO" }], skipDuplicates: true });
-}
-
-export async function cargarMedioDePago(db: Prisma.TransactionClient, empresaId: string, id: string): Promise<{ id: string; tipo: string; activo: boolean } | null> {
-  return db.medioDePago.findFirst({ where: { empresaId, id }, select: { id: true, tipo: true, activo: true } });
 }
 
 export async function cargarSesionDeClave(db: Prisma.TransactionClient, empresaId: string, claveIdempotencia: string): Promise<SesionGuardada | null> {

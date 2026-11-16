@@ -1,17 +1,9 @@
 /**
- * Estados de la sesión de caja y lo que cada uno permite (docs/diseno-caja-y-cobro-paridad-pedernal-escalera-2026-11-16.md, I-5 e I-6). Una sesión nace `ABIERTA` y termina `CERRADA`; una cerrada no se reabre.
+ * Clases de movimiento de la caja y su signo (docs/diseno-caja-y-cobro-paridad-pedernal-escalera-2026-11-16.md, I-5 e I-6). La sesión nace ABIERTA y termina CERRADA (una cerrada no se reabre): ese estado lo hace cumplir la base.
  * La etapa C1 no tiene «en cierre» ni jornada: el cierre es un solo paso (todo o nada); esos estados llegan con la etapa C2.
  *
  * Puro: sin reloj, sin azar, sin I/O.
  */
-export const ESTADOS_DE_SESION = ["ABIERTA", "CERRADA"] as const;
-export type EstadoDeSesion = (typeof ESTADOS_DE_SESION)[number];
-
-/** Cobrar y mover efectivo solo se puede con la sesión abierta. */
-export function admiteMovimientos(estado: EstadoDeSesion): boolean {
-  return estado === "ABIERTA";
-}
-
 /** Las clases de movimiento de caja de C1 y su signo (igual que Pedernal, sin `AJUSTE`, que llega con C2). */
 export const CLASES_DE_MOVIMIENTO = ["FONDO_INICIAL", "COBRO", "INGRESO_MANUAL", "EGRESO_MANUAL", "ANULACION"] as const;
 export type ClaseDeMovimiento = (typeof CLASES_DE_MOVIMIENTO)[number];

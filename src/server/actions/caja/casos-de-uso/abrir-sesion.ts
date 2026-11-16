@@ -1,5 +1,5 @@
 import "server-only";
-import { textoDeCentavos } from "@/core/caja/dinero-de-caja";
+import { textoDeCentavos } from "@/core/caja/public";
 import type { ComandoAbrirSesion, ResultadoAbrirSesion } from "@/core/features/caja/caja.schema";
 import { calcularPayloadHash } from "@/core/movimientos/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";
@@ -18,7 +18,7 @@ import { asegurarCaja, asegurarMedioEfectivo, cargarCajaDeSucursal, cargarMedioE
  *  1. la clave de reintento (única por empresa): misma clave y mismo pedido → la sesión ya abierta (`yaExistia`, sin escribir ni auditar de nuevo); misma clave con otro pedido → `CLAVE_REUTILIZADA`. La clave se mira ANTES que el estado;
  *  2. la sucursal existe y está activa;
  *  3. asegura la caja y el efectivo; si la caja ya tiene una sesión sin cerrar → `CAJA_YA_ABIERTA { sesionId }`;
- *  4. sella el día de negocio con la zona de la empresa (corte 00:00 en C1: la hora de corte llega con la etapa C2), inserta la sesión, el movimiento FONDO_INICIAL y la auditoría.
+ *  4. sella el día de negocio con la zona de la empresa del contexto (`empresaZonaHoraria`; corte 00:00 en C1: la hora de corte llega con la etapa C2), inserta la sesión, el movimiento FONDO_INICIAL y la auditoría.
  * Segunda barrera: los índices únicos `SesionCaja_una_sin_cerrar_por_caja_key` y `SesionCaja_empresaId_claveIdempotencia_key`.
  *
  * @contract Deja exactamente una sesión abierta por caja y por clave, con su fondo, o no escribe nada.
@@ -28,7 +28,7 @@ import { asegurarCaja, asegurarMedioEfectivo, cargarCajaDeSucursal, cargarMedioE
  * @ficha permiso=caja_abrir_sesion transaccion=SERIALIZABLE idempotencia=POR_CLAVE auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function abrirSesionCasoDeUso(
-  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "empresaId" | "transaccion" | "ahora">,
+  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "empresaId" | "empresaZonaHoraria" | "transaccion" | "ahora">,
   comando: ComandoAbrirSesion,
   azar: FuenteDeAzar,
 ): Promise<ResultadoAbrirSesion> {
@@ -56,15 +56,14 @@ export async function abrirSesionCasoDeUso(
       const abierta = await cargarSesionAbiertaDeCaja(tx, actor.empresaId, caja.id);
       if (abierta) return { ...fracaso("CAJA_YA_ABIERTA", "La caja ya tiene una sesión abierta."), sesionId: abierta.id };
 
-      const empresa = await tx.empresa.findUniqueOrThrow({ where: { id: actor.empresaId }, select: { zonaHoraria: true } });
       const sesionId = azar.uuid();
       await insertarSesion(tx, {
         id: sesionId,
         empresaId: actor.empresaId,
         sucursalId: actor.sucursalId,
         cajaId: caja.id,
-        fechaDeNegocio: fechaDeColumnaDate(diaDeCalendario(actor.ahora, empresa.zonaHoraria)),
-        zonaHoraria: empresa.zonaHoraria,
+        fechaDeNegocio: fechaDeColumnaDate(diaDeCalendario(actor.ahora, actor.empresaZonaHoraria)),
+        zonaHoraria: actor.empresaZonaHoraria,
         abiertaEn: actor.ahora,
         abiertaPorId: actor.usuarioId,
         claveIdempotencia: comando.claveIdempotencia,

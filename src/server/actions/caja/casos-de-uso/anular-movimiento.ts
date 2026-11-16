@@ -1,5 +1,5 @@
 import "server-only";
-import { textoDeCentavos } from "@/core/caja/dinero-de-caja";
+import { textoDeCentavos } from "@/core/caja/public";
 import type { ComandoAnularMovimiento, ResultadoAnularMovimiento } from "@/core/features/caja/caja.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { FuenteDeAzar } from "@/core/seguridad/azar";

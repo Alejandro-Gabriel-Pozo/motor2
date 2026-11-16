@@ -1,6 +1,5 @@
 import "server-only";
-import { diferenciaDeArqueo, totalContadoEnCentavos } from "@/core/caja/arqueo";
-import { textoDeCentavos } from "@/core/caja/dinero-de-caja";
+import { diferenciaDeArqueo, textoDeCentavos, totalContadoEnCentavos } from "@/core/caja/public";
 import type { ComandoCerrarSesion, ResultadoCerrarSesion } from "@/core/features/caja/caja.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { FuenteDeAzar } from "@/core/seguridad/azar";

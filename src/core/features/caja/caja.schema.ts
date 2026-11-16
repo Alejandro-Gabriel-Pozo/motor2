@@ -1,5 +1,4 @@
-import type { ConteoDeBilletes } from "@/core/caja/arqueo";
-import type { RenglonDeCobro } from "@/core/caja/cobro";
+import type { ConteoDeBilletes, RenglonDeCobro } from "@/core/caja/public";
 import type { Exito, Fracaso } from "@/core/resultado-caso";
 
 /**

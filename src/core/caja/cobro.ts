@@ -17,15 +17,15 @@ export interface RenglonDeCobro {
   readonly importeEnCentavos: bigint;
 }
 
-export type ErrorDeCobro = "COBRO_SIN_RENGLONES" | "COBRO_CON_DEMASIADOS_RENGLONES" | "IMPORTE_INVALIDO" | "COBRO_NO_CUADRA";
+type ErrorDeCobro = "COBRO_SIN_RENGLONES" | "COBRO_CON_DEMASIADOS_RENGLONES" | "IMPORTE_INVALIDO" | "COBRO_NO_CUADRA";
 
 /** Cuánto falta (`falta`) o sobra (`sobra`) para llegar al total, en centavos; solo con `COBRO_NO_CUADRA`. */
-export interface DiferenciaDeCobro {
+interface DiferenciaDeCobro {
   readonly falta: bigint;
   readonly sobra: bigint;
 }
 
-export type ResultadoDeReparto =
+type ResultadoDeReparto =
   | ResultadoDeRegla<readonly RenglonDeCobro[], Exclude<ErrorDeCobro, "COBRO_NO_CUADRA">>
   | { readonly ok: false; readonly error: "COBRO_NO_CUADRA"; readonly diferencia: DiferenciaDeCobro };
 

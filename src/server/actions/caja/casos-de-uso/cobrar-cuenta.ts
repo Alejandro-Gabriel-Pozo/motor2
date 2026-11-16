@@ -1,6 +1,5 @@
 import "server-only";
-import { centavosDeImporte, textoDeCentavos } from "@/core/caja/dinero-de-caja";
-import { repartirCobro } from "@/core/caja/cobro";
+import { centavosDeImporte, repartirCobro, textoDeCentavos } from "@/core/caja/public";
 import type { ComandoCobrarCuenta, ResultadoCobrarCuenta } from "@/core/features/caja/caja.schema";
 import { calcularPayloadHash } from "@/core/movimientos/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";

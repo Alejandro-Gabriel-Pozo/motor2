@@ -20,10 +20,11 @@ import { EMPRESA_POR_DEFECTO_ID as EMPRESA, limpiarBaseDeTest, prismaAdmin } fro
  * antes del estado deja en rojo «el mismo cobro repetido».
  */
 let s: Awaited<ReturnType<typeof sembrarSalon>>;
-const AHORA = new Date("2026-11-17T15:00:00.000Z");
+// Un día PASADO fijo (las fechas absolutas recientes o futuras se vuelven falsas con el tiempo, test/setup/tiempo.ts): 15/01/2026 a las 12:00 en Argentina.
+const AHORA = new Date("2026-01-15T15:00:00.000Z");
 const c = (n: number) => BigInt(n);
 
-const actor = () => ({ usuarioId: s.admin.id, empresaId: EMPRESA, sucursalId: s.sucursalId, ahora: AHORA, ...baseDeEmpresa(EMPRESA, { lectura: [s.sucursalId], escritura: [s.sucursalId] }) });
+const actor = () => ({ usuarioId: s.admin.id, empresaId: EMPRESA, sucursalId: s.sucursalId, ahora: AHORA, empresaZonaHoraria: "America/Argentina/Buenos_Aires", ...baseDeEmpresa(EMPRESA, { lectura: [s.sucursalId], escritura: [s.sucursalId] }) });
 const abrir = (fondo = 100_00, clave = randomUUID()) => abrirSesionCasoDeUso(actor(), { claveIdempotencia: clave, fondoEnCentavos: c(fondo) }, azarDelProceso);
 const mover = (sesionId: string, sentido: "INGRESO" | "EGRESO", importe: number, clave = randomUUID(), motivo = "cambio") =>
   registrarMovimientoManualCasoDeUso(actor(), { claveIdempotencia: clave, sesionId, sentido, importeEnCentavos: c(importe), motivo }, azarDelProceso);
@@ -50,7 +51,7 @@ describe("abrir la sesión de caja", () => {
     if (!r.ok) return;
     const sesion = await prismaAdmin.sesionCaja.findUniqueOrThrow({ where: { id: r.datos.sesionId } });
     expect(sesion).toMatchObject({ estado: "ABIERTA", zonaHoraria: "America/Argentina/Buenos_Aires", abiertaPorId: s.admin.id });
-    expect(sesion.fechaDeNegocio.toISOString().slice(0, 10)).toBe("2026-11-17");
+    expect(sesion.fechaDeNegocio.toISOString().slice(0, 10)).toBe("2026-01-15");
     expect(await prismaAdmin.caja.count()).toBe(1);
     const mov = await prismaAdmin.movimientoCaja.findMany({ where: { sesionId: sesion.id } });
     expect(mov).toHaveLength(1);
@@ -59,11 +60,11 @@ describe("abrir la sesión de caja", () => {
   });
 
   it("a las 01:00 de Argentina (04:00 UTC) el día de negocio es el calendario argentino, no el UTC", async () => {
-    const tarde = { ...actor(), ahora: new Date("2026-11-18T02:30:00.000Z") }; // 23:30 del 17 en Argentina
+    const tarde = { ...actor(), ahora: new Date("2026-01-16T02:30:00.000Z") }; // 23:30 del 15 en Argentina
     const r = await abrirSesionCasoDeUso(tarde, { claveIdempotencia: randomUUID(), fondoEnCentavos: c(0) }, azarDelProceso);
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    expect((await prismaAdmin.sesionCaja.findUniqueOrThrow({ where: { id: r.datos.sesionId } })).fechaDeNegocio.toISOString().slice(0, 10)).toBe("2026-11-17");
+    expect((await prismaAdmin.sesionCaja.findUniqueOrThrow({ where: { id: r.datos.sesionId } })).fechaDeNegocio.toISOString().slice(0, 10)).toBe("2026-01-15");
   });
 
   it("el mismo pedido repetido (doble clic) devuelve la misma sesión y no duplica nada", async () => {
@@ -85,7 +86,7 @@ describe("abrir la sesión de caja", () => {
   });
 
   it("ocho aperturas a la vez con claves distintas dejan UNA sola sesión y UNA sola caja", async () => {
-    const rs = await Promise.allSettled(Array.from({ length: 8 }, () => abrir(100_00)));
+    const rs = await Promise.allSettled(Array.from({ length: 8 }, () => abrirSesionCasoDeUso(actor(), { claveIdempotencia: randomUUID(), fondoEnCentavos: c(100_00) }, azarDelProceso)));
     const oks = rs.filter((x) => x.status === "fulfilled" && x.value.ok);
     expect(oks).toHaveLength(1);
     expect(await prismaAdmin.sesionCaja.count()).toBe(1);
@@ -209,7 +210,7 @@ describe("cobrar una cuenta cerrada", () => {
     await abrir(0);
     const cuenta = await cuentaCerrada(1, 3000);
     const ef = await efectivoId();
-    const rs = await Promise.allSettled(Array.from({ length: 8 }, () => cobrar(cuenta.id, [{ medioDePagoId: ef, importeEnCentavos: c(3000_00) }], 3000_00)));
+    const rs = await Promise.allSettled(Array.from({ length: 8 }, () => cobrarCuentaCasoDeUso(actor(), { claveIdempotencia: randomUUID(), cuentaId: cuenta.id, totalVistoEnCentavos: c(3000_00), renglones: [{ medioDePagoId: ef, importeEnCentavos: c(3000_00) }] }, azarDelProceso)));
     expect(rs.filter((x) => x.status === "fulfilled" && x.value.ok)).toHaveLength(1);
     expect(await prismaAdmin.cobranza.count()).toBe(1);
     expect(await prismaAdmin.movimientoCaja.count({ where: { clase: "COBRO" } })).toBe(1);
@@ -220,7 +221,7 @@ describe("cobrar una cuenta cerrada", () => {
     const cuenta = await cuentaCerrada(1, 3000);
     const ef = await efectivoId();
     const clave = randomUUID();
-    const rs = await Promise.allSettled(Array.from({ length: 8 }, () => cobrar(cuenta.id, [{ medioDePagoId: ef, importeEnCentavos: c(3000_00) }], 3000_00, clave)));
+    const rs = await Promise.allSettled(Array.from({ length: 8 }, () => cobrarCuentaCasoDeUso(actor(), { claveIdempotencia: clave, cuentaId: cuenta.id, totalVistoEnCentavos: c(3000_00), renglones: [{ medioDePagoId: ef, importeEnCentavos: c(3000_00) }] }, azarDelProceso)));
     expect(rs.every((x) => x.status === "fulfilled" && x.value.ok)).toBe(true);
     expect(await prismaAdmin.cobranza.count()).toBe(1);
     expect(await prismaAdmin.movimientoCaja.count({ where: { clase: "COBRO" } })).toBe(1);
