@@ -59,7 +59,7 @@ Contexto: dos instalaciones de producción con una base cada una (ADR-025), una 
 | Concepto | Definición propuesta (igual a Pedernal, adaptada a Prisma) | Estado |
 |---|---|---|
 | **Perilla** | Elemento de un **catálogo cerrado en código** (`src/core/…`): id, tipo (**INTERRUPTOR** o **LIMITE**, nada más), valor base, ámbito (EMPRESA, SUCURSAL), módulo, `requiere`. La base no conoce el catálogo. Regla heredada: **una perilla que nadie verifica no se declara** | PROPUESTA (forma de Pedernal; `perillas.ts:9-144`) |
-| **Valor de base** | Todo nace apagado / en 0 (`rolesPropiosMax = 0`); `permisosEditables` y `dosPaneles` nacen en `true` **por compatibilidad con empresas existentes** y es una diferencia declarada con «Todo nace cerrado» (§8, D-3) | PROPUESTA; NO VERIFICADA su aceptación por el dueño |
+| **Valor de base** | Todo nace apagado / en 0 (`rolesPropiosMax = 0`); `permisosEditables` y `dosPaneles` **nacen en `false` para las empresas NUEVAS** y la plataforma los abre cuando corresponde; las empresas existentes conservan su valor (hoy `true`) | CONFIRMADA («Sí, nacen cerradas (Recomendada)», 2026-11-16, `motor2-docs`, «tercera tanda») |
 | **Perilla efectiva** | Cálculo puro: ajuste vigente más específico > valor del plan > base; luego `requiere` (falla cerrado) | PROPUESTA (M3+); en P2 es la columna |
 | **Ajuste** | Fila que **solo se agrega** (serie numerada por empresa y perilla), con `motivo`, `vigenteDesde`, autor; nunca UPDATE ni DELETE | PROPUESTA (M3) |
 | **Plan** | Dato de plataforma (nombre único, estado ACTIVO/RETIRADO), sin precio | CONFIRMADA en su semántica (2026-11-16); construcción en M1 |
@@ -91,6 +91,7 @@ Perilla (cada una del catálogo) × valor (0, igual al uso, mayor; interruptor s
 | Etapa | Qué entra | Toca tablas | Estado |
 |---|---|---|---|
 | **P2 + P3 (ya aprobadas)** | Perilla de roles propios nacida en 0 (`Empresa.rolesPropiosMax`, la sube la plataforma empresa por empresa) y nombres «empleado»/«administrador». Diseño en `plan-roles-y-permisos-como-pedernal-2026-11-16.md`; este frente no lo reescribe. Es la perilla por empresa que el dueño pidió; **no espera a los planes** | 1 columna aditiva en `Empresa` | CONFIRMADA («como pedernal,» y «Sí, «Administrador»», 2026-11-16) |
+| **P4 (nacen cerradas)** | Empresas NUEVAS: `permisosEditables` y `dosPaneles` en `false` al nacer (cambio del `DEFAULT` de las dos columnas y de la alta de empresa); las existentes no cambian. Con planes, la perilla pasa a derivarse del plan en M1/M3 | 2 columnas (solo `DEFAULT`, aditivo y reversible) | CONFIRMADA (2026-11-16) |
 | **M1 (MÍNIMA)** | **Planes versionados sobre lo que ya hay:** `Plan` (código único, ACTIVO/RETIRADO, sin precio), `VersionDePlan` (BORRADOR → PUBLICADA inmutable; `modulos` = techo; `perillas` con el valor de cada perilla del catálogo), `PlanDeEmpresa` (asignación **solo inserción**, número consecutivo, `vigenteDesde`, motivo, autor). Catálogo de perillas **en código** (hoy con una sola: `rolesPropiosMax`, valor base 0; las demás entran cuando su frente la pida con verificador). Estado de módulo **efectivo** = obligatorios ∪ (activados ∩ techo ∩ disponibles); activado fuera del techo = **solo lectura**. Casos de plataforma: crear plan, guardar borrador, publicar versión, asignar plan (con clave de idempotencia y `FOR UPDATE`). **Backfill (S-M1-1):** un plan de transición «Actual» versión 1 con techo = todos los módulos vendibles disponibles, asignado a **toda empresa existente**, para que ninguna pierda un módulo al encender el techo | 3 tablas nuevas + datos de arranque por base | PROPUESTA; niveles 1-5 por confirmar |
 | M2 | Consola: pantalla «Plan de la empresa» (plan actual y programado, módulos, perillas con su origen) y diálogo de cambio, con clave de idempotencia | ninguna | PENDIENTE |
 | M3 | `AjusteDePerilla` (solo inserción): subir una perilla a **una** empresa sobre el valor de su plan; absorbe `rolesPropiosMax` (columna → perilla del catálogo) y las dos políticas booleanas | 1 tabla nueva | PENDIENTE |
@@ -110,7 +111,7 @@ Perilla (cada una del catálogo) × valor (0, igual al uso, mayor; interruptor s
 |---|---|---|---|---|
 | D-1 | Dónde viven las perillas en P2 | catálogo + `ajuste_de_perilla` | columna en `Empresa` | Primero lo más barato; Pedernal tampoco construyó la perilla de roles; se convierte en M3 |
 | D-2 | Semántica del plan | techo + versiones inmutables; los módulos los activa la plataforma dentro del techo | **Igual a Pedernal** (decisión del dueño 2026-11-16). **ADR-013 queda superado en esto**: ya no «genera filas» ni es «foto» con «reaplicar»; se actualiza o se anota en un PR propio al construir M1 | CONFIRMADA |
-| D-3 | Valores base de `permisosEditables`/`dosPaneles` | n/a (NV) | `true` | Empresas existentes dependen de ello (DATOS existentes); **choca con «Todo nace cerrado»**: PENDIENTE del dueño si las empresas nuevas deben nacer cerradas |
+| D-3 | Valores base de `permisosEditables`/`dosPaneles` | n/a (NV) | empresas nuevas: `false`; existentes: sin cambio | Decisión del dueño («Sí, nacen cerradas (Recomendada)», 2026-11-16). **Implica cambiar el `DEFAULT` de las dos columnas y la alta de empresa** (`sembrar-empresa.ts`); no reescribe datos existentes. Toca el golden `huella-de-gobierno` y el e2e de alta (zona restringida: se pide por turno). Detalle de etapa en §7 (P4) | CONFIRMADA |
 | D-4 | Constancia en la empresa | `auditoria_empresa` por empresa | solo `AuditoriaPlataforma` | Hoy sin motivo; M4 |
 | D-5 | Idempotencia de la consola | tabla con clave y huella | estado («ya estaba así») | Basta para dos booleanos; con ajustes que **agregan filas** (M3) hace falta la clave (si no, repetir duplica) |
 | D-6 | Prisma | SQL propio, triggers | Prisma + SQL a mano en la migración (`CHECK`, trigger de solo inserción, RLS), como `ModuloEmpresa` | Lo impone Prisma |
@@ -133,11 +134,11 @@ Comandos: **A** cambiar plan (M1) · **B** subir/bajar perilla (P2/M3) · **C** 
 
 ## 10. Preguntas al dueño (una por vez; solo las que cambian modelo de datos o permisos)
 
-**Respondida:** «Planes con versiones desde el inicio, como Pedernal» (2026-11-16, ver arriba).
+**Respondidas:** (1) «Planes con versiones desde el inicio, como Pedernal» (2026-11-16, ver arriba). (2) «Sí, nacen cerradas (Recomendada)» (2026-11-16): las empresas NUEVAS nacen con la edición de permisos y los dos paneles cerrados y la plataforma los abre cuando corresponde; las existentes no cambian.
 
-**Siguiente (la hace el orquestador general, redactada para quien no programa):** hoy toda empresa nueva nace con la edición de permisos y los dos paneles **abiertos**. Pedernal y la regla de «todo nace cerrado» irían al revés: nace cerrado y lo abre la plataforma. ¿Las empresas **nuevas** de Motor2 deben nacer con esas dos opciones cerradas (las empresas que ya existen no cambian)? Cambia permisos.
+**Siguiente (q3, la hace el orquestador general, redactada para quien no programa):** cuando la plataforma le cambia a una empresa el plan o una opción (por ejemplo, le abre los roles propios), hoy eso queda anotado solo en el registro interno de la plataforma. ¿Querés que la propia empresa también lo vea en su historial («la plataforma cambió tu plan el día tal, motivo tal»)? Cambia qué datos se guardan y quién los ve.
 
-**En cola, después:** (q3) ¿la empresa debe ver en su propio historial que la plataforma le cambió el plan o una perilla (hoy solo queda en el registro de la plataforma)? (q4) el plan de transición «Actual» de M1: ¿incluye todos los módulos que existen o solo los que cada empresa tiene hoy? (cambia qué ve cada cliente; recomendación: **todos los que tiene hoy**, para no darle nada que no usaba, y un plan por tipo de cliente después).
+**En cola, después (q4):** el plan de transición «Actual» de M1 ¿incluye todos los módulos que existen o solo los que cada empresa tiene hoy? (cambia qué ve cada cliente; recomendación: **solo los que tiene hoy**, para no darle nada que no usaba, y un plan por tipo de cliente después).
 
 ## 11. Carril de escritura (Fase 2; ahora no se escribe nada)
 
