@@ -131,6 +131,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Pagos X0 (ADITIVO; la clave es nueva y nadie la tenía): `declarar_pago_compra` (empresa, piso operario, clase O, semilla solo `admin`) aparece en las listas de claves de cada bloque y registro (112 líneas, todas del mismo tipo: se suma esa clave junto a `compra_repartir`). Revisado con `git diff --word-diff`: ninguna otra respuesta del guard cambia.",
       },
+      {
+        blob: "7cb6c767846288cb1d51918cd176bf1962565538",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `c0b4626` (la integración de Parte P1 (a) en `main`).
+        commit: "c0b4626",
+        motivo:
+          "Parte P1 (ADITIVO; claves nuevas, semilla solo `admin`, todo nace cerrado): `ACCIONES 130 a 133` y las filas `PERMISO` de `partes_ver`, `partes_editar` y `partes_desactivar` (admin ver=true editar=true; operador sin Ver ni Editar). Revisado con `git diff`: solo se suman esas claves a las listas de cada bloque; ningún otro permiso ni rol cambia.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
@@ -259,6 +266,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "E1 (paridad con Pedernal; CAMBIA COMPORTAMIENTO, decisión del dueño, 2026-11-15, chat con el orquestador, relatada: «Como Pedernal (Recomendada)» para los mensajes del CUIT): validarCuit usa los textos de Pedernal (apps/plataforma/logica/errores-de-plataforma.ts:84-88 de ZuluHub-ERP). Cambian SOLO la línea de mensaje de CUIT (formato); el resto de la huella queda idéntico.",
       },
+      {
+        blob: "7d68d8c6c96b78d5be28867d2601fdf7822e32be",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `c0b4626` (la integración de Parte P1 (a) en `main`).
+        commit: "c0b4626",
+        motivo:
+          "Parte P1 (ADITIVO; claves nuevas, semilla solo `admin`, todo nace cerrado): `ACCIONES 130 a 133` (en las dos fotos) y las seis filas `PERMISO` por foto de `partes_ver`, `partes_editar` y `partes_desactivar` (admin ver=true editar=true; operador ver=false editar=false). Revisado con `git diff`: solo se suman esas líneas; ningún otro permiso ni rol cambia.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-aceptacion.golden.txt": {
@@ -350,6 +364,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "2e810441",
         motivo:
           "U0 de «una sola compra» (docs/diseno-una-sola-compra-2026-11-06.md; CAMBIA SOLO LA PREPARACIÓN, no la venta): `registrarMovimiento` COMPRA es ahora una factura de UNA parte al 100 %% en la sucursal, pagada ahora. Cambian SOLO las líneas de las compras de preparación (34 OPERACION y 34 KARDEX de proceso COMPRA), en tres campos: la clave de reintento, la huella y el mensaje pasan de la Operacion a la cabecera de la factura (claveIdempotencia, payloadHash y resultadoMensaje de la Operacion quedan en null), la fila de Kardex gana su renglón (facturaProveedorRenglonId) y pierde unidadCompraId y cantidadCompra (viven en el renglón). Comparado línea por línea: ni una fila de venta, stock, costo ni importe cambia.",
+      },
+      {
+        blob: "4c4add0d7b6dd0579dd967581f3be43c108ffc9c",
+        // El commit PADRE de este (d261b95d) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "d261b95d",
+        motivo:
+          "«Ocultar» como Pedernal, E3c1 (docs/diseno-ocultar-como-pedernal-2026-11-15.md, I-6; CAMBIA SOLO LA LÍNEA `lecturas` de los pasos que venden por la vía directa y de agregar ítems): cada línea NUEVA de una venta de mostrador lee ahora `ocultamientoProducto.findMany` ×1 (para rechazar un producto oculto). Verificado con diff: al sacar ese token y el contador de `lecturas (N)`, el golden nuevo es IDÉNTICO al anterior; ni un resultado, ni una fila, ni una escritura, ni un mensaje cambian. El cierre de una cuenta NO hace la lectura (cobra lo ya cargado).",
       },
     ],
   },
@@ -499,6 +520,20 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "c17744e",
         motivo:
           "Nombre de cocina (ADITIVO; migración 20261115170000_nombre_de_cocina; regenerado con REGENERAR_CARACTERIZACION_DE_VENTA_AMPLIADA=1): las líneas CUENTA_ITEM suman `nombreDeCocina=null` (nadie tiene nombre de cocina en este mundo). Verificado por programa: sin esa columna el contenido es IDÉNTICO al blob anterior.",
+      },
+      {
+        blob: "01b2f355c2c40c43011996dfa06fcdb1ae63ba98",
+        // El commit PADRE de este (8783cddc, #308 en main) es el último antes del cambio; el golden se regenera en el commit siguiente (la fusión de main en la rama de c1). Antes de #308 el blob era 8f463808.
+        commit: "8783cddc",
+        motivo:
+          "«Ocultar» como Pedernal, E3c1 (docs/diseno-ocultar-como-pedernal-2026-11-15.md, I-6; CAMBIA SOLO LA LÍNEA `lecturas` de los pasos que venden por la vía directa y de agregar ítems): cada línea NUEVA de una venta de mostrador lee ahora `ocultamientoProducto.findMany` ×1 (para rechazar un producto oculto). Verificado con diff: al sacar ese token y el contador de `lecturas (N)`, el golden nuevo es IDÉNTICO al anterior; ni un resultado, ni una fila, ni una escritura, ni un mensaje cambian. El cierre de una cuenta NO hace la lectura (cobra lo ya cargado).",
+      },
+      {
+        blob: "188fd67b03c703fbd61a4e360b6523fd19aa18c6",
+        // El commit PADRE de este (9fa33026) es el último antes del cambio; el golden se regenera en el commit siguiente. Va DESPUÉS de la regeneración de E3c1 (blob 01b2f355, que suma la lectura de ocultos de la venta directa): ésta suma además la de la anulación.
+        commit: "9fa33026",
+        motivo:
+          "«Ocultar» como Pedernal, E3c2 (docs/diseno-ocultar-como-pedernal-2026-11-15.md, O-5 y R-8; CAMBIA SOLO LA LÍNEA `lecturas` de los 5 pasos de anulación y conteo): anular una venta lee ahora `ocultamientoProducto.findMany` ×1 antes de escribir (para rechazar devolver existencia a un producto oculto). Verificado línea por línea: cada una de las 5 líneas gana ese único token y su contador sube en 1; ni un resultado, ni una fila, ni una escritura, ni un mensaje cambian.",
       },
     ],
   },

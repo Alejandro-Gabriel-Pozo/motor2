@@ -10,6 +10,8 @@ import { calcularPayloadHash, esChoqueDeIndiceUnico, MENSAJE_CONFLICTO_IDEMPOTEN
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { calcularSaldoPorLote, calcularSaldoTotal, obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
+import { productoOcultoEn } from "@/server/lecturas/catalogo/ocultamiento";
+import { MENSAJE_PRODUCTO_OCULTO } from "@/core/catalogo/public";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { ComandoConteoFisico, ResultadoConteoFisico } from "@/core/features/movimientos/conteo-fisico.schema";
 import { cargarProductoConUnidadDeStock } from "@/server/persistencia/movimientos/cargar-producto-con-unidad-de-stock";
@@ -105,6 +107,8 @@ export async function registrarConteoFisicoCasoDeUso(
     if (!(await productoDisponibleEn(actor.sucursalId, producto.id, tx))) {
       return fracaso("PRODUCTO_NO_DISPONIBLE", `«${producto.nombre}» no está disponible en «${actor.sucursalNombre}».`);
     }
+    // «Ocultar» (diseño 2026-11-15, R-10): un producto oculto no se cuenta. Después de «no disponible» (gana el desactivado).
+    if (await productoOcultoEn(actor.sucursalId, producto.id, tx)) return fracaso("PRODUCTO_OCULTO", MENSAJE_PRODUCTO_OCULTO);
     if (!tieneStockReal(producto.tipo, producto.seProduce)) {
       return fracaso("SIN_STOCK_REAL", `El conteo físico es sobre materias primas (MP) o productos "Se produce", no sobre PV comunes.`);
     }

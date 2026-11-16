@@ -79,7 +79,7 @@ Tres formas de resolverlo, de menor a mayor costo. Estimaciones de acciones = **
 | Grupos admitidos (`orden`, mínimo, máximo, modo de precio, «Mostrar este grupo en la carta») | — | **Sí** (solo los activos) | Sí | Un grupo archivado en la biblioteca no se copia y se avisa «N grupos archivados no se copiaron» |
 | Opciones admitidas (activas; cantidad máxima) | — | **Sí** | Sí | Compartidas, no copiadas |
 | **Precio por opción** y toda la información de la opción (`precioAbsoluto`, `tipoDeDiferencia`, `diferenciaPrecio`, `porcentaje`, cantidad máxima, activa) | — | **Sí** | **Sí** | **CONFIRMADA** (el dueño, 2026-11-12). La pantalla de confirmación muestra cuántos precios se copian |
-| **Precio de venta de lista** | — | — | **No por defecto** | **Dinero**: ver la pregunta clave. Cambiarlo exige `producto_campos_sensibles` |
+| **Precio de venta de lista** | — | — | **Sí, siempre** (2026-11-16) | **Dinero**: ver la pregunta clave. Se copia con o sin `producto_campos_sensibles` (como Pedernal: alcanza crear); ELEGIR otro precio al duplicar exige `producto_campos_sensibles` |
 | Precios por sucursal (`PrecioLocalProducto`), disponibilidad, **«En la carta» (`ContenidoCartaProducto`)**, stock, proveedores, presentaciones | No | No | No | **CONFIRMADA** para la carta (el dueño, 2026-11-12: «eso ya es ajeno, es de otro módulo; acá hablamos de la configuración de los productos»). Quedan «Pendiente»; el sistema lo dice, no lo inventa |
 | Datos del producto (tipo, categoría, unidad de stock, factor, modo de venta, alícuota IVA, `pasoVenta`, `seProduce`, observaciones) | — | — | **Sí** (E3/E4); `codigo`, `nombre`: nuevos | El nombre es obligatorio y propio; el código se autogenera como en el alta |
 | Consignación (proveedor y costo) | — | — | No | Fijar un costo exige `pagar_consignante`; no se hereda |
@@ -104,7 +104,10 @@ Tres formas de resolverlo, de menor a mayor costo. Estimaciones de acciones = **
 | Esperar al «Duplicar» completo (E4), como Pedernal; no entregar E1 a E3 por separado | CONFIRMADA (el dueño, 2026-11-12, chat) |
 | La copia es independiente del origen (sin vínculo vivo) | PROPUESTA |
 | Qué se copia / no se copia (tabla de arriba) | PROPUESTA |
-| Precio de lista del duplicado: se copia como punto de partida editable (Pedernal §12.12), mostrado antes de guardar; con la regla de permisos de Motor2 (sin `producto_campos_sensibles` nace en 0 y apagado) | CONFIRMADA en lo general («como lo tiene Pedernal»); el detalle de permisos es PROPUESTA |
+| Precio de lista del duplicado: se copia como punto de partida editable (Pedernal §12.12), mostrado antes de guardar; con la regla de permisos de Motor2 (sin `producto_campos_sensibles` nace en 0 y apagado) | CONFIRMADA en lo general («como lo tiene Pedernal»); el detalle de permisos es PROPUESTA. **Reemplazada el 2026-11-16 por la fila siguiente (el precio se copia siempre)** |
+| El precio de lista se copia al duplicar SIN pedir `producto_campos_sensibles` (como Pedernal, fila 190 de su matriz: el precio se copia, no nace «Sin precio»; alcanza `productos.crear`); sin la clave no se puede elegir otro precio, solo copiar el del original | **CONFIRMADA** (el dueño, 2026-11-16, chat con el orquestador: «Si Motor2 debe copiar el precio al duplicar un producto sin pedir el permiso de campos sensibles, como Pedernal», contestó «Si»; relatada por el orquestador) |
+| El factor y la unidad de compra y el modo de venta siguen copiándose solo con `producto_campos_sensibles` (el dueño preguntó solo por el precio) | PROPUESTA (el dueño la corrige) |
+| La disponibilidad sigue la regla del alta (M.2-A4): sin la clave el producto de venta nace apagado en todas las sucursales; la decisión del 2026-11-16 NO la toca | PENDIENTE de pregunta al dueño: ¿con el precio ya copiado, el producto también debe nacer disponible? |
 | Precio por opción en la copia de opciones (recargos): se copian con el resto, como en Pedernal | CONFIRMADA en lo general; PROPUESTA el aviso «incluye N precios» |
 | Nombre propio obligatorio y no repetido (E3/E4) | PROPUESTA (es la regla del alta actual) |
 | Elegir el origen con un modal: primero la sucursal (la Central también cuenta como una) y luego el producto | CONFIRMADA (el dueño, 2026-11-12) |
@@ -158,7 +161,7 @@ Tres formas de resolverlo, de menor a mayor costo. Estimaciones de acciones = **
 | Nombre repetido | Rechazo antes de crear (regla del alta: un producto disponible con ese nombre ya existe; índice único). Nombre vacío: rechazo (obligatorio). |
 | Dos usuarios duplican a la vez con el mismo nombre | El índice único del nombre deja pasar a uno; el otro recibe «ya existe». |
 | Falla a mitad (ya se creó el producto, falla la copia) | **No puede pasar a medias:** el alta y la copia van en UNA transacción SERIALIZABLE. El código autogenerado del alta usa el reintento de TODA la transacción (`conReintento`, como `guardar-version-de-receta`): si el código choca, se descarta el intento y se repite entero con otro; no hace falta el alta sin transacción de hoy. Si algo falla, no queda ni el producto vacío. |
-| Sin `producto_campos_sensibles` | El producto nace con precio 0 y apagado (regla M.2-A4 vigente): se dice en pantalla; con la clave nace con el precio del original (editable) y la disponibilidad que pida el tilde. |
+| Sin `producto_campos_sensibles` | El producto nace con el precio del original (2026-11-16; no se puede elegir otro), factor 1, sin unidad de compra y apagado (regla M.2-A4 vigente); con la clave nace con el precio del original (editable) y la disponibilidad que pida el tilde. |
 | El mismo `duplicadoId` con otro origen u otro nombre | Rechazo `ID_REUTILIZADO` (patrón de `copiarOpciones` de Pedernal); con el mismo origen y nombre devuelve el producto ya creado (`yaExistia`). |
 | Sin `alta_producto` | Rechazo antes de leer. |
 
@@ -211,7 +214,7 @@ Tres formas de resolverlo, de menor a mayor costo. Estimaciones de acciones = **
 - **Una lectura mía a confirmar en la revisión del PR (no bloquea):** «si la sucursal elegida no tiene receta propia, se copia la central, que es la que rige allá».
 
 ## Pregunta clave
-La que quedaba abierta («¿el duplicado nace con el mismo precio de lista o vacío?») la respondió el dueño con «como lo tiene Pedernal»: el precio de la empresa se copia **como punto de partida editable** y se muestra antes de guardar. En Motor2 se aplica con la regla de permisos vigente: con `producto_campos_sensibles` nace con ese precio; sin la clave nace en 0 y apagado y la pantalla lo dice. **Sin pregunta clave pendiente.**
+La que quedaba abierta («¿el duplicado nace con el mismo precio de lista o vacío?») la respondió el dueño con «como lo tiene Pedernal»: el precio de la empresa se copia **como punto de partida editable** y se muestra antes de guardar. En Motor2 se aplica con la regla de permisos vigente: con `producto_campos_sensibles` nace con ese precio y se puede editar. **Actualizado el 2026-11-16 (decisión del dueño, «como Pedernal»):** sin la clave nace con el MISMO precio del original (no se puede elegir otro) en vez de en 0. **Sin pregunta clave pendiente** (queda una de disponibilidad, arriba).
 
 ## Etapas con nombre
 - **E4 — Duplicar producto (la que se construye primero).** Botón «Duplicar» en la ficha: abre el producto nuevo con el nombre vacío y obligatorio, y copia ficha, opciones, receta y ficha técnica y el precio como punto de partida, en una sola transacción, con id que manda la aplicación y auditoría de quién duplicó a partir de cuál. Compone internamente las piezas E3 (alta precargada), E1 (receta y ficha técnica) y E2 (opciones).

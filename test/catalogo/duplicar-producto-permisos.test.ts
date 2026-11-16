@@ -10,7 +10,7 @@ import { nuevoDuplicadoId, sembrarElBife, type EscenarioDelBife } from "../setup
 
 /**
  * Los permisos de «Duplicar producto» (E4): los resuelve el SERVIDOR, nunca el pedido. `alta_producto` para crear; `guardar_receta` si se pide copiar la receta; `producto_opciones_admitidas` si se piden las opciones;
- * `producto_campos_sensibles` para el precio (sin ella el producto nace en $0 y sin disponibilidad, como el alta). Si falta cualquiera de las que se necesitan se rechaza el pedido ENTERO antes de escribir (no se copia «lo
+ * `producto_campos_sensibles` para ELEGIR el precio (sin ella el precio se copia del original, no se puede cambiar, y el producto nace sin disponibilidad, como el alta; decisión del dueño, 2026-11-16). Si falta cualquiera de las que se necesitan se rechaza el pedido ENTERO antes de escribir (no se copia «lo
  * que se pueda»). El rol `admin` del escenario tiene la matriz completa; cada test le saca claves a esa matriz (`PermisoRol`), que es como el dueño reparte los permisos.
  */
 const CLAVES = ["alta_producto", "guardar_receta", "producto_opciones_admitidas", "producto_campos_sensibles"] as const;
@@ -75,7 +75,7 @@ describe("duplicarProducto: permisos", () => {
     expect(await prisma.recetaVersion.count({ where: { productoId: (r as { id: string }).id } })).toBe(0);
   });
 
-  it("sin producto_campos_sensibles el producto nace con precio $0, factor 1, sin unidad de compra y SIN disponibilidad (regla del alta), y el mensaje lo dice", async () => {
+  it("sin producto_campos_sensibles el producto nace con el PRECIO del original, factor 1, sin unidad de compra y SIN disponibilidad (regla del alta)", async () => {
     const caja = await prisma.unidad.create({ data: { nombre: "caja", magnitud: "CANTIDAD", decimales: 0 } });
     await prisma.producto.update({ where: { id: e.bifeId }, data: { unidadCompraId: caja.id, factorConversion: "12.0000" } });
     await conClaves("alta_producto", "guardar_receta", "producto_opciones_admitidas");
@@ -83,17 +83,17 @@ describe("duplicarProducto: permisos", () => {
     expect(r.ok, r.mensaje).toBe(true);
     const id = (r as { id: string }).id;
     const nuevo = await prisma.producto.findUniqueOrThrow({ where: { id } });
-    expect([Number(nuevo.precioVenta), Number(nuevo.factorConversion), nuevo.unidadCompraId]).toEqual([0, 1, null]);
+    expect([Number(nuevo.precioVenta), Number(nuevo.factorConversion), nuevo.unidadCompraId]).toEqual([5000, 1, null]);
     const disponibilidad = await prisma.disponibilidadProducto.findMany({ where: { productoId: id } });
     expect(disponibilidad).toHaveLength(2);
     expect(disponibilidad.every((d) => d.disponible === false)).toBe(true);
-    expect(r.mensaje).toContain("precio $0 y sin disponibilidad");
-    expect(r.mensaje).toContain("producto_campos_sensibles");
+    expect(r.mensaje, "ya no dice que nació en $0").not.toContain("precio $0");
+    expect(r.mensaje, "avisa que nació sin disponibilidad").toContain("El producto nuevo nace sin disponibilidad para vender.");
     // La receta y las opciones sí se copiaron (tiene esas dos claves).
     expect(await prisma.recetaVersion.count({ where: { productoId: id } })).toBe(1);
     expect(await prisma.productoAdmiteGrupo.count({ where: { productoId: id } })).toBe(2);
-    // Sin precio en la auditoría (no hay dinero que registrar), pero sí de dónde salió.
-    expect(await prisma.registroAuditoria.count({ where: { entidadId: id, campo: "precioVenta" } })).toBe(0);
+    // El precio copiado queda en la auditoría (hay dinero que registrar), y de dónde salió el producto.
+    expect(await prisma.registroAuditoria.count({ where: { entidadId: id, campo: "precioVenta" } })).toBe(1);
     expect(await prisma.registroAuditoria.count({ where: { entidadId: id, campo: "duplicadoDe" } })).toBe(1);
   });
 
@@ -106,18 +106,36 @@ describe("duplicarProducto: permisos", () => {
     const nuevo = await prisma.producto.findUniqueOrThrow({ where: { id } });
     expect([Number(nuevo.precioVenta), Number(nuevo.factorConversion), nuevo.unidadCompraId]).toEqual([5000, 12, caja.id]);
     expect((await prisma.disponibilidadProducto.findMany({ where: { productoId: id } })).every((d) => d.disponible)).toBe(true);
+    expect(r.mensaje, "con la clave nace disponible: no avisa de lo contrario").not.toContain("sin disponibilidad");
   });
 
-  it("sin producto_campos_sensibles, un precio distinto de 0 en el pedido se rechaza (no se puede fijar lo que protege la clave); en 0 se acepta", async () => {
+  it("sin producto_campos_sensibles el precio NO se puede elegir: cualquier precio en el pedido (999, 0 o el mismo del original) se rechaza sin escribir nada; sin precio en el pedido se copia el del original", async () => {
     await conClaves("alta_producto", "guardar_receta", "producto_opciones_admitidas");
     const antes = await foto();
-    const r = await duplicar({ precioVenta: "999" });
-    expect(r).toEqual({ ok: false, mensaje: MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES });
+    for (const precioVenta of ["999", "0", 0, "5000", 5000]) {
+      expect(await duplicar({ precioVenta }), String(precioVenta)).toEqual({ ok: false, mensaje: MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES });
+    }
     expect(await foto()).toEqual(antes);
-    expect((await duplicar({ nombre: "En cero", precioVenta: "0" })).ok).toBe(true);
+    const r = await duplicar({ nombre: "Sin precio en el pedido" });
+    expect(r.ok, r.mensaje).toBe(true);
+    expect(Number((await prisma.producto.findUniqueOrThrow({ where: { id: (r as { id: string }).id } })).precioVenta)).toBe(5000);
   });
 
-  it("cambio de permisos entre pedidos: el que se saca entre uno y otro rige en el segundo (el permiso se mira en el servidor en cada pedido)", async () => {
+  it("el precio copiado es EXACTO (centavos, sin redondeos de coma flotante), con y sin la clave; y si el original cambia después, el duplicado no se mueve", async () => {
+    for (const precio of ["12345.67", "0.30", "0.01", "99999999.99"]) {
+      await prisma.producto.update({ where: { id: e.bifeId }, data: { precioVenta: precio } });
+      for (const claves of [["alta_producto"], ["alta_producto", "producto_campos_sensibles"]] as const) {
+        await conClaves(...claves);
+        const r = await duplicar({ nombre: `Copia ${precio} ${claves.length}`, copiarReceta: false, copiarOpciones: false });
+        expect(r.ok, `${precio} ${claves.length}: ${r.mensaje}`).toBe(true);
+        const fila = await prisma.producto.findUniqueOrThrow({ where: { id: (r as { id: string }).id } });
+        expect(fila.precioVenta.toFixed(2), `${precio} con ${claves.length} claves`).toBe(precio);
+        expect(Number(fila.precioVenta), `${precio} con ${claves.length} claves`).toBe(Number(precio));
+      }
+    }
+  });
+
+it("cambio de permisos entre pedidos: el que se saca entre uno y otro rige en el segundo (el permiso se mira en el servidor en cada pedido)", async () => {
     expect((await duplicar({ nombre: "Primero" })).ok).toBe(true);
     await conClaves("alta_producto", "producto_opciones_admitidas", "producto_campos_sensibles");
     const antes = await foto();
