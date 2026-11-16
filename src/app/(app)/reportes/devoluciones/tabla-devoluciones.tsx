@@ -4,10 +4,11 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaDevolucionProducto } from "@/core/reportes/public";
 import { formatearMonto } from "@/core/formato-de-numero";
+import { textoDe } from "@/core/textos/texto-de";
 
 const COLUMNAS: ColumnaReporte<FilaDevolucionProducto>[] = [
-  { clave: "producto", etiqueta: "Producto", valor: (p) => p.producto, render: (p) => p.producto },
-  { clave: "cantidad", etiqueta: "Cantidad", alinear: "derecha", valor: (p) => p.cantidad, render: (p) => p.cantidad },
+  { clave: "producto", etiqueta: textoDe("columna.producto"), valor: (p) => p.producto, render: (p) => p.producto },
+  { clave: "cantidad", etiqueta: textoDe("columna.cantidad"), alinear: "derecha", valor: (p) => p.cantidad, render: (p) => p.cantidad },
   {
     clave: "valor",
     etiqueta: "Valor",

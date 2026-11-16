@@ -4,11 +4,12 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 import { SIN_PROVEEDOR, type FilaVentaPorOpcion, type FilaMargenProducto, type FilaCompraPorProveedor, type FilaGastoPorInsumo, type FilaPrecioInsumo, type FilaImpactoRecetaPorPeriodo } from "@/core/reportes/public";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import { formatearMonto, formatearEntero } from "@/core/formato-de-numero";
+import { textoDe } from "@/core/textos/texto-de";
 
 const COLUMNAS_VENTAS: ColumnaReporte<FilaMargenProducto>[] = [
   {
     clave: "producto",
-    etiqueta: "Producto",
+    etiqueta: textoDe("columna.producto"),
     valor: (v) => v.producto,
     render: (v) => (
       <EnlaceInterno href={`/reportes/historial?productoId=${v.productoId}`} className="underline">
@@ -16,7 +17,7 @@ const COLUMNAS_VENTAS: ColumnaReporte<FilaMargenProducto>[] = [
       </EnlaceInterno>
     ),
   },
-  { clave: "cantidad", etiqueta: "Cantidad", alinear: "derecha", valor: (v) => v.cantidad, render: (v) => v.cantidad },
+  { clave: "cantidad", etiqueta: textoDe("columna.cantidad"), alinear: "derecha", valor: (v) => v.cantidad, render: (v) => v.cantidad },
   { clave: "importe", etiqueta: "Importe", alinear: "derecha", valor: (v) => v.ingreso, render: (v) => `${formatearMonto(v.ingreso)}` },
   {
     clave: "margen",
@@ -42,7 +43,7 @@ function columnasCompras(desde?: string, hasta?: string): ColumnaReporte<FilaCom
   return [
   {
     clave: "proveedor",
-    etiqueta: "Proveedor",
+    etiqueta: textoDe("columna.proveedor"),
     valor: (p) => p.proveedor,
     // El nombre lleva al listado de compras de ese proveedor en el mismo período (ver qué se compró, con qué factura y cuándo).
     render: (p) => (
@@ -82,10 +83,10 @@ const pesos = (centavos: number) => formatearMonto(centavos / 100);
 
 // Ventas con opciones (2026-10-29): una fila por (producto, grupo, opción). El margen solo cuando todas las ventas de la fila guardaron su costo al vender.
 const COLUMNAS_VENTAS_POR_OPCION: ColumnaReporte<FilaVentaPorOpcion>[] = [
-  { clave: "producto", etiqueta: "Producto", valor: (f) => f.producto, render: (f) => f.producto },
+  { clave: "producto", etiqueta: textoDe("columna.producto"), valor: (f) => f.producto, render: (f) => f.producto },
   { clave: "grupo", etiqueta: "Grupo", valor: (f) => f.grupo, render: (f) => f.grupo },
   { clave: "opcion", etiqueta: "Opción", valor: (f) => f.opcion, render: (f) => f.opcion },
-  { clave: "unidades", etiqueta: "Unidades", alinear: "derecha", valor: (f) => f.unidades, render: (f) => formatearEntero(f.unidades) },
+  { clave: "unidades", etiqueta: textoDe("columna.unidades"), alinear: "derecha", valor: (f) => f.unidades, render: (f) => formatearEntero(f.unidades) },
   { clave: "importe", etiqueta: "Importe", alinear: "derecha", valor: (f) => f.importeCentavos / 100, render: (f) => pesos(f.importeCentavos) },
   {
     clave: "costo",
@@ -131,8 +132,8 @@ export function TablaComprasPorProveedor({ filas, desde, hasta }: { filas: FilaC
 
 // Las filas dentro del 80 % van sobre `aviso-tinte`: ahí el texto atenuado es `tinta-suave` (5,02:1 sobre ese fondo) y no `tinta-tenue` (4,33:1, no llega a AA; lo midió axe en accesibilidad.spec.ts).
 const COLUMNAS_GASTO_INSUMO: ColumnaReporte<FilaGastoPorInsumo>[] = [
-  { clave: "insumo", etiqueta: "Insumo", valor: (f) => f.insumo, render: (f) => f.insumo },
-  { clave: "grupo", etiqueta: "Categoría", valor: (f) => f.grupo, render: (f) => f.grupo ?? <span className="text-tinta-suave">Sin categoría</span> },
+  { clave: "insumo", etiqueta: textoDe("columna.insumo"), valor: (f) => f.insumo, render: (f) => f.insumo },
+  { clave: "grupo", etiqueta: textoDe("columna.categoria"), valor: (f) => f.grupo, render: (f) => f.grupo ?? <span className="text-tinta-suave">Sin categoría</span> },
   { clave: "importe", etiqueta: "Gastado", alinear: "derecha", valor: (f) => f.importe, render: (f) => `${formatearMonto(f.importe)}` },
   {
     clave: "porcentaje",
@@ -190,7 +191,7 @@ function claseDelta(delta: number | null): string {
 const COLUMNAS_PRECIO_INSUMO: ColumnaReporte<FilaPrecioInsumo>[] = [
   {
     clave: "insumo",
-    etiqueta: "Insumo",
+    etiqueta: textoDe("columna.insumo"),
     valor: (f) => f.insumo,
     render: (f) => (
       <span className="flex items-center gap-1">
@@ -203,7 +204,7 @@ const COLUMNAS_PRECIO_INSUMO: ColumnaReporte<FilaPrecioInsumo>[] = [
       </span>
     ),
   },
-  { clave: "grupo", etiqueta: "Categoría", valor: (f) => f.grupo, render: (f) => f.grupo ?? <span className="text-tinta-tenue">Sin categoría</span> },
+  { clave: "grupo", etiqueta: textoDe("columna.categoria"), valor: (f) => f.grupo, render: (f) => f.grupo ?? <span className="text-tinta-tenue">Sin categoría</span> },
   {
     clave: "precioActual",
     etiqueta: "$/unidad este período",

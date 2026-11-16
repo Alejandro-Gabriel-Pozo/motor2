@@ -2,6 +2,7 @@
 
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import { formatearMonto } from "@/core/formato-de-numero";
+import { textoDe } from "@/core/textos/texto-de";
 
 interface FilaTopImporte {
   producto?: string;
@@ -15,18 +16,18 @@ interface FilaStockBajo {
 }
 
 const COLUMNAS_TOP_PRODUCTOS: ColumnaReporte<FilaTopImporte>[] = [
-  { clave: "producto", etiqueta: "Producto", valor: (p) => p.producto ?? "", render: (p) => p.producto },
+  { clave: "producto", etiqueta: textoDe("columna.producto"), valor: (p) => p.producto ?? "", render: (p) => p.producto },
   { clave: "importe", etiqueta: "Importe", alinear: "derecha", valor: (p) => p.importe, render: (p) => `${formatearMonto(p.importe)}` },
 ];
 
 const COLUMNAS_TOP_PROVEEDORES: ColumnaReporte<FilaTopImporte>[] = [
-  { clave: "proveedor", etiqueta: "Proveedor", valor: (p) => p.proveedor ?? "", render: (p) => p.proveedor },
+  { clave: "proveedor", etiqueta: textoDe("columna.proveedor"), valor: (p) => p.proveedor ?? "", render: (p) => p.proveedor },
   { clave: "importe", etiqueta: "Importe", alinear: "derecha", valor: (p) => p.importe, render: (p) => `${formatearMonto(p.importe)}` },
 ];
 
 const COLUMNAS_STOCK_BAJO: ColumnaReporte<FilaStockBajo>[] = [
-  { clave: "producto", etiqueta: "Producto", valor: (s) => s.producto, render: (s) => s.producto },
-  { clave: "seccion", etiqueta: "Sección", valor: (s) => s.seccion, render: (s) => s.seccion },
+  { clave: "producto", etiqueta: textoDe("columna.producto"), valor: (s) => s.producto, render: (s) => s.producto },
+  { clave: "seccion", etiqueta: textoDe("columna.seccion"), valor: (s) => s.seccion, render: (s) => s.seccion },
   {
     clave: "saldo",
     etiqueta: "Saldo",

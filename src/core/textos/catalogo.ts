@@ -4,7 +4,7 @@ import type { DefinicionDeTexto } from "./tipos";
  * El catálogo cerrado de textos de interfaz (diseño `docs/diseno-textos-en-codigo-2026-11-16.md`; DEC-0013). Una entrada por texto: la clave nombra UNA cosa; `ClaveDeTexto` se deduce de acá, así que pedir una
  * clave que no existe no compila. Hoy tiene la primera familia (R-11 del diseño): el rechazo de la etapa a2-1 de Presentaciones, unido en una sola causa con dos marcos.
  *
- * Convención de claves: `rechazo.<CODIGO>` (el `codigo` público de `fracaso`), o `rotulo.` / `accion.` / `aviso.` / `ayuda.` / `titulo.` más `<tema>` en minúsculas (lo comprueba
+ * Convención de claves: `rechazo.<CODIGO>` (el `codigo` público de `fracaso`), o `rotulo.` / `accion.` / `aviso.` / `ayuda.` / `titulo.` / `columna.` (encabezado de tabla) más `<tema>` en minúsculas (lo comprueba
  * `test/arquitectura/catalogo-de-textos.test.ts`). Un texto nuevo entra acá con sus `usos` y su `fuente`, no escrito a mano en el código.
  */
 export const CATALOGO = {
@@ -38,6 +38,110 @@ export const CATALOGO = {
   "aviso.oculto": { porDefecto: "Oculto", usos: [{ archivo: "src/components/catalogo/tarjeta-ocultar.tsx", nombre: "TarjetaOcultar" }], fuente: { decision: "DEC-0014" } },
   "aviso.oculto_en_la_empresa": { porDefecto: "Oculto en toda la empresa", usos: [{ archivo: "src/components/catalogo/tarjeta-ocultar.tsx", nombre: "TarjetaOcultar" }], fuente: { decision: "DEC-0014" } },
   "rechazo.TIENE_EXISTENCIA": { porDefecto: "Primero dejá la existencia en 0.", usos: [{ archivo: "src/server/actions/catalogo/casos-de-uso/ocultar-producto.ts", nombre: "ocultarProductoCasoDeUso" }], fuente: { decision: "DEC-0014" } },
+  // Lote B (DEC-0019): encabezados NEUTROS de columnas de reportes, idénticos (sin «Estado» ni «Detalle», que son homónimos, ni rótulos de dinero).
+  "columna.producto": {
+    porDefecto: "Producto",
+    usos: [
+      { archivo: "src/app/(app)/reportes/categorias/tabla-categorias.tsx", nombre: "COLUMNAS" },
+      { archivo: "src/app/(app)/reportes/consignacion/tabla-consignacion.tsx", nombre: "COLUMNAS_STOCK" },
+      { archivo: "src/app/(app)/reportes/conteos/tabla-conteos.tsx", nombre: "COLUMNAS" },
+      { archivo: "src/app/(app)/reportes/costos/tabla-costos.tsx", nombre: "COLUMNAS_PRODUCTOS" },
+      { archivo: "src/app/(app)/reportes/descuentos-productos/tabla-descuentos-productos.tsx", nombre: "COLUMNAS" },
+      { archivo: "src/app/(app)/reportes/devoluciones/tabla-devoluciones.tsx", nombre: "COLUMNAS" },
+      { archivo: "src/app/(app)/reportes/diferencias/tabla-diferencias.tsx", nombre: "COLUMNAS" },
+      { archivo: "src/app/(app)/reportes/insumos-sin-receta/tabla-insumos-sin-receta.tsx", nombre: "COLUMNAS" },
+      { archivo: "src/app/(app)/reportes/perdidas/tabla-perdidas.tsx", nombre: "columnas" },
+      { archivo: "src/app/(app)/reportes/periodo/tabla-periodo.tsx", nombre: "COLUMNAS_VENTAS" },
+      { archivo: "src/app/(app)/reportes/periodo/tabla-periodo.tsx", nombre: "COLUMNAS_VENTAS_POR_OPCION" },
+      { archivo: "src/app/(app)/reportes/salud/tabla-salud.tsx", nombre: "COLUMNAS" },
+      { archivo: "src/app/(app)/reportes/sin-receta/tabla-sin-receta.tsx", nombre: "COLUMNAS" },
+      { archivo: "src/app/(app)/reportes/tabla-resumen.tsx", nombre: "COLUMNAS_TOP_PRODUCTOS" },
+      { archivo: "src/app/(app)/reportes/tabla-resumen.tsx", nombre: "COLUMNAS_STOCK_BAJO" },
+      { archivo: "src/app/(app)/reportes/trazabilidad/tabla-trazabilidad.tsx", nombre: "COLUMNAS_ITEMS" },
+      { archivo: "src/app/(app)/reportes/valuacion/tabla-valuacion.tsx", nombre: "COLUMNAS_CON_COSTO" },
+      { archivo: "src/app/(app)/reportes/valuacion/tabla-valuacion.tsx", nombre: "COLUMNAS_SIN_COSTO" },
+      { archivo: "src/app/(app)/reportes/vencimientos/tabla-vencimientos.tsx", nombre: "COLUMNAS_LOTES" },
+      { archivo: "src/app/(app)/reportes/vencimientos/tabla-vencimientos.tsx", nombre: "COLUMNAS_CONCILIACION" },
+    ],
+    fuente: { decision: "DEC-0019" },
+  },
+  "columna.cantidad": {
+    porDefecto: "Cantidad",
+    usos: [
+      { archivo: "src/app/(app)/reportes/categorias/tabla-categorias.tsx", nombre: "COLUMNAS" },
+      { archivo: "src/app/(app)/reportes/devoluciones/tabla-devoluciones.tsx", nombre: "COLUMNAS" },
+      { archivo: "src/app/(app)/reportes/historial/como-se-compro.tsx", nombre: "columnas" },
+      { archivo: "src/app/(app)/reportes/historial/tabla-historial.tsx", nombre: "columnas" },
+      { archivo: "src/app/(app)/reportes/perdidas/tabla-perdidas.tsx", nombre: "columnas" },
+      { archivo: "src/app/(app)/reportes/periodo/tabla-periodo.tsx", nombre: "COLUMNAS_VENTAS" },
+      { archivo: "src/app/(app)/reportes/trazabilidad/tabla-trazabilidad.tsx", nombre: "COLUMNAS_ITEMS" },
+      { archivo: "src/app/(app)/reportes/vencimientos/tabla-vencimientos.tsx", nombre: "COLUMNAS_CONCILIACION" },
+      { archivo: "src/app/(app)/reportes/ventas-por-seccion/tabla-seccion.tsx", nombre: "COLUMNAS" },
+    ],
+    fuente: { decision: "DEC-0019" },
+  },
+  "columna.seccion": {
+    porDefecto: "Sección",
+    usos: [
+      { archivo: "src/app/(app)/reportes/conteos/tabla-conteos.tsx", nombre: "COLUMNAS" },
+      { archivo: "src/app/(app)/reportes/historial/tabla-historial.tsx", nombre: "columnas" },
+      { archivo: "src/app/(app)/reportes/salud/tabla-salud.tsx", nombre: "COLUMNAS" },
+      { archivo: "src/app/(app)/reportes/tabla-resumen.tsx", nombre: "COLUMNAS_STOCK_BAJO" },
+      { archivo: "src/app/(app)/reportes/trazabilidad/tabla-trazabilidad.tsx", nombre: "COLUMNAS_ENCONTRADAS" },
+      { archivo: "src/app/(app)/reportes/trazabilidad/tabla-trazabilidad.tsx", nombre: "COLUMNAS_ITEMS" },
+      { archivo: "src/app/(app)/reportes/vencimientos/tabla-vencimientos.tsx", nombre: "COLUMNAS_LOTES" },
+      { archivo: "src/app/(app)/reportes/vencimientos/tabla-vencimientos.tsx", nombre: "COLUMNAS_CONCILIACION" },
+    ],
+    fuente: { decision: "DEC-0019" },
+  },
+  "columna.proveedor": {
+    porDefecto: "Proveedor",
+    usos: [
+      { archivo: "src/app/(app)/reportes/consignacion/tabla-consignacion.tsx", nombre: "COLUMNAS_DEBIDO" },
+      { archivo: "src/app/(app)/reportes/costos/tabla-costos.tsx", nombre: "COLUMNAS_INSUMOS" },
+      { archivo: "src/app/(app)/reportes/historial/como-se-compro.tsx", nombre: "columnas" },
+      { archivo: "src/app/(app)/reportes/periodo/tabla-periodo.tsx", nombre: "columnasCompras" },
+      { archivo: "src/app/(app)/reportes/tabla-resumen.tsx", nombre: "COLUMNAS_TOP_PROVEEDORES" },
+      { archivo: "src/app/(app)/reportes/valuacion/tabla-valuacion.tsx", nombre: "COLUMNAS_CON_COSTO" },
+    ],
+    fuente: { decision: "DEC-0019" },
+  },
+  "columna.insumo": {
+    porDefecto: "Insumo",
+    usos: [
+      { archivo: "src/app/(app)/reportes/costos/tabla-costos.tsx", nombre: "COLUMNAS_INSUMOS" },
+      { archivo: "src/app/(app)/reportes/insumos-sin-receta/tabla-insumos-sin-receta.tsx", nombre: "COLUMNAS" },
+      { archivo: "src/app/(app)/reportes/periodo/tabla-periodo.tsx", nombre: "COLUMNAS_GASTO_INSUMO" },
+      { archivo: "src/app/(app)/reportes/periodo/tabla-periodo.tsx", nombre: "COLUMNAS_PRECIO_INSUMO" },
+      { archivo: "src/app/(app)/reportes/rendimiento-recetas/por-sucursal/tabla-por-sucursal.tsx", nombre: "TablaPorSucursal" },
+    ],
+    fuente: { decision: "DEC-0019" },
+  },
+  "columna.categoria": {
+    porDefecto: "Categoría",
+    usos: [
+      { archivo: "src/app/(app)/reportes/periodo/tabla-periodo.tsx", nombre: "COLUMNAS_GASTO_INSUMO" },
+      { archivo: "src/app/(app)/reportes/periodo/tabla-periodo.tsx", nombre: "COLUMNAS_PRECIO_INSUMO" },
+      { archivo: "src/app/(app)/reportes/ventas-por-seccion/tabla-seccion.tsx", nombre: "COLUMNAS" },
+    ],
+    fuente: { decision: "DEC-0019" },
+  },
+  "columna.unidades": {
+    porDefecto: "Unidades",
+    usos: [
+      { archivo: "src/app/(app)/reportes/descuentos-productos/tabla-descuentos-productos.tsx", nombre: "COLUMNAS" },
+      { archivo: "src/app/(app)/reportes/periodo/tabla-periodo.tsx", nombre: "COLUMNAS_VENTAS_POR_OPCION" },
+    ],
+    fuente: { decision: "DEC-0019" },
+  },
+  "columna.origen": {
+    porDefecto: "Origen",
+    usos: [
+      { archivo: "src/app/(app)/reportes/historial/como-se-compro.tsx", nombre: "columnas" },
+      { archivo: "src/app/(app)/reportes/historial/tabla-historial.tsx", nombre: "columnas" },
+    ],
+    fuente: { decision: "DEC-0019" },
+  },
 } as const satisfies Readonly<Record<string, DefinicionDeTexto>>;
 
 export type ClaveDeTexto = keyof typeof CATALOGO;

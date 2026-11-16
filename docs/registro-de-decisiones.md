@@ -155,3 +155,13 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 - **Dónde:** `test/arquitectura/permisos-descripciones.test.ts`, `test/textos/oraculo-de-permisos.ts`
 - **Estado:** ACEPTADA
 - **Cita del dueño:** «Sí, mismas palabras (Recomendada)» — 2026-11-16 — chat del dueño con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, «Textos: cuatro respuestas del dueño sobre la lista única»)
+
+### DEC-0019
+- **Fecha:** 2026-11-16
+- **Quién:** la sesión Sonnet de los lotes de reducción del catálogo de textos; lote aceptado por el orquestador por delegación del dueño (lote B).
+- **Qué decidió:** ocho encabezados neutros de columnas de los reportes, escritos idénticos en 20 archivos de `src/app/(app)/reportes/` (55 apariciones), pasan a una clave `columna.<tema>` cada uno: Producto, Cantidad, Sección, Proveedor, Insumo, Categoría, Unidades y Origen. Las palabras quedan idénticas: el cliente no ve ningún cambio. Quedan literales, por decisión del orquestador, «Estado» y «Detalle» (homónimos con significados distintos según el reporte) y todo rótulo de dinero, que tiene su propio lote con las respuestas del dueño. Se agrega la clase de clave `columna.` al guardián del catálogo.
+- **Por qué:** el dueño pidió reducir, inventariar y reutilizar los textos para que cada uno represente una sola cosa; son rótulos repetidos 2 a 20 veces (`docs/diseno-textos-en-datos-2026-11-16.md`, familia D-5).
+- **Costo de revertir:** bajo: volver a escribir la palabra en cada columna y borrar las ocho entradas y la clase `columna.`; no hay migración ni datos.
+- **Dónde:** `src/core/textos/catalogo.ts`, `test/arquitectura/guardas/catalogo-de-textos.ts`
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Los textos encargarte vos trata de reducir, textos, inventariar y empezar a reutilizar y que representen 1 sola cosa, definir primitivas e invariantes en texto igual que pedernal; Sí, confirmo esos límites (Recomendada)» — 2026-11-16 — chat del dueño con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, «Palabras literales del dueño» y «Respuesta literal del dueño»); lote aceptado por el orquestador por delegación (2026-11-16)
