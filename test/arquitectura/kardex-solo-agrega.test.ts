@@ -47,8 +47,8 @@ const CARPETAS = ["src", "plataforma/src"];
 // Paquete 3 (M4.3): la imputación de un gasto a cada sucursal (`imputacionDeGasto`) también solo se agrega (la app tiene SELECT e INSERT, nunca UPDATE ni DELETE; un error se corrige anulando la factura y cargando de nuevo).
 // Paquete 3 (M3b): el renglón, la parte y los tributos de la factura de proveedor también solo se agregan (la app no tiene UPDATE ni DELETE en la base). La CABECERA (`facturaProveedor`) no entra todavía: su UPDATE es por
 // columna (estado, anulación y datos que identifican la factura) y la lista cerrada de sus escritores llega con el primer caso de uso que la escriba (Etapa C).
-// La PARTE (`facturaProveedorSucursal`) sí está acá aunque la base le deje UPDATE POR COLUMNA de la recepción (estado, fecha y persona; solo PENDIENTE a RECIBIDA, con un disparador): hoy ningún `src/` la escribe, y el caso de uso de
-// confirmar la recepción (Etapa C) tendrá que declarar ese UPDATE, con su lista cerrada de columnas, antes de entrar.
+// La PARTE (`facturaProveedorSucursal`) sí está acá aunque la base le deje UPDATE POR COLUMNA de la recepción (estado, fecha, persona y, desde Compras N3-a, la compra: solo PENDIENTE a RECIBIDA, con un disparador): su ÚNICO UPDATE en
+// `src/` es la confirmación de la recepción (`confirmarParteRecibida`), declarado abajo en `USOS_PERMITIDOS_DE_PARTE` con su lista cerrada de columnas; cualquier otro update, upsert o delete de la parte es una violación.
 // E3a (ADR-041): los renglones de una propuesta de parte (`facturaProveedorPropuestaRenglon`) y la anulación de una factura (`anulacionDeFacturaProveedor`) solo se agregan (la app tiene SELECT e INSERT). La PROPUESTA misma no
 // entra: la base le deja UPDATE por columna de su aceptación (estado, cuándo, quién y la parte), con un único escritor (aceptar una propuesta).
 const MODELOS_SOLO_AGREGAN = ["movimientoStock", "registroAuditoria", "auditoriaPlataforma", "venta", "facturaProveedorRenglon", "facturaProveedorSucursal", "facturaProveedorTributo", "facturaProveedorPropuestaRenglon", "anulacionDeFacturaProveedor", "imputacionDeGasto", "reclasificacionRenglon", "notaCreditoProveedorLinea", "notaCreditoProveedorImputacion", "notaCreditoProveedorTributo", "distribucionCostoVersion", "distribucionCostoLinea", "versionDeOpcion", "consumoDeOpcion", "opcionElegidaEnLinea", "opcionDeEntradaDeCupo", "recetaDeCombinacionVersion", "recetaDeCombinacionIngrediente", "combinacionEnLinea"];
@@ -89,6 +89,17 @@ const USOS_PERMITIDOS_DE_OPERACION: UsoSobreOperacion[] = [
   },
 ];
 
+/** Los ÚNICOS lugares donde se actualiza una PARTE de factura (`FacturaProveedorSucursal`): la base le deja UPDATE por columna de la recepción y un disparador solo admite PENDIENTE a RECIBIDA. Agregar uno es una decisión de arquitectura: va con su motivo. */
+const USOS_PERMITIDOS_DE_PARTE: UsoSobreOperacion[] = [
+  {
+    archivo: "src/server/persistencia/compras/escribir-factura-proveedor.ts",
+    operaciones: ["updateMany"],
+    columnas: ["estadoRecepcion", "operacionId", "recibidaEn", "recibidaPorId"],
+    motivo:
+      "Compras N3-a (recepción separada): `confirmarParteRecibida` pasa la parte de PENDIENTE a RECIBIDA con la compra que recién se escribe (`operacionId`), la fecha de stock y quién la confirmó, con la guarda `WHERE estadoRecepcion = 'PENDIENTE'`: es la única forma de que entre el stock de una compra cargada pendiente.",
+  },
+];
+
 interface Violacion {
   archivo: string;
   linea: number;
@@ -107,6 +118,8 @@ interface UsoDeOperacion {
 interface LecturaDeArchivo {
   violaciones: Violacion[];
   usosDeOperacion: UsoDeOperacion[];
+  /** Los updates de la parte de factura (`facturaProveedorSucursal`), que se juzgan contra `USOS_PERMITIDOS_DE_PARTE`. */
+  usosDeParte: UsoDeOperacion[];
 }
 
 function clavesDeData(llamada: ts.CallExpression): string[] | null {
@@ -127,6 +140,7 @@ function leerArchivo(codigo: string, archivo: string): LecturaDeArchivo {
   const fuente = ts.createSourceFile(archivo, codigo, ts.ScriptTarget.Latest, true, archivo.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
   const violaciones: Violacion[] = [];
   const usosDeOperacion: UsoDeOperacion[] = [];
+  const usosDeParte: UsoDeOperacion[] = [];
   const linea = (nodo: ts.Node) => fuente.getLineAndCharacterOfPosition(nodo.getStart(fuente)).line + 1;
 
   const revisarSql = (nodo: ts.Node, nombre: string) => {
@@ -141,7 +155,9 @@ function leerArchivo(codigo: string, archivo: string): LecturaDeArchivo {
       const dueño = nodo.expression.expression;
       const modelo = ts.isPropertyAccessExpression(dueño) ? dueño.name.text : ts.isIdentifier(dueño) ? dueño.text : null;
       if (modelo && OPERACIONES_QUE_MODIFICAN.has(operacion)) {
-        if (MODELOS_SOLO_AGREGAN.includes(modelo)) {
+        if (modelo === "facturaProveedorSucursal" && (operacion === "update" || operacion === "updateMany")) {
+          usosDeParte.push({ archivo, operacion, linea: linea(nodo), columnas: clavesDeData(nodo) });
+        } else if (MODELOS_SOLO_AGREGAN.includes(modelo)) {
           violaciones.push({ archivo, linea: linea(nodo), detalle: `${modelo}.${operacion}: esa tabla solo agrega filas (una corrección es una fila nueva)` });
         } else if (modelo === "operacion") {
           usosDeOperacion.push({ archivo, operacion, linea: linea(nodo), columnas: operacion === "update" || operacion === "updateMany" ? clavesDeData(nodo) : null });
@@ -153,24 +169,24 @@ function leerArchivo(codigo: string, archivo: string): LecturaDeArchivo {
     ts.forEachChild(nodo, visitar);
   };
   visitar(fuente);
-  return { violaciones, usosDeOperacion };
+  return { violaciones, usosDeOperacion, usosDeParte };
 }
 
 /** Juzga los usos de `Operacion` contra la lista de excepciones y devuelve las violaciones. */
-function juzgarUsosDeOperacion(usos: UsoDeOperacion[], permitidos: UsoSobreOperacion[]): Violacion[] {
+function juzgarUsosDeOperacion(usos: UsoDeOperacion[], permitidos: UsoSobreOperacion[], tabla: { delegado: string; nombre: string } = { delegado: "operacion", nombre: "Operacion" }): Violacion[] {
   const violaciones: Violacion[] = [];
   for (const uso of usos) {
     const regla = permitidos.find((p) => p.archivo === uso.archivo);
     if (!regla) {
-      violaciones.push({ archivo: uso.archivo, linea: uso.linea, detalle: `operacion.${uso.operacion}: fuera de la lista cerrada de usos permitidos de Operacion` });
+      violaciones.push({ archivo: uso.archivo, linea: uso.linea, detalle: `${tabla.delegado}.${uso.operacion}: fuera de la lista cerrada de usos permitidos de ${tabla.nombre}` });
     } else if (!regla.operaciones.includes(uso.operacion)) {
-      violaciones.push({ archivo: uso.archivo, linea: uso.linea, detalle: `operacion.${uso.operacion}: este archivo solo puede hacer ${regla.operaciones.join(", ")}` });
+      violaciones.push({ archivo: uso.archivo, linea: uso.linea, detalle: `${tabla.delegado}.${uso.operacion}: este archivo solo puede hacer ${regla.operaciones.join(", ")}` });
     } else if (uso.columnas === null) {
-      violaciones.push({ archivo: uso.archivo, linea: uso.linea, detalle: "operacion.update con un `data` que no es un objeto literal: no se puede verificar qué columnas escribe" });
+      violaciones.push({ archivo: uso.archivo, linea: uso.linea, detalle: `${tabla.delegado}.update con un \`data\` que no es un objeto literal: no se puede verificar qué columnas escribe` });
     } else {
       const sobrantes = uso.columnas.filter((c) => !regla.columnas.includes(c));
       if (sobrantes.length > 0) {
-        violaciones.push({ archivo: uso.archivo, linea: uso.linea, detalle: `operacion.update escribe columnas no permitidas en este archivo: ${sobrantes.join(", ")}` });
+        violaciones.push({ archivo: uso.archivo, linea: uso.linea, detalle: `${tabla.delegado}.update escribe columnas no permitidas en este archivo: ${sobrantes.join(", ")}` });
       }
     }
   }
@@ -325,6 +341,11 @@ describe("el Kardex solo agrega: el analizador ve las violaciones (la regla no p
   it("detecta update/delete/upsert sobre el Kardex y la auditoría, por modelo calificado o delegado suelto", () => {
     for (const modelo of MODELOS_SOLO_AGREGAN) {
       for (const op of ["update", "updateMany", "upsert", "delete", "deleteMany"]) {
+        // El update de la PARTE de factura no es una violación inmediata: se juzga aparte contra `USOS_PERMITIDOS_DE_PARTE` (Compras N3-a; ver el último caso de este bloque).
+        if (modelo === "facturaProveedorSucursal" && (op === "update" || op === "updateMany")) {
+          expect(leerArchivo(`export const f = (tx: any) => tx.${modelo}.${op}({});`, "x.ts"), `${modelo}.${op}`).toMatchObject({ violaciones: [], usosDeParte: [expect.anything()] });
+          continue;
+        }
         expect(leerArchivo(`export const f = (tx: any) => tx.${modelo}.${op}({});`, "x.ts").violaciones, `${modelo}.${op}`).toHaveLength(1);
         expect(leerArchivo(`export const f = (${modelo}: any) => ${modelo}.${op}({});`, "x.ts").violaciones, `suelto ${modelo}.${op}`).toHaveLength(1);
       }
@@ -432,6 +453,28 @@ describe("el Kardex solo agrega: el código del repositorio", () => {
 
   it("cada excepción lleva su motivo", () => {
     for (const p of USOS_PERMITIDOS_DE_OPERACION) expect(p.motivo.trim().length, p.archivo).toBeGreaterThan(20);
+  });
+
+  it("la PARTE de factura solo se actualiza en la confirmación de la recepción, con sus columnas exactas (Compras N3-a)", () => {
+    const usosDeParte = lecturas.flatMap((l) => l.usosDeParte);
+    const violaciones = juzgarUsosDeOperacion(usosDeParte, USOS_PERMITIDOS_DE_PARTE, { delegado: "facturaProveedorSucursal", nombre: "la parte de factura" });
+    expect(violaciones, `La parte de factura solo se actualiza en la lista cerrada de usos permitidos:\n${formato(violaciones)}`).toEqual([]);
+    // La excepción sigue haciendo falta (la lista solo puede achicarse) y cada una lleva su motivo.
+    expect(USOS_PERMITIDOS_DE_PARTE.filter((p) => !usosDeParte.some((u) => u.archivo === p.archivo)).map((p) => p.archivo)).toEqual([]);
+    for (const p of USOS_PERMITIDOS_DE_PARTE) expect(p.motivo.trim().length, p.archivo).toBeGreaterThan(20);
+  });
+
+  it("control de sanidad de la parte: el analizador ve el update permitido, y rechaza otro archivo, otra operación, otras columnas y un `data` no literal", () => {
+    const juzgarParte = (codigo: string, archivo = "src/server/persistencia/compras/escribir-factura-proveedor.ts") =>
+      juzgarUsosDeOperacion(leerArchivo(codigo, archivo).usosDeParte, USOS_PERMITIDOS_DE_PARTE, { delegado: "facturaProveedorSucursal", nombre: "la parte de factura" });
+    expect(juzgarParte("export const f = (tx: any) => tx.facturaProveedorSucursal.updateMany({ where: {}, data: { estadoRecepcion: 'RECIBIDA', operacionId: 'x', recibidaEn: 1, recibidaPorId: 'u' } });")).toEqual([]);
+    expect(juzgarParte("export const f = (tx: any) => tx.facturaProveedorSucursal.updateMany({ where: {}, data: { estadoRecepcion: 'RECIBIDA' } });", "src/otro.ts")).toHaveLength(1);
+    expect(juzgarParte("export const f = (tx: any) => tx.facturaProveedorSucursal.update({ where: {}, data: { estadoRecepcion: 'RECIBIDA' } });")).toHaveLength(1);
+    expect(juzgarParte("export const f = (tx: any) => tx.facturaProveedorSucursal.updateMany({ where: {}, data: { porcentajeDeclaradoBp: 1 } });")).toHaveLength(1);
+    expect(juzgarParte("export const f = (tx: any, data: any) => tx.facturaProveedorSucursal.updateMany({ where: {}, data });")).toHaveLength(1);
+    // Un delete o un upsert de la parte nunca se admite: sigue siendo una violación inmediata.
+    expect(leerArchivo("export const f = (tx: any) => tx.facturaProveedorSucursal.deleteMany({});", "src/x.ts").violaciones).toHaveLength(1);
+    expect(leerArchivo("export const f = (tx: any) => tx.facturaProveedorSucursal.upsert({});", "src/x.ts").violaciones).toHaveLength(1);
   });
 });
 

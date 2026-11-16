@@ -8,7 +8,7 @@ import { Aviso } from "@/ui/primitivas/aviso";
 import { Boton } from "@/ui/primitivas/boton";
 import { Selector } from "@/ui/primitivas/selector";
 import { CampoFecha } from "@/ui/componentes/selectores/campo-fecha";
-import { formatearCantidad, formatearMonto } from "@/core/formato-de-numero";
+import { formatearCantidad } from "@/core/formato-de-numero";
 
 /**
  * E3a (ADR-041): «Para aceptar», las partes de facturas de proveedor que otra sucursal compró para ESTA sucursal. Muestra solo productos y cantidades (decisión del dueño, 2026-10-28: nada de importes ni de
@@ -102,8 +102,7 @@ export function BandejaParaAceptar({ propuestas, secciones }: { propuestas: Prop
 }
 
 /**
- * Compras, recepción separada (N3-a): una compra cargada «pendiente de recibir» (módulo `recepcion_de_compras` encendido): todavía no entró al stock. La ve quien tiene `compra_recibir` (gerente o administrador), con el importe (piso
- * administrador, como el resto de las compras). Al confirmar se elige la sección (depósito) y la fecha de stock (por defecto la de la factura; entre esa fecha y hoy): recién ahí entran el stock, el costo y el gasto.
+ * Compras, recepción separada (N3-a): una compra cargada «pendiente de recibir» (módulo `recepcion_de_compras` encendido): todavía no entró al stock. La ve quien tiene `compra_recibir` (gerente o administrador), sin importes. Al confirmar se elige la sección (depósito) y la fecha de stock (por defecto la de la factura; entre esa fecha y hoy): recién ahí entran el stock, el costo y el gasto.
  */
 export interface CompraPorRecibirVista {
   facturaId: string;
@@ -111,7 +110,6 @@ export interface CompraPorRecibirVista {
   nroFactura: string | null;
   /** Día de la factura (AAAA-MM-DD, hora argentina). */
   diaFactura: string;
-  importeTotal: number;
   cantidadDeRenglones: number;
   /** Días desde que se cargó. */
   antiguedadDias: number;
@@ -136,7 +134,7 @@ function TarjetaDeCompraPorRecibir({ compra, secciones }: { compra: CompraPorRec
     <li className="flex flex-col gap-2 rounded border p-3" data-testid="compra-por-recibir">
       <p className="text-sm">
         <strong>{compra.proveedorNombre}</strong>
-        {compra.nroFactura ? ` · Factura ${compra.nroFactura}` : ""} · del {compra.diaFactura} · {formatearMonto(compra.importeTotal)} · {compra.cantidadDeRenglones} renglón(es)
+        {compra.nroFactura ? ` · Factura ${compra.nroFactura}` : ""} · del {compra.diaFactura} · {compra.cantidadDeRenglones} renglón(es)
         {compra.antiguedadDias > 0 ? ` · cargada hace ${compra.antiguedadDias} día(s)` : " · cargada hoy"}
       </p>
       <div className="flex flex-wrap items-end gap-2">

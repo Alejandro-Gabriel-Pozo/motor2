@@ -34,7 +34,9 @@ afterAll(async () => {
 // La lista LITERAL de esos 9 (la del `VALUES` de la migración): `VENDIBLES` y `MODULOS_VENDIBLES` salen del mismo filtro sobre el catálogo, así que compararlos entre sí no prueba nada;
 // la aserción contra esta lista sí: si el filtro o el catálogo cambian (p. ej. un módulo nuevo pasa a disponible), falla acá y obliga a decidir qué hace el backfill.
 const BACKFILL_2026_10_04 = ["carta", "compras", "consignacion", "produccion", "promociones", "recetas", "salon", "stock", "traspasos"];
-const VENDIBLES = MODULOS.filter((m) => m.tipo === "vendible" && m.estado === "disponible").map((m) => m.id as string).sort();
+// Los vendibles que llegaron DESPUÉS del backfill y NACEN APAGADOS (Compras N3-a, 2026-11-16: `recepcion_de_compras`, un interruptor por empresa que enciende la plataforma): no están en el `VALUES` de la migración ni en `MODULOS_VENDIBLES` de los fixtures.
+const NACEN_APAGADOS = ["recepcion_de_compras"];
+const VENDIBLES = MODULOS.filter((m) => m.tipo === "vendible" && m.estado === "disponible" && !NACEN_APAGADOS.includes(m.id)).map((m) => m.id as string).sort();
 
 async function filas(empresaId: string) {
   return prismaAdmin.moduloEmpresa.findMany({ where: { empresaId }, orderBy: { modulo: "asc" } });
