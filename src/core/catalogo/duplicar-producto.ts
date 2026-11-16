@@ -8,8 +8,8 @@ import type { IngredienteInput, PasoInput } from "./receta-validacion";
 /**
  * Qué pasa con una columna al duplicar un producto:
  *  - `SE_COPIA`: el duplicado nace con el valor del original.
- *  - `SE_COPIA_CON_PERMISO`: se copia solo si quien duplica tiene `producto_campos_sensibles` (el precio de venta, el factor y la unidad de compra, el modo de venta); sin la clave nace con el valor neutro del alta
- *    (precio 0, factor 1, sin unidad de compra, «Directo»).
+ *  - `SE_COPIA_CON_PERMISO`: se copia solo si quien duplica tiene `producto_campos_sensibles` (el factor y la unidad de compra, el modo de venta); sin la clave nace con el valor neutro del alta
+ *    (factor 1, sin unidad de compra, «Directo»). El PRECIO de venta ya no depende de la clave (2026-11-16): se copia siempre y sin la clave no se puede elegir otro.
  *  - `NO_SE_COPIA`: el duplicado nace con otro valor (el nombre propio, el código autogenerado) o con el de fábrica (sin consignación, sin insumo).
  *  - `DERIVADA`: la fila nueva la arma el sistema (ids, empresa, versión 1, fechas, a qué producto, ingrediente o paso apunta la copia): nunca se copia ni se elige.
  */
@@ -33,7 +33,7 @@ export const COLUMNAS_DEL_DUPLICADO: Readonly<Record<string, Readonly<Record<str
     factorConversion: "SE_COPIA_CON_PERMISO",
     observaciones: "SE_COPIA",
     insumoId: "NO_SE_COPIA", // el hermanado de una materia prima con su insumo se decide para cada producto
-    precioVenta: "SE_COPIA_CON_PERMISO", // punto de partida editable
+    precioVenta: "SE_COPIA", // punto de partida; solo con `producto_campos_sensibles` se puede editar al duplicar (decisión del dueño, 2026-11-16: como Pedernal, alcanza crear)
     modoDeVenta: "SE_COPIA_CON_PERMISO",
     alicuotaIvaVenta: "SE_COPIA",
     alicuotaIvaCompra: "SE_COPIA",

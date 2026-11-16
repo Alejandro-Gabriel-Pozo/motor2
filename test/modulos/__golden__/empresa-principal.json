@@ -1326,6 +1326,30 @@
       ]
     },
     {
+      "clave": "partes_ver",
+      "contexto": "empresa",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "partes_editar",
+      "contexto": "empresa",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "partes_desactivar",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
       "clave": "producto_asignar_insumo",
       "contexto": "empresa",
       "nivelMinimo": "operario",
