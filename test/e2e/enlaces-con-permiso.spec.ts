@@ -9,7 +9,7 @@ import { ajustarCeldasDelAdmin } from "./fixtures/admin-con-filas";
  * «no tenés permiso»): queda el texto, sin enlace. El caso: Proveedores → «Comparativa de precios», que tiene su propia acción
  * (`comparar_precios`, distinta de `proveedores`).
  */
-test("Proveedores muestra el enlace a la comparativa solo a quien puede verla", async ({ browser, baseURL, sucursalId }) => {
+test("Proveedores no ofrece el enlace a la comparativa (oculta) y la dirección abre la pantalla a quien puede verla", async ({ browser, baseURL, sucursalId }) => {
   // «proveedores» y «comparar_precios» son de piso administrador: el caso se arma sobre el rol «admin» (se restaura al final).
   const admin = await ajustarCeldasDelAdmin({ proveedores: { puedeVer: true, puedeEditar: false }, comparar_precios: null });
   const rol = { id: admin.rolId };
@@ -25,19 +25,17 @@ test("Proveedores muestra el enlace a la comparativa solo a quien puede verla", 
   const page = await contexto.newPage();
   const enlace = page.locator('a[href="/catalogo/proveedores/comparativa"]');
   try {
-    // Sin «Ver» de la comparativa: el texto se ve, sin enlace (y con la explicación al pasar el mouse).
+    // Frente 6, paso 4: la comparativa está oculta (`CANDIDATAS_A_BAJA_VISIBLES` apagado): ni texto ni enlace, con o sin permiso. La pantalla sigue abriéndose por su dirección.
     await page.goto("/catalogo/proveedores");
     await expect(page.getByRole("heading", { name: "Proveedores" })).toBeVisible();
-    await expect(page.getByText("Comparativa de precios →")).toBeVisible();
+    await expect(page.getByText("Comparativa de precios →")).toHaveCount(0);
     await expect(enlace).toHaveCount(0);
-    await expect(page.locator('[data-sin-permiso]', { hasText: "Comparativa de precios" })).toHaveAttribute("title", /no tiene permiso/);
 
-    // Con «Ver» de la comparativa: aparece el enlace y lleva a la pantalla.
+    // Con «Ver» de la comparativa: sigue sin ofrecerse en la lista, pero la dirección abre la pantalla.
     await admin.cambiar({ comparar_precios: { puedeVer: true, puedeEditar: false } });
     await page.goto("/catalogo/proveedores");
-    await expect(enlace).toHaveCount(1);
-    await enlace.click();
-    await page.waitForURL(/\/catalogo\/proveedores\/comparativa$/);
+    await expect(enlace).toHaveCount(0);
+    await page.goto("/catalogo/proveedores/comparativa");
     await expect(page.getByText(/No tenés permiso para ver esta sección/)).toHaveCount(0);
   } finally {
     await contexto.close();
@@ -49,9 +47,9 @@ test("Proveedores muestra el enlace a la comparativa solo a quien puede verla", 
   }
 });
 
-test("el admin ve el enlace a la comparativa", async ({ paginaAutenticada: page }) => {
+test("el admin no ve el enlace a la comparativa (oculta, Frente 6 paso 4)", async ({ paginaAutenticada: page }) => {
   await page.goto("/catalogo/proveedores");
-  await expect(page.locator('a[href="/catalogo/proveedores/comparativa"]')).toHaveCount(1);
+  await expect(page.locator('a[href="/catalogo/proveedores/comparativa"]')).toHaveCount(0);
 });
 
 test("Proveedores muestra «+ Nuevo proveedor» solo a quien puede darlos de alta (proveedor_alta con Editar)", async ({ browser, baseURL, sucursalId }) => {

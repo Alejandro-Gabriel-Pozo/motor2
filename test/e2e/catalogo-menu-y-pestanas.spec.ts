@@ -62,12 +62,13 @@ test("el menú de Catálogo tiene cinco entradas; Productos y Maestros abren sus
   await menu(page).getByRole("link", { name: "Productos", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Productos", exact: true })).toBeVisible();
   const deProductos = page.getByRole("navigation", { name: "Qué mirar de los productos" });
-  await expect(deProductos.getByRole("link")).toHaveText(["Productos", "Precio local", "Recetas"]);
+  await expect(deProductos.getByRole("link")).toHaveText(["Productos", "Recetas"]); // «Precio local» está oculta (Frente 6, paso 4)
   await expect(menuActivo(page)).toHaveText("Productos");
   await sinViolaciones(page, "productos");
   await capturar(page, "1280-productos");
 
-  await deProductos.getByRole("link", { name: "Precio local" }).click();
+  // «Precio local» ya no es pestaña (Frente 6, paso 4): sigue abriéndose por su dirección y resalta «Productos».
+  await page.goto("/movimientos/precio-local");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Productos · Precio local en «");
   await expect(menuActivo(page)).toHaveText("Productos");
   await sinViolaciones(page, "precio local");

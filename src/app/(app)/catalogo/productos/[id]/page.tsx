@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { rutaOfrecida } from "@/core/navegacion/candidatas-a-baja";
 import { notFound } from "next/navigation";
 import { obtenerContextoUsuario, type ContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
@@ -286,7 +287,7 @@ export default async function FichaProductoPage({
               </EnlaceInterno>
             </li>
           )}
-          {p.tipo === "MP" && (
+          {p.tipo === "MP" && rutaOfrecida("/catalogo/proveedores/comparativa") && (
             <li>
               <EnlaceInterno href="/catalogo/proveedores/comparativa" className="underline">
                 Comparativa de precios por proveedor
