@@ -38,6 +38,8 @@ const llamaAUnGuard = (a: Accion) => a.llamadas.some((l) => /^guardComando[A-Z]/
 
 /** Acciones que llaman a un caso de uso SIN guard de comando, cada una con el motivo. */
 const SIN_GUARD: Record<string, string> = {
+  "src/server/actions/catalogo/ocultar-producto.ts#ocultarProducto":
+    "«Ocultar» (etapa d): no recibe datos libres, solo un id, un alcance de una lista cerrada y un booleano; la acción los valida con comparaciones exactas (todo nace cerrado) y el caso de uso vuelve a validar el id (uuid de la marca) y lee todo dentro de su transacción serializable.",
   "src/server/actions/pos/cuenta-apertura.ts#abrirCuentaDeMostrador":
     "Abrir la cuenta del mostrador (ADR-039, M1.4c): la acción no recibe ningún dato del navegador (la sucursal es la del contexto y el puesto es el de la sucursal), así que no hay nada que validar; el caso de uso lee todo dentro de su transacción serializable.",
   "src/server/actions/pos/mesas.ts#habilitarMostrador":

@@ -142,6 +142,17 @@ Niveles 6 a 10: **no se diseñan** hasta que el dueño confirme 1 a 5 (compuerta
 **Q1 (la que cambia qué se construye):** «Las pantallas no están adecuadas»: en Motor2 de hoy **sí se puede elegir un plato con opciones** al armar una promoción («Vienen fijas» o «El mozo elige»). ¿Cuál de estas pantallas querés que ajustemos primero: (A) menú de la barra lateral por áreas, como Pedernal; (B) secciones de la carta; (C) otra que me nombres? Recomendado: **mirar primero la fotografía E0 de las tres** y decidir sobre lo que ves.
 **Q2 (después de Q1, no se pregunta aún):** la maqueta del menú por áreas figura «pendiente de aprobación» pero hay decisiones del 12 y 13/11 que la aprueban; confirmar cuál vale antes de copiarla.
 
+## 8 bis. Estado tras las decisiones del dueño (2026-11-16)
+
+| Pantalla | Estado | Cita / fuente |
+|---|---|---|
+| Secciones de la carta | **HECHA en etapa de pantalla** (lista simple + pantalla por sección): PR #345, `docs/diseno-secciones-lista-simple-2026-11-16.md` | «Lista simple como Pedernal (Recomendada)» (2026-11-16) |
+| «Nueva sección» con solo el nombre | **PROPUESTA, sin código**: hoy conserva 5 campos (nombre, título, descripción, imagen, orden); Pedernal pide solo el nombre y el resto se completa en la pantalla de la sección. No se construye hasta que el dueño la acepte | Sugerencia del Frente 6 (el dueño no la pidió) |
+| Promociones | **EN ESPERA DE PEDERNAL**: no se cambia el modelo ni se simplifica la pantalla hasta que Pedernal construya su pantalla de combos | «Esperemos a pedernal en esto ya lo lance» (2026-11-16, registrada en `motor2-docs`, «Promociones: esperar a Pedernal») |
+| Menú lateral, ficha del producto, mostrador, compra | Solo medidas, sin propuesta: `motor2-docs`, `_coordinacion/densidad-otras-pantallas-2026-11-16.md` | Orden del dueño: «No dejes nada pendiente de lo que se puede trabajar en paralelo» (2026-11-16) |
+
+Lo ya medido de promociones (para cuando se retome): Motor2 168 palabras, 43 campos, 16 casillas y 7 botones al entrar (415 palabras desplegada); Pedernal, solo maquetas de combos (lista 57 palabras; un combo 101; elegir al vender 79–87). Diferencia de fondo: en Motor2 el plato con opciones se define al armar la promo («Vienen fijas» o «El mozo elige»); en Pedernal se elige al vender. Comparación y capturas: `motor2-docs`, `_coordinacion/comparacion-pantallas-2026-11-16/`.
+
 ## 9. Anexos de verificación (informes de los agentes de lectura, resumidos; punto de partida)
 
 ### Anexo A — Motor2 (agente, código leído en `src/`)

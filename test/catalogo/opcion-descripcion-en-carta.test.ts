@@ -25,12 +25,12 @@ describe("descripción de la opción: guard", () => {
     for (const vacio of [null, "", "   "]) expect(editar(vacio), JSON.stringify(vacio)).toEqual({ ok: true, valor: { ...base, descripcionEnCarta: null } });
   });
 
-  it("un texto válido pasa tal cual (hasta 120 caracteres, con tildes, comas y paréntesis)", () => {
-    for (const bueno of ["lechuga, tomate, cebolla", "x".repeat(120), "Ñandú (a la parrilla) y más", "tomate 100% natural"]) expect(editar(bueno), bueno).toEqual({ ok: true, valor: { ...base, descripcionEnCarta: bueno } });
+  it("un texto válido pasa tal cual (hasta 80 caracteres, con tildes, comas y paréntesis)", () => {
+    for (const bueno of ["lechuga, tomate, cebolla", "x".repeat(80), "Ñandú (a la parrilla) y más", "tomate 100% natural"]) expect(editar(bueno), bueno).toEqual({ ok: true, valor: { ...base, descripcionEnCarta: bueno } });
   });
 
-  it("rechaza: 121 caracteres, espacios a los costados, saltos de línea, HTML, empezar con «-» y lo que no es texto", () => {
-    for (const malo of ["x".repeat(121), " lechuga", "lechuga ", "lechuga\ntomate", "lechuga\r\ntomate", "<script>alert(1)</script>", "<b>hola</b>", "=1+1", "-A1", 5, {}, []]) {
+  it("rechaza: 81 caracteres, espacios a los costados, saltos de línea, HTML, empezar con «-» y lo que no es texto", () => {
+    for (const malo of ["x".repeat(81), " lechuga", "lechuga ", "lechuga\ntomate", "lechuga\r\ntomate", "<script>alert(1)</script>", "<b>hola</b>", "=1+1", "-A1", 5, {}, []]) {
       expect(editar(malo as unknown).ok, JSON.stringify(malo)).toBe(false);
     }
   });

@@ -557,7 +557,14 @@ const CONGELADAS: Record<string, Congelada> = {
           "«Ocultar» como Pedernal, E3c2 (docs/diseno-ocultar-como-pedernal-2026-11-15.md, O-5 y R-8; CAMBIA SOLO LA LÍNEA `lecturas` de los 5 pasos de anulación y conteo): anular una venta lee ahora `ocultamientoProducto.findMany` ×1 antes de escribir (para rechazar devolver existencia a un producto oculto). Verificado línea por línea: cada una de las 5 líneas gana ese único token y su contador sube en 1; ni un resultado, ni una fila, ni una escritura, ni un mensaje cambian.",
       },
       {
-        blob: "7c08de0ecfea3ca0c93ae0fbe9b3a72e14d64495",
+        blob: "0bd0ea83eec52d1b38a5873f0b9157226b18a8ed",
+        // El commit PADRE de este (3967f844) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "3967f844",
+        motivo:
+          "Auditoría legible (CAMBIA SOLO el texto guardado en `valorNuevo` de la auditoría `campo=reparto` de la carga de una factura de proveedor, en 115 líneas AUDITORIA): `registrarCambioAuditado` guardaba un arreglo de objetos con `String(valor)` («[object Object]», ilegible); ahora un objeto plano o un arreglo se guarda como JSON compacto con las claves ordenadas, p. ej. `[{\"estado\":\"RECIBIDA\",\"importe\":320,\"porcentajeDeclaradoBp\":10000,\"sucursal\":\"Central\"}]`. Verificado: quitando `valorNuevo=…` de esas líneas, idéntico al anterior; ninguna otra línea cambia.",
+      },
+      {
+        blob: "8df708d8c06b4310a66a8bd90e0b458bfad6ca24",
         // El commit PADRE de este es 13405dba (main con la primitiva de cantidad exacta, #343), el último antes del cambio; el golden se regenera en el commit siguiente (A1b, frente 2).
         commit: "13405dba",
         motivo:
@@ -1276,6 +1283,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "b41faafa",
         motivo:
           "Productos P2 (cambio de texto de ADMINISTRACIÓN, no de la carta pública; dueño, 2026-11-13: «Sí, así provisorio (Recomendada)», ficha de tres pestañas): la ficha del producto pasa de «Resumen / Qué se vende / Opciones y precio / Receta / En la carta» a «Datos / Precios / Opciones», y la pantalla de opciones suma la línea «El precio del producto está en la pestaña Precios». Regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra la base e2e local y revisado: solo cambian las pestañas de la ficha y el título y la ayuda de la pantalla de opciones (10 líneas agregadas, 16 quitadas), ninguna línea de la carta pública.",
+      },
+      {
+        blob: "5f96a74d385a544335c96075c34384686c7ece42",
+        // El commit PADRE de este (4b8db032) es el último antes de la regeneración; el texto lo cambió el commit que agrega esta entrada (Frente 6, Secciones: lista simple).
+        commit: "4b8db032",
+        motivo:
+          "Frente 6, Secciones como lista simple (cambio de texto de ADMINISTRACIÓN, no de la carta pública; dueño, 2026-11-16: «Lista simple como Pedernal (Recomendada)»; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). En «Carta › Parametrización › Secciones» (a 1280 y a 375 px): los nombres de las secciones pasan a ser enlaces `[enlace: …]` a la pantalla de cada sección (`/carta/parametrizacion/secciones/[id]`), la ayuda suma «Tocá una sección para ver sus datos y sus productos.» y salen de esta pantalla «Datos de cada sección» (el formulario de cada sección, con las mismas acciones) y «Productos de cada sección» (la ficha de cada producto, que ya vivía en `/catalogo/productos/[id]/en-la-carta`): pasan a la pantalla de cada sección y a la ficha del producto. 10 líneas agregadas, 504 quitadas, todas de esa pantalla (revisado con git diff); la carta pública, el catálogo de opciones y el resto quedan idénticos.",
       },
     ],
   },
