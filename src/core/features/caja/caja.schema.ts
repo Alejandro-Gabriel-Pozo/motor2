@@ -1,4 +1,4 @@
-import type { ConteoDeBilletes, RenglonDeCobro } from "@/core/caja/public";
+import type { ConteoDeBilletes, DatoDelCobro, DatosQuePideElMedio, MotivoDeDatoInvalido, RenglonDeCobro } from "@/core/caja/public";
 import type { Exito, Fracaso } from "@/core/resultado-caso";
 
 /**
@@ -66,11 +66,83 @@ export type CodigoDeFalloDeCobro =
   | "COBRO_NO_CUADRA"
   | "COBRO_SIN_RENGLONES"
   | "COBRO_CON_DEMASIADOS_RENGLONES"
-  | "IMPORTE_INVALIDO";
-/** `totalActualEnCentavos` con `TOTAL_CAMBIO`; `falta` y `sobra` (centavos) con `COBRO_NO_CUADRA`. */
+  | "IMPORTE_INVALIDO"
+  | "CUENTA_DE_COBRO_NO_ADMITIDA"
+  | "CUENTA_DE_COBRO_NO_ENCONTRADA"
+  | "CUENTA_DE_COBRO_DE_OTRA_SUCURSAL"
+  | "CUENTA_DE_COBRO_INACTIVA"
+  | "CUENTA_DE_COBRO_INCOMPATIBLE"
+  | "DATO_DE_COBRO_NO_HABILITADO"
+  | "DATO_DE_COBRO_INVALIDO";
+/** `totalActualEnCentavos` con `TOTAL_CAMBIO`; `falta` y `sobra` (centavos) con `COBRO_NO_CUADRA`; `dato` con los dos `DATO_DE_COBRO_*` (y `motivo` con `_INVALIDO`). */
 export type ResultadoCobrarCuenta =
   | Exito<{ cobranzaId: string; yaExistia: boolean }>
-  | (Fracaso<CodigoDeFalloDeCobro> & { totalActualEnCentavos?: bigint; faltaEnCentavos?: bigint; sobraEnCentavos?: bigint; cobranzaId?: string });
+  | (Fracaso<CodigoDeFalloDeCobro> & { totalActualEnCentavos?: bigint; faltaEnCentavos?: bigint; sobraEnCentavos?: bigint; cobranzaId?: string; dato?: DatoDelCobro; motivo?: MotivoDeDatoInvalido });
 
 export type CodigoDeFalloDeCierre = "SESION_NO_ENCONTRADA" | "SESION_CERRADA" | "CONTEO_INVALIDO" | "CONFORME_FALTANTE";
 export type ResultadoCerrarSesion = Exito<{ sesionId: string; yaEstabaCerrada: boolean; diferenciaEnEfectivoEnCentavos: bigint }> | Fracaso<CodigoDeFalloDeCierre>;
+
+// ----- Etapa C3: cuentas de cobro y medios de pago -----
+
+export interface ComandoCrearCuentaDeCobro {
+  /** TERMINAL, QR o CUENTA_BANCARIA (se valida en el caso de uso: llega de afuera). */
+  tipo: string;
+  nombre: string;
+  /** El número de terminal o el alias; `null` = sin dato. Nunca una credencial. */
+  identificadorExterno: string | null;
+  sucursalId: string;
+}
+
+export interface ComandoEditarCuentaDeCobro {
+  cuentaDeCobroId: string;
+  /** La versión que la pantalla tenía al abrir la ficha (control de versión optimista). */
+  versionEsperada: number;
+  nombre: string;
+  identificadorExterno: string | null;
+  sucursalId: string;
+}
+
+export interface ComandoCambiarEstadoDeCuentaDeCobro {
+  cuentaDeCobroId: string;
+}
+
+export interface ComandoCrearMedioDePago {
+  tipo: string;
+  /** `null` = sin nombre propio: la pantalla usa el vocabulario del tipo. */
+  nombre: string | null;
+}
+
+export interface ComandoEditarMedioDePago {
+  medioDePagoId: string;
+  versionEsperada: number;
+  nombre: string | null;
+  /** El conjunto FINAL de datos que pide el medio, no solo lo que cambia. */
+  datos: DatosQuePideElMedio;
+}
+
+export interface ComandoCambiarEstadoDeMedioDePago {
+  medioDePagoId: string;
+}
+
+type CodigoComunDeConfiguracion = "VERSION_DESACTUALIZADA" | "SUCURSAL_NO_ENCONTRADA" | "SUCURSAL_FUERA_DE_ALCANCE";
+
+export type CodigoDeFalloDeCrearCuenta = "TIPO_DE_CUENTA_INVALIDO" | "NOMBRE_DE_CUENTA_INVALIDO" | "IDENTIFICADOR_EXTERNO_INVALIDO" | "CUENTA_DUPLICADA" | Exclude<CodigoComunDeConfiguracion, "VERSION_DESACTUALIZADA">;
+export type ResultadoCrearCuentaDeCobro = Exito<{ cuentaDeCobroId: string; yaExistia: boolean }> | Fracaso<CodigoDeFalloDeCrearCuenta>;
+
+export type CodigoDeFalloDeEditarCuenta = "NOMBRE_DE_CUENTA_INVALIDO" | "IDENTIFICADOR_EXTERNO_INVALIDO" | "CUENTA_DE_COBRO_NO_ENCONTRADA" | "CUENTA_DUPLICADA" | CodigoComunDeConfiguracion;
+export type ResultadoEditarCuentaDeCobro = Exito<{ version: number }> | Fracaso<CodigoDeFalloDeEditarCuenta>;
+
+export type CodigoDeFalloDeEstadoDeCuenta = "CUENTA_DE_COBRO_NO_ENCONTRADA" | "SUCURSAL_FUERA_DE_ALCANCE";
+export type ResultadoDesactivarCuentaDeCobro = Exito<{ yaEstabaInactiva: boolean }> | Fracaso<CodigoDeFalloDeEstadoDeCuenta>;
+export type ResultadoReactivarCuentaDeCobro = Exito<{ yaEstabaActiva: boolean }> | Fracaso<CodigoDeFalloDeEstadoDeCuenta>;
+
+export type CodigoDeFalloDeCrearMedio = "TIPO_DE_MEDIO_INVALIDO" | "NOMBRE_DE_MEDIO_INVALIDO" | "MEDIO_DUPLICADO" | "MEDIO_INACTIVO_CON_ESE_NOMBRE" | "EFECTIVO_YA_EXISTE";
+export type ResultadoCrearMedioDePago = Exito<{ medioDePagoId: string; yaExistia: boolean }> | Fracaso<CodigoDeFalloDeCrearMedio>;
+
+export type CodigoDeFalloDeEditarMedio = "NOMBRE_DE_MEDIO_INVALIDO" | "MEDIO_NO_ENCONTRADO" | "MEDIO_DUPLICADO" | "VERSION_DESACTUALIZADA" | "DATO_NO_ADMITIDO_POR_EL_MEDIO";
+/** `dato` con `DATO_NO_ADMITIDO_POR_EL_MEDIO`: el primero que el tipo no admite. */
+export type ResultadoEditarMedioDePago = Exito<{ version: number }> | (Fracaso<CodigoDeFalloDeEditarMedio> & { dato?: DatoDelCobro });
+
+export type CodigoDeFalloDeEstadoDeMedio = "MEDIO_NO_ENCONTRADO" | "EFECTIVO_NO_SE_DESACTIVA";
+export type ResultadoDesactivarMedioDePago = Exito<{ yaEstabaInactivo: boolean }> | Fracaso<CodigoDeFalloDeEstadoDeMedio>;
+export type ResultadoReactivarMedioDePago = Exito<{ yaEstabaActivo: boolean }> | Fracaso<Exclude<CodigoDeFalloDeEstadoDeMedio, "EFECTIVO_NO_SE_DESACTIVA">>;

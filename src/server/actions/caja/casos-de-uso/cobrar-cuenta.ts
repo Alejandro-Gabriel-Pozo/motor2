@@ -1,5 +1,6 @@
 import "server-only";
-import { centavosDeImporte, repartirCobro, textoDeCentavos } from "@/core/caja/public";
+import { centavosDeImporte, datosCompletados, datosEnFormaCompleta, repartirCobro, sinDatos, textoDeCentavos, validarDatosDelCobro, validarParDeCobro } from "@/core/caja/public";
+import type { DatosDelCobroCompletos, RenglonDeCobro } from "@/core/caja/public";
 import type { ComandoCobrarCuenta, ResultadoCobrarCuenta } from "@/core/features/caja/caja.schema";
 import { calcularPayloadHash } from "@/core/movimientos/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";
@@ -8,6 +9,7 @@ import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { cargarCajaDeSucursal, cargarCobranzaDeClave, cargarCobranzaDeCuenta, cargarSesionAbiertaDeCaja, cargarTiposDeMedios, insertarCobranza, insertarCobro, insertarMovimiento } from "@/server/persistencia/caja/caja";
+import { cargarCuentaDeCobro, esMarcaDeTarjetaActiva } from "@/server/persistencia/caja/configuracion";
 import { cargarCuentaParaCobrar } from "@/server/persistencia/caja/total-de-cuenta";
 
 /**
@@ -39,7 +41,12 @@ export async function cobrarCuentaCasoDeUso(
   const huella = calcularPayloadHash("COBRAR_CUENTA", actor.empresaId, {
     cuentaId: comando.cuentaId,
     total: textoDeCentavos(comando.totalVistoEnCentavos),
-    renglones: canonicos.map((r) => [r.medioDePagoId, textoDeCentavos(r.importeEnCentavos)]),
+    // Un renglón sin cuenta de cobro ni datos conserva la forma de C1 `[medio, importe]` (no invalida los cobros ya guardados); con alguno de los dos suma la cuenta y los datos completos.
+    renglones: canonicos.map((r) => {
+      const base = [r.medioDePagoId, textoDeCentavos(r.importeEnCentavos)];
+      const datos = datosEnFormaCompleta(r.datos);
+      return (r.cuentaDeCobroId ?? null) === null && sinDatos(datos) ? base : [...base, r.cuentaDeCobroId ?? null, datos];
+    }),
   });
 
   return conTransaccionSerializable(
@@ -67,7 +74,26 @@ export async function cobrarCuentaCasoDeUso(
       if (!sesion) return fracaso("SIN_SESION_ABIERTA", "No hay una caja abierta en esta sucursal: abrila antes de cobrar.");
 
       const medios = await cargarTiposDeMedios(tx, actor.empresaId, comando.renglones.map((r) => r.medioDePagoId));
-      if (comando.renglones.some((r) => medios.get(r.medioDePagoId)?.activo !== true)) return fracaso("MEDIO_NO_HABILITADO", "Hay un medio de pago que no está habilitado.");
+      // Cada renglón, en orden canónico: el medio existe y está activo; la cuenta de cobro (si viene) es de la sucursal, está activa y es compatible; cada dato presente lo pidió el medio y está bien escrito.
+      const datosValidos = new Map<RenglonDeCobro, DatosDelCobroCompletos>();
+      for (const r of canonicos) {
+        const medio = medios.get(r.medioDePagoId);
+        const cuentaId = r.cuentaDeCobroId ?? null;
+        const cuenta = cuentaId === null ? null : await cargarCuentaDeCobro(tx, actor.empresaId, cuentaId);
+        const par = validarParDeCobro({ medio: medio ?? null, cuentaDeCobroId: cuentaId, cuenta, sucursalDeLaCaja: sesion.sucursalId });
+        if (!par.ok) return fracaso(par.error, textoDeError(par.error));
+        const datos = validarDatosDelCobro(r.datos ?? {}, (medio as NonNullable<typeof medio>).pide);
+        if (!datos.ok) {
+          const e = datos.error;
+          return e.codigo === "DATO_DE_COBRO_NO_HABILITADO"
+            ? { ...fracaso("DATO_DE_COBRO_NO_HABILITADO", "El medio de pago no pide ese dato."), dato: e.dato }
+            : { ...fracaso("DATO_DE_COBRO_INVALIDO", "Hay un dato del cobro mal escrito."), dato: e.dato, motivo: e.motivo };
+        }
+        if (datos.valor.marcaDeTarjetaId !== null && !(await esMarcaDeTarjetaActiva(tx, datos.valor.marcaDeTarjetaId))) {
+          return { ...fracaso("DATO_DE_COBRO_INVALIDO", "Hay un dato del cobro mal escrito."), dato: "marca" as const, motivo: "NO_DISPONIBLE" as const };
+        }
+        datosValidos.set(r, datos.valor);
+      }
 
       const reparto = repartirCobro(comando.renglones, totalActual);
       if (!reparto.ok) {
@@ -81,13 +107,13 @@ export async function cobrarCuentaCasoDeUso(
       for (const r of reparto.valor) {
         orden += 1;
         const movimientoId = azar.uuid();
-        await insertarMovimiento(tx, { id: movimientoId, empresaId: actor.empresaId, sucursalId: actor.sucursalId, sesionId: sesion.id, clase: "COBRO", medioDePagoId: r.medioDePagoId, importeEnCentavos: r.importeEnCentavos, motivo: null, anulaAId: null, claveIdempotencia: null, creadoPorId: actor.usuarioId });
-        await insertarCobro(tx, { id: azar.uuid(), empresaId: actor.empresaId, sucursalId: actor.sucursalId, cobranzaId, orden, medioDePagoId: r.medioDePagoId, movimientoId, importeEnCentavos: r.importeEnCentavos });
+        await insertarMovimiento(tx, { id: movimientoId, empresaId: actor.empresaId, sucursalId: actor.sucursalId, sesionId: sesion.id, clase: "COBRO", medioDePagoId: r.medioDePagoId, cuentaDeCobroId: r.cuentaDeCobroId ?? null, importeEnCentavos: r.importeEnCentavos, motivo: null, anulaAId: null, claveIdempotencia: null, creadoPorId: actor.usuarioId });
+        await insertarCobro(tx, { id: azar.uuid(), empresaId: actor.empresaId, sucursalId: actor.sucursalId, cobranzaId, orden, medioDePagoId: r.medioDePagoId, cuentaDeCobroId: r.cuentaDeCobroId ?? null, movimientoId, importeEnCentavos: r.importeEnCentavos, datos: datosValidos.get(r) });
       }
       await registrarCambioAuditado(tx, {
         entidad: "Cobranza",
         entidadId: cobranzaId,
-        descripcion: `Cuenta cobrada con ${reparto.valor.length} medio(s)`,
+        descripcion: `Cuenta cobrada con ${reparto.valor.length} medio(s)${descripcionDeCuentasYDatos(reparto.valor)}`,
         campo: "cobro",
         valorAnterior: null,
         valorNuevo: textoDeCentavos(totalActual),
@@ -100,4 +126,24 @@ export async function cobrarCuentaCasoDeUso(
     undefined,
     true,
   );
+}
+
+const TEXTOS_DE_PAR: Readonly<Record<string, string>> = {
+  MEDIO_NO_HABILITADO: "Hay un medio de pago que no está habilitado.",
+  CUENTA_DE_COBRO_NO_ADMITIDA: "El efectivo no lleva cuenta de cobro.",
+  CUENTA_DE_COBRO_NO_ENCONTRADA: "No se encontró la cuenta de cobro.",
+  CUENTA_DE_COBRO_DE_OTRA_SUCURSAL: "La cuenta de cobro es de otra sucursal.",
+  CUENTA_DE_COBRO_INACTIVA: "La cuenta de cobro está desactivada.",
+  CUENTA_DE_COBRO_INCOMPATIBLE: "El medio de pago no admite ese tipo de cuenta de cobro.",
+};
+
+function textoDeError(codigo: string): string {
+  return TEXTOS_DE_PAR[codigo] ?? "El renglón del cobro no es válido.";
+}
+
+/** Para la auditoría: cuántos renglones llevan cuenta y QUÉ datos se completaron (los nombres, NUNCA los valores: el DNI y los últimos 4 son datos personales). */
+function descripcionDeCuentasYDatos(renglones: readonly RenglonDeCobro[]): string {
+  const conCuenta = renglones.filter((r) => (r.cuentaDeCobroId ?? null) !== null).length;
+  const completados = [...new Set(renglones.flatMap((r) => datosCompletados(r.datos ?? {})))];
+  return `${conCuenta > 0 ? `; con cuenta de cobro: ${conCuenta}` : ""}${completados.length > 0 ? `; datos completados: ${completados.join(", ")}` : ""}`;
 }
