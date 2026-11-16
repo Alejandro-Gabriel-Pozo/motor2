@@ -85,7 +85,7 @@ Todo nace cerrado (regla del 2026-11-11): sin equivalencia declarada, una unidad
 |---|---|---|
 | I-U1 | Los factores de las 14 no cambian nunca; una prueba compara el código con el `CHECK` de la base | PROPUESTA (CONFIRMADA en Pedernal) |
 | I-U2 | Convertir es **exacto o se rechaza**, en este orden: `DIMENSION_DISTINTA`, `CONVERSION_NO_EXACTA`, `FUERA_DE_RANGO`; aritmética `bigint`, nunca `number` | PROPUESTA (**V**: ya así en `unidades-de-medida.ts`) |
-| I-U3 | **(actualizado)** La cuenta es **exacta con 4 decimales** como Pedernal, sin coma flotante: **CONFIRMADA** (dueño, 2026-11-16: «Pasar a cuenta exacta como Pedernal»). **No se toca** ninguna cantidad ni factor ya cargado (**datos existentes**). A cuántos decimales se **guarda** el stock nuevo (los de la unidad o 4 fijos): **PENDIENTE** (P2). Antes de aplicar: medir el Kardex en copia de solo lectura y regenerar `golden` con motivo | CONFIRMADA (cuenta exacta) / PENDIENTE (alcance) |
+| I-U3 | **(actualizado)** La cuenta es **exacta**, sin coma flotante, y el **stock nuevo guarda 4 decimales fijos** como Pedernal: **CONFIRMADA** (dueño, 2026-11-16: «Pasar a cuenta exacta como Pedernal» y «4 decimales fijos como Pedernal»). Las columnas ya son `Decimal(14,4)`: sin migración. **No se reescribe** ninguna cantidad ya guardada (**datos existentes**). Antes de aplicar: medir el Kardex en copia de solo lectura y regenerar `golden` con motivo | **CONFIRMADA** |
 | I-U4 | Una equivalencia solo entre unidades de la **misma dimensión** y relación 1 a 1 | PROPUESTA |
 | I-U5 | Nada se pierde: nombre original, `id`, decimales y toda fila que la referencia quedan idénticos | PROPUESTA |
 | I-U6 | Asignar/cambiar una equivalencia: permiso verificado en el servidor, **auditada** (quién, cuándo, de qué a qué), idempotente | PROPUESTA |
@@ -130,4 +130,4 @@ Columnas: **R**epetición · **C**oncurrencia · **T**iempo · **I**ncertidumbre
 
 ## Pendiente (para el dueño, una por vez)
 
-**P1 y el redondeo ya están respondidos** (entrada §8). La que sigue es **P2**: si el stock se guarda a los decimales de la unidad (a, recomendada) o a 4 fijos como Pedernal (b). P3 a P5 en fila. **P0** (lectura del pedido) se corrige leyendo este documento.
+**P1, el redondeo y P2 ya están respondidos** (entrada §8). La que está en vuelo es **P2b** (unidad de venta separada, pieza de fracciones §4). P3 a P5 en fila. **P0** (lectura del pedido) se corrige leyendo este documento.
