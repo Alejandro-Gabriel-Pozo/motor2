@@ -36,6 +36,8 @@ const FK_CON_DISCRIMINADOR: Readonly<Record<string, string>> = {
     "Paquete 4, M6.1: (empresaId, renglón, naturaleza) → FacturaProveedorRenglon(empresaId, id, naturaleza): la naturaleza de la línea es la del renglón que acredita (una línea de mercadería no acredita un renglón sin stock).",
   NotaCreditoProveedorImputacion_linea_fkey:
     "Paquete 4, M6.1: (empresaId, línea, lineaAdmiteDevolucion) → NotaCreditoProveedorLinea(empresaId, id, admiteDevolucion): solo una línea de mercadería sobre factura admite una devolución (más el CHECK de la devolución).",
+  ControlDeLineaDeRecepcion_renglon_fkey:
+    "Compras N3-b: (empresaId, facturaProveedorId, renglón) → FacturaProveedorRenglon(empresaId, facturaProveedorId, id): el renglón que se controla es de LA factura que dice el control (más el disparador, que exige que la parte sea de esa misma factura).",
   CentroDeCostos_empresaId_planDeCostosId_centroPadreId_fkey:
     "Paquete 5, M7.1: (empresaId, planDeCostosId, centroPadreId) → CentroDeCostos(empresaId, planDeCostosId, id): el padre de un centro es del MISMO plan (en la v1 `centroPadreId` es siempre NULL por CHECK; la clave queda lista para los sub-centros).",
   DistribucionCostoLinea_empresaId_distribucionCostoVersionI_fkey:

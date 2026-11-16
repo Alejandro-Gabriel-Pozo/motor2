@@ -119,7 +119,8 @@ describe("la otra empresa no ve nada, ni escribe en esta", () => {
         renglon.id,
         e.usuarioId,
       ]),
-    ).rejects.toMatchObject({ code: "42501" });
+    ).rejects.toMatchObject({ code: expect.stringMatching(/^(42501|23514)$/) });
+    // (El disparador corre antes que la política de escritura: con la parte invisible para el testigo responde 23514; sin él sería 42501. Falla cerrado en los dos casos.)
     // Nada que ver con las demás: el ajeno arma lo suyo y sigue sin ver los de esta empresa.
     await sembrarAjeno(e.usuarioId);
     expect((await cliente.query(`SELECT count(*)::int AS n FROM "ControlDeLineaDeRecepcion"`)).rows[0].n).toBe(0);

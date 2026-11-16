@@ -681,7 +681,7 @@ describe("el control en la base: las reglas que no dependen del código (segunda
     await expect(insertar({ ...base })).rejects.toThrow(/parte_renglon_key|Unique constraint/i);
     expect((await confirmar(facturaId)).ok).toBe(true);
     const [, rAceite] = await renglonesDe(facturaId);
-    await expect(insertar({ ...base, facturaProveedorRenglonId: rAceite!.id })).rejects.toThrow(/parte_pendiente/);
+    await expect(insertar({ ...base, facturaProveedorRenglonId: rAceite!.id })).rejects.toThrow(/solo se registra mientras la compra está pendiente de recibir/);
   });
 
   it("la app no puede cambiar ni borrar un control (solo SELECT e INSERT): UPDATE y DELETE dan permission denied", async (ctx) => {
