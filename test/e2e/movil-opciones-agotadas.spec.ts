@@ -24,7 +24,7 @@ test("opciones agotadas en celular: tocar una opción lejos deja el aviso y «De
 
   const ultima = nombres[nombres.length - 1]!;
   const pildora = page.locator(`[data-opcion-sucursal='${ultima}']`).getByRole("button", { name: `${ultima}: Disponible` });
-  await abrirPlegables(pildora);
+  await abrirPlegables(page.locator(`[data-opcion-sucursal='${ultima}']`));
   await pildora.scrollIntoViewIfNeeded();
   const alto = await page.evaluate(() => window.innerHeight);
   expect(await page.evaluate(() => window.scrollY), "la opción tocada está lejos del principio de la pantalla").toBeGreaterThan(alto);
