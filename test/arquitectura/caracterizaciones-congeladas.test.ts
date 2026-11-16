@@ -145,6 +145,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "compra_recibir pasa al módulo recepcion_de_compras y a piso administrador (Compras N3-a, recepción separada)",
       },
+      {
+        blob: "17ed89825d8790fe7502a750cc0c65bf7e3920ef",
+        // El commit PADRE de la regeneración es `ee68ecff` (el commit de Compras N3-b que dejó la acción `compra_controlar_recepcion` en el catálogo). El commit que regenera es el siguiente.
+        commit: "ee68ecff",
+        motivo:
+          "acción nueva compra_controlar_recepcion (Compras N3-a): módulo recepcion_de_compras, de sucursal, piso operario, semilla admin y operador (dueño, 2026-11-16: «Como Pedernal: también el operador»). Revisado con `git diff`: solo se suma esa clave a la lista de `MODULO_NO_ACTIVO//recepcion_de_compras` y a las listas de claves de cada bloque; ningún otro permiso ni rol cambia.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
