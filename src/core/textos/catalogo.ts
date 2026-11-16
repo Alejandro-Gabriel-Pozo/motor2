@@ -123,8 +123,7 @@ export const CATALOGO = {
     usos: [{ archivo: "plataforma/src/app/instalaciones/[instalacion]/empresas/textos.ts", nombre: "ACCION_DE_AUDITORIA" }],
     fuente: { decision: "DEC-0015" },
   },
-  // Lote A (DEC-0017): «No se encontró …» idénticos con el mismo código, una clave por código.
-  // Lote C1 (DEC-0020): «No se encontró {entidad}.», un solo molde con el género de la cosa («ese/esa» pasa a «el/la», aceptado por el dueño). Hoy lo usa `server/actions/auth/`; el resto de los sitios entra en C2.
+  // Lote C1 (DEC-0020): «No se encontró {entidad}.», un solo molde con el género de la cosa («ese/esa» pasa a «el/la», aceptado por el dueño). Lo usan `server/actions/auth/` (C1) y los casos de uso y guards de movimientos, stock, clientes, reportes y traspasos (C2, DEC-0021). Absorbe las claves por código del lote A.
   "rechazo.NO_ENCONTRADO": {
     porDefecto: "No se encontró {entidad}.",
     marcadores: { entidad: "entidad" },
@@ -138,25 +137,33 @@ export const CATALOGO = {
       { archivo: "src/server/actions/auth/casos-de-uso/invitacion-gestionable.ts", nombre: "invitacionGestionable" },
       { archivo: "src/server/actions/auth/casos-de-uso/invitaciones-de-usuario-en-tx.ts", nombre: "rotarInvitacionPendiente" },
       { archivo: "src/server/actions/auth/casos-de-uso/revocar-invitacion.ts", nombre: "revocarInvitacionCasoDeUso" },
-    ],
-    fuente: { decision: "DEC-0020" },
-  },
-  "rechazo.CONTEO_NO_ENCONTRADO": {
-    porDefecto: "No se encontró ese conteo.",
-    usos: [
+      { archivo: "src/core/features/movimientos/cancelar-conteo.guard.ts", nombre: "guardComandoCancelarConteo" },
+      { archivo: "src/core/features/movimientos/resolver-conteo.guard.ts", nombre: "guardComandoResolverConteo" },
+      { archivo: "src/core/features/movimientos/secciones.guard.ts", nombre: "guardComandoActualizarRespaldoSeccion" },
+      { archivo: "src/core/features/seccion-habitual/seccion-habitual.guard.ts", nombre: "guardComandoEliminarSeccionHabitual" },
+      { archivo: "src/core/features/traspasos/traspaso-comandos.guard.ts", nombre: "MENSAJE_TRASPASO_NO_ENCONTRADO" },
+      { archivo: "src/server/actions/clientes/casos-de-uso/actualizar-activo-cliente.ts", nombre: "actualizarActivoClienteCasoDeUso" },
+      { archivo: "src/server/actions/clientes/casos-de-uso/actualizar-cliente.ts", nombre: "actualizarClienteCasoDeUso" },
+      { archivo: "src/server/actions/movimientos/casos-de-uso/actualizar-activa-seccion.ts", nombre: "actualizarActivaSeccionCasoDeUso" },
+      { archivo: "src/server/actions/movimientos/casos-de-uso/actualizar-activo-destino-consumo.ts", nombre: "actualizarActivoDestinoConsumoCasoDeUso" },
+      { archivo: "src/server/actions/movimientos/casos-de-uso/actualizar-activo-motivo-merma.ts", nombre: "actualizarActivoMotivoMermaCasoDeUso" },
+      { archivo: "src/server/actions/movimientos/casos-de-uso/actualizar-respaldo-seccion.ts", nombre: "actualizarRespaldoSeccionCasoDeUso" },
       { archivo: "src/server/actions/movimientos/casos-de-uso/cancelar-conteo-fisico.ts", nombre: "cancelarConteoFisicoCasoDeUso" },
+      { archivo: "src/server/actions/movimientos/casos-de-uso/registrar-conteo-fisico.ts", nombre: "registrarConteoFisicoCasoDeUso" },
+      { archivo: "src/server/actions/movimientos/casos-de-uso/registrar-movimiento.ts", nombre: "registrarMovimientoCasoDeUso" },
+      { archivo: "src/server/actions/movimientos/casos-de-uso/renombrar-seccion.ts", nombre: "renombrarSeccionCasoDeUso" },
       { archivo: "src/server/actions/movimientos/casos-de-uso/resolver-conteo-pendiente.ts", nombre: "resolverConteoPendienteCasoDeUso" },
-    ],
-    fuente: { decision: "DEC-0017" },
-  },
-  "rechazo.PRODUCTO_NO_ENCONTRADO": {
-    porDefecto: "No se encontró el producto.",
-    usos: [
+      { archivo: "src/server/actions/reportes/casos-de-uso/guardar-margen-objetivo.ts", nombre: "guardarMargenObjetivoCasoDeUso" },
+      { archivo: "src/server/actions/stock/casos-de-uso/eliminar-frecuencia-conteo.ts", nombre: "eliminarFrecuenciaConteoCasoDeUso" },
+      { archivo: "src/server/actions/stock/casos-de-uso/eliminar-seccion-habitual.ts", nombre: "eliminarSeccionHabitualCasoDeUso" },
+      { archivo: "src/server/actions/stock/casos-de-uso/eliminar-stock-minimo.ts", nombre: "eliminarStockMinimoCasoDeUso" },
+      { archivo: "src/server/actions/stock/casos-de-uso/reclasificar-stock.ts", nombre: "reclasificarStockCasoDeUso" },
       { archivo: "src/server/actions/stock/casos-de-uso/set-frecuencia-conteo.ts", nombre: "setFrecuenciaConteoCasoDeUso" },
       { archivo: "src/server/actions/stock/casos-de-uso/set-seccion-habitual.ts", nombre: "setSeccionHabitualCasoDeUso" },
       { archivo: "src/server/actions/stock/casos-de-uso/set-stock-minimo-producto.ts", nombre: "setStockMinimoProductoCasoDeUso" },
+      { archivo: "src/server/persistencia/movimientos/cargar-origen-de-venta.ts", nombre: "prepararOrigen" },
     ],
-    fuente: { decision: "DEC-0017" },
+    fuente: { decision: "DEC-0020" },
   },
 } as const satisfies Readonly<Record<string, DefinicionDeTexto>>;
 

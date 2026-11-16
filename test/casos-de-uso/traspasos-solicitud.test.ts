@@ -100,7 +100,7 @@ describe("casos de uso de la solicitud de traspaso", () => {
 
     it("NO_ENCONTRADO", async () => {
       const r = await aprobarYEnviarTraspasoCasoDeUso(comoA(), { traspasoId: "no-existe", seccionOrigenId: seccionAId });
-      expect(r).toEqual({ ok: false, codigo: "NO_ENCONTRADO", mensaje: "No se encontró ese traspaso." });
+      expect(r).toEqual({ ok: false, codigo: "NO_ENCONTRADO", mensaje: "No se encontró el traspaso." });
     });
 
     it("LADO: el destino no puede aprobar su propia solicitud", async () => {
@@ -181,7 +181,7 @@ describe("casos de uso de la solicitud de traspaso", () => {
     it("NO_ENCONTRADO / LADO / ESTADO con los textos de antes", async () => {
       const mp = await producto(10);
       const sol = await solicitud(mp.id, 4);
-      expect(await cancelarSolicitudDeTraspasoCasoDeUso(comoB(), { traspasoId: "no-existe" })).toEqual({ ok: false, codigo: "NO_ENCONTRADO", mensaje: "No se encontró ese traspaso." });
+      expect(await cancelarSolicitudDeTraspasoCasoDeUso(comoB(), { traspasoId: "no-existe" })).toEqual({ ok: false, codigo: "NO_ENCONTRADO", mensaje: "No se encontró el traspaso." });
       expect(await cancelarSolicitudDeTraspasoCasoDeUso(comoA(), { traspasoId: sol.id })).toEqual({ ok: false, codigo: "LADO", mensaje: "Esta solicitud no la creó esta sucursal." });
       await cancelarSolicitudDeTraspasoCasoDeUso(comoB(), { traspasoId: sol.id });
       expect(await cancelarSolicitudDeTraspasoCasoDeUso(comoB(), { traspasoId: sol.id })).toEqual({
@@ -214,7 +214,7 @@ describe("casos de uso de la solicitud de traspaso", () => {
     it("NO_ENCONTRADO / LADO / ESTADO con los textos de antes", async () => {
       const mp = await producto(10);
       const sol = await solicitud(mp.id, 4);
-      expect(await rechazarSolicitudDeTraspasoCasoDeUso(comoA(), { traspasoId: "no-existe", motivo: null })).toEqual({ ok: false, codigo: "NO_ENCONTRADO", mensaje: "No se encontró ese traspaso." });
+      expect(await rechazarSolicitudDeTraspasoCasoDeUso(comoA(), { traspasoId: "no-existe", motivo: null })).toEqual({ ok: false, codigo: "NO_ENCONTRADO", mensaje: "No se encontró el traspaso." });
       expect(await rechazarSolicitudDeTraspasoCasoDeUso(comoB(), { traspasoId: sol.id, motivo: null })).toEqual({
         ok: false,
         codigo: "LADO",
