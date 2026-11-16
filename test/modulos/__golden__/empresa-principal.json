@@ -205,6 +205,8 @@
         "conteo_resolver_pendiente",
         "insumo_alta",
         "opcion_apagar_en_sucursal",
+        "partes_editar",
+        "partes_ver",
         "proceso_compra",
         "proceso_consumo",
         "proceso_control",
@@ -1330,7 +1332,8 @@
       "contexto": "empresa",
       "nivelMinimo": "operario",
       "rolesEditarSemilla": [
-        "admin"
+        "admin",
+        "operador"
       ]
     },
     {
@@ -1338,7 +1341,8 @@
       "contexto": "empresa",
       "nivelMinimo": "operario",
       "rolesEditarSemilla": [
-        "admin"
+        "admin",
+        "operador"
       ]
     },
     {

@@ -6,7 +6,7 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 import { altaDeParte, buscarFichasDeParte, cambiarEstadoDeParte, editarParte } from "../../src/server/actions/partes/partes";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { __setCookieDeTestParaSucursal } from "../setup/next-headers-stub";
-import { EMPRESA_POR_DEFECTO_ID as A, crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase } from "../setup/test-db";
+import { EMPRESA_POR_DEFECTO_ID as A, crearUsuarioConMembresia, limpiarBaseDeTest, prismaAdmin, sembrarBase } from "../setup/test-db";
 
 /**
  * Parte P1 — el rol de fábrica `operador` (como Pedernal; pedido del dueño 2026-11-16: «como pedernal,»): busca (`partes_ver`), da de alta y edita (`partes_editar`) fichas de personas y empresas, y NO desactiva
@@ -24,7 +24,7 @@ beforeEach(async () => {
   operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
   parteId = randomUUID();
   await prismaAdmin.parte.create({ data: { id: parteId, empresaId: A, idempotenciaAlta: randomUUID(), payloadHash: "h", naturaleza: "HUMANA", nombre: "Ana Pérez" } });
-  mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
+  await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
 });
 
 afterAll(() => {
@@ -34,7 +34,7 @@ afterAll(() => {
 describe("el operador de fábrica y las fichas de Parte", () => {
   it("la matriz de fábrica de una empresa sembrada: el operador tiene partes_ver y partes_editar (Ver y Editar) y NO partes_desactivar; el admin las tres", async () => {
     const filas = await prismaAdmin.permisoRol.findMany({ where: { accionClave: { startsWith: "partes_" } }, include: { rol: true }, orderBy: [{ accionClave: "asc" }] });
-    const de = (clave: string | null) => filas.filter((f) => f.rol.clave === clave).map((f) => `${f.accionClave}:${f.puedeVer}:${f.puedeEditar}`);
+    const de = (clave: string | null) => filas.filter((f) => f.rol.clave === clave && (f.puedeVer || f.puedeEditar)).map((f) => `${f.accionClave}:${f.puedeVer}:${f.puedeEditar}`);
     expect(de("operador")).toEqual(["partes_editar:true:true", "partes_ver:true:true"]);
     expect(de("admin")).toEqual(["partes_desactivar:true:true", "partes_editar:true:true", "partes_ver:true:true"]);
   });
@@ -63,8 +63,8 @@ describe("el operador de fábrica y las fichas de Parte", () => {
   });
 
   it("no se le puede dar partes_desactivar al operador por el piso: la fila a mano tampoco lo habilita", async () => {
-    const rol = await prisma.rol.findFirstOrThrow({ where: { clave: "operador" } });
-    await prismaAdmin.permisoRol.create({ data: { empresaId: A, rolId: rol.id, accionClave: "partes_desactivar", puedeVer: true, puedeEditar: true } });
+    const rol = await prismaAdmin.rol.findFirstOrThrow({ where: { clave: "operador" } });
+    await prismaAdmin.permisoRol.updateMany({ where: { rolId: rol.id, accionClave: "partes_desactivar" }, data: { puedeVer: true, puedeEditar: true } });
     const r = await cambiarEstadoDeParte(parteId, false).catch((e: unknown) => ({ ok: false, mensaje: e instanceof Error ? e.message : String(e) }));
     expect(r).toMatchObject({ ok: false, mensaje: expect.stringMatching(/permiso|acceso|No tenés|no tiene|nivel/i) });
     expect((await prismaAdmin.parte.findUniqueOrThrow({ where: { id: parteId } })).estado).toBe("ACTIVA");
