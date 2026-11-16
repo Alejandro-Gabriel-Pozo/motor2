@@ -49,8 +49,8 @@ test("el orden se autosugiere al crear una sección y al elegir la sección de u
 
     // DA6 en /carta: un PV oculto y sin sección (grupo «Ocultos, sin sección»).
     await page.locator(`[data-grupo-de-la-carta="Ocultos, sin sección"] > summary`).click();
+    await page.locator(`[data-contenido-carta="${nuevo.nombre}"]`).getByRole("link", { name: nuevo.nombre }).click();
     const filaNuevo = page.locator(`[data-contenido-carta="${nuevo.nombre}"]`);
-    await filaNuevo.locator("summary").click();
     const seccionNuevo = filaNuevo.getByLabel(/^Sección de carta/);
     const ordenNuevo = filaNuevo.getByLabel("Orden dentro de su sección");
     await expect(ordenNuevo).toHaveValue("0");
@@ -63,14 +63,15 @@ test("el orden se autosugiere al crear una sección y al elegir la sección de u
     await expect(ordenNuevo).toHaveValue("2");
     await filaNuevo.getByLabel("Se muestra en la carta").check();
     await filaNuevo.getByRole("button", { name: `Guardar contenido de «${nuevo.nombre}»` }).click();
-    // Al guardarse pasa del grupo «Ocultos, sin sección» al de «Llena» (el renglón se vuelve a dibujar ahí): se mira lo guardado.
+    // Se mira lo guardado (la ficha vive en la pantalla del producto, que no se mueve de grupo).
     await expect.poll(async () => (await prisma.contenidoCartaProducto.findFirstOrThrow({ where: { productoId: nuevo.id } })).seccionCartaId).toBe(llena.id);
     expect(await prisma.contenidoCartaProducto.findFirstOrThrow({ where: { productoId: nuevo.id } })).toMatchObject({ seccionCartaId: llena.id, orden: 2, visibleEnCarta: true });
 
     // DA6: editar uno existente sin cambiar de sección conserva su orden; cambiar y volver lo recupera.
-    await page.locator(`[data-grupo-de-la-carta="${llena.nombre}"] > summary`).click();
+    await page.goto("/carta/parametrizacion/secciones");
+    await page.locator(`[data-seccion-orden="${llena.nombre}"]`).getByRole("link", { name: llena.nombre }).click();
+    await page.locator(`[data-producto-de-la-seccion="${conOrden.nombre}"]`).getByRole("link", { name: conOrden.nombre }).click();
     const filaConOrden = page.locator(`[data-contenido-carta="${conOrden.nombre}"]`);
-    await filaConOrden.locator("summary").click();
     const seccionConOrden = filaConOrden.getByLabel(/^Sección de carta/);
     const ordenConOrden = filaConOrden.getByLabel("Orden dentro de su sección");
     await expect(seccionConOrden).toHaveValue(llena.id);

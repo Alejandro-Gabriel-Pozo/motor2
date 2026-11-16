@@ -34,10 +34,10 @@ describe("G3: nombres de rol (regla pura)", () => {
     expect(mensajeSiNombreDeRolNoPermitido("jefe", null)).toBeNull();
   });
 
-  it("vacío y charset inválido se rechazan; el largo máximo es el del catálogo", () => {
+  it("vacío y charset inválido se rechazan (mensaje genérico de las fichas); el largo máximo es 80", () => {
     expect(mensajeSiNombreDeRolNoPermitido("", null)).toMatch(/vacío/);
-    expect(mensajeSiNombreDeRolNoPermitido("a<b", null)).toMatch(/caracteres no permitidos/);
-    expect(mensajeSiNombreDeRolNoPermitido("x".repeat(81), null)).toMatch(/80/);
+    expect(mensajeSiNombreDeRolNoPermitido("a<b", null)).toBe("Esta acción no está permitida");
+    expect(mensajeSiNombreDeRolNoPermitido("x".repeat(81), null)).toBe("Esta acción no está permitida");
     expect(mensajeSiNombreDeRolNoPermitido("x".repeat(80), null)).toBeNull();
   });
 });

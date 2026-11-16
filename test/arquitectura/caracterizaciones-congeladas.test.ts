@@ -138,6 +138,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Parte P1 (ADITIVO; claves nuevas, semilla solo `admin`, todo nace cerrado): `ACCIONES 130 a 133` y las filas `PERMISO` de `partes_ver`, `partes_editar` y `partes_desactivar` (admin ver=true editar=true; operador sin Ver ni Editar). Revisado con `git diff`: solo se suman esas claves a las listas de cada bloque; ningún otro permiso ni rol cambia.",
       },
+      {
+        blob: "f72a3054a0048254e26106ebab94e7d7c1c76ba4",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `72fe9640` (Parte P1: el operador recibe partes_ver y partes_editar, la semilla y la migración).
+        commit: "72fe9640",
+        motivo:
+          "Parte P1, operador como Pedernal (pedido del dueño 2026-11-16, «como pedernal,»; CAMBIA COMPORTAMIENTO, deliberado): la semilla de `partes_ver` y `partes_editar` pasa de [admin] a [admin, operador] (`partes_desactivar` NO cambia: piso administrador). El operador pasa de no tener esas dos claves a tenerlas (ok en ver y editar) en la matriz de acceso. Revisado con `git diff -U0`: cambia SOLO lo de `partes_ver`/`partes_editar` y el rol operador; ningún otro permiso ni rol cambia.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
@@ -272,6 +279,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "c0b4626",
         motivo:
           "Parte P1 (ADITIVO; claves nuevas, semilla solo `admin`, todo nace cerrado): `ACCIONES 130 a 133` (en las dos fotos) y las seis filas `PERMISO` por foto de `partes_ver`, `partes_editar` y `partes_desactivar` (admin ver=true editar=true; operador ver=false editar=false). Revisado con `git diff`: solo se suman esas líneas; ningún otro permiso ni rol cambia.",
+      },
+      {
+        blob: "3ca51ace3297de66b37d91052a538418448bf353",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `72fe9640` (Parte P1: el operador recibe partes_ver y partes_editar, la semilla y la migración).
+        commit: "72fe9640",
+        motivo:
+          "Parte P1, operador como Pedernal (pedido del dueño 2026-11-16, «como pedernal,»; CAMBIA COMPORTAMIENTO, deliberado): la semilla de `partes_ver` y `partes_editar` pasa de [admin] a [admin, operador] (`partes_desactivar` NO cambia: piso administrador). Las filas `PERMISO operador:partes_ver` y `operador:partes_editar` pasan de ver=false editar=false a ver=true editar=true en las dos fotos. Revisado con `git diff -U0`: cambia SOLO lo de `partes_ver`/`partes_editar` y el rol operador; ningún otro permiso ni rol cambia.",
       },
     ],
   },
@@ -1248,6 +1262,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "b41faafa",
         motivo:
           "Productos P2 (cambio de texto de ADMINISTRACIÓN, no de la carta pública; dueño, 2026-11-13: «Sí, así provisorio (Recomendada)», ficha de tres pestañas): la ficha del producto pasa de «Resumen / Qué se vende / Opciones y precio / Receta / En la carta» a «Datos / Precios / Opciones», y la pantalla de opciones suma la línea «El precio del producto está en la pestaña Precios». Regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra la base e2e local y revisado: solo cambian las pestañas de la ficha y el título y la ayuda de la pantalla de opciones (10 líneas agregadas, 16 quitadas), ninguna línea de la carta pública.",
+      },
+      {
+        blob: "5f96a74d385a544335c96075c34384686c7ece42",
+        // El commit PADRE de este (4b8db032) es el último antes de la regeneración; el texto lo cambió el commit que agrega esta entrada (Frente 6, Secciones: lista simple).
+        commit: "4b8db032",
+        motivo:
+          "Frente 6, Secciones como lista simple (cambio de texto de ADMINISTRACIÓN, no de la carta pública; dueño, 2026-11-16: «Lista simple como Pedernal (Recomendada)»; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). En «Carta › Parametrización › Secciones» (a 1280 y a 375 px): los nombres de las secciones pasan a ser enlaces `[enlace: …]` a la pantalla de cada sección (`/carta/parametrizacion/secciones/[id]`), la ayuda suma «Tocá una sección para ver sus datos y sus productos.» y salen de esta pantalla «Datos de cada sección» (el formulario de cada sección, con las mismas acciones) y «Productos de cada sección» (la ficha de cada producto, que ya vivía en `/catalogo/productos/[id]/en-la-carta`): pasan a la pantalla de cada sección y a la ficha del producto. 10 líneas agregadas, 504 quitadas, todas de esa pantalla (revisado con git diff); la carta pública, el catálogo de opciones y el resto quedan idénticos.",
       },
     ],
   },
