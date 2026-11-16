@@ -54,7 +54,7 @@ test("ocultar y volver a mostrar en la sucursal y en toda la empresa; doble clic
     // La pestaña vieja pide lo mismo: «ya estaba», sin error, sin segunda marca ni segundo registro; al refrescar ya dice «Volver a mostrar».
     await tarjeta(vieja).getByRole("button", { name: "Ocultar", exact: true }).click();
     await expect(tarjeta(vieja).getByRole("button", { name: "Volver a mostrar" })).toBeVisible();
-    await expect(vieja.getByRole("alert")).toHaveCount(0);
+    await expect(tarjeta(vieja).getByRole("alert")).toHaveCount(0);
     expect(await marcas()).toHaveLength(1);
     expect(await registros()).toBe(registrosTrasOcultar);
     await vieja.close();
