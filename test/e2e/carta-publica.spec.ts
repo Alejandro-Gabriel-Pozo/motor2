@@ -1,4 +1,5 @@
 import { test, expect } from "./fixtures/auth";
+import { abrirTodosLosDetails } from "./fixtures/movil";
 import { prisma } from "./fixtures/db";
 import AxeBuilder from "@axe-core/playwright";
 import { prismaAdmin } from "../setup/cliente-duenio";
@@ -172,6 +173,7 @@ test.describe("carta de una sucursal", () => {
 
       // La carta está cacheada (ISR): reactivar la capacidad desde el admin tiene que invalidarla, no esperar los 5 minutos.
       await paginaAutenticada.goto("/administracion/capacidades-sucursal");
+      await abrirTodosLosDetails(paginaAutenticada);
       const columnas = await paginaAutenticada.locator("thead th").allTextContents();
       const indice = columnas.findIndex((t) => t.trim() === sucursal.nombre);
       expect(indice, "no apareció la columna de la sucursal").toBeGreaterThan(1);
@@ -281,7 +283,9 @@ test.describe("carta de una sucursal", () => {
       // El encargado marca «Mediano» agotado hoy: la carta (cacheada, ISR) lo deja de mostrar en la próxima visita, sin esperar el minuto.
       await page.setViewportSize({ width: 375, height: 800 });
       await paginaAutenticada.goto("/movimientos/opciones-agotadas");
-      const pildora = paginaAutenticada.getByRole("region", { name: new RegExp(`^Tamaño ${m}`) }).getByRole("button", { name: "Mediano: Disponible" });
+      await abrirTodosLosDetails(paginaAutenticada); // plegado (hoy): cada grupo es un <details>; apagado: <section>, no hay nada que abrir
+      const grupo = paginaAutenticada.locator("details, section").filter({ has: paginaAutenticada.getByRole("heading", { name: new RegExp(`^Tamaño ${m}`) }) });
+      const pildora = grupo.getByRole("button", { name: "Mediano: Disponible" });
       await pildora.click();
       await expect(paginaAutenticada.getByRole("status").filter({ hasText: "quedó agotada" })).toBeVisible();
       const despues = await abrir();

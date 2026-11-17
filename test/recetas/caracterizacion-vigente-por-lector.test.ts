@@ -375,12 +375,13 @@ describe("Caracterización: qué versión de receta usa cada lector (vigente = m
         "ok": false,
       }
     `);
+    // A1b 2026-11-16: stock con 4 decimales fijos y cuenta exacta; el consumo de «Azúcar» pasó de −4,03 (redondeado a los 2 decimales de su unidad) a −4,032 (exacto); el resto del snapshot no cambió.
     expect(await filasDe("VENTA")).toMatchInlineSnapshot(`
       [
         [
           "CONSUMO",
           "Azúcar",
-          -4.03,
+          -4.032,
         ],
         [
           "CONSUMO",

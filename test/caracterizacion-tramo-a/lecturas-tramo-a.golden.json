@@ -2665,7 +2665,8 @@
               "nombre": "kg",
               "magnitud": "PESO",
               "activa": true,
-              "decimales": 2
+              "decimales": 2,
+              "codigoFijo": null
             },
             "sustitutos": []
           }

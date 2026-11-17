@@ -3,6 +3,8 @@ import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoActualizarActivoMotivo, ResultadoActualizarActivoMotivo } from "@/core/features/movimientos/motivos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { fijarActivoDeMotivoMerma } from "@/server/persistencia/movimientos/motivos";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 
 /**
  * Caso de uso «activar o desactivar un motivo de merma» (Hito 4 de la pureza, bloque C de la pieza carta/catálogo/stock, paso H4C-17 —
@@ -24,9 +26,9 @@ export async function actualizarActivoMotivoMermaCasoDeUso(
   comando: ComandoActualizarActivoMotivo,
 ): Promise<ResultadoActualizarActivoMotivo> {
   // O.44b (fallo cerrado): un id que no es texto (`undefined`, un objeto) hacía lanzar a `findUnique` (un 500); se descarta antes de leer, con el mismo «no encontrado».
-  if (typeof comando.id !== "string") return fracaso("NO_ENCONTRADO", "No se encontró el motivo.");
+  if (typeof comando.id !== "string") return fracaso("NO_ENCONTRADO", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.motivo }));
   const motivo = await actor.db.motivoMerma.findUnique({ where: { id: comando.id } });
-  if (!motivo) return fracaso("NO_ENCONTRADO", "No se encontró el motivo.");
+  if (!motivo) return fracaso("NO_ENCONTRADO", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.motivo }));
 
   await fijarActivoDeMotivoMerma(actor.db, { id: comando.id, activo: comando.activo });
   return exito(`Motivo "${motivo.nombre}" ${comando.activo ? "activado" : "desactivado"}.`, null);

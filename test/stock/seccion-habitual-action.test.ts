@@ -71,7 +71,7 @@ describe("Sección habitual (server actions)", () => {
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
     const barraNorte = await sembrarSeccion(norte.id, "Barra Norte");
     const ajena = await prisma.seccionHabitualProducto.create({ data: { sucursalId: norte.id, productoId: pizzaId, seccionId: barraNorte.id } });
-    expect(await eliminarSeccionHabitual(ajena.id)).toEqual({ ok: false, mensaje: "No se encontró ese depósito habitual." });
+    expect(await eliminarSeccionHabitual(ajena.id)).toEqual({ ok: false, mensaje: "No se encontró el depósito habitual." });
     expect(await prisma.seccionHabitualProducto.count()).toBe(1);
   });
 

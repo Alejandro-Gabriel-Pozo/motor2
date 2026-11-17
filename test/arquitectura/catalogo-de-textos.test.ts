@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { CATALOGO } from "@/core/textos/catalogo";
+import { ORACULO_DE_TEXTOS } from "../textos/oraculo-de-textos";
 import { normalizarValor, revisarCatalogo, type ContextoDelCatalogo, type EntradaDelCatalogo } from "./guardas/catalogo-de-textos";
 
 /**
@@ -17,8 +18,8 @@ const HEREDADOS: readonly string[] = [];
 const leerEnElRepo = (ruta: string): string | null => (existsSync(join(RAIZ, ruta)) ? readFileSync(join(RAIZ, ruta), "utf8") : null);
 
 describe("catálogo de textos: el catálogo real", () => {
-  it("cumple todas las reglas (C1 a C5)", () => {
-    const problemas = revisarCatalogo(CATALOGO as Readonly<Record<string, EntradaDelCatalogo>>, { registro: REGISTRO, leerArchivo: leerEnElRepo, heredados: HEREDADOS });
+  it("cumple todas las reglas (C1 a C6)", () => {
+    const problemas = revisarCatalogo(CATALOGO as Readonly<Record<string, EntradaDelCatalogo>>, { registro: REGISTRO, leerArchivo: leerEnElRepo, heredados: HEREDADOS, oraculo: ORACULO_DE_TEXTOS });
     expect(problemas, problemas.join("\n")).toEqual([]);
   });
 
@@ -120,8 +121,24 @@ describe("catálogo de textos: cada regla con su violación inyectada", () => {
     expect(dicen(con("aviso.saludo", { porDefecto: "Hola {nombre} {apellido}" }))).toContain("{apellido}");
     expect(dicen(con("aviso.saludo", { porDefecto: "Hola" }))).toContain("no lo usa");
     expect(dicen(con("aviso.saludo", { marcadores: { nombre: "dinero" } }))).toContain("tipo que no existe");
+    expect(revisarCatalogo(con("aviso.saludo", { marcadores: { nombre: "entidad" } }), contexto())).toEqual([]);
     expect(dicen(con("aviso.saludo", { porDefecto: "Hola {nombre} }" }))).toContain("suelta");
     expect(dicen(con("aviso.saludo", { porDefecto: "Hola {Nombre}", marcadores: { nombre: "texto" } }))).toContain("C5");
     expect(dicen(con("rechazo.NO_HAY_STOCK", { porDefecto: " " }))).toContain("vacío");
+  });
+
+  it("C5: el artículo `{x:un}` solo va sobre un marcador `entidad`", () => {
+    expect(dicen(con("aviso.saludo", { porDefecto: "Hola {nombre:un}" }))).toContain("solo va sobre un marcador de tipo `entidad`");
+    expect(revisarCatalogo(con("aviso.saludo", { porDefecto: "Hola {nombre:un}", marcadores: { nombre: "entidad" } }), contexto())).toEqual([]);
+  });
+
+  it("C6: oráculo único de palabras: texto cambiado, clave sin fila y fila sin clave", () => {
+    const oraculo = { "rechazo.NO_HAY_STOCK": "No hay stock", "aviso.saludo": "Hola {nombre}" };
+    const ctx = contexto({ oraculo });
+    expect(revisarCatalogo(base(), ctx)).toEqual([]);
+    expect(dicen(con("aviso.saludo", { porDefecto: "Chau {nombre}" }), ctx)).toContain("el texto cambió");
+    expect(dicen(con("aviso.saludo", { porDefecto: "Hola {nombre}." }), ctx)).toContain("el texto cambió");
+    expect(dicen({ ...base(), "aviso.nuevo": { ...base()["aviso.saludo"]!, porDefecto: "Nuevo {nombre}" } }, ctx)).toContain("no está en test/textos/oraculo-de-textos.ts");
+    expect(dicen(base(), contexto({ oraculo: { ...oraculo, "aviso.viejo": "Viejo" } }))).toContain("ya no existe en el catálogo");
   });
 });
