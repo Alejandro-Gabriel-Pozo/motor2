@@ -1,6 +1,7 @@
 import type { Locator } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
+import { temaSimpleVisible } from "../../src/lib/tema-simple-visible";
 
 /**
  * Espera a que React haya hidratado el elemento. El HTML del servidor ya trae todo, así que «visible» no prueba que haya manejadores: un clic anterior a la hidratación React lo
@@ -17,6 +18,11 @@ async function esperarHidratado(el: Locator) {
  * Tema de la carta (/carta/tema, docs/plan-tema-carta-2026-09-24.md, M9) de punta a punta: cargar campos del formulario (la vista previa
  * los refleja sin guardar y un valor inválido se marca en el campo), Guardar persiste y lo deja aplicado en la carta (guardar = aplicar).
  */
+// Este spec es de la pantalla de siempre: con la pantalla simple encendida (solo en el e2e de `carta-tema-simple.spec.ts` y las capturas) se omite.
+test.beforeEach(() => {
+  test.skip(temaSimpleVisible(), "la pantalla simple del tema está encendida: vale carta-tema-simple.spec.ts");
+});
+
 test("cargar el formulario y guardar (queda aplicado) el tema de la carta", async ({ paginaAutenticada: page, sucursalId }) => {
   await prisma.temaCartaSucursal.deleteMany({ where: { sucursalId } });
   await page.setViewportSize({ width: 1280, height: 900 });

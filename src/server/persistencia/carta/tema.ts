@@ -21,3 +21,18 @@ export async function guardarValoresDelTema(db: Prisma.TransactionClient, args: 
     update: { valores: json, aplicarEnCarta: true },
   });
 }
+
+/** Lo guardado del tema de una sucursal, tal cual está (Json sin volver a validar), para que el guardado simple lo mezcle; null si la sucursal todavía no tiene tema. La RLS deja ver solo el de la empresa activa. */
+export async function leerTemaParaMezclar(db: Prisma.TransactionClient, args: { sucursalId: string }): Promise<{ valores: unknown; actualizadoEn: Date } | null> {
+  return db.temaCartaSucursal.findFirst({ where: { sucursalId: args.sucursalId }, select: { valores: true, actualizadoEn: true } });
+}
+
+/** Crea el tema de una sucursal que todavía no tenía, ya aplicado (guardar = aplicar). El `empresaId` va explícito, como en `guardarValoresDelTema`. */
+export async function crearTemaDeLaSucursal(db: Prisma.TransactionClient, args: { empresaId: string; sucursalId: string; valores: Readonly<Record<string, unknown>> }): Promise<void> {
+  await db.temaCartaSucursal.create({ data: { empresaId: args.empresaId, sucursalId: args.sucursalId, valores: args.valores as Prisma.InputJsonObject, aplicarEnCarta: true } });
+}
+
+/** Cambia SOLO los valores de un tema que ya existe: `aplicarEnCarta` queda como estaba. */
+export async function cambiarValoresDelTema(db: Prisma.TransactionClient, args: { empresaId: string; sucursalId: string; valores: Readonly<Record<string, unknown>> }): Promise<void> {
+  await db.temaCartaSucursal.update({ where: { empresaId_sucursalId: { empresaId: args.empresaId, sucursalId: args.sucursalId } }, data: { valores: args.valores as Prisma.InputJsonObject } });
+}
