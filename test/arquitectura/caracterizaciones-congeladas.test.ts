@@ -287,6 +287,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Parte P1, operador como Pedernal (pedido del dueño 2026-11-16, «como pedernal,»; CAMBIA COMPORTAMIENTO, deliberado): la semilla de `partes_ver` y `partes_editar` pasa de [admin] a [admin, operador] (`partes_desactivar` NO cambia: piso administrador). Las filas `PERMISO operador:partes_ver` y `operador:partes_editar` pasan de ver=false editar=false a ver=true editar=true en las dos fotos. Revisado con `git diff -U0`: cambia SOLO lo de `partes_ver`/`partes_editar` y el rol operador; ningún otro permiso ni rol cambia.",
       },
+      {
+        blob: "7dcd48841ab364b048b57ef3fb271f4038b7a9e9",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `8102cb4c` (Roles propios (P2): guardianes al día).
+        commit: "8102cb4c",
+        motivo:
+          "Roles propios, P2 (ADITIVO; la perilla `rolesPropiosMax` nace en 0; NO cambia comportamiento de acceso): `Empresa.rolesPropiosMax` (migración 20261117100100) aparece en las 30 filas EMPRESA de la huella, en 0. Revisado con `git diff`: solo se suma `rolesPropiosMax=0`; ningún permiso, rol, resultado ni mensaje cambia. Aprobada por el dueño el 2026-11-17: «Sí, aprobada (Recomendada)» (motor2-docs, seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md).",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-aceptacion.golden.txt": {
