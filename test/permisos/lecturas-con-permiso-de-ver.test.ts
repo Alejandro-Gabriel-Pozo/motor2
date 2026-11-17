@@ -93,7 +93,7 @@ describe("lecturas con permiso de Ver: un rol sin el permiso de la pantalla no l
   let rolAdminId: string;
   let usuarioId: string;
 
-  /** La lectura de una acción de piso administrador solo la alcanza un rol de ese nivel (el «admin»): se le saca la fila al rol y se la deja en «Solo ver». */
+  /** La lectura de una acción de gobierno solo la alcanza un rol de ese nivel (el «admin»): se le saca la fila al rol y se la deja en «Solo ver». */
   async function darSoloVer(clave: AccionClave) {
     if (nivelMinimoDeAccion(clave) === "operario") {
       await prisma.permisoRol.create({ data: { rolId: rolSinPermisosId, accionClave: clave, puedeVer: true, puedeEditar: false } });
@@ -124,8 +124,9 @@ describe("lecturas con permiso de Ver: un rol sin el permiso de la pantalla no l
     await expect(llamar(sucursalId)).resolves.not.toThrow();
   });
 
+  // PISOS-65 (2026-11-17): las de piso administrador bajaron a operario (con la fila las lee un rol de nivel operario: lo cubre el caso de arriba); el piso solo cierra las de gobierno.
   it.each(LECTURAS.filter((l) => nivelMinimoDeAccion(l.clave) !== "operario"))(
-    "$nombre: un rol de nivel operario con la fila de $clave (acción de administrador) NO la puede leer: el piso manda",
+    "$nombre: un rol de nivel operario con la fila de $clave (acción de gobierno) NO la puede leer: el piso manda",
     async ({ llamar, clave }) => {
       await prisma.permisoRol.create({ data: { rolId: rolSinPermisosId, accionClave: clave, puedeVer: true, puedeEditar: false } });
       await expect(llamar(sucursalId)).rejects.toThrow(/No tenés permiso/);

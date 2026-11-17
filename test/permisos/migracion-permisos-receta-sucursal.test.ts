@@ -34,9 +34,9 @@ describe("migración de datos: acciones de la receta propia por sucursal", () =>
     await limpiarBaseDeTest();
   });
 
-  it("son tres acciones de contexto sucursal (editar de nivel operario, las otras de administrador) en el catálogo del código, semilla solo para admin", () => {
+  it("son tres acciones de contexto sucursal (las tres de piso operario desde PISOS-65; copiar y volver a la central bajaron del piso administrador) en el catálogo del código, semilla solo para admin", () => {
     for (const clave of CLAVES) {
-      expect(ACCIONES.find((a) => a.clave === clave), clave).toMatchObject({ contexto: "sucursal", nivelMinimo: clave === "receta_sucursal_editar" ? "operario" : "administrador", rolesEditarSemilla: ["admin"] });
+      expect(ACCIONES.find((a) => a.clave === clave), clave).toMatchObject({ contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] });
     }
   });
 

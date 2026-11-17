@@ -37,4 +37,5 @@ export const ORACULO_DE_TEXTOS: Readonly<Record<string, string>> = {
   "columna.unidades": "Unidades",
   "columna.origen": "Origen",
   "rechazo.NOMBRE_REPETIDO": "Ya existe {entidad:un} llamado «{nombre}». Elegí otro nombre.",
+  "rechazo.ACCION_DE_GOBIERNO": "Esta acción es de gobierno de la empresa y no se delega.",
 };

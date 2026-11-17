@@ -23,6 +23,7 @@ import { actualizarActivoDestinoConsumo, actualizarActivoMotivoMerma } from "../
 import { actualizarActivaSeccion } from "../../src/server/actions/movimientos/secciones";
 import { actualizarActivaPromoCarta, actualizarActivaPromoCartaEnSucursal } from "../../src/server/actions/carta/promos";
 
+import { crearCategoriaDeTest } from "../setup/categoria-de-prueba";
 /**
  * O.44 (Hito 4, bloque D; arreglo aprobado por el dueño, `docs/pureza-integracion.md`): TODAS las acciones del catálogo, la carta y el stock que activan o
  * desactivan un registro por id (las que pasan por un caso de uso de `src/server/actions/<dominio>/casos-de-uso/`) devuelven su «no encontrado» con un id que no
@@ -63,7 +64,7 @@ async function sembrarAjenas() {
   const producto = await prismaAdmin.producto.create({ data: { empresaId, codigo: "MP_AJENO", nombre: "Harina ajena", tipo: "MP", unidadStockId: unidad.id } });
   const seccionCarta = await prismaAdmin.seccionCarta.create({ data: { empresaId, nombre: "Platos ajenos" } });
   return {
-    categoria: (await prismaAdmin.categoriaProducto.create({ data: { empresaId, nombre: "Categoría ajena" } })).id,
+    categoria: (await crearCategoriaDeTest(prismaAdmin, { empresaId, nombre: "Categoría ajena" })).id,
     grupo: (await prismaAdmin.grupo.create({ data: { empresaId, nombre: "Grupo ajeno" } })).id,
     insumo: (await prismaAdmin.insumo.create({ data: { empresaId, nombre: "Insumo ajeno" } })).id,
     presentacion: (await prismaAdmin.presentacion.create({ data: { empresaId, productoId: producto.id, unidadCompraId: caja.id, factorConversion: 10 } })).id,
@@ -149,7 +150,7 @@ describe("O.44: activar o desactivar con un id que no existe o es ajeno", () => 
     const caja = await prisma.unidad.create({ data: { nombre: "caja", magnitud: "CANTIDAD" } });
     const producto = await prisma.producto.create({ data: { codigo: "MP_H", nombre: "Harina", tipo: "MP", unidadStockId: unidad.id } });
     const presentacion = await prisma.presentacion.create({ data: { productoId: producto.id, unidadCompraId: caja.id, factorConversion: 25 } });
-    const categoria = await prisma.categoriaProducto.create({ data: { nombre: "Almacén" } });
+    const categoria = await crearCategoriaDeTest(prisma, { nombre: "Almacén" });
     const grupo = await prisma.grupo.create({ data: { nombre: "Harinas" } });
     const insumo = await prisma.insumo.create({ data: { nombre: "Harina" } });
     const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV-1", nombre: "Molino" } });

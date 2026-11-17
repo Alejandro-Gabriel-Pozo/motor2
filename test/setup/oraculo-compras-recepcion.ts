@@ -4,7 +4,7 @@ import { decidirConfirmacionDeRecepcion, decidirRegistroDeControl, estadoInicial
 import type { EntradaDeConfirmacionDeRecepcion } from "../../src/core/compras/public";
 import { modulosEfectivos } from "../../src/core/modulos/clausura";
 import { denegacionDeModulo } from "../../src/core/permisos/modulo-de-la-accion";
-import { nivelMinimoDeAccion } from "../../src/core/permisos/acciones";
+import { ACCIONES, nivelMinimoDeAccion } from "../../src/core/permisos/acciones";
 import { nivelAlcanzaElPiso, nivelDe } from "../../src/core/permisos/jerarquia";
 import { ROL_EMPRESA_GERENTE } from "../../src/core/permisos/rol-empresa";
 import { dimensionesDelOraculo, productoCartesiano, tablaDelOraculo, type TablaDelOraculo } from "./oraculo-una-sola-compra";
@@ -37,7 +37,11 @@ export function puertaDeAcceso(f: Pick<FilaDeConfirmacion, "M" | "O">, accion: "
   const efectivos = modulosEfectivos(f.M === "ENCENDIDO" ? ["compras", "recepcion_de_compras"] : ["compras"]);
   if (denegacionDeModulo("recepcion_de_compras", efectivos)) return "RECHAZA_MODULO_NO_ACTIVO";
   const nivel = nivelDe({ rolEmpresa: f.O === "GERENTE" ? ROL_EMPRESA_GERENTE : null, esAdminEnElContexto: f.O === "ADMINISTRADOR" });
-  return nivelAlcanzaElPiso(nivel, nivelMinimoDeAccion(accion)) ? null : "RECHAZA_SIN_PERMISO";
+  if (!nivelAlcanzaElPiso(nivel, nivelMinimoDeAccion(accion))) return "RECHAZA_SIN_PERMISO";
+  // PISOS-65 (2026-11-17): `compra_recibir` bajó a piso operario y nace cerrada (de fábrica solo `admin`): el OPERADOR de fábrica no tiene la fila. Lo que decide es la semilla, no el piso.
+  const semilla = ACCIONES.find((a) => a.clave === accion)!.rolesEditarSemilla as readonly string[];
+  if (f.O === "OPERADOR" && !semilla.includes("operador")) return "RECHAZA_SIN_PERMISO";
+  return null;
 }
 
 /** Lo que las reglas reales deciden para una fila de «Confirmar la recepción». */

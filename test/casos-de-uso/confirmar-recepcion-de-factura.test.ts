@@ -15,7 +15,7 @@ vi.mock("../../src/server/auditoria/registrar-cambio-auditado", async (importarO
 });
 
 import { baseDeTest, crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarSeccion } from "../setup/test-db";
-import { fijarModulosActivos, MODULOS_VENDIBLES } from "../setup/modulos";
+import { encenderRecepcionDeCompras, fijarModulosActivos, MODULOS_VENDIBLES } from "../setup/modulos";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 import { escribirLineasDeMovimientoStock } from "../../src/server/persistencia/movimientos/escribir-movimiento-de-stock";
@@ -362,6 +362,7 @@ describe("confirmar la recepción", () => {
     const facturaB = await prismaAdmin.facturaProveedor.create({
       data: { empresaId: "empresa_b", proveedorId: proveedorB.id, fecha: mediodia(-3), importeTotal: 100, estado: "CONFIRMADA", confirmadaEn: new Date(), confirmadaPorId: admin, creadoPorId: admin },
     });
+    await encenderRecepcionDeCompras("empresa_b"); // la base no deja nacer una parte pendiente con la recepción separada apagada (guarda de apagado)
     const parteB = await prismaAdmin.facturaProveedorSucursal.create({ data: { empresaId: "empresa_b", facturaProveedorId: facturaB.id, sucursalId: sucursalB.id, porcentajeDeclaradoBp: 10000, estadoRecepcion: "PENDIENTE" } });
 
     const r = await confirmar(facturaB.id);
@@ -654,6 +655,7 @@ describe("registrar el control de las líneas (N3-b)", () => {
     const facturaB = await prismaAdmin.facturaProveedor.create({
       data: { empresaId: "empresa_b", proveedorId: proveedorB.id, fecha: mediodia(-3), importeTotal: 100, estado: "CONFIRMADA", confirmadaEn: new Date(), confirmadaPorId: admin, creadoPorId: admin },
     });
+    await encenderRecepcionDeCompras("empresa_b"); // guarda de apagado: la base no deja nacer una parte pendiente con la recepción separada apagada
     await prismaAdmin.facturaProveedorSucursal.create({ data: { empresaId: "empresa_b", facturaProveedorId: facturaB.id, sucursalId: sucursalB.id, porcentajeDeclaradoBp: 10000, estadoRecepcion: "PENDIENTE" } });
 
     const r = await controlar(facturaB.id, [{ renglonId: "x", condicion: "CONFORME" }]);

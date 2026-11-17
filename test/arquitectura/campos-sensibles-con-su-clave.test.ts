@@ -3,7 +3,7 @@ import { join, relative, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 import ts from "typescript";
 import { ACCIONES, type NivelDeAccion } from "../../src/core/permisos/acciones";
-import { nivelAlcanzaElPiso } from "../../src/core/permisos/jerarquia";
+import { alcanzaElResguardo, resguardoDe } from "./guardas/resguardo-de-clave";
 
 /**
  * GT-1, parte de la tanda T7 del endurecimiento de seguridad (S-12, S-13, S-14): CAMPOS SENSIBLES CON PISO MÍNIMO. Un dato de dinero o de la relación con un proveedor solo sale a quien
@@ -199,7 +199,7 @@ describe("GT-1 (T7) — los datos sensibles de una consulta se piden con la clav
     for (const [opcion, { clave, pisoMinimo, dato }] of Object.entries(DATOS_SENSIBLES)) {
       const accion = ACCIONES.find((a) => a.clave === clave);
       expect(accion, `${opcion}: la clave «${clave}» no está en el catálogo`).toBeDefined();
-      expect(nivelAlcanzaElPiso(accion!.nivelMinimo, pisoMinimo), `«${clave}» (piso ${accion!.nivelMinimo}) protege ${dato}, que pide piso ${pisoMinimo} como mínimo`).toBe(true);
+      expect(alcanzaElResguardo(clave, pisoMinimo), `«${clave}» (piso ${accion!.nivelMinimo}, resguardo ${resguardoDe(clave)}) protege ${dato}, que pide piso ${pisoMinimo} como mínimo (PISOS-65: para «administrador», la da solo el gerente o más)`).toBe(true);
     }
   });
 });
