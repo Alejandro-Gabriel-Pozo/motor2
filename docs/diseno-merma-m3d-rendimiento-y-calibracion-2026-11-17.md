@@ -182,8 +182,8 @@ Sin pantallas, rutas ni permisos nuevos (R-8). Los puntos del código que cambia
 
 - **Autorización:** sin cambios; todo se valida en el servidor y nunca recibe `sucursalId` del cliente (R-3).
 - **Guardián de arquitectura:** el que prohíbe fórmulas de merma fuera de la función única (`formula-de-merma-unica`) debe seguir en verde: los reportes pasan por `factorDeBruto`, no repiten la cuenta.
-- **Texto del aviso redactado para quien no programa (PROPUESTA, pendiente de OK del dueño).** *Cuándo aparece:* solo si, al guardar una receta que pasa de neta a bruta, alguna sucursal tenía calibraciones de esa receta; si no había ninguna, no aparece nada. *Dónde:* en el mensaje de «Receta guardada», y queda en el historial de auditoría (quién, cuándo, qué valor tenía). *Qué dice (ejemplo con números inventados):* «Se guardó la versión 4 de «Bife a la criolla» (ahora cargada en bruto). Se descartaron 2 ajustes de sucursal porque eran del valor «neto» y ya no coinciden con la receta: «Norte» para «Bife de chorizo» (0,32 kg) y «Sur» para «Tomate perita» (0,13 kg). Si hace falta, volvé a ajustarlos desde el reporte de rendimiento.» Con una sola calibración dice «Se descartó 1 ajuste…». Los nombres de sucursal e ingrediente y los valores salen de lo guardado; el valor descartado es el que figura en el registro de auditoría.
-- **Textos que ve el cliente (PROPUESTA):** el aviso del guardado reutiliza el formato existente («Se descartó la calibración de «Norte» para X (…)»), con el motivo «la receta pasó de neta a bruta». Es texto nuevo para el cliente: queda **PENDIENTE de OK** del dueño antes de construir (regla de no inventar textos).
+- **Texto del aviso redactado para quien no programa (CONFIRMADO por el dueño: «ok», 2026-11-17, chat con el orquestador, registrado en `motor2-docs` d335641; queda tal cual, con singular/plural).** *Cuándo aparece:* solo si, al guardar una receta que pasa de neta a bruta, alguna sucursal tenía calibraciones de esa receta; si no había ninguna, no aparece nada. *Dónde:* en el mensaje de «Receta guardada», y queda en el historial de auditoría (quién, cuándo, qué valor tenía). *Qué dice (ejemplo con números inventados):* «Se guardó la versión 4 de «Bife a la criolla» (ahora cargada en bruto). Se descartaron 2 ajustes de sucursal porque eran del valor «neto» y ya no coinciden con la receta: «Norte» para «Bife de chorizo» (0,32 kg) y «Sur» para «Tomate perita» (0,13 kg). Si hace falta, volvé a ajustarlos desde el reporte de rendimiento.» Con una sola calibración dice «Se descartó 1 ajuste…». Los nombres de sucursal e ingrediente y los valores salen de lo guardado; el valor descartado es el que figura en el registro de auditoría.
+- **Textos que ve el cliente (PROPUESTA):** el aviso del guardado reutiliza el formato existente («Se descartó la calibración de «Norte» para X (…)»), con el motivo «la receta pasó de neta a bruta». Texto confirmado el 2026-11-17 (ver abajo); entra al catálogo de textos en el PR de código de M3d.
 
 ## 13. Nivel 9 — Consultas y experiencia
 
@@ -221,7 +221,7 @@ El desvío es **idéntico** en las dos bases (invariante de prueba): el mismo pl
 **Etapas posteriores con nombre (no se construyen):**
 - **M3d-F2:** convertir las calibraciones con vista previa al pasar de neta a bruta (en vez de descartarlas), si el día de mañana hay calibraciones reales que valga la pena conservar.
 
-**Preguntas abiertas para el dueño:** ninguna. Una **DEC propuesta:** el texto del aviso de descarte (nivel 8), a aprobar antes de construir.
+**Preguntas abiertas para el dueño:** ninguna. El texto del aviso de descarte (nivel 8) está CONFIRMADO.
 
 ## 15. Resumen para quien no programa
 
