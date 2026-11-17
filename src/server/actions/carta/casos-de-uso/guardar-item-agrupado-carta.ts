@@ -33,12 +33,12 @@ import { agregarOpcionItemAgrupadoCartaCasoDeUso } from "./agregar-opcion-item-a
  *
  * @contract Deja el ítem agrupado con los datos pedidos (creado o editado) en la sucursal activa, salvo que otro de ella ya tenga ese nombre; en el alta suma como opciones los productos que cumplen las reglas de «Agregar producto»; devuelve su id y su nombre.
  * @idempotency Por estado — repetir el alta encuentra el ítem ya creado y se rechaza por nombre repetido; repetir la edición vuelve a escribir los mismos valores.
- * @transaction Ninguna: lecturas y escrituras sueltas con `actor.db`, como antes (el ítem queda creado aunque algún producto no entre).
+ * @transaction Ninguna propia: el alta y la edición del ítem son escrituras sueltas con `actor.db`, como antes (el ítem queda creado aunque algún producto no entre); cada producto que entra corre en la transacción SERIALIZABLE de `agregarOpcionItemAgrupadoCartaCasoDeUso` (F1: invariante «familia o ítem agrupado»).
  * @sideEffects Ninguno (un ítem agrupado no es plata: sin auditoría). La carta pública se invalida por `avisos.cartaCambio`, que pasa la Server Action.
  * @ficha permiso=carta_items_agrupados transaccion=NINGUNA idempotencia=POR_ESTADO auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
  */
 export async function guardarItemAgrupadoCartaCasoDeUso(
-  actor: Pick<ContextoUsuario, "db" | "sucursalId">,
+  actor: Pick<ContextoUsuario, "db" | "transaccion" | "sucursalId">,
   comando: ComandoGuardarItemAgrupadoCarta,
   avisos: AvisosDeItemAgrupado,
 ): Promise<ResultadoGuardarItemAgrupadoCarta> {

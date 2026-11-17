@@ -16,6 +16,11 @@
 -- la otra tabla SIN pasar por la RLS por sucursal del rol de la app (los ítems agrupados son por sucursal; una fila que la política no deja ver no puede abrir el control: falla cerrado). `search_path` fijo; solo leen. El ítem agrupado cuenta ACTIVO O NO
 -- (conservador: para liberar el producto hay que sacarlo del ítem agrupado). Error: SQLSTATE 23514 con restricción nombrada (`producto_ya_agrupado`, `producto_ya_miembro_de_familia`), que se repite al principio del mensaje (el adaptador de Prisma entrega solo el texto del error, no el nombre de la restricción: así lo reconoce la aplicación, como `MovimientoStock_producto_oculto_chk`) y que la aplicación traduce. No revalidan filas viejas.
 --
+-- LÍMITE DECLARADO DEL INVARIANTE (verificación adversarial 2026-11-17): el bloqueo por producto ordena a los dos disparadores, pero NO alcanza por sí solo bajo SERIALIZABLE si el otro lado corre en READ COMMITTED: la transacción SERIALIZABLE
+-- ya tomó su foto antes de pedir el bloqueo y no ve la opción que el otro acaba de confirmar. Por eso los casos de uso que escriben en las dos tablas (`agregarProductoAFamilia` y `agregarOpcionItemAgrupadoCartaCasoDeUso`) corren los DOS en SERIALIZABLE:
+-- la base cancela uno (40001), se repite y la repetición responde `PRODUCTO_YA_AGRUPADO` o `YA_EN_FAMILIA` (prueba determinista: `test/carta/familias-cruce-determinista.test.ts`). Lo que sigue pudiendo pasar: un INSERT de opción hecho A MANO por SQL en
+-- READ COMMITTED a la vez que una alta a familia. Cerrarlo del todo en la base exige una fila de bloqueo compartida por producto que ambos disparadores actualicen (una tabla más): NO se construyó; queda como pregunta al dueño (F1, §12 del diseño).
+--
 -- MOLDE (docs/diseno-datos-paridad-pedernal-2026-11-16.md, E-0): `id` UUID nativo que genera la app; instantes TIMESTAMPTZ(3); la app NO tiene DELETE ni TRUNCATE. RLS por empresa (`aislamiento_empresa`); no son tablas de sucursal.
 -- ADITIVA: tablas nuevas y un disparador; no toca ninguna fila ni columna existentes. El código anterior no las lee ni las escribe (nada las lee hasta la etapa F4), así que se puede aplicar por adelantado y el Instant Rollback de Vercel sigue siendo seguro.
 -- Reversa: down.sql (a mano, como dueño, con `psql -1 -v ON_ERROR_STOP=1`; después `prisma migrate resolve --rolled-back 20261117161000_familias_de_producto`).
