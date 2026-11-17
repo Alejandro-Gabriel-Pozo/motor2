@@ -2,6 +2,7 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { capturar, expectObjetivosTactiles, expectSinDesborde } from "./fixtures/movil";
 import { abrirComoRol } from "./fixtures/rol-pos";
+import { FILTROS_EXTRA_DE_LA_LISTA_VISIBLES } from "../../src/core/catalogo/filtros-extra-de-la-lista";
 
 /**
  * Fase 6, bloque 3, 3b: los filtros de la lista de Productos (`/catalogo/productos`) en el navegador, a 375 y a 1280 px. La búsqueda y los filtros viajan en la URL (formulario GET) y los resuelve el servidor:
@@ -74,9 +75,15 @@ for (const { ancho, alto } of [
         await formulario.getByLabel("Estado").selectOption("");
         await formulario.getByRole("button", { name: "Aplicar filtros" }).click();
         await expect(filas).toHaveCount(3);
-        await formulario.getByText("Más filtros").click();
-        await formulario.getByLabel("Le falta algo").selectOption("sin-precio");
-        await formulario.getByRole("button", { name: "Aplicar filtros" }).click();
+        if (FILTROS_EXTRA_DE_LA_LISTA_VISIBLES) {
+          await formulario.getByText("Más filtros").click();
+          await formulario.getByLabel("Le falta algo").selectOption("sin-precio");
+          await formulario.getByRole("button", { name: "Aplicar filtros" }).click();
+        } else {
+          // Paso 6 del plan de pantallas (dueño, 2026-11-17: «2a»): «Más filtros» está oculto; por la URL el filtro sigue funcionando (no se borró nada) y «Limpiar filtros» lo saca.
+          await expect(page.getByText("Más filtros")).toHaveCount(0);
+          await page.goto(`/catalogo/productos?q=${m}&falta=sin-precio`);
+        }
         await expect(filas).toHaveCount(1);
         await expect(filas.first()).toContainText(sinPrecio.nombre);
         await expect(page.getByText(pizza.nombre)).toHaveCount(0);
@@ -88,7 +95,8 @@ for (const { ancho, alto } of [
 
         await page.getByRole("link", { name: "Limpiar filtros" }).click();
         await expect(page).toHaveURL(/\/catalogo\/productos$/);
-        await expect(formulario.getByLabel("Le falta algo")).toHaveValue("");
+        if (FILTROS_EXTRA_DE_LA_LISTA_VISIBLES) await expect(formulario.getByLabel("Le falta algo")).toHaveValue("");
+        else await expect(page.getByLabel("Le falta algo")).toHaveCount(0);
         await expect(page.getByRole("link", { name: "Limpiar filtros" })).toHaveCount(0);
       } finally {
         await limpiar();
@@ -103,7 +111,11 @@ test("Enter en la búsqueda filtra, y un valor raro en la URL no rompe: la lista
   try {
     await page.goto(`/catalogo/productos?q=${m}&tipo=%27%3B+DROP+TABLE&modo=x&disponible=todos&falta=mucho`);
     await expect(page.locator("li[data-producto]")).toHaveCount(3);
-    for (const nombre of ["¿Qué es?", "Estado", "Cómo se vende", "Le falta algo"]) await expect(page.getByLabel(nombre)).toHaveValue("");
+    for (const nombre of ["¿Qué es?", "Estado"]) await expect(page.getByLabel(nombre)).toHaveValue("");
+    for (const nombre of ["Cómo se vende", "En esta sucursal", "Le falta algo"]) {
+      if (FILTROS_EXTRA_DE_LA_LISTA_VISIBLES) await expect(page.getByLabel(nombre)).toHaveValue("");
+      else await expect(page.getByLabel(nombre), `«${nombre}» oculto (paso 6, dueño 2026-11-17)`).toHaveCount(0);
+    }
     const busqueda = page.getByLabel(/^Buscar por nombre/);
     await busqueda.fill(`Pizza ${m}`);
     await busqueda.press("Enter");
@@ -147,18 +159,18 @@ test("PRIVACIDAD: quien no ve recetas ni carta no tiene esos «le falta» y por 
   try {
     const consulta = m;
     await paginaDelRol.goto(`/catalogo/productos?q=${consulta}&falta=sin-receta`);
-    await expect(paginaDelRol.getByLabel("Le falta algo").locator("option")).toHaveText(["Todos", "Sin precio de venta"]);
+    if (FILTROS_EXTRA_DE_LA_LISTA_VISIBLES) await expect(paginaDelRol.getByLabel("Le falta algo").locator("option")).toHaveText(["Todos", "Sin precio de venta"]);
     // El filtro por receta no se aplicó (no revela qué productos no tienen receta): están los tres productos, y «Le falta algo» quedó en «Todos».
     await expect(paginaDelRol.locator("li[data-producto]")).toHaveCount(3);
-    await expect(paginaDelRol.getByLabel("Le falta algo")).toHaveValue("");
+    if (FILTROS_EXTRA_DE_LA_LISTA_VISIBLES) await expect(paginaDelRol.getByLabel("Le falta algo")).toHaveValue("");
     await paginaDelRol.goto(`/catalogo/productos?q=${consulta}&falta=fuera-de-la-carta`);
     await expect(paginaDelRol.locator("li[data-producto]")).toHaveCount(3);
 
     // Contraespejo: el administrador sí tiene las tres.
     await page.goto(`/catalogo/productos?q=${consulta}`);
-    await expect(page.getByLabel("Le falta algo").locator("option")).toHaveText(["Todos", "Sin precio de venta", "Sin receta", "Todavía no está en la carta de esta sucursal"]);
+    if (FILTROS_EXTRA_DE_LA_LISTA_VISIBLES) await expect(page.getByLabel("Le falta algo").locator("option")).toHaveText(["Todos", "Sin precio de venta", "Sin receta", "Todavía no está en la carta de esta sucursal"]);
     await page.goto(`/catalogo/productos?q=${consulta}&falta=sin-receta`);
-    await expect(page.getByLabel("Le falta algo")).toHaveValue("sin-receta");
+    if (FILTROS_EXTRA_DE_LA_LISTA_VISIBLES) await expect(page.getByLabel("Le falta algo")).toHaveValue("sin-receta");
     // Los dos productos de venta no tienen receta; la materia prima común no la necesita.
     await expect(page.locator("li[data-producto]")).toHaveCount(2);
   } finally {

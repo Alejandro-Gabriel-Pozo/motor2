@@ -25,7 +25,7 @@ import { ApartadoDePlanilla } from "@/ui/componentes/estructura/apartado-de-plan
 import { BarraDeFiltros } from "@/ui/componentes/estructura/barra-de-filtros";
 import { FilaDeCatalogo } from "@/components/fila-de-catalogo";
 import { FiltrosDeLaListaDeProductos } from "@/components/catalogo/filtros-de-la-lista-de-productos";
-import { PESTANAS_DE_PRODUCTOS } from "@/core/catalogo/public";
+import { PESTANAS_DE_PRODUCTOS, masFiltrosOfrecidos } from "@/core/catalogo/public";
 import { buscaPorReferenciaDelProveedorEnLaLista, faltasQueSePuedenFiltrarEnLaLista, productosConFaltaEnLaPagina } from "@/server/consultas/catalogo/filtros-de-productos";
 import { seccionDeCartaDeLosProductos } from "@/server/consultas/carta/seccion-de-productos";
 import { detalleDeLaLista } from "@/server/consultas/catalogo/detalle-de-la-lista";
@@ -85,11 +85,11 @@ export default async function ProductosPage({
         etiquetaDeLaBusqueda={porReferencia ? "Buscar por nombre, código o cómo lo llama el proveedor" : "Buscar por nombre o código"}
         marcadorDeLaBusqueda={porReferencia ? "Nombre, código o lo que dice la factura…" : "Buscar por código o nombre…"}
         hayFiltros={hayFiltrosDeProductos(filtros)}
-        masFiltros={[
+        masFiltros={masFiltrosOfrecidos([
           { nombre: "modo", etiqueta: "Cómo se vende", valor: filtros.modo ?? "", opciones: MODOS_FILTRABLES.map((v) => ({ valor: v, etiqueta: ETIQUETA_DEL_MODO[v] })) },
           { nombre: "disponible", etiqueta: "En esta sucursal", valor: filtros.disponible === "aca" || filtros.disponible === "no-aca" ? filtros.disponible : "", opciones: DISPONIBILIDADES_FILTRABLES.filter((v) => v === "aca" || v === "no-aca").map((v) => ({ valor: v, etiqueta: v === "aca" ? "Disponible" : "No disponible" })) },
           { nombre: "falta", etiqueta: "Le falta algo", valor: filtros.falta ?? "", opciones: faltas.map((v) => ({ valor: v, etiqueta: ETIQUETA_DE_LA_FALTA[v] })) },
-        ]}
+        ])}
       />
         </BarraDeFiltros>
       {pagina.items.length === 0 ? (

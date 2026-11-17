@@ -83,6 +83,8 @@ export {
   necesitaLaEmpresaEntera,
 } from "./filtros-de-productos";
 export type { EntradaDeFiltrosDeProductos, FaltaFiltrable, FiltrosDeProductos, TipoFiltrable } from "./filtros-de-productos";
+// Interruptor de los filtros extra de la lista de Productos (Frente 6, paso 6): «Cómo se vende», «En esta sucursal» y «Le falta algo» ocultos sin borrar.
+export { masFiltrosOfrecidos } from "./filtros-extra-de-la-lista";
 // La lista de Productos (docs/diseno-productos-igual-a-pedernal-2026-11-13.md, D1): qué dice en el lugar del precio.
 export { textoDelPrecioEnLaLista } from "./precio-en-la-lista";
 // Fase 7 (DEC-13): el grupo Catálogo del menú, sus filas de pestañas y las rutas que cuelgan de cada entrada (puro; lo arma `core/navegacion/estructura.ts` y lo dibuja `FilaDeCatalogo`).
