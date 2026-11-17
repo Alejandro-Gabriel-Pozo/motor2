@@ -24,6 +24,8 @@ const FUERA_DEL_SCHEMA: Record<string, string> = {
   CARTA_DOMINIO_BASE_COMPILADO: "la copia de CARTA_DOMINIO_BASE que next.config.ts incrusta al compilar; la compara el arranque, no la configura el operador",
   CARTA_EMPRESA_UNICA_COMPILADO: "la copia de CARTA_EMPRESA_UNICA que next.config.ts incrusta al compilar (add-on de la empresa única); la compara el arranque, no la configura el operador",
   DIRECT_URL: "la conexión del DUEÑO de las tablas (salta el RLS): la lee `prisma.config.ts` para migrar y la usan los scripts, nunca el runtime de la app (S-32); por eso el schema de runtime no la declara ni la exige",
+  MOTOR2_PORTAL_SIMPLE_PRUEBA: "override SOLO de prueba de la pantalla simple de «Colores del portal» (vitest y la captura local; `src/lib/portal-simple-visible.ts`): solo puede ENCENDER, nunca apagar, y no es configuración de la app",
+  MOTOR2_E2E_SERVIDOR: "la fija `playwright.config.ts` para el servidor de los e2e; el interruptor del portal (`portal-simple-visible.ts`) solo acepta su cookie de prueba cuando esta variable existe (en producción no existe)",
   MOTOR2_SIN_DOLAR_AUTOMATICO: "flag de pruebas de navegador (no salir a internet); no es configuración de la app",
 };
 

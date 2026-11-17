@@ -8,7 +8,7 @@
  * OVERRIDE SOLO DE PRUEBA (no es una opción del producto, no se ofrece a nadie): `MOTOR2_PORTAL_SIMPLE_PRUEBA=1` lo enciende para un proceso (vitest y la captura local); y la cookie `m2_portal_simple_prueba=1` lo enciende para
  * UN navegador, pero SOLO si el servidor es el de los E2E (`MOTOR2_E2E_SERVIDOR` lo fija `playwright.config.ts`): así el spec lo prueba encendido sin encenderlo para los demás specs. Ninguna de las dos hace nada en producción.
  */
-export const PORTAL_SIMPLE_VISIBLE: boolean = false;
+const PORTAL_SIMPLE_VISIBLE: boolean = false;
 
 /** Nombre de la cookie de prueba (la fija el spec E2E; la lee la pantalla y la acción, nunca la carta pública). */
 export const COOKIE_PORTAL_SIMPLE_PRUEBA = "m2_portal_simple_prueba";
