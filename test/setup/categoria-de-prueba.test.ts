@@ -13,6 +13,12 @@ describe("limpiarCategoriasDeTest: solo en una base local", () => {
     ["ninguna variable de conexión: cierra", {}, false],
     ["una URL ilegible: cierra", { DATABASE_URL: "no es una url" }, false],
     ["NODE_ENV=production niega aunque la base sea local", { ...LOCAL, NODE_ENV: "production" }, false],
+    ["`host=` de la query a otra máquina niega aunque la URL diga localhost (GT-22, M-29)", { DATABASE_URL: "postgresql://u:x@localhost/motor2_dev?host=10.0.0.5" }, false],
+    ["`hostaddr=` a otra máquina niega aunque la URL diga localhost", { DATABASE_URL: "postgresql://u:x@localhost/motor2_dev?hostaddr=10.0.0.5" }, false],
+    ["lista de hosts con uno no local niega", { DATABASE_URL: "postgresql://u:x@localhost/motor2_dev?host=localhost,10.0.0.5" }, false],
+    ["socket de unix (sin servidor en la URL) es local", { DATABASE_URL: "postgresql:///motor2_dev?host=/var/run/postgresql" }, true],
+    ["socket con `hostaddr` a otra máquina niega", { DATABASE_URL: "postgresql:///motor2_dev?host=/var/run/postgresql&hostaddr=10.0.0.5" }, false],
+    ["sin servidor y sin socket niega", { DATABASE_URL: "postgresql:///motor2_dev" }, false],
   ])("%s", (_nombre, entorno, esperado) => {
     expect(esBaseLocalParaLimpiar(entorno as Record<string, string>)).toBe(esperado);
   });
