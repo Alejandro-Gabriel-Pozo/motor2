@@ -27,6 +27,16 @@ const FORMATO_DE_HORA = /^([01][0-9]|2[0-3]):([0-5][0-9])$/;
 /** Nombre canónico de la base de zonas (IANA): `UTC` o varios segmentos con mayúscula inicial separados por `/` (`America/Argentina/Buenos_Aires`, `Etc/GMT+3`). */
 const FORMATO_DE_ZONA = /^(?:UTC|[A-Z][A-Za-z0-9_+-]*(?:\/[A-Z][A-Za-z0-9_+-]*)+)$/;
 
+/** ¿Es `valor` una hora de corte válida? Lista de permitidos: un texto `HH:MM` estricto, 00:00 a 23:59 (la misma forma que exige `fechaDeNegocio` y el CHECK de la base). Cualquier otra cosa (no texto, `24:00`, `6:00`, `06:00:00`, vacío) es no. */
+export function horaDeCorteValida(valor: unknown): valor is string {
+  return typeof valor === "string" && FORMATO_DE_HORA.test(valor);
+}
+
+/** La hora de corte de una columna `TIME(0)` (Prisma la entrega como un `Date` del 1/1/1970 en UTC) a «HH:MM». */
+export function horaDeCorteDeColumnaTime(hora: Date): string {
+  return `${String(hora.getUTCHours()).padStart(2, "0")}:${String(hora.getUTCMinutes()).padStart(2, "0")}`;
+}
+
 function formateadorDeZona(zonaHoraria: string): Intl.DateTimeFormat | null {
   if (!FORMATO_DE_ZONA.test(zonaHoraria)) return null;
   try {
