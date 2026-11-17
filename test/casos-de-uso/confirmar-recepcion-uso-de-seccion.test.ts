@@ -235,6 +235,9 @@ describe("aislamiento: el destino tiene que ser de esta sucursal", () => {
 
     expect(await confirmar(facturaId, [ajena.id, sec3])).toMatchObject({ ok: false, codigo: "SECCION_NO_ENCONTRADA" });
     await nada(facturaId);
+    // Higiene: no dejar nada de la empresa testigo para los tests que siguen.
+    await prismaAdmin.seccion.deleteMany({ where: { id: ajena.id } });
+    await prismaAdmin.sucursal.deleteMany({ where: { id: suc.id } });
   });
 
   it("una sección desactivada como destino se rechaza con su texto de siempre", async () => {
