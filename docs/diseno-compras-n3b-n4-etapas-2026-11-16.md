@@ -56,6 +56,16 @@ Perillas: las pide esta sesión al frente 4 (`conciliacion_de_tres_vias`, que ya
 
 **Perilla:** `conciliacion_de_tres_vias` (requiere `recepcion_separada`) según el frente 4. **NO VERIFICADO:** que Pedernal tenga la acción `ordenes_de_compra.*` con esos nombres (solo propuesta de E9 §229).
 
+### Permisos de la etapa OC contra Pedernal (contrastado 2026-11-17; orquestador aceptó)
+
+- **Alcance:** empresa, como Pedernal (0066: las políticas filtran solo por empresa; la sucursal destino es un dato). Sin pregunta al dueño.
+- **Crear y pedir:** gerente/administrador, no el operador (dueño de Pedernal, 16/11, 5A). Igual.
+- **Anular y cerrar:** gerente/administrador por **SUPUESTO heredado de la maqueta `orden.html`, SIN cita del dueño** (si va en código se marca `SUPUESTO(DEC-n)` con su entrada en el registro de decisiones).
+- **Ver:** el operador ve las órdenes sin precios (maqueta de Pedernal). Igual.
+- **DIFERENCIA 1 — recibir contra una orden:** en Motor2 exige gerente/administrador (N3, con cita del dueño); Pedernal (maqueta) también lo deja al operador. Motivo: la cita del dueño de N3 manda.
+- **DIFERENCIA 2 — configurar el control de exceso:** en Motor2 `compras_configurar` = gerente y administrador (cita del dueño 16/11: «configurar: solo gerente y administrador»); Pedernal `compras.configurar` = solo gerente (`empresa.ts:224`). Motivo: la cita del dueño manda.
+- **Menú:** las órdenes están en `/movimientos/ordenes-de-compra` con enlace desde Compra; el Frente 6 las ubica en el menú de Compras como Pedernal.
+
 ## Etapa 3V — tres vías, tolerancias y diferencias (reescrita 2026-11-17 según 0067)
 
 **Necesidad y decisiones:** sin tolerancia por defecto («sin tolerancia definida toda diferencia queda abierta»), las configura el gerente (`compras.configurar`). Resoluciones: dueño, 2026-11-17: «Las 7, como el SQL de Pedernal (Recomendada)» — CONFIRMADA (fuente: mensaje del orquestador general; registro en `motor2-docs`). Las 4 acordadas el 16/11 quedan incluidas. Fuente de la forma: Pedernal `0067_compras_diferencias.sql` (pendiente, sin aplicar; ZuluHub-docs 03cde03). Contraste línea por línea: `diseno-compras-contraste-sql-pedernal-2026-11-16.md` §9.3.
