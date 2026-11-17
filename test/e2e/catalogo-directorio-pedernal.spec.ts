@@ -46,7 +46,7 @@ for (const ancho of [1280, 375]) {
 
       if (ancho === 375) {
         await expectSinDesborde(page, "lista de Proveedores a 375 px");
-        await expectObjetivosTactiles(barra.locator("input[type=search], label, button"), "controles del buscador de Proveedores (el buscador, la fila de la casilla y el botón)");
+        await expectObjetivosTactiles(barra.locator("input[type=search], div.isolate, button"), "controles del buscador de Proveedores (el buscador, la fila de la casilla y el botón)");
       }
       expect((await new AxeBuilder({ page }).analyze()).violations, "accesibilidad de la lista de Proveedores").toEqual([]);
 
