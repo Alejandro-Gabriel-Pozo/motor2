@@ -26,7 +26,7 @@ import { CLAVES_DE_CUENTAS_Y_MEDIOS } from "../permisos/oraculo-de-permisos-de-c
  * sucursal); (f) `EFECTIVO_NO_SE_DESACTIVA`; (g) las tres lecturas: permiso `caja_ver`, aislamiento entre empresas, alcance de sucursal, activos e inactivos, datos como texto.
  *
  * Mutaciones comprobadas a mano (rojo y revertido): (1) en `cuentas-y-medios.ts` cambiar `conPermiso("caja_cuenta_de_cobro_crear", …)` por `conPermiso("caja_cuenta_de_cobro_editar", …)` → rojo en «(a) con todas MENOS la que exige: crearCuentaDeCobroDeCaja» y en el oráculo
- * `oraculo-de-permisos-de-cuentas-y-medios.test.ts`; (2) sacar la llamada al guard de `editarMedioDePagoDeCaja` (pasar `entrada as never` al caso de uso) → rojo en «(b) formato…»; (3) sacar el `true` final de `conTransaccionSerializable` en `crearCuentaDeCobroCasoDeUso` → rojo en «(e) seis altas a la vez».
+ * `oraculo-de-permisos-de-cuentas-y-medios.test.ts`; (2) sacar la llamada al guard de `editarMedioDePagoDeCaja` (pasar `entrada as never` al caso de uso) → rojo en «(b) formato…». Comprobado y NO detectado: sacar el `true` final (reintento) de `conTransaccionSerializable` en `crearCuentaDeCobroCasoDeUso` deja verde «(e)»: el choque del índice único «una activa por sucursal» se traduce igual a `SUCURSAL_YA_TIENE_CUENTA_ACTIVA` por el `.catch` del caso de uso, así que ese flag no cambia el resultado visible.
  */
 type Actor = { id: string; email: string };
 let s: Awaited<ReturnType<typeof sembrarSalon>>;
