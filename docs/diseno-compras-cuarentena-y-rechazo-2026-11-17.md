@@ -1,6 +1,6 @@
 # Diseño — Compras: depósitos de uso RECHAZO y CUARENTENA (2026-11-17)
 
-Estado del documento: PROPUESTA para revisión del orquestador. Sin código ni migración. Escalera de 10 niveles, versión corta. Reemplaza la decisión del 2026-11-16 («depósito común»). Lo no leído está marcado NO VERIFICADO.
+Estado del documento: `Seccion.uso`, propuesta de destino por control, bloqueo ESTRICTO y piso del permiso APROBADOS por el orquestador el 2026-11-17; la exclusión de lo disponible va en una SEGUNDA etapa, precedida de una auditoría de lectores (ver «Etapas»). Orden de turnos de schema: #364 → guarda de apagado → `Seccion.uso`, de a uno. Sin código ni migración. Escalera de 10 niveles, versión corta. Reemplaza la decisión del 2026-11-16 («depósito común»). Lo no leído está marcado NO VERIFICADO.
 Base: `feat/compras-recepcion-separada-n3a` (#364, `a7cdaea7`) y Pedernal ZuluHub-ERP origin/main 9786b8f9 + ZuluHub-docs (ficha `deposito-y-su-uso.md`, SQL 0063/0064, decisiones 2026-11, filas :120, :198, :208, :209).
 
 ## 1. Propósito y alcance
@@ -10,7 +10,7 @@ Base: `feat/compras-recepcion-separada-n3a` (#364, `a7cdaea7`) y Pedernal ZuluHu
 - Pregunta abierta de alcance: ver «Preguntas abiertas».
 
 ## 2. Actores y contexto
-- Configura secciones: permiso `secciones` (nivel administrador, módulo stock, `acciones.ts:60`). Pedernal: gerente y administrador (`empresa.ts:85,104`); diferencia a declarar (el piso real de Motor2 es administrador; NO VERIFICADO si el gerente lo tiene por herencia).
+- Configura el uso de un depósito: igual a Pedernal, gerente y administrador (`empresa.ts:85,104`). En Motor2 eso es el nivel «administrador». La acción `secciones` existente (nivel administrador, módulo stock, `acciones.ts:60`) puede tener un piso distinto: al construir se declara cuál se usa y, si difiere, se crea la acción propia. NO VERIFICADO aún cómo mapea el nivel de Motor2 a gerente/administrador.
 - Confirma la recepción: `compra_recibir` (gerente y administrador). Controla: administrador y operador.
 
 ## 3. Casos de uso
@@ -44,7 +44,7 @@ Base: `feat/compras-recepcion-separada-n3a` (#364, `a7cdaea7`) y Pedernal ZuluHu
 - Pantalla de secciones (`movimientos/secciones/page.tsx`): selector «Uso» solo al crear; en la lista, etiqueta del uso si no es NORMAL.
 - Bandeja «Por recibir»: el selector de depósito por renglón arranca en la sección propuesta por el control; si cambia, se muestra como «cambiado» y queda auditado. Hoy arranca en `secciones[0]` (`bandeja-para-aceptar.tsx:158-159`).
 - Textos nuevos (PROPUESTA, a aprobar por el dueño): «Uso del depósito» · «Normal» · «Cuarentena» · «Rechazo» · «Esta sucursal no tiene un depósito de rechazo: no se puede confirmar una recepción con mercadería rechazada.» · «Esta sucursal no tiene un depósito de cuarentena: no se puede confirmar una recepción con mercadería con observaciones.» · «Propuesto por el control».
-- Diferencia a declarar con motivo: Pedernal permite que quien confirma elija un depósito normal para una línea rechazada aunque la sucursal no tenga el de rechazo; el dueño dijo que se bloquea si no están configurados. Se implementa lo del dueño (más estricto). Es la lectura literal; se pide ratificar en «Preguntas abiertas».
+- Diferencia con Pedernal, declarada con motivo: Pedernal permite que quien confirma elija un depósito normal para una línea rechazada aunque la sucursal no tenga el de rechazo; en Motor2 se bloquea. Motivo: palabras del dueño (2026-11-17, chat, vía orquestador): «la recepción no se puede confirmar si la sucursal no los tiene». Ratificado por el orquestador.
 
 ## 9. Consultas y experiencia
 - Mensajes de bloqueo con el nombre del uso faltante; no se muestra nada pendiente oculto.
@@ -69,17 +69,21 @@ Base: `feat/compras-recepcion-separada-n3a` (#364, `a7cdaea7`) y Pedernal ZuluHu
 | La sección propuesta se desactiva a mitad | Rechaza esa confirmación (sección inactiva); nada entra |
 | Sección de otra sucursal o empresa como destino | Rechazada («No se encontró la sección») |
 | Sin control en la línea | Propone sección normal; entra igual |
+| La sucursal no tiene sección RECHAZO pero quien confirma quiere mandar la línea rechazada a una normal | Bloqueada igual (estricto) |
 | Falta el dato (renglón sin destino) | Rechazada, como hoy |
 | Cambia el permiso del usuario a mitad | La acción se valida en el servidor al ejecutar |
 | Se intenta cambiar el `uso` de una sección | Rechazado por la base |
 
+## Etapas (decisión del orquestador, 2026-11-17)
+- Etapa (i): uso + destino por control + bloqueo. Es esta.
+- Etapa (ii): exclusión de lo que está en RECHAZO/CUARENTENA de lo disponible para vender, como Pedernal. Motivo: el dueño dijo «como Pedernal» («4.-lo recomendado») y Pedernal lo excluye; NO se le vuelve a preguntar. Antes de construirla, auditoría de TODOS los lectores de «disponible» (cuántos son, cuáles, riesgo), entregada como documento al orquestador. Hasta que llegue la etapa (ii), lo que entra a RECHAZO/CUARENTENA se vería como stock vendible: riesgo conocido y declarado, y por eso conviene no encender la etapa (i) en una empresa real sin la (ii).
+
 ## Preguntas abiertas
-1. **Para el dueño (UNA, cambia stock y ventas):** «En Pedernal, la mercadería que está en el depósito de rechazo o de cuarentena no cuenta como disponible para vender. ¿Querés lo mismo en Motor2?» Recomendación: sí (si no, lo rechazado se vería como stock vendible). Si dice sí, hay que auditar todos los lectores de disponible antes de construir (NO VERIFICADO cuántos) y probablemente parta esta etapa en dos (uso + destino, y luego exclusión de disponible).
-2. **Para el orquestador:** ratificar la lectura estricta del bloqueo (sin sección del uso configurada se bloquea aunque quien confirma quiera mandar la línea a otro depósito) frente a la lectura de Pedernal.
-3. **Para el orquestador:** el piso del permiso para configurar usos (administrador en Motor2; Pedernal gerente y administrador).
+- Ninguna para el dueño. Pendiente de verificar al construir: si N3-a actualiza el último precio del proveedor con una línea rechazada (Pedernal DEC-0703: no).
 
 ## Diferencias con Pedernal
-- Bloqueo más estricto (arriba, por palabras del dueño).
+- Bloqueo más estricto (palabras del dueño, arriba).
+- Piso del permiso: igual a Pedernal (gerente y administrador); en Motor2 mapea al nivel administrador.
 - Sin trigger de «sin existencia» al desactivar (sugerencia).
 - Mensajes propios (Pedernal usa el genérico para `DEPOSITO_DE_CALIDAD_NO_CONFIGURADO`, NO encontré texto propio).
 - Modelo: columna `uso` en `Seccion` (Pedernal: `deposito.uso`); misma lista y misma inmutabilidad.

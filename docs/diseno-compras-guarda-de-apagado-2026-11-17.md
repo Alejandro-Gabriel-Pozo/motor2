@@ -1,6 +1,6 @@
 # Diseño — Compras: guarda de apagado de la recepción separada (2026-11-17)
 
-Estado del documento: PROPUESTA para revisión del orquestador. Sin código ni migración. Escalera de 10 niveles (AGENTS.md), versión corta.
+Estado del documento: disparador de base APROBADO por el orquestador (2026-11-17) como segunda barrera, con tres condiciones (abajo, sección 10). Orden de turnos de schema: #364 → guarda de apagado → `Seccion.uso`, de a uno, cada uno con verificación independiente. Sin código ni migración. Escalera de 10 niveles (AGENTS.md), versión corta.
 Lo no leído está marcado NO VERIFICADO. Base real leída el 2026-11-17 sobre `feat/compras-recepcion-separada-n3a` (#364, head `a7cdaea7`).
 
 ## 1. Propósito y alcance
@@ -29,7 +29,8 @@ Lo no leído está marcado NO VERIFICADO. Base real leída el 2026-11-17 sobre `
 ## 6. Historia y persistencia
 - Sin tablas nuevas. Auditoría: el intento rechazado deja registro en `AuditoriaPlataforma` («modulo-desactivar-rechazado», con cantidad de pendientes) — PROPUESTA; hoy solo se audita lo que se aplica.
 - Migración (turno de schema, de a uno): aditiva, con `down.sql` y `verificacion-previa.sql`:
-  - Disparador `BEFORE UPDATE` sobre `ModuloEmpresa`: al pasar `recepcion_de_compras` a INACTIVO cuenta pendientes de la empresa y rechaza con error de restricción. Debe poder ver TODAS las sucursales de la empresa pese a la RLS por sucursal (función `SECURITY DEFINER` con búsqueda fija) — NO VERIFICADO si `motor2_plataforma` ve `FacturaProveedorSucursal`; hay que leer `scripts/operaciones/crear-rol-motor2-plataforma.sql` antes de construir.
+  - Disparador `BEFORE UPDATE` sobre `ModuloEmpresa`: al pasar `recepcion_de_compras` a INACTIVO cuenta pendientes de la empresa y rechaza con error de restricción. Debe poder ver TODAS las sucursales de la empresa pese a la RLS por sucursal: función `SECURITY DEFINER` con búsqueda fija.
+  - VERIFICADO (lectura de `scripts/operaciones/crear-rol-motor2-plataforma.sql:75-77`): `motor2_plataforma` NO tiene ningún permiso sobre `FacturaProveedorSucursal` (solo `SELECT, INSERT, UPDATE` sobre `Empresa` y `ModuloEmpresa`, y `SELECT` sobre `User`/`UsuarioEmpresa`). Por eso el conteo NO puede hacerse desde la consola con una consulta propia, y NO se agrega un GRANT (el test `test/arquitectura/grants-igual-a-uso.test.ts` compara cada línea con lo que la plataforma hace de verdad, y la regla es no dar de más): el conteo vive solo dentro de la función `SECURITY DEFINER`, que corre con los permisos del dueño. Consecuencia: el mensaje con el detalle «N compras, sucursales: …» sale del texto de error de la función (la función devuelve cantidad y nombres de sucursal en el mensaje de la excepción); ambas vías lo traducen. NO VERIFICADO: la RLS por sucursal con el dueño de la función (el dueño no es `motor2_app`; hay que probar con una base real que la función ve todas las sucursales).
   - Disparador `BEFORE INSERT` sobre `FacturaProveedorSucursal` cuando `estadoRecepcion='PENDIENTE'`: `SELECT … FROM ModuloEmpresa … FOR SHARE` del módulo ACTIVO; si no hay, rechaza. Esto cierra la carrera del punto 7.
 - Los dos casos de uso (consola y script) traducen el error de la base a un mensaje claro; la función pura `validarCambioDeModulos` (`core/modulos/clausura.ts`) no cambia (no hay datos en ella). Si se prefiere chequeo previo, se le pasa un conteo ya leído; la base igual manda.
 
@@ -48,7 +49,8 @@ Lo no leído está marcado NO VERIFICADO. Base real leída el 2026-11-17 sobre `
 
 ## 10. Pruebas, migración y operación
 - Dimensiones que cambian el resultado (oráculo escrito aparte): {vía: consola, script, UPDATE directo} × {pendientes: 0, ≥1 sin anular, solo anuladas, solo recibidas} × {otra sucursal de la misma empresa, otra empresa} × {desactivar, activar}. Se recorre completo contra una tabla.
-- Pruebas: concurrencia (apagar vs cargar compra pendiente, `Promise.all`, N repeticiones: nunca pendiente con módulo apagado); idempotencia (apagar dos veces: la segunda es no-op/éxito; rechazo repetido da el mismo error sin auditoría duplicada); aislamiento (pendientes de otra empresa no bloquean); UPDATE directo por psql también falla.
+- Condiciones del orquestador (2026-11-17): (a) prueba de concurrencia REAL con dos transacciones (apagar vs cargar pendiente: nunca queda el módulo apagado con una pendiente viva), (b) mensaje traducido en AMBAS vías (consola y script), (c) el camino futuro M1b (techo del plan) pasa por la misma guarda (por eso la guarda es de base).
+- Pruebas: concurrencia (apagar vs cargar compra pendiente, dos transacciones reales abiertas a la vez, N repeticiones: nunca pendiente con módulo apagado); idempotencia (apagar dos veces: la segunda es no-op/éxito; rechazo repetido da el mismo error sin auditoría duplicada); aislamiento (pendientes de otra empresa no bloquean); UPDATE directo por psql también falla.
 - Migración reversible: `down.sql` borra los disparadores y la función. Sin datos que migrar.
 - Riesgo: el disparador de INSERT agrega un bloqueo compartido a cada carga de compra pendiente; costo bajo, pero bajo carga NO VERIFICADO.
 
@@ -68,7 +70,7 @@ Lo no leído está marcado NO VERIFICADO. Base real leída el 2026-11-17 sobre `
 | Cambia el permiso del operador a mitad | Sin cambio: la plataforma ya autoriza antes de la transacción |
 
 ## Preguntas abiertas
-- Ninguna para el dueño: la decisión está tomada. Para el orquestador: confirmar que el disparador de base (que cubre el UPDATE directo) es aceptable como segunda barrera.
+- Ninguna. Decisión del dueño tomada; disparador de base aprobado por el orquestador.
 
 ## Diferencias con Pedernal
 - Pedernal no tiene guarda de apagado: «Bajar de plan no toca lo ya cargado» (`perillas.ts:~138-150`, lectura parcial, NO VERIFICADO completo). Diferencia por decisión del dueño 2026-11-17 («3.-lo recomendado por ahora»).
