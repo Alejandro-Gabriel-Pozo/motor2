@@ -13,6 +13,12 @@ La pantalla «Por recibir» de Compras N3-a y N3-b (PR #364, ya en `main`: `src/
 - **Selector de depósito por renglón y aviso informativo al repetir la confirmación:** NO VERIFICADO contra la maqueta de recepción.
 - **Distribución, orden de elementos, estados vacíos, accesibilidad:** no comparados.
 
+## Respuesta de la orquestadora de Pedernal (2026-11-17; ERP origin/main 4fa7f3b8, docs 6b0b88d)
+- En Pedernal NO existe una pantalla de recepción con selector de depósito por línea: solo el caso de uso (`confirmar-recepcion.ts:232`, `destinoElegido`/`cambiado`). El selector de depósito por renglón de «Por recibir» (N3) y el «Propuesto por el control» / «cambiado» de #449 no tienen equivalente: se declaran SUPUESTO.
+- Lo más cercano es `control.html:344-348` («Recibir»): condición Conforme / Con observaciones / Rechazada; casilla «Dejar en cuarentena hasta revisar» (solo con observaciones); y el destino como texto de resultado: «Entra a tu stock» / «Queda en cuarentena» / «Se rechaza». Es el patrón base al rehacer la pantalla (regla P13: el punto de partida es `control.html` y `stock.html`).
+- Bloqueo sin depósito de calidad y venta desde cuarentena: en Pedernal no hay texto propio, sale el mensaje genérico (decisión 175); no se agregan textos propios.
+- Lista de depósitos: la pastilla del uso va en TODOS (también «Normal») y «De venta» debajo solo del que vende (`stock.html:343-345`, «Uso» con Normal / Cuarentena / Rechazo): se copia tal cual.
+
 ## Qué se hace
 1. La pantalla se rehace copiando de Pedernal junto con las pantallas de la etapa de cuarentena y rechazo (decisión del orquestador, 2026-11-17: el servidor de #449 va al lote; las pantallas salen de ese PR y se rehacen con la tabla de correspondencia «elemento ↔ archivo:línea», «Lo que difiere», capturas lado a lado a 390 y 1280 px y revisión previa de la orquestadora de Pedernal).
 2. Los textos de #364 que no existan en Pedernal se verifican uno por uno al rehacerla; los que no existan se consultan a la orquestadora de Pedernal, no al dueño.
