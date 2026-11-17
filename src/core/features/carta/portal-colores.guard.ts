@@ -1,4 +1,4 @@
-import { leerDireccionDeImagen, lineaDelPortalDesdeTexto, tituloDelPortalDesdeTexto, type PartesDeImagen } from "@/core/carta/public";
+import { MENSAJE_FORMATO_DEL_COLOR_DEL_PORTAL, leerDireccionDeImagen, lineaDelPortalDesdeTexto, tituloDelPortalDesdeTexto, type PartesDeImagen } from "@/core/carta/public";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import type { PedidoDeGuardarColoresDelPortal } from "./portal-colores.schema";
 
@@ -16,7 +16,7 @@ const esObjeto = (valor: unknown): valor is Record<string, unknown> => typeof va
 
 function color(valor: unknown, etiqueta: string): ResultadoDato<string | null> {
   if (valor === undefined || valor === null || valor === "") return aceptar(null);
-  return typeof valor === "string" && FORMA_DEL_COLOR.test(valor) ? aceptar(valor.toLowerCase()) : rechazar("formato", `${etiqueta}: escribí el color como #0e7490 (un # y seis números o letras de la a a la f).`);
+  return typeof valor === "string" && FORMA_DEL_COLOR.test(valor) ? aceptar(valor.toLowerCase()) : rechazar("formato", `${etiqueta}: ${MENSAJE_FORMATO_DEL_COLOR_DEL_PORTAL} (un # y seis números o letras de la a a la f).`);
 }
 
 function texto(valor: unknown, convertir: typeof lineaDelPortalDesdeTexto, mensaje: string): ResultadoDato<string | null> {
