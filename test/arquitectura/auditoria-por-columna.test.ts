@@ -63,6 +63,12 @@ const COLUMNAS_AUDITADAS: { archivo: string; entidad: (typeof ENTIDADES_AUDITABL
   { archivo: "src/server/actions/carta/casos-de-uso/fijar-modo-de-orden-de-seccion.ts", entidad: "ModoDeOrdenDeSeccionCarta", campos: ["modo"] },
   { archivo: "src/server/actions/carta/casos-de-uso/auditar-orden-de-producto-en-carta.ts", entidad: "ContenidoCartaProducto", campos: ["orden"] },
   { archivo: "src/server/actions/carta/casos-de-uso/auditar-orden-de-item-agrupado-en-carta.ts", entidad: "ItemAgrupadoCarta", campos: ["orden"] },
+  // F1 (familias de productos): el nombre al crear, cada dato que cambia al editar o desactivar, y agregar o quitar un miembro.
+  { archivo: "src/server/actions/carta/casos-de-uso/crear-familia-de-producto.ts", entidad: "FamiliaDeProducto", campos: ["nombre"] },
+  { archivo: "src/server/actions/carta/casos-de-uso/editar-familia-de-producto.ts", entidad: "FamiliaDeProducto", campos: ["nombre", "agruparEnCarta", "agruparEnPos"] },
+  { archivo: "src/server/actions/carta/casos-de-uso/fijar-activa-familia-de-producto.ts", entidad: "FamiliaDeProducto", campos: ["activa"] },
+  { archivo: "src/server/actions/carta/casos-de-uso/agregar-producto-a-familia.ts", entidad: "MiembroDeFamilia", campos: ["miembro"] },
+  { archivo: "src/server/actions/carta/casos-de-uso/quitar-producto-de-familia.ts", entidad: "MiembroDeFamilia", campos: ["miembro"] },
 ];
 
 /** Los literales de texto de `campo: "<literal>"` y de `entidad: "<literal>"` que hay en el código (propiedades de un literal de objeto). */

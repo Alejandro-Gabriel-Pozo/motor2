@@ -8,7 +8,7 @@ import type { EstiloCarta } from "@/core/carta/public";
  * del texto en mobile — mismo contenido, presentación más simple (nivel (a) del diagnóstico de UI: desenredar sin cambiar
  * el concepto, el rediseño de layout es nivel (b), Fase 5, con aprobación del dueño).
  */
-export function Portada({ estilo, restauranteNombre }: { estilo: EstiloCarta; restauranteNombre: string }) {
+export function Portada({ estilo, restauranteNombre, estiloLibro = false }: { estilo: EstiloCarta; restauranteNombre: string; estiloLibro?: boolean }) {
   const v = estilo.valores;
   const logoUrl = v.restaurante_logo_url;
   const bgUrl = v.hero_imagen_fondo_url;
@@ -18,12 +18,21 @@ export function Portada({ estilo, restauranteNombre }: { estilo: EstiloCarta; re
   const p = estilo.portada;
   const colorTexto = p.colorTexto ?? (bgUrl ? "var(--carta-ink)" : "#fff");
   const colorCta = p.colorCta;
+  // Estilo de la maqueta (`LIBRO_ESTILO_MAQUETA`): sin imagen de fondo ni color de portada cargado, la portada es oscura con un degradé suave, un arco decorativo con el color de marca y el sello con la marca; lo cargado en el Tema manda.
+  const conAire = estiloLibro && !bgUrl && !p.fondo;
 
   return (
     <div
       className="carta-pagina relative isolate flex flex-col items-center justify-center gap-4 overflow-hidden px-8 text-center"
-      style={{ backgroundColor: bgUrl ? undefined : (p.fondo ?? "var(--carta-primary)"), color: colorTexto }}
+      style={{
+        backgroundColor: bgUrl ? undefined : conAire ? "var(--carta-bg)" : (p.fondo ?? "var(--carta-primary)"),
+        backgroundImage: conAire ? "radial-gradient(120% 70% at 50% 40%, color-mix(in srgb, var(--carta-ink) 6%, var(--carta-bg)), var(--carta-bg))" : undefined,
+        color: conAire ? "var(--carta-ink)" : colorTexto,
+      }}
     >
+      {conAire && (
+        <div data-portada-arco aria-hidden className="pointer-events-none absolute -z-10 aspect-square rounded-full" style={{ left: "-25%", top: "calc(7% + 2.75rem)", width: "160%", border: "4.5rem solid var(--carta-primary)", opacity: 0.5 }} />
+      )}
       {/* eslint-disable-next-line @next/next/no-img-element -- fondo full-bleed de tamaño desconocido, no candidato de next/image */}
       {bgUrl && <img src={bgUrl} alt="" aria-hidden loading="eager" className="absolute inset-0 -z-10 h-full w-full object-cover" />}
 
@@ -37,7 +46,7 @@ export function Portada({ estilo, restauranteNombre }: { estilo: EstiloCarta; re
       <div className="relative flex flex-col items-center gap-4">
       {/* Velo CENTRADO en el bloque (logo y textos), no sobre toda la imagen: oscurece solo detrás del texto y se desvanece hacia los bordes (mancha suave casi del ancho de la pantalla, como la portada original),
           así la imagen conserva sus colores. Sin ajuste en el Tema: es parte de cómo se ve la portada con imagen. Acompaña al bloque porque es su hijo. */}
-      {bgUrl && (
+      {(bgUrl || conAire) && (
         <div
           data-portada-velo
           aria-hidden
@@ -49,7 +58,7 @@ export function Portada({ estilo, restauranteNombre }: { estilo: EstiloCarta; re
         // eslint-disable-next-line @next/next/no-img-element
         <img src={logoUrl} alt={restauranteNombre} className="h-16 w-16 object-contain" />
       ) : restauranteNombre ? (
-        <div className="carta-rol-titulo flex h-14 w-14 items-center justify-center rounded-2xl" style={{ backgroundColor: "var(--carta-ink)", color: "var(--carta-bg)" }}>
+        <div className="carta-rol-titulo flex h-14 w-14 items-center justify-center rounded-2xl" style={{ backgroundColor: conAire ? "var(--carta-primary)" : "var(--carta-ink)", color: "var(--carta-bg)" }}>
           {restauranteNombre.charAt(0)}
         </div>
       ) : null}

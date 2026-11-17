@@ -48,6 +48,8 @@ interface Props {
   /** `color_nav_iconos`: si está cargado, los íconos de redes salen de ESE color, sin la opacidad decorativa. */
   colorIconos: string | null;
   redesSociales: readonly RedSocial[];
+  /** Libro al estilo de la maqueta (dueño, 2026-11-17: precio «blanco y negrita»): pone `data-precio-fuerte` en la raíz y el CSS de `globals.css` sube el peso del precio. */
+  precioFuerte?: boolean;
   /** `EstiloCarta.variablesCss` (`src/core/carta/estilo.ts`): pisa los defaults de `.carta-shell` para ESTA sucursal. */
   variablesCss: Readonly<Record<string, string>>;
   /**
@@ -57,7 +59,7 @@ interface Props {
   embebida?: boolean;
 }
 
-export function NavegacionCarta({ children, paginas, hrefVolver, volver, colorIconos, redesSociales, variablesCss, embebida = false }: Props) {
+export function NavegacionCarta({ children, paginas, hrefVolver, volver, colorIconos, redesSociales, variablesCss, embebida = false, precioFuerte = false }: Props) {
   const raizRef = useRef<HTMLDivElement>(null);
   const sliderRef = useRef<HTMLElement>(null);
   const navRef = useRef<HTMLElement>(null);
@@ -128,6 +130,7 @@ export function NavegacionCarta({ children, paginas, hrefVolver, volver, colorIc
     <div
       ref={raizRef}
       {...(embebida ? {} : { "data-carta-libro": "" })}
+      {...(precioFuerte ? { "data-precio-fuerte": "" } : {})}
       // Embebida: `overflow-clip` y no `overflow-hidden`. Un contenedor `overflow-hidden` sigue siendo desplazable por el navegador (`scrollIntoView`, el foco, un clic de Playwright
       // sobre la flecha mientras corre su empujoncito): se corría 290 × 361 px, el slider quedaba fuera del marco y la vista previa se veía en blanco. `overflow-clip` no crea
       // contenedor de scroll, así que nada puede moverlo. La carta pública (`h-dvh`, sin página anfitriona) no lo necesita y conserva `overflow-hidden`.
