@@ -27,7 +27,7 @@ export { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, type A
 export { ORIGEN_FUERA_DE_LA_CARTA, borradorInicial, categoriasDe, comandoDeProducto, origenInferido, productosDelOrigen, tieneOpciones } from "./armar-lugar-de-lista";
 export type { BorradorDeProducto } from "./armar-lugar-de-lista";
 // Armado de promos «como Pedernal» (primer paso, solo pantalla; docs/diseno-promociones-igual-a-pedernal-2026-11-17.md).
-export { ARMADO_DE_PROMO_COMO_PEDERNAL, comoLoVeElCliente, estadoDeLaPromo, loQueLlevaLaPromo, renglonDeLaLista, type ParteDeLaPromoParaLeer } from "./armado-de-promo-como-pedernal";
+export { ARMADO_DE_PROMO_COMO_PEDERNAL, cantidadesDelFormulario, comoLoVeElCliente, esCantidadExacta, estadoDeLaPromo, loQueLlevaLaPromo, renglonDeLaLista, type ParteDeLaPromoParaLeer } from "./armado-de-promo-como-pedernal";
 export { SUMAR_LUGAR_DE_LISTA_VISIBLE, WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO, WHERE_CUPO_DE_SECCION_ACTIVO, cuposDeSeccionActivos } from "./cupos-de-promo";
 export type { TipoDeCupo } from "./cupos-de-promo";
 // GO-3b (D3): la administración de los cupos sin borrar (la clave natural de cada cupo y la diferencia contra lo que hay) y los tipos de cupo para el guard.

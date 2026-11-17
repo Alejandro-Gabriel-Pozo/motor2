@@ -1,4 +1,5 @@
 import { CampoNumero } from "@/components/campo-numero";
+import { esCantidadExacta } from "@/core/carta/public";
 import { Casilla } from "@/ui/primitivas/casilla";
 
 /**
@@ -20,14 +21,23 @@ function Fila({ s, g }: { s: SeccionParaElegir; g: CupoGuardado | undefined }) {
       <div className={CLASE_NOMBRE}>
         <Casilla etiqueta={`${s.nombre}${s.activa ? "" : " (apagada)"}`} name={`incluir_${s.id}`} defaultChecked={!!g} />
       </div>
-      <label className={CLASE_CANTIDAD}>
-        mín.
-        <CampoNumero tipo="entero" etiqueta="El mínimo" name={`min_${s.id}`} defaultValue={String(g?.cantidadMinima ?? 0)} className={CLASE_NUMERO} />
-      </label>
-      <label className={CLASE_CANTIDAD}>
-        máx.
-        <CampoNumero tipo="entero" etiqueta="El máximo" name={`max_${s.id}`} defaultValue={String(g?.cantidadMaxima ?? 1)} className={CLASE_NUMERO} />
-      </label>
+      {g && !esCantidadExacta(g.cantidadMinima, g.cantidadMaxima) ? (
+        <>
+          <label className={CLASE_CANTIDAD}>
+            mín.
+            <CampoNumero tipo="entero" etiqueta="El mínimo" name={`min_${s.id}`} defaultValue={String(g.cantidadMinima)} className={CLASE_NUMERO} />
+          </label>
+          <label className={CLASE_CANTIDAD}>
+            máx.
+            <CampoNumero tipo="entero" etiqueta="El máximo" name={`max_${s.id}`} defaultValue={String(g.cantidadMaxima)} className={CLASE_NUMERO} />
+          </label>
+        </>
+      ) : (
+        <label className={`${CLASE_CANTIDAD} col-span-2`}>
+          Cantidad
+          <CampoNumero tipo="entero" etiqueta="La cantidad exacta" name={`cantidad_${s.id}`} defaultValue={String(g?.cantidadMaxima ?? 1)} className={CLASE_NUMERO} />
+        </label>
+      )}
     </div>
   );
 }
