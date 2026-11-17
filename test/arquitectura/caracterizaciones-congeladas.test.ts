@@ -166,6 +166,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Compras N3 sobre el origin/main integrado (15f3399d): la matriz de la rama (compra_recibir y compra_controlar_recepcion, ya declaradas arriba) suma las seis claves de la caja de Caja y cobro C1 PR-B (`caja_ver`, `caja_abrir_sesion`, `caja_cerrar_sesion`, `caja_mover_efectivo`, `caja_anular_movimiento_ajeno`, `cobrar_cuenta`; ya declaradas arriba con el blob `22b61bd0`, ADITIVO, semilla solo admin). Fusión de dos regeneraciones declaradas, sin ningún cambio nuevo de comportamiento. Revisado con `git diff -U0` contra el commit `1107fdc8`: cambian SOLO 224 líneas, las listas de claves de cada bloque (una por lista, con las seis claves de la caja de más); ningún otro permiso ni rol cambia.",
       },
+      {
+        blob: "d3dd4b785845b66bdbe9526868c4e3cb40a17a45",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `859408c8` (la `main` sobre la que se armó el lote 2026-11-17 A).
+        commit: "859408c8",
+        motivo:
+          "PISOS-65 (CAMBIA COMPORTAMIENTO, decidido por el dueño el 2026-11-17: «Si bajamos las 65 acciones de piso administrador a operador, esas celdas dejan de estar cerradas y la empresa decide fila por fila…»; PR #421): las 65 acciones con piso administrador bajan a piso operario, así que las filas hoy dormidas dejan de ignorarse. Cambian SOLO los usuarios «especial» y «dos-sucursales» (pasan a ok `secciones` Ver/Editar y, de las primeras 6 acciones de empresa, `guardar_receta`, `grupos_familia`, `unidades`; `sucursalesDondeElUsuarioPuedeVer(secciones)` de «ninguna» a S1/S2) más una fila nueva de `ver_auditoria` (acción de gobierno: se sigue ignorando). El administrador, el gerente y el operador de fábrica no cambian. La semilla no cambia: todo sigue naciendo cerrado.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {

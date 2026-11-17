@@ -10,6 +10,7 @@ import { generarReporteVentasPorCategoria } from "../../src/server/consultas/rep
 import { generarReporteVentasPorSeccion, reagruparPorSeccion, SIN_SECCION, type VentasParaSeccion } from "../../src/server/consultas/carta/ventas-por-seccion";
 import type { Db } from "../../src/lib/db-tipos";
 
+import { crearCategoriaDeTest } from "../setup/categoria-de-prueba";
 /**
  * Ventas por sección de carta (docs/plan-carta-catalogo-2026-09-24.md, M4; a nivel de PRODUCTO desde
  * docs/plan-carta-seccion-directa-2026-09-25.md, M5): las mismas ventas que "Ventas por categoría", agrupadas por la sección donde
@@ -95,7 +96,7 @@ describe("generarReporteVentasPorSeccion (contra Postgres)", () => {
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
 
-    const [cBife, cEmp, cPostre, cGas] = await Promise.all(["Bife", "Empanadas", "Postres", "Gaseosas"].map(async (nombre) => (await prisma.categoriaProducto.create({ data: { nombre } })).id));
+    const [cBife, cEmp, cPostre, cGas] = await Promise.all(["Bife", "Empanadas", "Postres", "Gaseosas"].map(async (nombre) => (await crearCategoriaDeTest(prisma, { nombre })).id));
     const platos = await prisma.seccionCarta.create({ data: { nombre: "Platos Principales", orden: 2 } });
     const entradas = await prisma.seccionCarta.create({ data: { nombre: "Entradas", orden: 1 } });
     const bebidas = await prisma.seccionCarta.create({ data: { nombre: "Bebidas", orden: 3 } });

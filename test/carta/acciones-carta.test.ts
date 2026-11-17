@@ -17,6 +17,7 @@ import { resolverMenuCarta } from "../../src/server/lecturas/carta/menu";
 import { normalizarTagsCarta, validarImagenUrlCarta, validarOrdenCarta, validarPrecioCarta } from "../../src/core/carta/validaciones";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
+import { crearCategoriaDeTest } from "../setup/categoria-de-prueba";
 /**
  * Admin de la carta (docs/plan-carta-catalogo-2026-09-24.md, M9): las Server Actions de `src/server/actions/carta/` validan lo
  * que termina en la carta pública, solo escriben en las tablas de carta, exigen el permiso `carta` y las promos quedan
@@ -73,7 +74,7 @@ describe("Server Actions de la carta", () => {
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
 
     const u = await prisma.unidad.create({ data: { nombre: "u", magnitud: "CANTIDAD", decimales: 0 } });
-    categoriaId = (await prisma.categoriaProducto.create({ data: { nombre: "Bife" } })).id;
+    categoriaId = (await crearCategoriaDeTest(prisma, { nombre: "Bife" })).id;
     pvId = (await sembrarProductoDisponible({ codigo: "PV_BIFE", nombre: "Bife de chorizo", tipo: "PV", categoriaId, precioVenta: 34000, unidadStockId: u.id }, sucursalId)).id;
     mpId = (await prisma.producto.create({ data: { codigo: "MP_CARNE", nombre: "Carne", tipo: "MP", unidadStockId: u.id } })).id;
   });

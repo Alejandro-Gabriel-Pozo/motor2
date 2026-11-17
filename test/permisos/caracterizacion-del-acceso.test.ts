@@ -6,7 +6,7 @@ import { crearMembresia } from "../setup/membresia";
 import { fijarModulosActivos } from "../setup/modulos";
 import { MODULOS } from "../../src/core/modulos/catalogo";
 import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase } from "../setup/test-db";
-import { ACCIONES, contextoDeAccion, type AccionClave, type AccionDeEmpresa, type AccionDeSucursal } from "../../src/core/permisos/acciones";
+import { ACCIONES, contextoDeAccion, esAccionQueDaSoloElGerente, type AccionClave, type AccionDeEmpresa, type AccionDeSucursal } from "../../src/core/permisos/acciones";
 import {
   accionesDelMenuQueElUsuarioPuedeVer,
   accionesQueElUsuarioPuedeVer,
@@ -86,11 +86,14 @@ beforeAll(async () => {
   // Un rol «especial» (no es admin): sus filas de PermisoRol son las que decide la matriz, y UNA está por encima de su piso (una acción de administrador).
   const especial = await prismaAdmin.rol.create({ data: { nombre: "especial", clave: null } });
   const inactivo = await prismaAdmin.rol.create({ data: { nombre: "rol apagado", clave: null, activo: false } });
-  const deOperario = DE_SUCURSAL.filter((c) => ACCIONES.find((a) => a.clave === c)!.nivelMinimo === "operario");
-  const deAdministrador = DE_SUCURSAL.filter((c) => ACCIONES.find((a) => a.clave === c)!.nivelMinimo === "administrador");
+  // PISOS-65 (2026-11-17): las 65 de piso administrador bajaron a operario. `deOperario` son las de piso operario que NO son de las 65 (las mismas 12 filas de siempre); `deLas65[0]` (`secciones`) es la fila dormida que
+  // vuelve: ahora da acceso. `ver_auditoria` (gobierno) es la que sigue por encima del piso.
+  const deOperario = DE_SUCURSAL.filter((c) => ACCIONES.find((a) => a.clave === c)!.nivelMinimo === "operario" && !esAccionQueDaSoloElGerente(c));
+  const deLas65 = DE_SUCURSAL.filter((c) => esAccionQueDaSoloElGerente(c));
   const filas = [
     ...deOperario.slice(0, 12).map((accionClave, i) => ({ rolId: especial.id, accionClave, puedeVer: true, puedeEditar: i % 2 === 0 })),
-    { rolId: especial.id, accionClave: deAdministrador[0]!, puedeVer: true, puedeEditar: true }, // por encima del piso: el gate la ignora
+    { rolId: especial.id, accionClave: deLas65[0]!, puedeVer: true, puedeEditar: true }, // una de las 65: la fila da acceso (PISOS-65)
+    { rolId: especial.id, accionClave: "ver_auditoria", puedeVer: true, puedeEditar: true }, // por encima del piso (gobierno): el gate la ignora
     ...DE_EMPRESA.slice(0, 6).map((accionClave) => ({ rolId: especial.id, accionClave, puedeVer: true, puedeEditar: false })),
     ...deOperario.slice(0, 3).map((accionClave) => ({ rolId: inactivo.id, accionClave, puedeVer: true, puedeEditar: true })),
   ];

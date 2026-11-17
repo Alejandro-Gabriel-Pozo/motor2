@@ -2,9 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma, prismaAdmin } from "../setup/test-db";
+import { baseDeTest, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma, prismaAdmin } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { guardarPermisos } from "../../src/server/actions/permisos/permisos";
+import { guardarPermisosCasoDeUso } from "../../src/server/actions/permisos/casos-de-uso/guardar-permisos";
 import { ACCIONES } from "../../src/core/permisos/acciones";
 import { rolAlcanzaLaAccion } from "../../src/core/permisos/jerarquia";
 import { SIN_PERMISO } from "../../src/core/permisos/matriz";
@@ -28,11 +29,14 @@ import { SIN_PERMISO } from "../../src/core/permisos/matriz";
 const ITERACIONES = 12;
 
 // Acciones en las que el operador arranca SIN acceso (así el estado inicial de cada celda es SIN_PERMISO y no depende de la semilla exacta).
-// Solo las que el rol operador PUEDE tener por su nivel (el piso de la acción manda: las de administrador no se le pueden dar).
+// Solo las que el rol operador PUEDE tener por su nivel (el piso de la acción manda: las de gobierno y de gerente no se le pueden dar). Desde PISOS-65 entran las 65: las da el gerente, así que quien actúa acá es el gerente.
 const ACCIONES_SIN_ACCESO_DEL_OPERADOR = ACCIONES.filter((a) => !(a.rolesEditarSemilla as readonly string[]).includes("operador") && rolAlcanzaLaAccion({ clave: "operador" }, a.clave)).map((a) => a.clave);
 
 describe("guardarPermisos — concurrencia real", () => {
   let operadorRolId: string;
+  let gerenteId: string;
+  let administradorId: string;
+  let sucursalId: string;
 
   const estado = async (accionClave: string) => {
     const f = await prisma.permisoRol.findUnique({ where: { rolId_accionClave: { rolId: operadorRolId, accionClave } } });
@@ -49,9 +53,18 @@ describe("guardarPermisos — concurrencia real", () => {
     await limpiarBaseDeTest();
     const base = await sembrarBase();
     operadorRolId = base.operador.id;
+    // PISOS-65: quien actúa es el gerente (rol admin y `rolEmpresa` gerente): solo él da las 65; las demás las da cualquiera con `gestion_permisos`.
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+    await prismaAdmin.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId: admin.id, empresaId: EMPRESA_POR_DEFECTO_ID } }, data: { rolEmpresa: "gerente" } });
+    gerenteId = admin.id;
+    sucursalId = base.sucursal.id;
+    administradorId = (await crearUsuarioConMembresia({ email: "administrador@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id })).id;
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
+
+  /** Llama al caso de uso como una persona concreta (el mock de sesión es global; así se pueden cruzar dos personas a la vez). */
+  const comoPersona = (usuarioId: string, cambios: ReturnType<typeof cambio>[]) =>
+    guardarPermisosCasoDeUso({ usuarioId, empresaId: EMPRESA_POR_DEFECTO_ID, ...baseDeTest({ lectura: [sucursalId], escritura: [sucursalId] }) }, cambios);
 
   it("dos guardados sobre la MISMA celda desde el mismo estado: gana uno, el otro recibe el aviso de conflicto, y la auditoría no miente", async () => {
     expect(ACCIONES_SIN_ACCESO_DEL_OPERADOR.length).toBeGreaterThan(3);
@@ -134,5 +147,41 @@ describe("guardarPermisos — concurrencia real", () => {
       for (const k of propiasDelPerdedor) expect(await estado(k), `iteración ${i}: ${k} del perdedor quedó escrita a pesar del rechazo`).toEqual(SIN_PERMISO);
       expect(await estado(compartida), `iteración ${i}`).toEqual(soloVer);
     }
+  });
+  // PISOS-65 (DEC-0025): las 65 las da solo el gerente. Las pruebas usan `caja_cerrar_sesion` (una de las 65).
+  describe("PISOS-65: dar una de las 65 bajo concurrencia", () => {
+    const DE_LAS_65 = "caja_cerrar_sesion";
+    const conTodo = { puedeVer: true, puedeEditar: true };
+
+    it("el gerente (dos pestañas) y el administrador a la vez sobre la misma celda: el administrador SIEMPRE se rechaza por la regla del gerente y nunca escribe", async () => {
+      for (let i = 0; i < ITERACIONES; i++) {
+        await reiniciar([DE_LAS_65]);
+        const [delGerente, delAdministrador] = await Promise.all([comoPersona(gerenteId, [cambio(DE_LAS_65, conTodo)]), comoPersona(administradorId, [cambio(DE_LAS_65, conTodo)])]);
+        expect(delGerente.ok, `iteración ${i}: ${delGerente.mensaje}`).toBe(true);
+        expect(delAdministrador, `iteración ${i}`).toMatchObject({ ok: false, codigo: "SOLO_EL_GERENTE_LA_DA" });
+        expect(await estado(DE_LAS_65), `iteración ${i}`).toEqual(conTodo);
+        // Una sola persona escribió: dos filas de auditoría (ver y editar), no cuatro.
+        expect(await prisma.registroAuditoria.count({ where: { entidad: "PermisoRol" } }), `iteración ${i}`).toBe(2);
+      }
+    });
+
+    it("el gerente dos veces a la vez (dos pestañas) sobre la misma celda: uno guarda y el otro recibe el aviso de conflicto", async () => {
+      for (let i = 0; i < ITERACIONES; i++) {
+        await reiniciar([DE_LAS_65]);
+        const settled = await Promise.all([comoPersona(gerenteId, [cambio(DE_LAS_65, { puedeVer: true, puedeEditar: false })]), comoPersona(gerenteId, [cambio(DE_LAS_65, conTodo)])]);
+        expect(settled.filter((r) => r.ok), `iteración ${i}`).toHaveLength(1);
+        const perdedor = settled.find((r) => !r.ok)!;
+        expect(perdedor.mensaje, `iteración ${i}`).toMatch(/Otra persona cambió/);
+      }
+    });
+
+    it("un `anterior` que miente no esquiva la regla: el administrador pide dar la celda diciendo que ya la tenía; el chequeo de concurrencia lo compara con la base y rechaza todo", async () => {
+      await reiniciar([DE_LAS_65]);
+      // La base dice «sin acceso»; el pedido dice que la persona vio «ver y editar» y deja «solo ver»: para la regla no otorga (quita), pero en la base sería dar.
+      const r = await comoPersona(administradorId, [{ rolId: operadorRolId, accionClave: DE_LAS_65, anterior: conTodo, nuevo: { puedeVer: true, puedeEditar: false } }]);
+      expect(r).toMatchObject({ ok: false, codigo: "CONFLICTO_DE_EDICION" });
+      expect(await estado(DE_LAS_65)).toEqual(SIN_PERMISO);
+      expect(await prisma.registroAuditoria.count({ where: { entidad: "PermisoRol" } })).toBe(0);
+    });
   });
 });
