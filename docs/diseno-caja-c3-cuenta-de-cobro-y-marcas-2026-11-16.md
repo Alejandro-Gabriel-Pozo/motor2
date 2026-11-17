@@ -239,3 +239,23 @@ El texto de cada pregunta es el original; el estado vigente es el de la tabla de
 | Reversa | `down.sql` borra solo el índice (no pierde datos; bajarla dos veces no falla): la sucursal vuelve a poder tener varias activas |
 
 Pruebas: `test/caja/caja-c3b-una-cuenta-por-sucursal.test.ts` (casos de uso y base directa) y `test/aislamiento/caja-c3b-subir-bajar-subir.test.ts` (subir, bajar y subir); `m1-mostrador-subir-bajar-subir` lista la migración nueva en orden. Los tests de C3 que armaban varias activas en una sucursal se ajustaron sin debilitar ninguna regla (cuentas inactivas, o una sola activa por caso dentro de la transacción que se revierte en el oráculo).
+
+## Pregunta para el dueño (2026-11-17): ¿el cobro debe usar solo la cuenta activa de la sucursal?
+
+**Estado: PENDIENTE (no se asumió nada; el orquestador la consolida para el dueño).** Escrita para quien no programa.
+
+**Qué pasa hoy.** Cada sucursal puede tener **una sola cuenta de cobro activa** (por ejemplo «Posnet Banco Nación»; decisión del dueño del 2026-11-16, «Por ahora es lo primero»). Pero cuando alguien cobra con tarjeta, QR o transferencia, el sistema **no le asigna esa cuenta solo**: si quien cobra no elige ninguna, el cobro se acepta igual y la plata queda anotada **«sin cuenta»** (verificado en el código y en las pruebas de C3b).
+
+**Ejemplo con números.** En la sucursal Centro la única cuenta activa es «Posnet Banco Nación». Se cobran $12.000 con tarjeta de débito y quien cobra no elige cuenta. Hoy esos $12.000 aparecen en el cierre como «Tarjeta de débito — sin cuenta». El resumen que da el posnet del banco dice $12.000 para «Posnet Banco Nación»: **no coinciden** en el cierre, aunque la plata es la misma, y hay que explicarlo a mano.
+
+**Qué pasaría si el sistema usa solo la cuenta activa.** Esos $12.000 quedarían anotados directamente en «Posnet Banco Nación» y el cierre coincidiría con el resumen del posnet, sin que nadie tenga que elegir nada. Si la sucursal no tuviera ninguna cuenta activa, el cobro seguiría como hoy («sin cuenta»).
+
+**Opciones:**
+1. **Dejar como está** (hoy): menos cambio, pero el cierre por cuenta puede no coincidir con el posnet y alguien tiene que elegir la cuenta cada vez.
+2. **Asignar sola la cuenta activa cuando hay exactamente una (Recomendada):** coincide con tu decisión de «una sola cuenta por sucursal», evita errores y pasos, y no cambia nada si hay cero cuentas activas.
+3. **Obligar a elegir la cuenta en cada cobro:** más control, pero más pasos para quien cobra y no suma nada si hay una sola cuenta.
+
+**Qué recomendamos y por qué:** la opción 2. Con una sola cuenta activa por sucursal elegirla cada vez no aporta información y deja el cierre sin cuadrar contra el posnet; que el sistema la ponga sola es lo más simple y no se puede equivocar.
+
+**Qué NO se hace hasta que respondas:** no se cambia el cobro. La respuesta se registra con su cita literal y la fecha (regla del dueño); recién después se diseña el cambio (será un cambio chico dentro del caso de uso de cobrar, con su prueba de combinaciones).
+
