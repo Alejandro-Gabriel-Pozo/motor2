@@ -8,8 +8,7 @@ import { DECIMALES_DE_STOCK, TRANSICIONES, convertirCantidadAUnidadDeStock, esSi
 import { obtenerLoteMasProximoAVencer, resolverConsumoPorFamilia } from "@/server/lecturas/movimientos/saldos";
 import { crearCacheProducto } from "@/server/persistencia/movimientos/producto-cache";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
-import { convertirCantidadExacta } from "@/core/catalogo/unidades-de-medida";
-import { factorDeBruto, rendimientoEfectivo } from "@/core/catalogo/public";
+import { convertirCantidadExacta, factorDeBruto, rendimientoEfectivo } from "@/core/catalogo/public";
 import { PRESENTACION_AMBIGUA, cargarPresentacionActiva, cargarUnidadDeCompraTecleada, cargarRecetaVigenteParaProducir } from "@/server/persistencia/movimientos/cargar-linea-de-movimiento";
 import type { DatosMovimientoInput, ItemMovimientoInput } from "@/core/features/movimientos/movimiento.schema";
 
