@@ -44,7 +44,7 @@ test("agregar un email nuevo crea una invitación (no un usuario) y aparece en �
   const email = `nueva-${e.marca}@local.test`;
   const page = await paginaDeUsuarios(browser, baseURL);
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Rol").selectOption({ label: "operador" });
+  await page.getByLabel("Rol").selectOption({ label: "empleado" });
   await page.getByRole("button", { name: "Guardar" }).click();
 
   await expect(page.getByRole("status").filter({ hasText: "Invitación enviada" })).toBeVisible();
