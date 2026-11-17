@@ -276,6 +276,7 @@ async function registrarCompraComoFactura(
     return fracaso(r.codigo, r.mensaje);
   }
   if (r.datos.repetida) return exito(r.mensaje, { operacionId: null, movimientos: null, repetida: true });
-  if (!r.datos.operacionPropiaId) throw new Error("registrarMovimiento COMPRA: la parte propia de la factura no devolvió su compra.");
+  // Compras N3-a: con el módulo `recepcion_de_compras` encendido la factura de una parte nace pendiente de recibir: sin compra ni stock todavía (los crea la confirmación de la recepción).
+  if (!r.datos.operacionPropiaId) return exito(r.mensaje, { operacionId: null, movimientos: 0, repetida: false });
   return exito(r.mensaje, { operacionId: r.datos.operacionPropiaId, movimientos: r.datos.movimientosPropios, repetida: false });
 }
