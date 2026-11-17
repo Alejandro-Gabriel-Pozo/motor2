@@ -74,7 +74,7 @@ test("al entrar, el admin y el operador llegan al panel /inicio (con sus módulo
   const operador = await paginaComoOperador(browser, baseURL, sucursalId);
   await operador.goto("/");
   await operador.waitForURL(/\/inicio$/);
-  await expect(operador.getByRole("heading", { level: 1, name: /^Hola — estás en / })).toBeVisible();
+  await expect(operador.getByRole("heading", { level: 1, name: "Inicio" })).toBeVisible();
   await expect(operador.getByText(/No tenés permiso para ver esta sección/)).toHaveCount(0);
   await operador.context().close();
 });

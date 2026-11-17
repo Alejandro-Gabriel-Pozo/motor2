@@ -39,10 +39,10 @@ base("login: sin violaciones de accesibilidad detectables por axe", async ({ pag
   expect(resultados.violations).toEqual([]);
 });
 
-testAutenticado("inicio: el panel con las tarjetas de módulos (iconos decorativos + texto) no tiene violaciones de axe, en modo claro y oscuro", async ({ paginaAutenticada: page }) => {
+testAutenticado("inicio: el panel (título, «Estás en…» y «Lo que falta») no tiene violaciones de axe, en modo claro y oscuro", async ({ paginaAutenticada: page }) => {
   await page.goto("/inicio");
-  await expect(page.getByRole("heading", { level: 1, name: /^Hola — estás en / })).toBeVisible();
-  await expect(page.locator("main ul li a")).toHaveCount(8);
+  await expect(page.getByRole("heading", { level: 1, name: "Inicio" })).toBeVisible();
+  await expect(page.getByText("No hay nada pendiente por ahora.")).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations, "modo claro").toEqual([]);
   await page.emulateMedia({ colorScheme: "dark" });
   expect((await new AxeBuilder({ page }).include("main").analyze()).violations, "modo oscuro emulado (contenido de la pantalla)").toEqual([]);

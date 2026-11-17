@@ -255,3 +255,12 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 - **Dónde:** `src/core/permisos/acciones.ts`, `src/core/permisos/matriz.ts`, `src/server/actions/permisos/casos-de-uso/guardar-permisos.ts`
 - **Estado:** ACEPTADA
 - **Cita del dueño:** «Así me refería a que se baje el piso y después el gerente edite.» — 2026-11-17 — chat del dueño con el orquestador general (decisión base: «Si bajamos las 65 acciones de piso administrador a operador, esas celdas dejan de estar cerradas y la empresa decide fila por fila.»)
+
+### DEC-0026
+- **Fecha:** 2026-11-17
+- **Quién:** la sesión Sonnet del Frente 8 «Visual».
+- **Qué decidió:** la ranura «Lo que falta» del inicio, que Pedernal llena con los pendientes que aportan sus módulos, en Motor2 siempre dice «No hay nada pendiente por ahora.» (el texto es el de Pedernal) porque todavía no existe ningún módulo que aporte pendientes.
+- **Por qué:** el inicio de Pedernal tiene tres piezas (título, «Estás en {empresa}.» y esa ranura); sacar la ranura lo dejaría distinto sin que nadie lo haya pedido, y llenarla exigiría inventar un módulo de pendientes.
+- **Costo de revertir:** bajo: borrar la sección «Lo que falta» de `src/app/(app)/inicio/page.tsx`; no hay migración ni datos.
+- **Dónde:** `src/app/(app)/inicio/page.tsx`
+- **Estado:** PENDIENTE_DE_OK
