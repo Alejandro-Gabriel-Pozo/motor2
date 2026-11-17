@@ -199,6 +199,8 @@ Inventario verificado en el código de Motor2 (2026-11-15). Antes de E1 todos va
 | `src/server/actions/clientes/casos-de-uso/actualizar-cliente.ts` | RAZON_SOCIAL | edición de cliente (estricta solo si cambia) |
 | `src/core/features/carta/secciones.guard.ts` | ELECCION | sección de carta |
 | `src/server/actions/carta/casos-de-uso/guardar-seccion-carta.ts` | ELECCION | edición de sección de carta (estricta solo si cambia) |
+| `src/core/features/carta/familias.guard.ts` | PRODUCTO | familia de productos (F1: alta estricta; en la edición el guard solo recorta y el caso de uso aplica la estricta si el nombre cambia) |
+| `src/server/actions/carta/casos-de-uso/editar-familia-de-producto.ts` | PRODUCTO | edición de familia de productos (estricta solo si cambia) |
 | `src/core/features/catalogo/opciones-de-venta.guard.ts` | ELECCION | grupo y opción de venta (conectado); descripción y prefijo «se lee en la carta como» (viejo, no son nombres) |
 | `src/server/actions/catalogo/casos-de-uso/editar-grupo-de-opciones.ts` | ELECCION | edición de grupo de opciones (estricta solo si cambia) |
 | `src/server/actions/catalogo/casos-de-uso/editar-opcion-de-grupo.ts` | ELECCION | edición de opción (estricta solo si cambia) |

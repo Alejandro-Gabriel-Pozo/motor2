@@ -112,6 +112,10 @@ const CERCO_COLORES: Cerco = {
       motivo: "Tema de la carta del cliente: las flechas, la píldora del índice y la barra superior se derivan con `color-mix` de `--carta-primary`, `--carta-flechas` y `--carta-bg`; no son colores de la interfaz.",
     },
     {
+      ruta: "src/core/carta/libro-estilo-maqueta.ts",
+      motivo: "Los dos colores por defecto del libro al estilo de la maqueta de Pedernal (fondo `#19191a`, marca `#6f7d52`; dueño, 2026-11-16: «Sí, igualar al de la maqueta»): son VALORES DEL TEMA (se guardan como los carga una empresa), no colores de una pantalla; solo rigen donde la sucursal no cargó el suyo.",
+    },
+    {
       ruta: "src/components/carta-publica/portada.tsx",
       motivo: "Tema de la carta del cliente: el velo sobre la foto se deriva con `color-mix` de `--carta-bg`, y el blanco es el color de texto sobre el fondo `--carta-primary` sólido cuando el cliente no cargó `hero_ink` (el contraste 3:1 lo exige).",
     },
