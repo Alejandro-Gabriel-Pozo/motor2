@@ -161,7 +161,7 @@ test.describe("carta pública: colores del tema (claves de color, C8 y tinta bas
     }
   });
 
-  test("sin tema cargado la carta se ve como siempre: números de marca, etiqueta sin prefijo, tinta oscura", async ({ page, sucursalId }) => {
+  test("sin tema cargado la carta toma el libro de la maqueta: números de marca, etiqueta sin prefijo, tinta clara sobre fondo oscuro", async ({ page, sucursalId }) => {
     const carta = await crearCarta(sucursalId, { secciones: 3 });
     try {
       await page.setViewportSize(MOBILE);
@@ -172,7 +172,7 @@ test.describe("carta pública: colores del tema (claves de color, C8 y tinta bas
       await page.locator("[data-ir-a]").first().click();
       await expect(page.locator("[data-carta-banda] p").first()).toHaveText("01 / 03");
       expect(await page.locator("[data-carta-libro]").evaluate((n) => getComputedStyle(n).backgroundColor)).toBe("rgb(25, 25, 26)"); // #19191a, el fondo oscuro de la maqueta (libro)
-      expect(await color(page.getByText(`E2E Promo 1 ${carta.marca}`))).toBe("rgb(28, 27, 25)");
+      expect(await color(page.getByText(`E2E Promo 1 ${carta.marca}`))).toBe("oklch(0.96 0.005 80)"); // la tinta clara sobre el fondo oscuro del libro
     } finally {
       await carta.limpiar();
     }
