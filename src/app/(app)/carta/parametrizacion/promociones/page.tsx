@@ -89,8 +89,8 @@ export default async function PromocionesDeCartaPage() {
 
   return (
     <div className={estilos.raiz}>
-      <EncabezadoDeCarta entrada="Promociones" pestana="Combos y cupos" sucursal={ctx.sucursalNombre}>
-        <FilaDeCarta ctx={ctx} etiqueta="Promociones" pestanas={PESTANAS_DE_PROMOCIONES} ruta="/carta/parametrizacion/promociones" />
+      <EncabezadoDeCarta entrada={t.encabezadoDeLaEntrada} pestana={t.encabezadoDeLaPestana} sucursal={ctx.sucursalNombre}>
+        <FilaDeCarta ctx={ctx} etiqueta={t.encabezadoDeLaEntrada} pestanas={PESTANAS_DE_PROMOCIONES} ruta="/carta/parametrizacion/promociones" />
       </EncabezadoDeCarta>
       <div className={estilos.contenido}>
         <div className={estilos.pad}>

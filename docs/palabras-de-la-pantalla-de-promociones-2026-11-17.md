@@ -10,6 +10,9 @@ Vocabulario aprobado por el dueño el 09/11/2026 en la maqueta `combos.html` de 
 
 | Dónde | Texto de hoy | Texto con el interruptor encendido | Fuente |
 |---|---|---|---|
+| Barra de arriba, título | Promociones | Combos | Decisión del dueño 2026-11-17 (vía el orquestador): lo que Pedernal ya resolvió se hace como Pedernal; el módulo se llama Combos |
+| Barra de arriba, subtítulo | Combos y cupos | (no se dibuja) | Repetir «Combos» no aporta |
+| Fila de pestañas y menú «Carta» | Promociones | Combos | Ídem |
 | Título de la lista | Promos | Combos | Maqueta (aprobado 09/11) |
 | Párrafo de la lista | «Una promo se define una sola vez para toda la empresa. Cada sucursal decide si la prende… (mientras está prendida se vende; cuando termina, se apaga).» | (no se dibuja) | Se saca |
 | Alta, título del formulario | Nueva promo (queda prendida en esta sucursal) | Nuevo combo | Maqueta |
@@ -39,7 +42,7 @@ Vocabulario aprobado por el dueño el 09/11/2026 en la maqueta `combos.html` de 
 | Lista vacía | La empresa no tiene promos cargadas. | La empresa no tiene combos cargados. | Dudoso: frase de hoy con la palabra «combo» |
 | Sin secciones para armar | Para cargar una promo hace falta al menos una sección de carta activa. | Para cargar un combo hace falta al menos una sección de carta activa. | Dudoso: ídem |
 
-Sin cambio (se conservan tal cual, no hay equivalente en la maqueta): Sección de carta, Orden, Precio de la empresa (solo lectura), Dónde se ve, Guardar dónde se ve, Guardar precio de esta sucursal, Apagar/Prender «X» en esta sucursal o en toda la empresa, Volver a ofrecer «X», mín., máx., Cantidad (ya era), Cómo lo ve el cliente, Reparto del precio, el renglón de la lista (Activo, Pausado en esta sucursal, Pausado en toda la empresa, solo salón, precio de esta sucursal), el encabezado «Promociones» y la pestaña «Combos y cupos».
+Sin cambio (se conservan tal cual, no hay equivalente en la maqueta): Sección de carta, Orden, Precio de la empresa (solo lectura), Dónde se ve, Guardar dónde se ve, Guardar precio de esta sucursal, Apagar/Prender «X» en esta sucursal o en toda la empresa, Volver a ofrecer «X», mín., máx., Cantidad (ya era), Cómo lo ve el cliente, Reparto del precio, el renglón de la lista (Activo, Pausado en esta sucursal, Pausado en toda la empresa, solo salón, precio de esta sucursal).
 
 ## Aire (solo con el interruptor encendido)
 
@@ -50,7 +53,7 @@ Los bloques de cada promo (formulario, precio de la sucursal, dónde se ve, cóm
 1. «Pausado en esta sucursal» / «Pausado en toda la empresa»: la maqueta dice solo «Pausado». Se dejó el renglón como está porque la diferencia (sucursal o empresa) es información que hoy no está en otro lado del renglón. ¿Pasa a «Pausado»?
 2. «Solo salón»: no existe en la maqueta. Se conserva el rótulo corto, sin la explicación.
 3. Aviso del «peor caso» y piso de $ 0,01: se saca de la pantalla encendida; el servidor sigue rechazando con su mensaje.
-4. Título del encabezado «Promociones» y pestaña «Combos y cupos»: NO se cambian (navegación compartida). Pregunta: ¿se renombran a «Combos»?
+4. (Resuelto 2026-11-17) El encabezado, la pestaña y el menú pasan a «Combos» con el interruptor encendido, por decisión del dueño; se quita el subtítulo «Combos y cupos» para no repetir.
 5. La explicación del reparto con rango («se usa la cantidad máxima») se saca; quien lee el reparto de una parte heredada con rango no ve cómo se contó.
 6. «Todavía no lleva nada» también para un lugar de lista sin entradas (la maqueta la usa para el combo entero).
 7. «Descripción» y «Sumar un lugar» pierden «(opcional)»: ya no se avisa que es opcional.

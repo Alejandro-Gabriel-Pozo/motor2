@@ -9,6 +9,10 @@
  * Los campos que solo se dibujan con el interruptor encendido (el armado «Qué lleva», el reparto) guardan, para `false`, lo que decían antes de este cambio: no se usan con el interruptor apagado.
  */
 export interface TextosDePromos {
+  /** Título de la barra de arriba (`<h1>`), la fila de pestañas y el menú. */
+  encabezadoDeLaEntrada: string;
+  /** Subtítulo de la barra de arriba; vacío = no se dibuja. */
+  encabezadoDeLaPestana: string;
   /** Título de la sección de la lista (`<h2>`). */
   tituloDeLaSeccion: string;
   /** Párrafo de introducción de la lista; `null` = no se dibuja. */
@@ -52,6 +56,8 @@ export interface TextosDePromos {
 }
 
 const DE_HOY: TextosDePromos = {
+  encabezadoDeLaEntrada: "Promociones",
+  encabezadoDeLaPestana: "Combos y cupos",
   tituloDeLaSeccion: "Promos",
   introduccion:
     "Una promo se define una sola vez para toda la empresa. Cada sucursal decide si la prende (apagada no sale en la carta ni en el POS) y, si quiere, le pone su propio precio. No tiene fechas: se maneja con activar y desactivar (mientras está prendida se vende; cuando termina, se apaga).",
@@ -87,6 +93,9 @@ const DE_HOY: TextosDePromos = {
 };
 
 const COMO_PEDERNAL: TextosDePromos = {
+  // Decisión del dueño (2026-11-17, vía el orquestador): lo que Pedernal ya resolvió se hace como Pedernal; el módulo se llama «Combos» (título, pestaña y menú). Sin subtítulo: repetir «Combos» no aporta.
+  encabezadoDeLaEntrada: "Combos",
+  encabezadoDeLaPestana: "",
   tituloDeLaSeccion: "Combos",
   introduccion: null,
   rotuloDelTitulo: "Nombre",

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { textosDeLaPantallaDePromos, type TextosDePromos } from "../../src/core/carta/textos-de-promociones";
 
 /**
@@ -10,6 +10,8 @@ import { textosDeLaPantallaDePromos, type TextosDePromos } from "../../src/core/
  * Tabla legible: docs/palabras-de-la-pantalla-de-promociones-2026-11-17.md.
  */
 const DE_HOY: Record<string, string | boolean> = {
+  encabezadoDeLaEntrada: "Promociones",
+  encabezadoDeLaPestana: "Combos y cupos",
   tituloDeLaSeccion: "Promos",
   introduccion:
     "Una promo se define una sola vez para toda la empresa. Cada sucursal decide si la prende (apagada no sale en la carta ni en el POS) y, si quiere, le pone su propio precio. No tiene fechas: se maneja con activar y desactivar (mientras está prendida se vende; cuando termina, se apaga).",
@@ -71,7 +73,9 @@ describe("textos de la pantalla de promociones, interruptor ENCENDIDO: lista cer
   it("cada texto es vocabulario aprobado, un rótulo conservado de hoy, o está sacado (nulo)", () => {
     for (const [campo, valor] of Object.entries(t)) {
       if (campo === "quitarEntrada") continue;
-      if (SACADOS.includes(campo)) {
+      if (campo === "encabezadoDeLaPestana") {
+        expect(valor, "el subtítulo se saca: repetir «Combos» no aporta").toBe("");
+      } else if (SACADOS.includes(campo)) {
         expect(valor, `${campo} se saca`).toBeNull();
       } else if (typeof valor === "string") {
         expect(APROBADOS.has(valor) || CONSERVADOS_DE_HOY.has(valor) || DE_HOY_CON_COMBO.has(valor), `${campo}: «${valor}» no está en ninguna lista`).toBe(true);
@@ -91,5 +95,31 @@ describe("textos de la pantalla de promociones, interruptor ENCENDIDO: lista cer
       const palabras = valor.split(/\s+/).length;
       expect(palabras, `${campo}: «${valor}»`).toBeLessThanOrEqual(campo === "sinPromos" || campo === "hacenFaltaSecciones" ? 14 : 4);
     }
+  });
+});
+
+describe("el menú y la pestaña de la entrada se llaman «Combos» solo con el interruptor encendido (decisión del dueño, 2026-11-17)", () => {
+  const cargar = async (encendido: boolean) => {
+    vi.resetModules();
+    vi.doMock("../../src/core/carta/armado-de-promo-como-pedernal", async (original) => ({ ...(await original<typeof import("../../src/core/carta/armado-de-promo-como-pedernal")>()), ARMADO_DE_PROMO_COMO_PEDERNAL: encendido }));
+    return import("../../src/core/carta/ui-config");
+  };
+  afterEach(() => {
+    vi.doUnmock("../../src/core/carta/armado-de-promo-como-pedernal");
+    vi.resetModules();
+  });
+
+  it("APAGADO: «Promociones» en el menú y en la pestaña, como hoy", async () => {
+    const c = await cargar(false);
+    expect(c.PESTANAS_DE_PROMOCIONES[0]!.texto).toBe("Promociones");
+    expect(c.PESTANAS_DE_PROMOCIONES[0]!.pantallas[0]!.texto).toBe("Promociones");
+    expect(c.NAV_CARTA.find((i) => i.href === "/carta/parametrizacion/promociones")!.label).toBe("Promociones");
+  });
+
+  it("ENCENDIDO: «Combos» en el menú y en la pestaña", async () => {
+    const c = await cargar(true);
+    expect(c.PESTANAS_DE_PROMOCIONES[0]!.texto).toBe("Combos");
+    expect(c.PESTANAS_DE_PROMOCIONES[0]!.pantallas[0]!.texto).toBe("Combos");
+    expect(c.NAV_CARTA.find((i) => i.href === "/carta/parametrizacion/promociones")!.label).toBe("Combos");
   });
 });
