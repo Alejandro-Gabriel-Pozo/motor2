@@ -30,6 +30,10 @@ export const ENTIDADES_AUDITABLES = [
   // Carta, orden de renglones O1: `ModoDeOrdenDeSeccionCarta` (el modo de orden de una sección en una sucursal; `entidadId` es `${sucursalId}:${seccionCartaId}`, `campo: "modo"`, con `sucursalId`) e `ItemAgrupadoCarta` (el `orden` de un ítem agrupado que cambia de lugar al reordenar; `entidadId` es `${sucursalId}:${id}`, `campo: "orden"`, con `sucursalId`; el de un producto va como `ContenidoCartaProducto`).
   "ModoDeOrdenDeSeccionCarta",
   "ItemAgrupadoCarta",
+  // Carta, familias de productos F1: `FamiliaDeProducto` (el alta, y cada dato que cambia en una edición o al desactivar y reactivar: `campo` `nombre`, `agruparEnCarta`, `agruparEnPos` o `activa`; `entidadId` es el id de la familia, `sucursalId` null: es de la empresa) y
+  // `MiembroDeFamilia` (agregar y quitar un producto: `campo: "miembro"`, de `null` a `true` al agregar y de `true` a `false` al quitar; `entidadId` es `${familiaId}:${productoId}`, `sucursalId` null).
+  "FamiliaDeProducto",
+  "MiembroDeFamilia",
   "PermisoRol",
   "CapacidadSucursal",
   "Rol",
