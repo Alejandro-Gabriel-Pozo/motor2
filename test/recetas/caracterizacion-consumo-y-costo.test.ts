@@ -120,7 +120,8 @@ describe("Caracterización: consumo y costo ANTES del rendimiento por sucursal (
     // Milanesa: cantidadSalida = 3 × 0.3333 × 1.125 = 1.1248875 — repartido FEFO: CarneB (vence 03-15, agota su lote de 0.6)
     // primero, el resto de CarneA (vence 04-01).
     expect(resumen).toContainEqual({ producto: "Carne B", proceso: "CONSUMO", cantidad: -0.6 });
-    expect(resumen).toContainEqual({ producto: "Carne A", proceso: "CONSUMO", cantidad: -0.52 });
+    // A1b 2026-11-16: stock con 4 decimales fijos y cuenta exacta; antes el resto de CarneA se redondeaba a los 2 decimales de kg (−0,52), ahora a 4 (1,1248875 − 0,6 = 0,5248875 → −0,5249).
+    expect(resumen).toContainEqual({ producto: "Carne A", proceso: "CONSUMO", cantidad: -0.5249 });
     expect(resumen).toContainEqual({ producto: "Milanesa", proceso: "VENTA", cantidad: -3 });
 
     // Bife a caballo: 5 × 0.1 × 1 = 0.5 — CarneB ya está agotada por la venta de Milanesa, sale todo de CarneA.
@@ -142,9 +143,10 @@ describe("Caracterización: consumo y costo ANTES del rendimiento por sucursal (
     });
     const resumen = filas.map((f) => ({ producto: f.producto.nombre, proceso: f.proceso, cantidad: Number(f.cantidad) }));
 
-    // Producir 2 kg de SalsaBase: consume Tomate 2 × 2.5 × 1.3333 = 6.6665 → redondeado a 2 decimales (kg) = 6.67.
+    // Producir 2 kg de SalsaBase: consume Tomate 2 × 2.5 × 1.3333 = 6.6665.
+    // A1b 2026-11-16: stock con 4 decimales fijos y cuenta exacta; antes se redondeaba a 2 decimales (kg) = 6.67, ahora 6.6665 se guarda exacto.
     expect(resumen).toContainEqual({ producto: "Salsa base", proceso: "PRODUCCION", cantidad: 2 });
-    expect(resumen).toContainEqual({ producto: "Tomate", proceso: "CONSUMO", cantidad: -6.67 });
+    expect(resumen).toContainEqual({ producto: "Tomate", proceso: "CONSUMO", cantidad: -6.6665 });
 
     // Producir 3 kg (unidades) de Pizza: consume SalsaBase 3 × 0.1 × 1 = 0.3.
     expect(resumen).toContainEqual({ producto: "Pizza", proceso: "PRODUCCION", cantidad: 3 });

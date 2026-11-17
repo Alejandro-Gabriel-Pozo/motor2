@@ -1,4 +1,4 @@
-import { redondearACantidadDeUnidad, tieneStockReal } from "./transiciones";
+import { DECIMALES_DE_STOCK, redondearACantidadDeUnidad, tieneStockReal } from "./transiciones";
 
 /**
  * El cálculo PURO de los lectores del Kardex (Pureza Fase 4, tramo A): qué lote vence antes, cómo se reparte un consumo entre los «hermanos» de un insumo y qué filas
@@ -111,7 +111,7 @@ export function armarFilasStockParaConteo(
       productoNombre: p.nombre,
       unidadStockNombre: p.unidadStock.nombre,
       loteVencimiento: g.loteVencimiento,
-      saldoSistema: redondearACantidadDeUnidad(g.saldo, p.unidadStock.decimales),
+      saldoSistema: redondearACantidadDeUnidad(g.saldo, DECIMALES_DE_STOCK),
       esTotalDeLotes: false,
     });
   }
@@ -123,7 +123,7 @@ export function armarFilasStockParaConteo(
   for (const f of filas) {
     if (f.loteVencimiento || !tieneLotes.has(f.productoId)) continue;
     f.esTotalDeLotes = true;
-    f.saldoSistema = redondearACantidadDeUnidad(totalDelProducto.get(f.productoId) ?? 0, productoPorId.get(f.productoId)!.unidadStock.decimales);
+    f.saldoSistema = redondearACantidadDeUnidad(totalDelProducto.get(f.productoId) ?? 0, DECIMALES_DE_STOCK);
   }
 
   filas.sort(
