@@ -22,7 +22,7 @@ const RAIZ = join(__dirname, "../../src");
 const ROLES = new Set(["admin", "operador", "gerente", "operario", "administrador", "administrador_sistema"]);
 const PROPIEDADES_DE_ROL = new Set(["rol", "rolNombre", "rolEmpresa", "nivel", "nivelMinimo"]);
 // `nivelAlcanzaElPiso` y `nivelDelRolFrenteAlPiso` (ADR-027): devuelven o comparan niveles; compararlos a mano fuera del guard es decidir el acceso.
-const FUNCIONES_DE_NIVEL = new Set(["nivelMinimoDeAccion", "nivelDeRolPorClave", "nivelesDeLaCelda", "nivelAlcanzaElPiso", "nivelDelRolFrenteAlPiso"]);
+const FUNCIONES_DE_NIVEL = new Set(["nivelMinimoDeAccion", "nivelDeRolPorClave", "nivelAlcanzaElPiso", "nivelDelRolFrenteAlPiso"]);
 const MODELOS_DE_ACCESO = new Set(["permisoRol", "capacidadSucursal"]);
 
 /** Dónde vive el guard (no se analiza) y, para la regla 2, el módulo que implementa el registro. */

@@ -398,7 +398,7 @@
     {
       "clave": "guardar_receta",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -406,7 +406,7 @@
     {
       "clave": "grupos_familia",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -414,7 +414,7 @@
     {
       "clave": "secciones",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -422,7 +422,7 @@
     {
       "clave": "unidades",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -430,7 +430,7 @@
     {
       "clave": "proveedores",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -438,7 +438,7 @@
     {
       "clave": "categorias",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -446,7 +446,7 @@
     {
       "clave": "margen_objetivo_editar",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -454,7 +454,7 @@
     {
       "clave": "motivos_merma",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -462,7 +462,7 @@
     {
       "clave": "motivos_destino_consumo",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -470,7 +470,7 @@
     {
       "clave": "carta_ver",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -478,7 +478,7 @@
     {
       "clave": "carta_secciones",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -486,7 +486,7 @@
     {
       "clave": "carta_generos",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -494,7 +494,7 @@
     {
       "clave": "carta_contenido_producto",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -502,7 +502,7 @@
     {
       "clave": "carta_producto_descuento",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -510,7 +510,7 @@
     {
       "clave": "carta_items_agrupados",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -518,7 +518,7 @@
     {
       "clave": "carta_portal",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -526,7 +526,7 @@
     {
       "clave": "carta_promo_definir",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -534,7 +534,7 @@
     {
       "clave": "carta_promo_activar",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -542,7 +542,7 @@
     {
       "clave": "carta_promo_precio_local",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -550,7 +550,7 @@
     {
       "clave": "carta_tema",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -558,7 +558,7 @@
     {
       "clave": "stock_minimo",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -575,7 +575,7 @@
     {
       "clave": "precio_local",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -583,7 +583,7 @@
     {
       "clave": "comparar_precios",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -591,7 +591,7 @@
     {
       "clave": "insumos_mezclados",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -682,7 +682,7 @@
     {
       "clave": "proceso_ajuste",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -834,7 +834,7 @@
     {
       "clave": "cancelar_conteo",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -842,7 +842,7 @@
     {
       "clave": "anular_venta",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -850,7 +850,7 @@
     {
       "clave": "anular_compra",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -858,7 +858,7 @@
     {
       "clave": "corregir_compra",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -898,7 +898,7 @@
     {
       "clave": "pagar_consignante",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -926,7 +926,7 @@
     {
       "clave": "reporte_resumen",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -934,7 +934,7 @@
     {
       "clave": "reporte_consolidado",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -942,7 +942,7 @@
     {
       "clave": "reporte_periodo",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -950,7 +950,7 @@
     {
       "clave": "reporte_categorias",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -958,7 +958,7 @@
     {
       "clave": "reporte_ventas_por_seccion",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -966,7 +966,7 @@
     {
       "clave": "reporte_costos",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -974,7 +974,7 @@
     {
       "clave": "reporte_compras",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -982,7 +982,7 @@
     {
       "clave": "reporte_rendimiento_recetas",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -990,7 +990,7 @@
     {
       "clave": "reporte_rendimiento_sucursal",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -998,7 +998,7 @@
     {
       "clave": "reporte_valuacion",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -1006,7 +1006,7 @@
     {
       "clave": "reporte_tickets",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -1014,7 +1014,7 @@
     {
       "clave": "reporte_descuentos_clientes",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -1022,7 +1022,7 @@
     {
       "clave": "reporte_descuentos_productos",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -1030,7 +1030,7 @@
     {
       "clave": "reporte_margen_promociones",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -1038,7 +1038,7 @@
     {
       "clave": "reporte_historial_importes",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -1046,7 +1046,7 @@
     {
       "clave": "reporte_perdidas",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -1054,7 +1054,7 @@
     {
       "clave": "reporte_devoluciones",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -1062,7 +1062,7 @@
     {
       "clave": "reporte_diferencias",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -1110,7 +1110,7 @@
     {
       "clave": "reporte_sin_receta",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -1118,7 +1118,7 @@
     {
       "clave": "reporte_insumos_sin_receta",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -1135,7 +1135,7 @@
     {
       "clave": "reporte_huecos_catalogo",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -1175,7 +1175,7 @@
     {
       "clave": "calibrar_rendimiento_local",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -1191,7 +1191,7 @@
     {
       "clave": "receta_sucursal_copiar",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -1199,7 +1199,7 @@
     {
       "clave": "receta_sucursal_volver_central",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -1207,7 +1207,7 @@
     {
       "clave": "carta_copiar_de_sucursal",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -1215,7 +1215,7 @@
     {
       "clave": "clientes",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -1231,7 +1231,7 @@
     {
       "clave": "stock_seccion_habitual",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -1247,7 +1247,7 @@
     {
       "clave": "insumo_renombrar_fusionar",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -1345,7 +1345,7 @@
     {
       "clave": "partes_desactivar",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -1369,7 +1369,7 @@
     {
       "clave": "caja_cerrar_sesion",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -1377,7 +1377,7 @@
     {
       "clave": "caja_mover_efectivo",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -1385,7 +1385,7 @@
     {
       "clave": "caja_anular_movimiento_ajeno",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -1483,7 +1483,7 @@
     {
       "clave": "compra_recibir",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -1500,7 +1500,7 @@
     {
       "clave": "opciones_definir",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -1508,7 +1508,7 @@
     {
       "clave": "producto_opciones_admitidas",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]

@@ -2,12 +2,13 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarProductoDisponible } from "../setup/test-db";
+import { crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarProductoDisponible } from "../setup/test-db";
 import { crearMembresia } from "../setup/membresia";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { __setCookieDeTestParaSucursal } from "../setup/next-headers-stub";
 import { textoDeDenegacion } from "../../src/core/permisos/motivos";
-import { ACCIONES, type AccionDeEmpresa, type AccionDeSucursal } from "../../src/core/permisos/acciones";
+import { ACCIONES, esAccionQueDaSoloElGerente, type AccionClave, type AccionDeEmpresa, type AccionDeSucursal } from "../../src/core/permisos/acciones";
+import { requierePermiso, requierePermisoDeEmpresa } from "../../src/server/acceso/gate";
 import type { ResultadoAccion } from "../../src/server/actions/tipos";
 import { guardarDescuentoProducto } from "../../src/server/actions/carta/descuento-producto";
 import {
@@ -71,9 +72,8 @@ import { crearCategoriaDeTest } from "../setup/categoria-de-prueba";
  * más `guardarReceta` (O.1) rechaza a quien no tiene su permiso, con el texto EXACTO del guard (`core/permisos/motivos.ts`), y al rechazar no cambia NINGUNA
  * tabla de lo que la pieza toca (la foto de 27 tablas, la auditoría incluida, queda idéntica y `registroAuditoria.count` no se mueve). Tres actores:
  *   - un rol PROPIO sin ninguna fila de la matriz (`vacio`): rechaza todo;
- *   - un rol propio (sin clave: nivel operario) con la fila Ver+Editar de las 52 claves (`encargado`): el piso manda sobre la fila
- *     (`decision-de-acceso.ts`), así que rechaza las de piso «administrador» (las de piso «operario» —altas rápidas, disponibilidad, frecuencia de conteo,
- *     presentaciones…— sí las tiene, y no entran en este caso);
+ *   - un rol propio (sin clave: nivel operario) con la fila Ver+Editar de las 52 claves (`encargado`): desde PISOS-65 (2026-11-17) las de piso «administrador» bajaron a «operario», así que
+ *     con la fila el guard LE DA editar (antes el piso mandaba sobre la fila y las rechazaba); la denegación de estas acciones la cubre el actor `vacio` (sin fila no hay acceso);
  *   - para las de contexto SUCURSAL (19 al armarse la pieza, 31 hoy), alguien que tiene la clave en OTRA sucursal (admin en Norte) y está parado en Central con el rol `vacio`: el permiso de
  *     una sucursal no se presta a otra. Un `conPermiso` cambiado por `conPermisoDeEmpresa` lo dejaría pasar (la empresa mira todas sus membresías).
  *
@@ -281,7 +281,6 @@ const MUTACIONES: Mutacion[] = [
 ];
 
 /** El piso de cada clave, del catálogo (`core/permisos/acciones.ts`). */
-const PISO = new Map<string, string>(ACCIONES.map((a) => [a.clave, a.nivelMinimo]));
 const CONTEXTO = new Map<string, string>(ACCIONES.map((a) => [a.clave, a.contexto]));
 const CLAVES = [...new Set(MUTACIONES.map((m) => m.clave))];
 
@@ -464,7 +463,8 @@ async function rechazaSinTocarNada(actor: { id: string; email: string }, m: Muta
   expect(await prismaAdmin.registroAuditoria.count()).toBe(auditoriaAntes);
 }
 
-const BAJO_EL_PISO = MUTACIONES.filter((m) => PISO.get(m.clave) === "administrador");
+/** Las que eran de piso «administrador» y bajaron a «operario» (PISOS-65): las de la lista que da solo el gerente. */
+const BAJO_EL_PISO = MUTACIONES.filter((m) => esAccionQueDaSoloElGerente(m.clave));
 const DE_SUCURSAL = MUTACIONES.filter((m) => m.contexto === "sucursal");
 
 describe("tramo C (carta, catálogo y stock): las 69 mutaciones rechazan sin el permiso y no cambian ninguna tabla", () => {
@@ -472,7 +472,7 @@ describe("tramo C (carta, catálogo y stock): las 69 mutaciones rechazan sin el 
     expect(MUTACIONES).toHaveLength(70);
     expect(new Set(MUTACIONES.map((m) => m.nombre)).size).toBe(70);
     for (const m of MUTACIONES) expect(m.contexto, `${m.nombre}: el contexto declarado no es el del catálogo`).toBe(CONTEXTO.get(m.clave));
-    // +1: guardarSoloSalonPromoCarta (carta_promo_definir, piso administrador).
+    // +1: guardarSoloSalonPromoCarta (carta_promo_definir, de las 65 que bajaron del piso administrador).
     expect(BAJO_EL_PISO.length).toBe(39 + 17 + 1);
     // 19 de la pieza original + 2 del bloque D (copiar la carta y el tema) + 9 que pasaron a contexto sucursal con S-10/D1 (géneros, contenido e ítems agrupados, O.59).
     // +1: reemplazarCartaDeSucursal (2026-11-10).
@@ -483,8 +483,13 @@ describe("tramo C (carta, catálogo y stock): las 69 mutaciones rechazan sin el 
     await rechazaSinTocarNada(sinFilas, m, ROL_VACIO);
   });
 
-  it.each(BAJO_EL_PISO.map((m) => [m.nombre, m] as const))("un rol con la fila pero bajo el piso administrador: %s rechaza (el piso manda sobre la fila)", async (_n, m) => {
-    await rechazaSinTocarNada(bajoElPiso, m, ROL_ENCARGADO);
+  it.each(BAJO_EL_PISO.map((m) => [m.nombre, m] as const))("un rol propio con la fila de una de las 65: con la fila el guard le da editar (%s; el piso ya no la cierra)", async (_n, m) => {
+    const clave = m.clave as AccionClave;
+    const r =
+      m.contexto === "sucursal"
+        ? await requierePermiso(bajoElPiso.id, e.centralId, clave as AccionDeSucursal, prisma)
+        : await requierePermisoDeEmpresa(bajoElPiso.id, EMPRESA_POR_DEFECTO_ID, clave as AccionDeEmpresa, prisma);
+    expect(r.ok, `${m.nombre}: ${r.ok ? "" : r.mensaje}`).toBe(true);
   });
 
   it.each(DE_SUCURSAL.map((m) => [m.nombre, m] as const))("con la clave en OTRA sucursal (admin en Norte, parado en Central): %s rechaza", async (_n, m) => {

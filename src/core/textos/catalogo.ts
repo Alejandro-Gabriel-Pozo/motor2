@@ -293,6 +293,15 @@ export const CATALOGO = {
     ],
     fuente: { decision: "DEC-0022" },
   },
+  // PISOS-65 (DEC-0024): el rechazo y el rótulo de la celda cerrada de la matriz de permisos para las 14 acciones de gobierno y de gerente. Palabras del dueño (2026-11-17).
+  "rechazo.ACCION_DE_GOBIERNO": {
+    porDefecto: "Esta acción es de gobierno de la empresa y no se delega.",
+    usos: [
+      { archivo: "src/server/actions/permisos/casos-de-uso/guardar-permisos.ts", nombre: "guardarPermisosCasoDeUso" },
+      { archivo: "src/app/(app)/administracion/permisos/permisos-matriz.tsx", nombre: "PermisosMatriz" },
+    ],
+    fuente: { decision: "DEC-0024" },
+  },
 } as const satisfies Readonly<Record<string, DefinicionDeTexto>>;
 
 export type ClaveDeTexto = keyof typeof CATALOGO;
