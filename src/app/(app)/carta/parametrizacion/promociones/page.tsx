@@ -21,9 +21,9 @@ import { FormConResultado } from "@/components/form-con-resultado";
 import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { AgregarEntradaDeLugar } from "../../agregar-entrada-de-lugar";
 import { DondeSeVe } from "./donde-se-ve";
-import { lugaresDelFormulario } from "./lugares-del-formulario";
+import { cuposDeSeccionDelFormulario, lugaresDelFormulario } from "./lugares-del-formulario";
 import { FilaDeCarta } from "@/components/fila-de-carta";
-import { ARMADO_DE_PROMO_COMO_PEDERNAL, PESTANAS_DE_PROMOCIONES, cantidadesDelFormulario, comoLoVeElCliente, estadoDeLaPromo, loQueLlevaLaPromo, type ParteDeLaPromoParaLeer } from "@/core/carta/public";
+import { ARMADO_DE_PROMO_COMO_PEDERNAL, PESTANAS_DE_PROMOCIONES, comoLoVeElCliente, estadoDeLaPromo, loQueLlevaLaPromo, type ParteDeLaPromoParaLeer } from "@/core/carta/public";
 import { EncabezadoDeCarta } from "../../encabezado-de-carta";
 import estilos from "../../carta-mant.module.css";
 import { CamposCupos, CamposLugares, CamposPromo, esFijo } from "../formularios";
@@ -211,10 +211,7 @@ export default async function PromocionesDeCartaPage() {
                     <FormConResultado
                       accion={async (fd: FormData) => {
                         "use server";
-                        const cupos = datos.secciones.flatMap((s) => {
-                          if (!fd.get(`incluir_${s.id}`)) return [];
-                          return [{ seccionCartaId: s.id, ...cantidadesDelFormulario((nombre) => (fd.get(nombre) === null ? null : String(fd.get(nombre))), `cantidad_${s.id}`, `min_${s.id}`, `max_${s.id}`) }];
-                        });
+                        const cupos = cuposDeSeccionDelFormulario(fd, datos.secciones);
                         // GO-3b (D3): la lista que se guarda es la FINAL, de todos los tipos: los lugares de entradas que siguen tildados van también (si no, se darían de baja).
                         const deEntradas = lugaresDelFormulario(fd);
                         return refrescarSiOk(await guardarCuposPromoCarta(id, [...cupos, ...deEntradas]));

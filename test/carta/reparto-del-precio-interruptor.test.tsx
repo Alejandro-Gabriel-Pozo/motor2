@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { RepartoDelPrecio } from "../../src/app/(app)/carta/parametrizacion/promociones/reparto-del-precio";
-import type { ParteParaRepartir } from "../../src/core/carta/reparto-del-precio-de-la-promo";
+import type { ParteParaRepartir } from "../../src/core/pos/reparto-del-precio-de-la-promo";
 
 /** El bloque «Reparto del precio» (solo lectura): sus textos en cada caso. El interruptor lo decide la página (`ARMADO_DE_PROMO_COMO_PEDERNAL`), ver los dos estados abajo. */
 const PARTES: ParteParaRepartir[] = [

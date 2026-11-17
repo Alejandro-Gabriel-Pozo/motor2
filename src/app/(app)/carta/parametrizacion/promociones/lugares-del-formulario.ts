@@ -24,3 +24,11 @@ export function lugaresDelFormulario(fd: FormData): { tipo: "LISTA"; nombre: str
   return [...existentes, ...nuevo];
 }
 
+
+/** Los cupos de SECCIÓN que vienen en el formulario de cupos de una promo (las secciones tildadas, cada una con su cantidad exacta o con «mín.» y «máx.»). Puro: no valida ni escribe (lo hace el guard). */
+export function cuposDeSeccionDelFormulario(fd: FormData, secciones: readonly { id: string }[]): { seccionCartaId: string; cantidadMinima: string; cantidadMaxima: string }[] {
+  return secciones.flatMap((s) => {
+    if (!fd.get(`incluir_${s.id}`)) return [];
+    return [{ seccionCartaId: s.id, ...cantidadesDelFormulario(leer(fd), `cantidad_${s.id}`, `min_${s.id}`, `max_${s.id}`) }];
+  });
+}

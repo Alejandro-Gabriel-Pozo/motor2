@@ -1,13 +1,13 @@
 import { formatearMonto } from "@/core/formato-de-numero";
 import { importeDeLinea, redondearMoneda } from "@/core/moneda";
-import { prorratearPrecioPromo } from "@/core/pos/promo-combo";
+import { prorratearPrecioPromo } from "./promo-combo";
 
 /**
  * «Reparto del precio» de una promo (pedido del dueño 2026-11-17 vía el orquestador: «Te confirmo 3 y 4 como sí…», la 3; modelo: la maqueta de Pedernal `combos__armado.png`, «Barbacoa $ 11.408,45 (Lista $ 12.000,00)»).
  * SOLO LECTURA, detrás de `ARMADO_DE_PROMO_COMO_PEDERNAL`: no escribe nada. PURO: sin Prisma ni reloj.
  *
  * No hay un prorrateo propio: reparte `prorratearPrecioPromo` (`core/pos/promo-combo.ts`, el MISMO que congela el precio al vender: proporcional al precio de lista, mayor residuo, piso de $ 0,01 por unidad).
- * Se importa `core/pos/promo-combo` por su ruta (no `core/pos/public`, que depende de la fachada de la carta: sería un ciclo; `promo-combo` no importa nada de la carta).
+ * Vive en `core/pos/` (junto al prorrateo que reusa) y NO importa nada de la carta: así no forma ciclos nuevos con la fachada de la carta (test `dependencias.test.ts`, «sin-ciclos»).
  *
  * Para el ejemplo, cada parte usa su PRIMER producto disponible (el que lee `server/consultas/carta/reparto-de-las-promos.ts` con la regla del POS) y su cantidad: la exacta N, o la MÁXIMA si la parte
  * quedó cargada con rango (el peor caso, el mismo que usa el piso de la promo). Si ALGUNA parte no tiene producto disponible NO se reparte y se avisa cuáles (orquestador, 2026-11-17: «todo nace cerrado», no se estima: repartir solo entre las demás sobrestimaría la parte de cada una).

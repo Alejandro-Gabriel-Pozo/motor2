@@ -3,7 +3,7 @@ import { precioLocalActivoEn } from "@/server/lecturas/catalogo/precio-local";
 import { cargarEntradasDePromoParaVender, type CupoDeEntradasLeido } from "@/server/lecturas/pos/entradas-de-promo-para-vender";
 import { cargarSelectorCartaPos } from "@/server/lecturas/pos/selector-carta";
 import { pediblesDeEntrada } from "@/core/pos/public";
-import type { ParteParaRepartir } from "@/core/carta/public";
+import type { ParteParaRepartir } from "@/core/pos/public";
 import type { Db } from "@/lib/db-tipos";
 
 /**
