@@ -14,6 +14,7 @@ import {
 import { ContenedorDePagina } from "../../src/ui/componentes/estructura/contenedor-de-pagina";
 import { EncabezadoDePagina } from "../../src/ui/componentes/estructura/encabezado-de-pagina";
 import { RejillaDeSecciones, SeccionDeRejilla } from "../../src/ui/componentes/estructura/rejilla-de-secciones";
+import { FilaDeCampos } from "../../src/ui/componentes/estructura/fila-de-campos";
 import { ORACULO, PUNTOS_DE_CORTE_DECLARADOS } from "./estructura-de-pantalla.oraculo";
 
 const DIR_PIEZAS = join(__dirname, "../../src/ui/componentes/estructura");
@@ -78,6 +79,18 @@ describe("estructura de pantalla: las piezas usan los puntos de corte de reglas.
     expect(html).toContain("xl:grid-cols-2");
     expect(html).toContain("xl:col-span-2");
     expect(html.match(/min-w-0/g)?.length).toBe(2);
+  });
+
+  it("FilaDeCampos: dos columnas iguales con 8 px, alineadas por abajo; una sola columna por debajo de 375 px; sin cortes de Tailwind propios ni modo oscuro", () => {
+    const html = renderToStaticMarkup(
+      <FilaDeCampos>
+        <span>a</span>
+        <span>b</span>
+      </FilaDeCampos>
+    );
+    for (const clase of ["grid", "grid-cols-1", "min-[375px]:grid-cols-2", "items-end", "gap-2"]) expect(html, clase).toContain(clase);
+    expect(html).toContain("<span>a</span><span>b</span>");
+    expect(html).not.toMatch(/(?<![\w-])(?:sm|md|lg|xl|2xl|dark):/);
   });
 
   it("EncabezadoDePagina: grupo con nombre, pegado arriba solo desde md (en celular no se fija)", () => {

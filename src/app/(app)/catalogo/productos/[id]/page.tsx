@@ -219,7 +219,6 @@ export default async function FichaProductoPage({
         <h2 className="mb-2 text-sm font-medium">Disponibilidad por sucursal</h2>
         <TablaDeDatos
           titulo="Disponibilidad por sucursal"
-          presentacionCelular="tabla-con-scroll"
           filas={disponibilidadPorSucursal}
           claveDeFila={(d) => d.sucursalId}
           vacio="El producto no está disponible en ninguna sucursal."
