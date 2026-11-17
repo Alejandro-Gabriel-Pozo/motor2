@@ -3,6 +3,8 @@
 #   build       → npm run build + npm run plataforma:build (con su propia base migrada)
 #   integración → npm test (Vitest contra Postgres real), repartido en PARTES_VITEST jobs con `--shard`
 #   e2e         → npm run test:e2e (Playwright, servidor de producción), repartido en PARTES_E2E jobs con `--shard`
+#   alcance     → ¿el pull request toca SOLO docs? (`scripts/alcance-del-cambio.ts`, dueño 2026-11-17: «Priorizá los PR de CI que ahorran cola», «si»): con «solo-docs» se saltan Build y E2E; Estático e
+#                 Integración corren siempre (los guardianes de arquitectura leen docs/). Cualquier duda o error del filtro da «completo» y corre todo; push, workflow_dispatch y ci/** son siempre completos.
 #   gate        → «Gate (requerido)»: falla si cualquiera de los cuatro de arriba no terminó en verde (un job omitido o cancelado también lo hace fallar) y,
 #                 en sus propios pasos, comprueba que las partes de Vitest y las del E2E juntas corrieron todos los archivos una sola vez y suma los conteos
 #                 (antes eran los jobs `conteo`, `conteo-e2e` y `gate`: cada uno volvía a la cola de runners y esperaba decenas de minutos; ahora es uno solo)
@@ -48,6 +50,34 @@ env:
   PARTES_E2E: "7"
 
 jobs:
+  # Filtro de alcance (ver la cabecera). Solo mira el listado de rutas que cambia el pull request contra su base (`git diff --no-renames --name-only -z HEAD^1 HEAD` sobre la fusión que arma GitHub);
+  # no instala nada. Sale «solo-docs» únicamente si TODAS las rutas son de docs/ o .md; todo lo demás (otro evento, falta la fusión, error del script, salida rara) sale «completo».
+  alcance:
+    name: Alcance del cambio (solo docs o completo)
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CI_EN_MAIN != 'si') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      alcance: ${{ steps.filtro.outputs.alcance }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 2
+      - name: Filtro de alcance
+        id: filtro
+        run: |
+          alcance=completo
+          if [ "${{ github.event_name }}" = "pull_request" ] && git rev-parse --verify --quiet "HEAD^2" > /dev/null; then
+            if rutas=$(git diff --no-renames --name-only -z HEAD^1 HEAD | node scripts/alcance-del-cambio.ts); then alcance="$rutas"; fi
+          fi
+          case "$alcance" in
+            solo-docs|completo) ;;
+            *) alcance=completo ;;
+          esac
+          echo "alcance=$alcance"
+          echo "alcance=$alcance" >> "$GITHUB_OUTPUT"
+
   estatico:
     name: Estático (tipos, lint, arquitectura, código muerto)
     if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CI_EN_MAIN != 'si') }}
@@ -93,7 +123,9 @@ jobs:
   # su propio Postgres con los mismos pasos de preparación que `integracion`. Ya no corre antes de los tests, y no hace falta: cada job tiene su base y esta nunca recibe los datos de prueba.
   build:
     name: Build (npm run build + plataforma:build)
-    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CI_EN_MAIN != 'si') }}
+    needs: [alcance]
+    # Se omite con la perilla CI_EN_MAIN apagada (push a main) o si el filtro dijo «solo-docs»; `!cancelled()` hace que corra aunque el job del filtro falle (falla cerrado: si no hay respuesta, corre).
+    if: ${{ !cancelled() && !(github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CI_EN_MAIN != 'si') && needs.alcance.outputs.alcance != 'solo-docs' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     services:
@@ -236,7 +268,9 @@ jobs:
   # El job `gate` comprueba después que las partes juntas corrieron todos los specs una sola vez. Cada parte sigue con 1 worker (`playwright.config.ts`): el reparto es entre jobs, no dentro de uno.
   e2e:
     name: E2E (Playwright, parte ${{ matrix.parte }} de ${{ strategy.job-total }})
-    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CI_EN_MAIN != 'si') }}
+    needs: [alcance]
+    # Se omite con la perilla CI_EN_MAIN apagada (push a main) o si el filtro dijo «solo-docs»; `!cancelled()` hace que corra aunque el job del filtro falle (falla cerrado: si no hay respuesta, corre).
+    if: ${{ !cancelled() && !(github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CI_EN_MAIN != 'si') && needs.alcance.outputs.alcance != 'solo-docs' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
@@ -329,7 +363,7 @@ jobs:
   # `--list` no corre nada ni toca la base: solo carga la config y los specs, por eso el job lleva las mismas URLs de relleno que el job `e2e` (la config valida su forma al cargarse; no hay base en este job).
   gate:
     name: Gate (requerido)
-    needs: [estatico, build, integracion, e2e]
+    needs: [alcance, estatico, build, integracion, e2e]
     # Perilla CI_EN_MAIN (docs/ci-perilla-ci-en-main-2026-11-15.md): con la perilla apagada, el push a main omite los cuatro jobs y el gate con la MISMA condición; en pull_request, ci/** y workflow_dispatch nunca se omite.
     if: ${{ always() && !(github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CI_EN_MAIN != 'si') }}
     runs-on: ubuntu-latest
@@ -344,29 +378,35 @@ jobs:
     steps:
       - name: Todos los jobs terminaron en verde
         run: |
-          echo "estatico=${{ needs.estatico.result }} build=${{ needs.build.result }} integracion=${{ needs.integracion.result }} e2e=${{ needs.e2e.result }}"
-          test "${{ needs.estatico.result }}" = "success" -a "${{ needs.build.result }}" = "success" -a "${{ needs.integracion.result }}" = "success" -a "${{ needs.e2e.result }}" = "success"
+          echo "alcance=${{ needs.alcance.outputs.alcance }} (job ${{ needs.alcance.result }}) estatico=${{ needs.estatico.result }} build=${{ needs.build.result }} integracion=${{ needs.integracion.result }} e2e=${{ needs.e2e.result }}"
+          test "${{ needs.estatico.result }}" = "success" -a "${{ needs.integracion.result }}" = "success"
+          # Build y E2E: en verde, o NO corridos solo si el filtro terminó bien y dijo «solo-docs». Un job omitido sin esa justificación (o cancelado) falla el gate.
+          if [ "${{ needs.alcance.result }}" = "success" ] && [ "${{ needs.alcance.outputs.alcance }}" = "solo-docs" ]; then
+            test "${{ needs.build.result }}" = "skipped" -a "${{ needs.e2e.result }}" = "skipped"
+          else
+            test "${{ needs.build.result }}" = "success" -a "${{ needs.e2e.result }}" = "success"
+          fi
       - name: Checkout
-        if: ${{ needs.integracion.result == 'success' && needs.e2e.result == 'success' }}
+        if: ${{ needs.integracion.result == 'success' }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Node
-        if: ${{ needs.integracion.result == 'success' && needs.e2e.result == 'success' }}
+        if: ${{ needs.integracion.result == 'success' }}
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - name: npm ci
-        if: ${{ needs.integracion.result == 'success' && needs.e2e.result == 'success' }}
+        if: ${{ needs.integracion.result == 'success' }}
         run: npm ci
       - name: Resultados de Vitest (todas las partes)
-        if: ${{ needs.integracion.result == 'success' && needs.e2e.result == 'success' }}
+        if: ${{ needs.integracion.result == 'success' }}
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           pattern: resultado-vitest-*
           path: partes
           merge-multiple: false
       - name: Conteo de tests (todas las partes)
-        if: ${{ needs.integracion.result == 'success' && needs.e2e.result == 'success' }}
+        if: ${{ needs.integracion.result == 'success' }}
         run: |
           npx vitest list --filesOnly --json > lista-vitest.json
           node - <<'EOF'
