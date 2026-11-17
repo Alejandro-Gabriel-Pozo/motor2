@@ -8,7 +8,8 @@ import { GestionPresentaciones } from "@/components/catalogo/gestion-presentacio
 import { CampoNumero } from "@/components/campo-numero";
 import { AyudaCampo } from "@/components/ayuda-campo";
 import { AyudaDeFicha } from "@/components/catalogo/ayuda-de-ficha";
-import { OBSERVACIONES_VISIBLES, PRESENTACIONES_VISIBLES } from "@/core/catalogo/public";
+import { ALTA_DE_PRODUCTO_COMO_PEDERNAL, CLASES_DE_ALTA, claseDeAltaDe, OBSERVACIONES_VISIBLES, PRESENTACIONES_VISIBLES, type ClaveDeClaseDeAlta } from "@/core/catalogo/public";
+import { CampoQueEs } from "./campo-que-es"; import { CasillaActivoEnTodas } from "./casilla-activo-en-todas";
 import { CampoAlicuotaIva, alicuotasDelFormulario } from "./campo-alicuota-iva"; import { CampoNombreDeCocina, nombreDeCocinaDelFormulario } from "./campo-nombre-de-cocina";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { SincronizarPrecioGrupo } from "@/components/carta/sincronizar-precio-grupo";
@@ -71,8 +72,10 @@ export function ProductoForm({
   nombreSucursalActual,
   venta,
   soloLectura = false, sinEncabezado = false,
+  altaComoPedernal = ALTA_DE_PRODUCTO_COMO_PEDERNAL,
 }: {
   sinEncabezado?: boolean; soloLectura?: boolean;
+  altaComoPedernal?: boolean; // «¿Qué es?» como Pedernal: por defecto el interruptor ALTA_DE_PRODUCTO_COMO_PEDERNAL (diseño del 2026-11-17); false = la pantalla anterior
   unidades: OpcionUnidad[];
   insumosIniciales: Opcion[];
   categoriasIniciales: Opcion[];
@@ -109,6 +112,7 @@ export function ProductoForm({
   const [proveedores, setProveedores] = useState(proveedoresIniciales);
 
   const [tipo, setTipo] = useState<TipoProducto>(productoExistente?.tipo ?? "MP");
+  const [clase, setClase] = useState<ClaveDeClaseDeAlta>(productoExistente ? claseDeAltaDe(productoExistente) : "MATERIA_PRIMA"); // «¿Qué es?»: de ella salen el tipo y «se produce»
   const [insumoId, setInsumoId] = useState(productoExistente?.insumoId ?? "");
   const [unidadStockId, setUnidadStockId] = useState(productoExistente?.unidadStockId ?? "");
   const [categoriaId, setCategoriaId] = useState(productoExistente?.categoriaId ?? "");
@@ -164,7 +168,7 @@ export function ProductoForm({
           insumoId: tipo === "MP" ? insumoId || null : null,
           // numeroDelCampo: vacío → undefined (sin paso, comportamiento actual), texto inválido → NaN (el servidor lo rechaza).
           pasoVenta: tipo === "PV" ? (numeroDelCampo(String(form.get("pasoVenta") ?? "")) ?? null) : null,
-          seProduce: form.get("seProduce") === "on",
+          seProduce: !altaComoPedernal ? form.get("seProduce") === "on" : editando ? productoExistente!.seProduce === true : CLASES_DE_ALTA[clase].seProduce, // como Pedernal: sale de la clase; en la edición no se prende ni se apaga
           // Sin la clave el costo de consignación NO se manda (ver `puedeGestionarConsignacion`).
           ...(puedeGestionarConsignacion && {
             esConsignacion,
@@ -202,7 +206,9 @@ export function ProductoForm({
     >
       {sinEncabezado ? null : <h2 className="font-medium">{editando ? `Editar "${productoExistente!.nombre}"` : "Nuevo producto"}</h2>}
 
-      {editando ? (
+      {altaComoPedernal ? (
+        <CampoQueEs editando={editando} clase={clase} alCambiar={(c) => { setClase(c); setTipo(CLASES_DE_ALTA[c].tipo); }} />
+      ) : editando ? (
         <div className="flex flex-col gap-1">
           <p className="text-sm">{tipo === "MP" ? "Materia prima (MP)" : "Producto de venta (PV)"}</p>
           <AyudaDeFicha>
@@ -448,24 +454,12 @@ export function ProductoForm({
         />
       )}
 
-      {tipo === "MP" && (
+      {!altaComoPedernal && tipo === "MP" && (
         <Casilla name="seProduce" defaultChecked={productoExistente?.seProduce} etiqueta="Se produce (tiene receta propia, se fabrica por lote)" />
       )}
 
-      {!editando && (
-        <div className="flex flex-col gap-1">
-          <Casilla checked={activoEnTodas && !naceSinPoderVenderse} disabled={naceSinPoderVenderse} onChange={(e) => setActivoEnTodas(e.target.checked)} etiqueta="Activo en todas las sucursales" />
-          {naceSinPoderVenderse ? (
-            <AvisoAltaSinPrecio />
-          ) : (
-            <AyudaDeFicha>
-              {activoEnTodas
-                ? `Tildado (lo habitual, para insumos y platos compartidos como harina o sal): queda disponible en las ${cantidadSucursales ?? "?"} sucursales que existen hoy.`
-                : `Sin tildar: solo queda disponible en "${nombreSucursalActual ?? "esta sucursal"}" — en las demás no va a aparecer hasta que un admin de esa sucursal lo active ahí.`}
-            </AyudaDeFicha>
-          )}
-        </div>
-      )}
+      {!editando && altaComoPedernal && naceSinPoderVenderse && <AvisoAltaSinPrecio />}
+      {!editando && !altaComoPedernal && <CasillaActivoEnTodas activoEnTodas={activoEnTodas} alCambiar={setActivoEnTodas} naceSinPoderVenderse={naceSinPoderVenderse} cantidadSucursales={cantidadSucursales} nombreSucursalActual={nombreSucursalActual} />}
 
       {puedeGestionarConsignacion ? (
         <div className="flex flex-col gap-1">

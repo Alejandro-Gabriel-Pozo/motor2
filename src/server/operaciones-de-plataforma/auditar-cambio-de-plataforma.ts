@@ -18,7 +18,7 @@ export interface AutorDeCambioDePlataforma {
  * Las acciones de los cambios por script. Las de módulos son las MISMAS que escribe la consola (`modulo-activado` / `modulo-desactivado`): el historial de la empresa en la consola
  * las muestra juntas, y el `detalle.origen = "script"` dice por cuál vía salió cada una.
  */
-export type AccionDeCambioDePlataforma = "modulo-activado" | "modulo-desactivado" | "politica-cambiada" | "plan-creado" | "plan-borrador-guardado" | "plan-version-publicada" | "plan-asignado";
+export type AccionDeCambioDePlataforma = "modulo-activado" | "modulo-desactivado" | "modulo-desactivar-rechazado" | "politica-cambiada" | "plan-creado" | "plan-borrador-guardado" | "plan-version-publicada" | "plan-asignado";
 
 type Detalle = Record<string, string | number | boolean | null>;
 

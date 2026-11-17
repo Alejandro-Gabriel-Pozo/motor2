@@ -5,6 +5,7 @@ import { capturar, expectObjetivosTactiles, expectSinDesborde } from "./fixtures
 import { abrirComoRol } from "./fixtures/rol-pos";
 import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
 import { ajustarCeldasDelAdmin } from "./fixtures/admin-con-filas";
+import { elegirClaseDelAlta } from "./fixtures/alta";
 
 /**
  * El ESPACIO DEL PRODUCTO (Fase 6, DEC-12), paso 2 «Opciones y precio»: la ventana «+ Nuevo grupo» (6.15c), que crea un grupo de la biblioteca, sus opciones y lo que el producto admite de ellas, todo en
@@ -328,7 +329,7 @@ for (const { ancho, alto } of [
     // 1) El alta: desde la lista de productos.
     await page.goto("/catalogo/productos");
     await page.getByRole("link", { name: "+ Nuevo producto" }).click();
-    await page.getByRole("radio", { name: "Producto de venta (PV)" }).check();
+    await elegirClaseDelAlta(page, "Producto vendible");
     await page.locator('input[name="nombre"]').fill(nombre);
     await page.getByLabel("Unidad de stock").selectOption({ label: "unidad" });
     await page.getByRole("textbox", { name: "Precio de venta" }).fill("18000");

@@ -11,7 +11,8 @@ import { describe, expect, it } from "vitest";
  * Lo que sí puede leer la tabla cruda: el CRUD administrativo (`server/actions/catalogo/precio-local.ts`: lista las filas, con capacidad
  * apagada o no; desde el Hito 4, H4C-4, la escritura y la lectura de la fila ANTERIOR para la auditoría viven en `server/persistencia/catalogo/precio-local.ts`)
  * y el reporte de la comparativa de precios (`core/reportes/periodo-precios.ts`, que solo traduce el id de una fila auditada a su producto, sin leer ningún
- * precio).
+ * precio) y el historial de precios de la ficha (`server/consultas/catalogo/historial-de-precios.ts`, Frente 6 paso 7: lee SOLO el id de la fila del producto en la sucursal activa para buscar sus filas de auditoría, y los
+ * precios que muestra son los auditados; no decide qué precio rige).
  *
  * Lo mismo vale para la capacidad: "¿rige el precio propio de la sucursal?" (R1, 2026-10-01: también gobierna el precio local de las promos y los
  * descuentos de producto) se pregunta con `precioLocalActivoEn`, el único lugar que consulta la capacidad `precio_local` para decidir un precio.
@@ -25,6 +26,7 @@ const ARCHIVOS_PERMITIDOS = [
   "server/actions/catalogo/precio-local.ts",
   "server/persistencia/catalogo/precio-local.ts",
   "server/consultas/reportes/periodo-precios.ts",
+  "server/consultas/catalogo/historial-de-precios.ts",
 ];
 
 function archivos(dir: string): string[] {

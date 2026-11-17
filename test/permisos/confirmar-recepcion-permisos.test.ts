@@ -29,6 +29,7 @@ let s3: string, sec3: string;
 let admin: { id: string; email: string };
 let gerente: { id: string; email: string };
 let operador: { id: string; email: string };
+let operadorRolId: string;
 let facturaId: string;
 let harina: string;
 
@@ -58,8 +59,7 @@ beforeEach(async () => {
   gerente = { id: usuarioGerente.id, email: "gerente@test.com" };
   const usuarioOperador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: s3, rolId: base.operador.id });
   operador = { id: usuarioOperador.id, email: "operador@test.com" };
-  // El gerente le asigna la clave al rol operador en la matriz: el piso (administrador) manda sobre la fila y no le sirve.
-  await prisma.permisoRol.updateMany({ where: { rolId: base.operador.id, accionClave: "compra_recibir" }, data: { puedeVer: true, puedeEditar: true } });
+  operadorRolId = base.operador.id;
   // La semilla del código (`compra_controlar_recepcion`: admin y operador) la da la migración o el alta de la empresa; en la base de pruebas se asegura la fila de cada rol.
   for (const rolId of [base.admin.id, base.operador.id]) await prisma.permisoRol.upsert({ where: { rolId_accionClave: { rolId, accionClave: "compra_controlar_recepcion" } }, update: { puedeVer: true, puedeEditar: true }, create: { rolId, accionClave: "compra_controlar_recepcion", puedeVer: true, puedeEditar: true } });
   const { kg, insumo } = await sembrarCatalogoBase();
@@ -82,7 +82,8 @@ beforeEach(async () => {
 });
 
 describe("confirmarRecepcionDeFactura: permisos en el servidor", () => {
-  it("el OPERADOR es rechazado (aunque la matriz le dé la fila: el piso es administrador): no entra stock y la parte sigue pendiente", async () => {
+  // PISOS-65 (2026-11-17): `compra_recibir` es de piso operario y de fábrica solo la tiene `admin`: el operador sin la fila es rechazado; con la fila que le da el gerente, confirma.
+  it("el OPERADOR sin la fila (de fábrica `compra_recibir` es solo del admin) es rechazado: no entra stock y la parte sigue pendiente", async () => {
     await como(operador);
     const gate = await requierePermiso(operador.id, s3, "compra_recibir", prisma);
 
@@ -92,6 +93,17 @@ describe("confirmarRecepcionDeFactura: permisos en el servidor", () => {
     expect(r).toEqual({ ok: false, mensaje: gate.ok ? "" : gate.mensaje });
     expect(await compras()).toBe(0);
     expect((await parte()).estadoRecepcion).toBe("PENDIENTE");
+  });
+
+  it("el OPERADOR con la fila que le da el gerente en la matriz confirma: entra el stock y la parte queda recibida por él", async () => {
+    await prisma.permisoRol.upsert({ where: { rolId_accionClave: { rolId: operadorRolId, accionClave: "compra_recibir" } }, update: { puedeVer: true, puedeEditar: true }, create: { rolId: operadorRolId, accionClave: "compra_recibir", puedeVer: true, puedeEditar: true } });
+    await como(operador);
+
+    const r = await recibir();
+
+    expect(r.ok, r.mensaje).toBe(true);
+    const p = await parte();
+    expect([p.estadoRecepcion, p.recibidaPorId]).toEqual(["RECIBIDA", operador.id]);
   });
 
   it("el ADMINISTRADOR confirma: entra el stock y la parte queda recibida por él", async () => {

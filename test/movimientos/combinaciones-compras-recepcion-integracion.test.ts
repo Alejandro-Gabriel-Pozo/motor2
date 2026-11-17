@@ -155,8 +155,8 @@ describe("oráculo contra la base real: la puerta de la Server Action (módulo �
     const base = await prisma.rol.findFirstOrThrow({ where: { clave: O === "OPERADOR" ? "operador" : "admin" } });
     const usuario = await crearUsuarioConMembresia({ email: `${O.toLowerCase()}@test.com`, sucursalId: s3, rolId: base.id });
     if (O === "GERENTE") await prismaAdmin.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId: usuario.id, empresaId: E } }, data: { rolEmpresa: "gerente" } });
-    // Aun con la fila en la matriz, el operador no llega al piso: el servidor decide por el piso, no por la pantalla.
-    await prisma.permisoRol.updateMany({ where: { rolId: base.id, accionClave: "compra_recibir" }, data: { puedeVer: true, puedeEditar: true } });
+    // PISOS-65 (2026-11-17): `compra_recibir` es de piso operario y nace cerrada (de fábrica solo `admin`): el OPERADOR de fábrica no tiene la fila y el servidor lo rechaza por eso; el admin y el gerente la tienen.
+    if (O !== "OPERADOR") await prisma.permisoRol.updateMany({ where: { rolId: base.id, accionClave: "compra_recibir" }, data: { puedeVer: true, puedeEditar: true } });
     await fijarModulosActivos(E, [...MODULOS_VENDIBLES, "recepcion_de_compras"]);
     const facturaId = await cargar([{ sucursalId: s3, valor: 100 }]);
     await fijarModulosActivos(E, M === "ENCENDIDO" ? [...MODULOS_VENDIBLES, "recepcion_de_compras"] : MODULOS_VENDIBLES);

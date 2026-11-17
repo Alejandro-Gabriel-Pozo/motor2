@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { planteoEstatico, type Escenario } from "./denegacion/argumentos";
 import { escenariosDe, TODOS_LOS_ESCENARIOS } from "./denegacion/escenarios";
@@ -15,7 +17,7 @@ import {
   SUCURSALES_LISTADAS_POR_DISENO,
 } from "./denegacion/excepciones";
 import { FAMILIAS } from "./denegacion/familias";
-import { GENERADORES, SIN_GENERADOR } from "./denegacion/generadores";
+import { CATEGORIAS_SIN_EJERCER, cantidadSinEjercer, GENERADORES, noSeEjerceEnLaMatriz, PUBLICA_ANONIMA_POR_CLAVE, SIN_GENERADOR } from "./denegacion/generadores";
 import { inventariarPuertas } from "./denegacion/inventario-de-puertas";
 import { PUERTAS_SIN_PERMISO } from "../arquitectura/guardas/puertas-sin-permiso";
 
@@ -37,6 +39,8 @@ const claves = new Set(puertas.map((p) => p.clave));
 /** Los techos de las listas cerradas: solo bajan (quitar una excepción y bajar el techo en el mismo commit). */
 const MAXIMOS = {
   SIN_GENERADOR: 17,
+  // Categoría declarada y nombrada (no un cajón): la carta pública anónima por clave. Son las 3 de siempre (`resolverCartaPublica`, `resolverConfigPortal`, `resolverPortalCarta`) más las 2 duales del portal PR-A (`resolverPortalCartaDual`, `resolverConfigPortalDual`). Solo baja.
+  PUBLICA_ANONIMA_POR_CLAVE: 5,
   ESCENARIOS_QUE_NO_APLICAN: 2,
   // 0 desde el paquete 1 de la RLS por sucursal (ADR-028): con las políticas `alcance_sucursal_*` aplicadas, las 37 consultas y lecturas que cruzaban sucursales dejan de traer filas de la otra (el test pidió sacar cada entrada) y las 3 de gobierno
   // (`cargarTemaAdmin`, `resolverMenuCarta`, `resolverMenuCartaConDiagnostico`) pasaron a `SUCURSALES_LISTADAS_POR_DISENO`. Era 40 (39 + `seccionesDesactivadas`, P17).
@@ -52,7 +56,8 @@ const MAXIMOS = {
   // Sube a propósito de 32 a 33 con la integración de Catálogo: la búsqueda por la referencia del proveedor devuelve solo un booleano, igual que su par de las faltas filtrables.
   // Sube a propósito de 34 a 37 con Productos P1: la marca «Falta completar», el precio y la clase, y la sección de la carta de cada fila de la lista devuelven solo lo que se les pasa (ids), sin texto libre propio.
   // Sube a propósito de 37 a 38 con «Ocultar» (etapa d, 2026-11-16): `cargarLoQueMuestraOcultar` devuelve solo cuatro banderas, sin fila ni texto libre donde ir el marcador propio. DEUDA a la vista del dueño: el techo sigue siendo un trinquete.
-  SIN_MARCA_PROPIA: 38,
+  // Sube a propósito de 38 a 39 con el historial de precios (Frente 6, paso 7): `historialDePreciosDelProducto` devuelve solo fecha, alcance y dos números por cambio, sin texto libre donde ir el marcador propio.
+  SIN_MARCA_PROPIA: 39,
   OK_SIN_EFECTO_POR_DISENO: 2,
   // Sube a propósito de 2 a 3 con la caja (C1): `abrirSesionDeCaja` se ejerce parada en la sucursal vacía (S1 ya tiene su caja abierta: la lectura de caja necesita esa sesión abierta como dato propio).
   EN_LA_SUCURSAL_VACIA: 3,
@@ -87,7 +92,7 @@ describe("GT-3b: la matriz de denegación por defecto cubre todo el inventario",
   it("toda puerta se invoca como anónimo y sin empresa: sus argumentos se derivan o está en SIN_GENERADOR, o GT-10 la deja PERMITIDA a propósito", () => {
     const problemas: string[] = [];
     for (const p of puertas) {
-      if (Object.hasOwn(SIN_GENERADOR, p.clave)) continue;
+      if (noSeEjerceEnLaMatriz(p.clave)) continue;
       const escenarios = escenariosDe(p);
       for (const quien of ["anonimo", "sinEmpresa"] as const) {
         if (escenarios.includes(quien)) continue;
@@ -96,7 +101,7 @@ describe("GT-3b: la matriz de denegación por defecto cubre todo el inventario",
         const declarada = Object.hasOwn(ESCENARIOS_QUE_NO_APLICAN, `${p.clave}|${quien}`);
         if (!permitida && !declarada) {
           const plan = planteoEstatico(p, quien, GENERADORES);
-          problemas.push(`${p.clave}: no se ejerce como «${quien}» (faltan argumentos: ${plan.faltan.join("; ") || "ninguno"}); escribile un generador en denegacion/generadores.ts o declarala en SIN_GENERADOR con motivo`);
+          problemas.push(`${p.clave}: no se ejerce como «${quien}» (faltan argumentos: ${plan.faltan.join("; ") || "ninguno"}); escribile un generador en denegacion/generadores.ts o declarala en SIN_GENERADOR (o, si es anónima por diseño, en PUBLICA_ANONIMA_POR_CLAVE) con motivo`);
         }
       }
     }
@@ -115,6 +120,22 @@ describe("GT-3b: la matriz de denegación por defecto cubre todo el inventario",
     }
     expect(problemas, problemas.join("\n")).toEqual([]);
     expect(Object.keys(SIN_GENERADOR).length, "SIN_GENERADOR solo se achica").toBeLessThanOrEqual(MAXIMOS.SIN_GENERADOR);
+  });
+
+  it("PUBLICA_ANONIMA_POR_CLAVE: puertas que existen, con motivo, sin pisar a SIN_GENERADOR, con su PRUEBA propia que las nombra a todas; no crece", () => {
+    const problemas: string[] = [];
+    const prueba = readFileSync(join(__dirname, "publica-anonima-por-clave.test.ts"), "utf8");
+    for (const [clave, motivo] of Object.entries(PUBLICA_ANONIMA_POR_CLAVE)) {
+      if (!claves.has(clave)) problemas.push(`${clave}: ya no existe`);
+      if (Object.hasOwn(SIN_GENERADOR, clave)) problemas.push(`${clave}: está también en SIN_GENERADOR (una puerta, una categoría)`);
+      if (motivo.trim().length < 20) problemas.push(`${clave}: el motivo es demasiado corto`);
+      const nombre = clave.slice(clave.lastIndexOf("|") + 1);
+      if (!new RegExp(`\\b${nombre}\\b`).test(prueba)) problemas.push(`${clave}: la prueba propia (publica-anonima-por-clave.test.ts) no la nombra`);
+    }
+    expect(problemas, problemas.join("\n")).toEqual([]);
+    expect(Object.keys(PUBLICA_ANONIMA_POR_CLAVE).length, "PUBLICA_ANONIMA_POR_CLAVE solo se achica").toBeLessThanOrEqual(MAXIMOS.PUBLICA_ANONIMA_POR_CLAVE);
+    // Toda puerta de una categoría sin ejercer está en el listado de categorías (la derivación única).
+    expect(Object.keys(CATEGORIAS_SIN_EJERCER).sort()).toEqual(["PUBLICA_ANONIMA_POR_CLAVE", "SIN_GENERADOR"]);
   });
 
   it("las excepciones apuntan a puertas y escenarios que existen, con motivo, y no crecen", () => {
@@ -183,7 +204,7 @@ describe("GT-3b: la matriz de denegación por defecto cubre todo el inventario",
   it("toda mutación con un id del cliente se ejerce con ids ajenos de OTRA EMPRESA (no queda ninguna que solo se pruebe sin sesión)", () => {
     const sinC: string[] = [];
     for (const p of puertas) {
-      if (!p.mutacion || Object.hasOwn(SIN_GENERADOR, p.clave)) continue;
+      if (!p.mutacion || noSeEjerceEnLaMatriz(p.clave)) continue;
       const tieneIdDelCliente = p.parametros.some((q) => /(^id$|Id$|Ids$)/.test(q.nombre));
       if (tieneIdDelCliente && !escenariosDe(p).includes("ajenaEmpresa")) sinC.push(p.clave);
     }
@@ -194,7 +215,7 @@ describe("GT-3b: la matriz de denegación por defecto cubre todo el inventario",
   it("toda mutación que se ejerce tiene CONTROL POSITIVO (ids propios y válidos → ok: true), o está en SIN_CONTROL_POSITIVO con motivo", () => {
     const sinControl: string[] = [];
     for (const p of puertas) {
-      if (!p.mutacion || Object.hasOwn(SIN_GENERADOR, p.clave)) continue;
+      if (!p.mutacion || noSeEjerceEnLaMatriz(p.clave)) continue;
       const escenarios = escenariosDe(p);
       if (escenarios.length && !escenarios.includes("controlMutacion")) sinControl.push(p.clave);
     }
@@ -210,7 +231,8 @@ describe("GT-3b: la matriz de denegación por defecto cubre todo el inventario",
       if (e.length) ejercidas++;
       for (const x of e) porEscenario[x]++;
     }
-    expect(puertas.length - ejercidas, "puertas sin ejercer = exactamente las de SIN_GENERADOR").toBe(Object.keys(SIN_GENERADOR).length);
+    expect(puertas.length - ejercidas, "puertas sin ejercer = exactamente las de SIN_GENERADOR + PUBLICA_ANONIMA_POR_CLAVE").toBe(Object.keys(SIN_GENERADOR).length + Object.keys(PUBLICA_ANONIMA_POR_CLAVE).length);
+    expect(cantidadSinEjercer(), "las categorías no se pisan entre sí").toBe(Object.keys(SIN_GENERADOR).length + Object.keys(PUBLICA_ANONIMA_POR_CLAVE).length);
     expect(porEscenario.anonimo).toBeGreaterThan(300);
     expect(porEscenario.sinEmpresa).toBeGreaterThan(300);
     expect(porEscenario.ajenaEmpresa).toBeGreaterThan(250);

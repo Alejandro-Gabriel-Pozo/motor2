@@ -3,6 +3,7 @@ import { limpiarBaseDeTest, prisma, sembrarProductoDisponible } from "../setup/t
 import { resolverMenuCarta, resolverMenuCartaConDiagnostico } from "../../src/server/lecturas/carta/menu";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
+import { crearCategoriaDeTest } from "../setup/categoria-de-prueba";
 /**
  * resolverMenuCarta contra Postgres real (docs/plan-carta-catalogo-2026-09-24.md, M3): qué PV entran a la carta pública de
  * una sucursal y con qué precio. El criterio de "disponible" es el de `whereDisponibleEn` (fila ausente = no disponible) y el
@@ -22,7 +23,7 @@ describe("resolverMenuCarta", () => {
     otra = (await prisma.sucursal.create({ data: { nombre: "Otra" } })).id;
     inactiva = (await prisma.sucursal.create({ data: { nombre: "Cerrada", activo: false } })).id;
 
-    const cat = async (nombre: string) => (await prisma.categoriaProducto.create({ data: { nombre } })).id;
+    const cat = async (nombre: string) => (await crearCategoriaDeTest(prisma, { nombre })).id;
     const [cBife, cEmp, cSuelta, cTragos] = await Promise.all([cat("Bife"), cat("Empanadas"), cat("Suelta"), cat("Tragos")]);
 
     const entradas = await prisma.seccionCarta.create({ data: { nombre: "Entradas", orden: 1 } });

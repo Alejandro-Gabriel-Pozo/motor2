@@ -83,6 +83,14 @@ export {
   necesitaLaEmpresaEntera,
 } from "./filtros-de-productos";
 export type { EntradaDeFiltrosDeProductos, FaltaFiltrable, FiltrosDeProductos, TipoFiltrable } from "./filtros-de-productos";
+// Interruptor de los filtros extra de la lista de Productos (Frente 6, paso 6): «Cómo se vende», «En esta sucursal» y «Le falta algo» ocultos sin borrar.
+export { masFiltrosOfrecidos } from "./filtros-extra-de-la-lista";
+// Interruptor del estilo de Pedernal en las listas de Proveedores y Clientes (Frente 6, paso 8): buscador, desactivados ocultos y alta de proveedor solo con el nombre.
+export { DIRECTORIO_AL_ESTILO_DE_PEDERNAL, filasDelDirectorio, hayBusquedaDelDirectorio, leerBusquedaDelDirectorio } from "./directorio-de-la-lista";
+export type { BusquedaDelDirectorio } from "./directorio-de-la-lista";
+// Historial de precios de la ficha del producto (Frente 6, paso 7): puro, desde las filas de auditoría del precio.
+export { CAMBIOS_DE_PRECIO_A_MOSTRAR, armarHistorialDePrecios } from "./historial-de-precios";
+export type { LineaDelHistorialDePrecios } from "./historial-de-precios";
 // La lista de Productos (docs/diseno-productos-igual-a-pedernal-2026-11-13.md, D1): qué dice en el lugar del precio.
 export { textoDelPrecioEnLaLista } from "./precio-en-la-lista";
 // Fase 7 (DEC-13): el grupo Catálogo del menú, sus filas de pestañas y las rutas que cuelgan de cada entrada (puro; lo arma `core/navegacion/estructura.ts` y lo dibuja `FilaDeCatalogo`).
@@ -98,3 +106,10 @@ export type { FichaDeCocina, RecetaParaFicha } from "./ficha-de-cocina";
 export { LO_QUE_NO_SE_COPIA } from "./duplicar-producto";
 export { OPCIONES_AGOTADAS_AYUDAS_VISIBLES } from "./opciones-agotadas-ayudas-visibles";
 export { OPCIONES_AGOTADAS_PLEGADAS } from "./opciones-agotadas-plegadas";
+
+// «¿Qué es?» del alta como Pedernal (solo pantalla; diseño `docs/diseno-producto-nuevo-como-pedernal-2026-11-17.md`).
+export { ALTA_DE_PRODUCTO_COMO_PEDERNAL, CLASES_DE_ALTA, CLAVES_DE_CLASE_DE_ALTA, claseDeAltaDe } from "./clase-de-alta";
+export type { ClaveDeClaseDeAlta } from "./clase-de-alta";
+
+// Qué puede hacer un producto (se compra, se vende, stock propio, receta…), decidido en un solo lugar: E4-0 de la Reventa (docs/diseno-reventa-e4-2026-11-17.md §3). Hoy lo usa `tieneStockReal`; los demás circuitos pasan en E4-2 a E4-4.
+export { capacidadesDelProducto } from "./capacidades-del-producto";

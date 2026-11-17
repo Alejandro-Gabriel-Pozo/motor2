@@ -4,6 +4,7 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { crearMembresias } from "../setup/membresia";
 import { prismaAdmin } from "../setup/cliente-duenio";
+import { elegirClaseDelAlta } from "./fixtures/alta";
 
 /**
  * Circuito completo del alta con el tilde "Activo en todas las sucursales" (§4, P5) y su efecto real en el catálogo de
@@ -60,12 +61,13 @@ async function abrirEnDosSucursales(browser: Browser, baseURL: string | undefine
   };
 }
 
-async function darDeAltaPV(page: import("@playwright/test").Page, nombre: string, tildar: boolean) {
+async function darDeAltaPV(page: import("@playwright/test").Page, nombre: string) {
   await page.goto("/catalogo/productos/nuevo");
-  await page.getByRole("radio", { name: "Producto de venta (PV)" }).check();
+  await elegirClaseDelAlta(page, "Producto vendible");
   await page.getByRole("textbox", { name: "Nombre", exact: true }).fill(nombre);
   await page.getByRole("combobox", { name: "Unidad de stock" }).selectOption({ label: "kg" });
-  if (!tildar) await page.getByRole("checkbox", { name: "Activo en todas las sucursales" }).uncheck();
+  // Como Pedernal, el alta ya no ofrece «Activo en todas las sucursales»: el producto nace disponible en todas.
+  await expect(page.getByRole("checkbox", { name: "Activo en todas las sucursales" })).toHaveCount(0);
   await page.getByRole("button", { name: "Crear producto" }).click();
   await page.waitForURL(/\/catalogo\/productos\/[^/]+\?guardado=alta/);
 }
@@ -84,7 +86,7 @@ async function apareceEnSelectorDeVenta(page: import("@playwright/test").Page, n
   return (await page.getByRole("option", { name: nombre, exact: false }).count()) > 0;
 }
 
-test("alta SIN el tilde: disponible solo donde se dio de alta; CON el tilde: en las dos sucursales; desactivar en una no cambia la otra", async ({
+test("el alta como Pedernal deja el producto disponible en las dos sucursales (sin el tilde); desactivar en una no cambia la otra", async ({
   browser,
   baseURL,
   sucursalId,
@@ -93,15 +95,10 @@ test("alta SIN el tilde: disponible solo donde se dio de alta; CON el tilde: en 
   try {
     const marca = Date.now();
 
-    const soloA = `E2E Disp Solo A ${marca}`;
-    await darDeAltaPV(pageA, soloA, false);
-    expect(await apareceEnSelectorDeVenta(pageA, soloA), "aparece en A, donde se dio de alta").toBe(true);
-    expect(await apareceEnSelectorDeVenta(pageB, soloA), "invisible en B: nunca se tildó 'Activo en todas las sucursales'").toBe(false);
-
     const universal = `E2E Disp Universal ${marca}`;
-    await darDeAltaPV(pageA, universal, true);
+    await darDeAltaPV(pageA, universal);
     expect(await apareceEnSelectorDeVenta(pageA, universal)).toBe(true);
-    expect(await apareceEnSelectorDeVenta(pageB, universal), "con el tilde, aparece también en B").toBe(true);
+    expect(await apareceEnSelectorDeVenta(pageB, universal), "nace disponible en todas las sucursales: aparece también en B").toBe(true);
 
     // Desactivar en A no toca B — el corazón del pendiente (docs/plan-disponibilidad-por-sucursal-2026-09-23.md).
     const productoUniversal = await prisma.producto.findFirstOrThrow({ where: { nombre: universal } });

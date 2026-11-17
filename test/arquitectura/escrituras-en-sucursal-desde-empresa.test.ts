@@ -130,6 +130,12 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
     puertas: ["auth/sucursales.ts|renombrarSucursal"],
     motivo: "`renombrar_sucursal` es gobierno de la empresa (piso administrador de sistema, inmutable): el nombre de una sucursal lo cambia quien gobierna la empresa; el id solo alcanza sucursales de la empresa. A CONFIRMAR POR EL DUEÑO: se puede renombrar una sucursal desde otra sucursal",
   },
+  "auth/casos-de-uso/cambiar-hora-de-corte-de-sucursal.ts": {
+    ata: "EMPRESA_ENTERA",
+    ensanches: [],
+    puertas: ["auth/sucursales.ts|cambiarHoraDeCorteDeSucursal"],
+    motivo: "`renombrar_sucursal` es gobierno de la empresa (piso administrador de sistema, inmutable): la hora de corte de una sucursal (C2c, mismo permiso que renombrarla, dueño 2026-11-17 «5.- recomendado») la cambia quien gobierna la empresa; el id solo alcanza sucursales de la empresa. A CONFIRMAR POR EL DUEÑO: se puede cambiar desde otra sucursal, como el nombre",
+  },
   "permisos/casos-de-uso/actualizar-capacidad.ts": {
     ata: "EMPRESA_ENTERA",
     ensanches: ["ESCRITURA_EN_LA_EMPRESA"],

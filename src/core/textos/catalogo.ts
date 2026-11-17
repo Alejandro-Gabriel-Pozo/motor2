@@ -146,6 +146,7 @@ export const CATALOGO = {
       { archivo: "src/server/actions/auth/casos-de-uso/invitar-a-vincular.ts", nombre: "invitarAVincularCasoDeUso" },
       { archivo: "src/server/actions/auth/casos-de-uso/actualizar-activo-sucursal.ts", nombre: "actualizarActivoSucursalCasoDeUso" },
       { archivo: "src/server/actions/auth/casos-de-uso/renombrar-sucursal.ts", nombre: "renombrarSucursalCasoDeUso" },
+      { archivo: "src/server/actions/auth/casos-de-uso/cambiar-hora-de-corte-de-sucursal.ts", nombre: "cambiarHoraDeCorteDeSucursalCasoDeUso" },
       { archivo: "src/server/actions/auth/casos-de-uso/actualizar-activo-usuario-en-empresa.ts", nombre: "actualizarActivoUsuarioEnEmpresaCasoDeUso" },
       { archivo: "src/server/actions/auth/casos-de-uso/invitacion-gestionable.ts", nombre: "invitacionGestionable" },
       { archivo: "src/server/actions/auth/casos-de-uso/invitaciones-de-usuario-en-tx.ts", nombre: "rotarInvitacionPendiente" },
@@ -292,6 +293,15 @@ export const CATALOGO = {
       { archivo: "src/server/actions/clientes/casos-de-uso/alta-cliente.ts", nombre: "altaClienteCasoDeUso" },
     ],
     fuente: { decision: "DEC-0022" },
+  },
+  // PISOS-65 (DEC-0024): el rechazo y el rótulo de la celda cerrada de la matriz de permisos para las 14 acciones de gobierno y de gerente. Palabras del dueño (2026-11-17).
+  "rechazo.ACCION_DE_GOBIERNO": {
+    porDefecto: "Esta acción es de gobierno de la empresa y no se delega.",
+    usos: [
+      { archivo: "src/server/actions/permisos/casos-de-uso/guardar-permisos.ts", nombre: "guardarPermisosCasoDeUso" },
+      { archivo: "src/app/(app)/administracion/permisos/permisos-matriz.tsx", nombre: "PermisosMatriz" },
+    ],
+    fuente: { decision: "DEC-0024" },
   },
 } as const satisfies Readonly<Record<string, DefinicionDeTexto>>;
 
