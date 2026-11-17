@@ -13,6 +13,8 @@ import { exito, fracaso } from "@/core/resultado-caso";
 import type { ComandoReclasificarStock, ResultadoReclasificarStock } from "@/core/features/movimientos/reclasificacion.schema";
 import { cargarProductoConUnidadDeStock } from "@/server/persistencia/movimientos/cargar-producto-con-unidad-de-stock";
 import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 
 /**
  * Caso de uso «reclasificar stock» — port de dividirClasificacionStock_ (Stock.js:1899-1991, wrapper público reclasificarStock, Task #41,
@@ -59,7 +61,7 @@ export async function reclasificarStockCasoDeUso(
   // registrarMovimiento — conPermiso no valida que las secciones sean
   // de ESTA sucursal, solo el permiso de quien llama.
   const seccionOrigen = await obtenerSeccionPropia(comando.seccionOrigenId, actor.sucursalId, actor.db);
-  if (!seccionOrigen) return fracaso("SECCION_ORIGEN_NO_ENCONTRADA", "No se encontró la sección de origen.");
+  if (!seccionOrigen) return fracaso("SECCION_ORIGEN_NO_ENCONTRADA", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.seccion_de_origen }));
   const seccionesDestino = new Map<string, { id: string; nombre: string; activa: boolean }>();
   for (const d of comando.destinos) {
     const seccion = await obtenerSeccionPropia(d.seccionId, actor.sucursalId, actor.db);

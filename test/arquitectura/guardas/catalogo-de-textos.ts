@@ -10,8 +10,9 @@ import { parsearRegistro } from "./registro-de-decisiones";
  *  - C2 el mismo valor (sin mayúsculas, tildes ni signos) bajo dos claves falla, salvo `homonimoDe` con motivo hacia una clave que existe y dice lo mismo.
  *  - C3 todo texto declara al menos un uso; cada uso nombra un archivo que existe, una función o constante que ese archivo declara y cita la clave.
  *  - C4 la fuente es `HEREDADO` (solo si la clave está en la línea base, que solo baja) o una DEC que existe en el registro y está ACEPTADA o CORREGIDA.
- *  - C5 los marcadores declarados son exactamente los huecos `{nombre}` del texto, de un tipo válido, sin llaves sueltas.
- * LÍMITES (honestos): C3 mira que el archivo declare el nombre y cite la clave en CUALQUIER parte; que la cita esté dentro de ESA función, que un uso no declarado aparezca o que una pantalla escriba el
+ *  - C5 los marcadores declarados son exactamente los huecos `{nombre}` del texto, de un tipo válido, sin llaves sueltas; el artículo indefinido `{nombre:un}` solo va sobre un marcador `entidad`.
+ *  - C6 toda clave tiene su fila en el oráculo único de palabras (`test/textos/oraculo-de-textos.ts`) y dice EXACTAMENTE lo mismo; una fila sin clave también falla (IT-7: lo aprobado no cambia en silencio).
+ * LÍMITES (honestos): C6 compara el texto exacto, no juzga si la redacción es buena ni si un cambio fue aprobado (eso lo dice la DEC de la clave); C3 mira que el archivo declare el nombre y cite la clave en CUALQUIER parte; que la cita esté dentro de ESA función, que un uso no declarado aparezca o que una pantalla escriba el
  * texto a mano son tramos posteriores (T2 y T3). No comprueba que la redacción sea la aprobada (T5, oráculo IT-7). Es una alarma para errores honestos, no un límite de seguridad.
  */
 export interface EntradaDelCatalogo {
@@ -27,6 +28,8 @@ export interface ContextoDelCatalogo {
   readonly registro: string;
   /** Contenido de un archivo del repo, o `null` si no existe. */
   readonly leerArchivo: (ruta: string) => string | null;
+  /** Oráculo único de palabras: clave → texto exacto (`test/textos/oraculo-de-textos.ts`). */
+  readonly oraculo?: Readonly<Record<string, string>>;
   /** Línea base de `HEREDADO`: claves que ya estaban antes del catálogo. Solo baja: una clave nueva no se agrega acá. */
   readonly heredados: readonly string[];
 }
@@ -123,7 +126,17 @@ export function revisarCatalogo(catalogo: Readonly<Record<string, EntradaDelCata
     for (const [nombre, tipo] of Object.entries(e.marcadores ?? {})) {
       if (!(TIPOS_DE_MARCADOR as readonly string[]).includes(tipo)) falla(clave, `el marcador «${nombre}» tiene un tipo que no existe: «${tipo}» (C5).`);
     }
-    if (/[{}]/.test(e.porDefecto.replace(/\{[a-z][a-zA-Z0-9]*\}/g, ""))) falla(clave, "tiene una llave `{` o `}` suelta o un hueco mal escrito (el nombre va en minúscula inicial, sin espacios) (C5).");
+    for (const [, nombre] of e.porDefecto.matchAll(/\{([a-z][a-zA-Z0-9]*):un\}/g)) {
+      if ((e.marcadores ?? {})[nombre ?? ""] !== "entidad") falla(clave, `el artículo \`{${nombre}:un}\` solo va sobre un marcador de tipo \`entidad\` (C5).`);
+    }
+    if (/[{}]/.test(e.porDefecto.replace(/\{[a-z][a-zA-Z0-9]*(?::un)?\}/g, ""))) falla(clave, "tiene una llave `{` o `}` suelta o un hueco mal escrito (el nombre va en minúscula inicial, sin espacios) (C5).");
   }
+  // C6 (solo si el contexto trae el oráculo: el catálogo real siempre lo trae; los juegos de prueba de las otras reglas no)
+  const oraculo = contexto.oraculo ?? null;
+  if (oraculo !== null) for (const clave of claves) {
+    if (!(clave in oraculo)) falla(clave, "no está en test/textos/oraculo-de-textos.ts: agregá su fila con el texto tal cual (C6).");
+    else if (oraculo[clave] !== catalogo[clave]!.porDefecto) falla(clave, `el texto cambió. Era «${oraculo[clave]}» y ahora dice «${catalogo[clave]!.porDefecto}»: si el cambio está aprobado (DEC), actualizá el oráculo (C6).`);
+  }
+  if (oraculo !== null) for (const clave of Object.keys(oraculo)) if (!(clave in catalogo)) falla(clave, "está en el oráculo y ya no existe en el catálogo: sacá su fila (C6).");
   return problemas;
 }

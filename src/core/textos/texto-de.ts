@@ -20,7 +20,7 @@ type ValorDe<T extends TipoDeMarcador> = T extends "causa" ? ClaveSinHuecos : T 
 type ValoresDe<C extends ClaveDeTexto> = { readonly [N in keyof MarcadoresDe<C>]: MarcadoresDe<C>[N] extends TipoDeMarcador ? ValorDe<MarcadoresDe<C>[N]> : never };
 type ArgumentosDe<C extends ClaveDeTexto> = [MarcadoresDe<C>] extends [never] ? [] : [valores: ValoresDe<C>];
 
-const HUECO = /\{([a-z][a-zA-Z0-9]*)\}/g;
+const HUECO = /\{([a-z][a-zA-Z0-9]*)(?::(un))?\}/g;
 
 /** Los nombres de los huecos `{nombre}` de un texto, en orden y sin repetir. Lo usa también el guardián del catálogo. */
 export function huecosDe(texto: string): string[] {
@@ -38,7 +38,7 @@ function armar(clave: string, valores: Readonly<Record<string, unknown>>): strin
   if (!definicion) return null;
   const marcadores = definicion.marcadores ?? {};
   let falta = false;
-  const texto = definicion.porDefecto.replace(HUECO, (_hueco, nombre: string) => {
+  const texto = definicion.porDefecto.replace(HUECO, (_hueco, nombre: string, articulo: string | undefined) => {
     const tipo = marcadores[nombre];
     const valor = valores[nombre];
     if (tipo === undefined || valor === undefined) {
@@ -47,13 +47,16 @@ function armar(clave: string, valores: Readonly<Record<string, unknown>>): strin
     }
     if (tipo === "entidad") {
       const e = valor as Partial<Entidad> | null;
-      if (typeof e?.nombre !== "string" || e.nombre.trim() === "" || (e.genero !== "m" && e.genero !== "f")) {
+      // Cerrado también en ejecución: solo vale una entidad que ESTÁ en la tabla (una bien formada pero ajena, con un cast, cae al mensaje genérico).
+      const declarada = Object.values(ENTIDADES).some((x) => x.nombre === e?.nombre && x.genero === e?.genero);
+      if (!declarada || typeof e?.nombre !== "string" || e.nombre.trim() === "" || (e.genero !== "m" && e.genero !== "f")) {
         falta = true;
         return "";
       }
-      return `${e.genero === "f" ? "la" : "el"} ${e.nombre}`;
+      const indefinido = articulo === "un";
+      return `${e.genero === "f" ? (indefinido ? "una" : "la") : indefinido ? "un" : "el"} ${e.nombre}`;
     }
-    if (typeof valor !== "string") {
+    if (typeof valor !== "string" || articulo !== undefined) {
       falta = true;
       return "";
     }

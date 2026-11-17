@@ -66,6 +66,14 @@ export const EMPRESA_POR_DEFECTO_ID = EMPRESA_DE_PRUEBA_ID;
  * rol de ejecución solo vería la empresa por defecto y las filas de una segunda empresa sobrevivirían a la limpieza.
  */
 export async function limpiarBaseDeTest() {
+  // Caja y cobro C2 (jornada y cierre del día): lo que cuelga de la jornada y de un cobro, antes que lo de C1 (referencian a Cobro, MedioDePago y JornadaDeSucursal).
+  await prismaAdmin.conciliacionDeCobroPorOrigen.deleteMany();
+  await prismaAdmin.conciliacionDeJornada.deleteMany();
+  await prismaAdmin.cierreDeCajaDeJornada.deleteMany();
+  await prismaAdmin.controlDeJornadaCerrada.deleteMany();
+  await prismaAdmin.correccionDeMedio.deleteMany();
+  await prismaAdmin.declaracionDeTotal.deleteMany();
+  await prismaAdmin.conformeDeJornada.deleteMany();
   // Caja y cobro C1 (etapa C1): lo que cuelga de una sesión, antes que nada (referencian Cuenta, Sucursal, User y entre sí). Las anulaciones primero: apuntan a su movimiento original.
   await prismaAdmin.arqueoBillete.deleteMany();
   await prismaAdmin.arqueoCaja.deleteMany();
@@ -75,6 +83,7 @@ export async function limpiarBaseDeTest() {
   await prismaAdmin.movimientoCaja.deleteMany();
   await prismaAdmin.sesionCaja.deleteMany();
   await prismaAdmin.caja.deleteMany();
+  await prismaAdmin.jornadaDeSucursal.deleteMany();
   await prismaAdmin.medioDePago.deleteMany();
   await prismaAdmin.cuentaDeCobro.deleteMany(); // C3: después de lo que la referencia (movimientos, cobros, arqueos). `ValorDeLista` es global y sembrada: no se limpia.
   // Carta antes que nada: sus tablas referencian Producto y Sucursal (RESTRICT), que se borran más abajo.
@@ -84,6 +93,7 @@ export async function limpiarBaseDeTest() {
   // junto a `promoCuenta.deleteMany()`), así que las tres se movieron a ese bloque.
   // GO-3: lo de combos, menú del día y combinaciones primero (nadie lo referencia; ver `limpiarTablasDeGo3`, al final del archivo).
   await limpiarTablasDeGo3();
+  await prismaAdmin.modoDeOrdenDeSeccionCarta.deleteMany(); // O1: el modo de orden cuelga de la sucursal y de la sección (RESTRICT).
   await prismaAdmin.opcionItemAgrupadoCarta.deleteMany();
   await prismaAdmin.itemAgrupadoCarta.deleteMany();
   await prismaAdmin.temaCartaSucursal.deleteMany();
@@ -250,8 +260,9 @@ export async function limpiarBaseDeTest() {
   await prismaAdmin.empresa.upsert({ where: { id: EMPRESA_TESTIGO_ID }, update: { estado: "ACTIVE", cuit: null }, create: DATOS_EMPRESA_TESTIGO });
   await prismaAdmin.empresa.upsert({
     where: { id: EMPRESA_POR_DEFECTO_ID },
-    update: { estado: "ACTIVE", permisosEditables: true, dosPaneles: true },
-    create: { id: EMPRESA_POR_DEFECTO_ID, nombre: "Empresa principal", slug: "principal", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" },
+    // P2: la empresa de las pruebas arranca con cupo de roles propios (100) para que las pruebas que crean roles no dependan de la perilla; las de la perilla fijan su propio valor y la empresa «nueva» nace en 0 (la columna).
+    update: { estado: "ACTIVE", permisosEditables: true, dosPaneles: true, rolesPropiosMax: 100 },
+    create: { id: EMPRESA_POR_DEFECTO_ID, nombre: "Empresa principal", slug: "principal", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE", rolesPropiosMax: 100 },
   });
   // El registro de módulos de la empresa por defecto termina como lo deja la migración: los 9 vendibles ACTIVO (un test pudo apagar o borrar alguno).
   await activarTodosLosModulos(EMPRESA_POR_DEFECTO_ID);

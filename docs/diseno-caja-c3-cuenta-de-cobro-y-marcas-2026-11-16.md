@@ -171,14 +171,16 @@ Privilegios: la app lee y agrega `CuentaDeCobro` (UPDATE por columna: nombre, id
 - Núcleo: `test/caja/nucleo-de-cuentas-y-datos.test.ts`. Oráculo: arriba. Casos de uso contra Postgres real, con concurrencia e idempotencia: `test/caja/caja-c3-casos-de-uso.test.ts`. Subir/bajar/subir: `test/aislamiento/caja-c3-subir-bajar-subir.test.ts` (y la lista de `m1-mostrador-subir-bajar-subir`). Los tests de C1 siguen pasando.
 - Aplicar en una base real: **no** (congelado). Cuando se autorice: `verificacion-previa.sql`, respaldo, ensayo en rama de Neon, `migrate deploy`,.
 
-## 8. Preguntas abiertas para el dueño (no se asumió nada)
+## 8. Preguntas para el dueño: estado de cada una (sincronizado con «Decisiones del dueño asentadas», abajo)
+
+El texto de cada pregunta es el original; el estado vigente es el de la tabla de decisiones asentadas: Q-C3-2, 3, 4, 5 y 7 CONFIRMADAS con su cita literal; Q-C3-1 y Q-C3-6 siguen PENDIENTES (ver sus renglones).
 
 - **Q-C3-1 — Lista de caracteres de los nombres.** Hoy letras, números, tildes de uso común, espacio y `. _ / -` (la de C1). Pedernal permite además signos como `, ; : ! ? ¿ ¡ ( ) % $ # & ' " ° + *`. ¿Querés la de Pedernal? (PROPUESTA: dejar la de C1.)
 - **Q-C3-2 — Valores iniciales de las marcas.** Se sembraron los de ejemplo de Pedernal (Visa, Mastercard, American Express, Cabal, Naranja X y «Otra»); Pedernal tampoco los tiene confirmados por su dueño. ¿Son estos?
 - **Q-C3-3 — Quién carga la lista de marcas hasta que exista la consola.** Hoy solo el dueño de la base puede escribirla (por migración).
 - **Q-C3-4 — Tope de 36 cuotas** (supuesto del ingeniero de Pedernal, sin cita del dueño). Cambiarlo es una constante y un CHECK.
 - **Q-C3-5 — Cupón.** Pedernal endureció la regla escrita (sin espacios, sin tramos de 13 dígitos): Motor2 la copia. ¿Confirmás?
-- **Q-C3-6 — Una cuenta en todas las sucursales.** Hoy una sola sucursal (como Pedernal, supuesto suyo).
+- **Q-C3-6 — Una cuenta de cobro por sucursal.** CONFIRMADA (2026-11-16, chat del dueño con el orquestador general). A la pregunta «¿una cuenta de cobro por sucursal quiere decir una sola cuenta por sucursal, o que cada cuenta pertenece a una sucursal pudiendo haber varias?» el dueño respondió «Por ahora es lo primero»: UNA SOLA cuenta de cobro ACTIVA por sucursal. Supuesto declarado (el dueño lo corrige): se puede desactivar una cuenta y crear (o reactivar) otra; el historial no se borra. Se hace cumplir en la etapa C3b (ver «Una cuenta activa por sucursal»).
 - **Q-C3-7 — Quién ve los datos guardados del cobro** (DNI, últimos 4): hoy solo se leen con las lecturas que se construyan; no hay pantalla ni permiso.
 
 ## 9. Mensajes nuevos para el catálogo de textos (clave sugerida, texto, uso)
@@ -189,6 +191,7 @@ Privilegios: la app lee y agrega `CuentaDeCobro` (UPDATE por columna: nombre, id
 | `caja.cuenta_de_cobro.duplicada` | Ya hay una cuenta de cobro con ese nombre. | `CUENTA_DUPLICADA` |
 | `caja.cuenta_de_cobro.nombre_invalido` | El nombre de la cuenta no es válido. | `NOMBRE_DE_CUENTA_INVALIDO` |
 | `caja.cuenta_de_cobro.identificador_invalido` | El identificador de la cuenta no es válido. | `IDENTIFICADOR_EXTERNO_INVALIDO` |
+| `caja.cuenta_de_cobro.sucursal_ya_tiene_activa` | Esa sucursal ya tiene una cuenta de cobro activa: desactivala antes de activar o crear otra. | `SUCURSAL_YA_TIENE_CUENTA_ACTIVA` (crear, reactivar y editar la sucursal de una cuenta activa) |
 | `caja.cuenta_de_cobro.sin_acceso` | No tenés acceso a esa sucursal. | `SUCURSAL_FUERA_DE_ALCANCE` |
 | `caja.cobro.cuenta_incompatible` | El medio de pago no admite ese tipo de cuenta de cobro. | `CUENTA_DE_COBRO_INCOMPATIBLE` |
 | `caja.cobro.cuenta_inactiva` | La cuenta de cobro está desactivada. | `CUENTA_DE_COBRO_INACTIVA` |
@@ -208,9 +211,31 @@ Privilegios: la app lee y agrega `CuentaDeCobro` (UPDATE por columna: nombre, id
 | Pregunta | Respuesta literal | Estado |
 |---|---|---|
 | Q-C3-7 quién ve DNI y últimos 4 | «También quien cobra» | **CONFIRMADA:** el operador que cobró lo ve, además de gerente y administrador. Son datos personales: lectura solo dentro de su empresa y sucursal (RLS); nunca en listados ni con su valor en la auditoría (solo los nombres de los datos). La Server Action de lectura (PR-B) lo hace cumplir. |
-| Q-C3-6 una cuenta de cobro por sucursal | «Una cuenta por sucursal (Recomendada)» | **CONFIRMADA** |
+| Q-C3-6 una cuenta de cobro por sucursal | «Una cuenta por sucursal (Recomendada)»; aclaración posterior (2026-11-16, chat con el orquestador general), a «¿una sola cuenta por sucursal, o cada cuenta pertenece a una sucursal pudiendo haber varias?»: «Por ahora es lo primero» | **CONFIRMADA:** una sola cuenta ACTIVA por sucursal (etapa C3b; la sección «Una cuenta activa por sucursal» dice cómo se hace cumplir). Supuesto declarado: se desactiva una y se crea otra; el historial no se borra. |
 | Q-C3-4/5 cuotas y cupón | «Sí, como Pedernal (Recomendada)» | **CONFIRMADA:** tope de 36 cuotas y cupón sin espacios ni 13 dígitos seguidos |
 | Q-C3-2/3 marcas iniciales | «Esas seis (Recomendada)» | **CONFIRMADA:** Visa, Mastercard, American Express, Cabal, Naranja X y «Otra»; una marca nueva la agrega la plataforma y, hasta que exista su pantalla, se carga con un cambio técnico avisando antes al dueño |
-| Q-C3-1 caracteres de los nombres | cubierta por la lista de nombres confirmada | **CONFIRMADA** |
+| Q-C3-1 caracteres de los nombres | (sin cita literal del dueño: se buscó en `motor2-docs` y no hay una respuesta suya sobre los nombres de cuentas de cobro) | **PENDIENTE** (regla I1: sin cita literal no hay confirmación). Mientras tanto rige la lista de C1, la más cerrada |
 
 **Orden de migraciones (decisión del orquestador, 2026-11-16):** esta etapa va como `20261117112000` y `20261117113000`; C2 va después (`20261117114000` y `20261117115000`) y fusiona la función `"MovimientoCaja_validar"` partiendo de la de esta etapa.
+
+## Una cuenta activa por sucursal (etapa C3b, Q-C3-6 confirmada el 2026-11-16)
+
+**Regla.** Cada sucursal tiene a lo sumo UNA cuenta de cobro ACTIVA. Las inactivas no cuentan y pueden ser varias. Supuesto declarado (el dueño lo corrige): para cambiar de cuenta se desactiva la vigente y se crea o reactiva otra; nada se borra.
+
+**Cómo se hace cumplir.** La barrera real es la base: migración aditiva y reversible `20261117118100_caja_c3b_una_cuenta_por_sucursal` (`migration.sql`, `down.sql` idempotente, `verificacion-previa.sql` que aborta nombrando las sucursales con más de una activa), con un índice único PARCIAL `CuentaDeCobro_una_activa_por_sucursal_key` sobre `("empresaId", "sucursalId") WHERE "activa"` (solo SQL; `schema.prisma` lo documenta con un comentario). Los casos de uso verifican ANTES y devuelven un rechazo de regla con el código cerrado `SUCURSAL_YA_TIENE_CUENTA_ACTIVA` («Esa sucursal ya tiene una cuenta de cobro activa: desactivala antes de activar o crear otra.»); si dos pedidos simultáneos llegaran al índice, su choque (23505) se traduce al MISMO código y no sale como error. No aplicada a ninguna base real (congelado: requiere autorización expresa, base por base).
+
+### crear o activar una cuenta de cobro (crearCuentaDeCobro, reactivarCuentaDeCobro, editarCuentaDeCobro con cambio de sucursal)
+| Caso | Resultado (verificado salvo lo marcado) |
+|---|---|
+| Repetición | crear lo MISMO que ya existe y está activa (nombre, tipo, identificador, sucursal) → `yaExistia: true`, no el rechazo (el chequeo del nombre va antes). Reactivar la que ya es la activa → `yaEstabaActiva`, sin escribir. Verificado en `test/caja/caja-c3b-una-cuenta-por-sucursal.test.ts` |
+| Concurrencia | ocho altas con nombres distintos en la misma sucursal: una crea y siete reciben `SUCURSAL_YA_TIENE_CUENTA_ACTIVA`, ninguna como error; dos reactivaciones a la vez de dos inactivas: una gana y la otra recibe el rechazo. Las arbitra la transacción SERIALIZABLE con la lectura previa; el índice es el respaldo (y quien lo viola directo recibe 23505 con ese nombre de índice: verificado con SQL crudo como `motor2_app`) |
+| Desactivar y reemplazar | desactivar la activa y crear otra funciona; reactivar una inactiva mientras otra está activa → rechazo sin escribir ni auditar (ni sube la versión); liberar primero la otra y reactivar → funciona |
+| Otra sucursal | puede tener su propia activa (el índice es por empresa y sucursal) |
+| Cambio de sucursal de una cuenta | `editarCuentaDeCobro` permite cambiar `sucursalId`: si la cuenta está ACTIVA y la sucursal de destino ya tiene otra activa → `SUCURSAL_YA_TIENE_CUENTA_ACTIVA` sin escribir; una cuenta INACTIVA se puede pasar (no cuenta), y reactivarla allí aplica la misma regla. Cambiar nombre o identificador sin cambiar de sucursal no se ve afectado |
+| Datos de antes | la migración FALLA (23505, sin cambiar nada) si alguna sucursal ya tiene dos activas; `verificacion-previa.sql` las lista y aborta con mensaje. Verificado en una base temporal (`test/aislamiento/caja-c3b-subir-bajar-subir.test.ts`). En producción no hay cuentas de cobro cargadas todavía: NO VERIFICADO (no se leyó ninguna base real) |
+| Sucursal sin cuenta | NO obliga a nada: la cuenta es OPCIONAL en el cobro. Un renglón con un medio de tarjeta, QR o transferencia SIN cuenta de cobro se acepta (queda en el grupo «sin cuenta» del arqueo); el caso de uso no asigna solo la cuenta activa de la sucursal. Verificado en el código (`validarParDeCobro`: `cuentaDeCobroId === null` → válido) y en el oráculo contra la base (estado `NINGUNA` = OK para todos los tipos). Cambiar eso (exigir cuenta o completarla sola) sería otra decisión del dueño: no se hizo |
+| Cambio de permisos | quien no escribe en la sucursal recibe `SUCURSAL_FUERA_DE_ALCANCE` antes que cualquier otra cosa; el chequeo de la activa lee con el alcance del actor y, si algo escapara, el índice rechaza igual |
+| Aplicación (checklist) | correr SIEMPRE `verificacion-previa.sql` ANTES de `prisma migrate deploy`: sobre una base con sucursales con más de una cuenta activa, el deploy falla con el error crudo de Postgres y deja la migración marcada como fallida |
+| Reversa | `down.sql` borra solo el índice (no pierde datos; bajarla dos veces no falla): la sucursal vuelve a poder tener varias activas |
+
+Pruebas: `test/caja/caja-c3b-una-cuenta-por-sucursal.test.ts` (casos de uso y base directa) y `test/aislamiento/caja-c3b-subir-bajar-subir.test.ts` (subir, bajar y subir); `m1-mostrador-subir-bajar-subir` lista la migración nueva en orden. Los tests de C3 que armaban varias activas en una sucursal se ajustaron sin debilitar ninguna regla (cuentas inactivas, o una sola activa por caso dentro de la transacción que se revierte en el oráculo).

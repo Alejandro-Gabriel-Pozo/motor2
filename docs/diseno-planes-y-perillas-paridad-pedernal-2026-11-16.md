@@ -98,6 +98,7 @@ Perilla (cada una del catálogo) × valor (0, igual al uso, mayor; interruptor s
 | M4 | Constancia en el historial de la empresa afectada (I-9) y **segundo factor reciente** para casos sensibles | posible tabla/uso de `RegistroAuditoria` | PENDIENTE |
 | M5+ | Perillas concretas de otros frentes: `recepcion_separada` y `conciliacion_de_tres_vias` (Compras, verificador propuesto en su PR #326), `cajas_por_sucursal` (Caja, PR #327, ámbito SUCURSAL) | ninguna tabla | PENDIENTE de cada frente |
 | Fuera | Precios, cobro, soporte de solo lectura, pantalla de plan para el gerente | — | sugerencias no pedidas |
+| Perilla futura con nombre | `carta_modelo_libro`: en Pedernal el modelo base de la carta es la Lista y fotos, Cuadrícula, Libro y estadísticas son extras de plan; el Libro es «el de Motor2» (ZuluHub-docs `10-ux-ui/03-experiencia-de-la-carta.md`, decisión del dueño de Pedernal 2026-10-13). Cuando haya perillas, el Libro podría pasar a ser un extra y la Lista la base. **Decisión del dueño de Motor2 (2026-11-16, vía @parent): «Libro para todos, como hoy (Recomendada)»: no cambia nada ahora; sin pedido del dueño no se construye** | — | NO PEDIDA (nota de diseño) |
 
 **Por qué M1 no incluye `AjusteDePerilla`:** el dueño pidió planes versionados, y «subir la perilla empresa por empresa» ya tiene su vía barata (la columna de P2). El ajuste es la forma de Pedernal y llega en M3 cuando haya una segunda perilla que subir por empresa.
 

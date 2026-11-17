@@ -57,7 +57,7 @@ describe("Cliente (CRUD)", () => {
     it("dedup case-insensible: no se puede repetir un nombre", async () => {
       await altaCliente("Fulano", 10);
       const r = await altaCliente("FULANO", 20);
-      expect(r).toEqual({ ok: false, mensaje: 'Ya existe un cliente llamado "Fulano".' });
+      expect(r).toEqual({ ok: false, mensaje: 'Ya existe un cliente llamado «Fulano». Elegí otro nombre.' });
       expect(await prisma.cliente.count()).toBe(1);
     });
   });

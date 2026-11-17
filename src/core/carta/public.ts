@@ -16,6 +16,8 @@ export { cantidadDeLaParte, conectorDeLaParte, detalleDelBloque, incluyeDeLaSecc
 export type { BloqueDeOpciones, ParteDeIncluye } from "./incluye-en-carta";
 export { VERSION_DE_LA_CARTA_EN_CACHE, etiquetaDeCacheDeCartasPublicas, proyectarCartaPublica } from "./carta-publica";
 export { nombreDeCarta, precioDeCarta } from "./armar-menu";
+// O1 (orden de renglones): el modo de orden de una sección por sucursal y la única regla que ordena (la usan la carta, la lectura de gestión, el guard y los casos de uso).
+export { MODOS_DE_ORDEN_DE_SECCION, MODO_DE_ORDEN_POR_DEFECTO, esModoDeOrdenDeSeccion, modoVigente, ordenarRenglonesDeSeccion, type ModoDeOrdenDeSeccion } from "./orden-de-seccion";
 export { nombreParaMostrar } from "./nombre-para-mostrar";
 export { buscarChoqueEntreNombres, claveDeNombreDeCarta, estadoDelNombreDeCarta, mensajeDeChoqueDeNombre, type ChoqueDeNombre, type NombreUsadoEnLaCarta } from "./nombre-en-carta";
 export { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, type AudienciaDePromo } from "./promo-sucursal";

@@ -8,6 +8,11 @@
   PERMISO admin:anular_compra ver=true editar=true
   PERMISO admin:anular_venta ver=true editar=true
   PERMISO admin:apagar_cuenta_empresa ver=true editar=true
+  PERMISO admin:caja_abrir_sesion ver=true editar=true
+  PERMISO admin:caja_anular_movimiento_ajeno ver=true editar=true
+  PERMISO admin:caja_cerrar_sesion ver=true editar=true
+  PERMISO admin:caja_mover_efectivo ver=true editar=true
+  PERMISO admin:caja_ver ver=true editar=true
   PERMISO admin:calibrar_rendimiento_local ver=true editar=true
   PERMISO admin:cancelar_conteo ver=true editar=true
   PERMISO admin:capacidades_sucursal ver=true editar=true
@@ -26,6 +31,7 @@
   PERMISO admin:categoria_alta ver=true editar=true
   PERMISO admin:categorias ver=true editar=true
   PERMISO admin:clientes ver=true editar=true
+  PERMISO admin:cobrar_cuenta ver=true editar=true
   PERMISO admin:comparar_precios ver=true editar=true
   PERMISO admin:compra_recibir ver=true editar=true
   PERMISO admin:compra_repartir ver=true editar=true
@@ -141,6 +147,11 @@
   PERMISO operador:anular_compra ver=false editar=false
   PERMISO operador:anular_venta ver=false editar=false
   PERMISO operador:apagar_cuenta_empresa ver=false editar=false
+  PERMISO operador:caja_abrir_sesion ver=false editar=false
+  PERMISO operador:caja_anular_movimiento_ajeno ver=false editar=false
+  PERMISO operador:caja_cerrar_sesion ver=false editar=false
+  PERMISO operador:caja_mover_efectivo ver=false editar=false
+  PERMISO operador:caja_ver ver=false editar=false
   PERMISO operador:calibrar_rendimiento_local ver=false editar=false
   PERMISO operador:cancelar_conteo ver=false editar=false
   PERMISO operador:capacidades_sucursal ver=false editar=false
@@ -159,6 +170,7 @@
   PERMISO operador:categoria_alta ver=true editar=true
   PERMISO operador:categorias ver=false editar=false
   PERMISO operador:clientes ver=false editar=false
+  PERMISO operador:cobrar_cuenta ver=false editar=false
   PERMISO operador:comparar_precios ver=false editar=false
   PERMISO operador:compra_recibir ver=false editar=false
   PERMISO operador:compra_repartir ver=false editar=false
@@ -271,16 +283,16 @@
   MOTIVOS Devolución de cliente (no revendible), Mal preparado / quemado, Otro, Robo o faltante, Roto o caído, Vencido
   DESTINOS Degustación / cortesía, Elaboración interna, Evento, Otro, Personal
   SUCURSALES Central/true, Norte/true
-  ACCIONES 133
+  ACCIONES 139
 ### 0b. Primer gerente incorporado
   resultado: {"ok":true,"sucursalId":"sucursal1","sucursalNombre":"Central","membresiaId":"id#1"}
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true rolesPropiosMax=0 slug=E zonaHoraria=America/Argentina/Buenos_Aires
   USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp1 rolEmpresa=gerente usuarioId=gerente
   USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc1 notas=Alta por invitación de la plataforma. rolId=rolAdmin sucursalId=sucursal1 usuarioId=gerente
   USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc2 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
 ### 1. Invitar a una persona a dos sucursales
   resultado: {"ok":true,"invitacionId":"id#2","accion":"extendida","token":null}
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true rolesPropiosMax=0 slug=E zonaHoraria=America/Argentina/Buenos_Aires
   INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=PENDIENTE hashToken=<enmascarado> id=inv1 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
   INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
   INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#4 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolAdmin sucursalId=sucursal2
@@ -289,7 +301,7 @@
   USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc2 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
 ### 2. Rotar el enlace de la invitación pendiente
   resultado: {"ok":true,"invitacionId":"inv1","accion":"rotada","token":"<token>"}
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true rolesPropiosMax=0 slug=E zonaHoraria=America/Argentina/Buenos_Aires
   INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=PENDIENTE hashToken=<enmascarado> id=inv1 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
   INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
   INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#4 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolAdmin sucursalId=sucursal2
@@ -298,7 +310,7 @@
   USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc2 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
 ### 3. Aceptar la invitación de usuario
   resultado: {"ok":true,"empresaId":"E","nombreEmpresa":"Empresa huella"}
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true rolesPropiosMax=0 slug=E zonaHoraria=America/Argentina/Buenos_Aires
   INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
   INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
   INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#4 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolAdmin sucursalId=sucursal2
@@ -315,7 +327,7 @@
   AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
 ### 4. Aceptar de nuevo el mismo enlace
   resultado: {"ok":false,"mensaje":"Este enlace ya no sirve: venció, se usó o la plataforma lo canceló. Pedile a la plataforma que te mande otro."}
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true rolesPropiosMax=0 slug=E zonaHoraria=America/Argentina/Buenos_Aires
   INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
   INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
   INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#4 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolAdmin sucursalId=sucursal2
@@ -332,7 +344,7 @@
   AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
 ### 4b. Un enlace que no existe
   resultado: {"ok":false,"mensaje":"Este enlace ya no sirve: venció, se usó o la plataforma lo canceló. Pedile a la plataforma que te mande otro."}
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true rolesPropiosMax=0 slug=E zonaHoraria=America/Argentina/Buenos_Aires
   INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
   INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
   INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#4 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolAdmin sucursalId=sucursal2
@@ -349,7 +361,7 @@
   AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
 ### 5. Invitar a otra persona y revocar su invitación
   resultado: {"invitada":{"ok":true,"invitacionId":"id#10","accion":"creada","token":"<token>"},"revocada":true}
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true rolesPropiosMax=0 slug=E zonaHoraria=America/Argentina/Buenos_Aires
   INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
   INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=otra@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv2 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
   INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
@@ -368,7 +380,7 @@
   AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
 ### 6a. Traspaso a alguien que no es de la empresa
   resultado: {"ok":false,"mensaje":"Ese usuario no pertenece a esta empresa."}
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true rolesPropiosMax=0 slug=E zonaHoraria=America/Argentina/Buenos_Aires
   INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
   INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=otra@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv2 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
   INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
@@ -387,7 +399,7 @@
   AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
 ### 6b. Traspaso a quien ya es el gerente
   resultado: {"ok":false,"mensaje":"Esa persona ya es el gerente de la empresa."}
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true rolesPropiosMax=0 slug=E zonaHoraria=America/Argentina/Buenos_Aires
   INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
   INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=otra@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv2 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
   INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
@@ -406,7 +418,7 @@
   AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
 ### 6c. Traspaso a la persona nueva (admin en Norte)
   resultado: {"ok":true,"mensaje":"«nueva-persona@gmail.com» es ahora el gerente de la empresa.","gerenteAnteriorId":"gerente"}
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true rolesPropiosMax=0 slug=E zonaHoraria=America/Argentina/Buenos_Aires
   INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
   INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=otra@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv2 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
   INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
@@ -433,6 +445,11 @@
   PERMISO admin:anular_compra ver=true editar=true
   PERMISO admin:anular_venta ver=true editar=true
   PERMISO admin:apagar_cuenta_empresa ver=true editar=true
+  PERMISO admin:caja_abrir_sesion ver=true editar=true
+  PERMISO admin:caja_anular_movimiento_ajeno ver=true editar=true
+  PERMISO admin:caja_cerrar_sesion ver=true editar=true
+  PERMISO admin:caja_mover_efectivo ver=true editar=true
+  PERMISO admin:caja_ver ver=true editar=true
   PERMISO admin:calibrar_rendimiento_local ver=true editar=true
   PERMISO admin:cancelar_conteo ver=true editar=true
   PERMISO admin:capacidades_sucursal ver=true editar=true
@@ -451,6 +468,7 @@
   PERMISO admin:categoria_alta ver=true editar=true
   PERMISO admin:categorias ver=true editar=true
   PERMISO admin:clientes ver=true editar=true
+  PERMISO admin:cobrar_cuenta ver=true editar=true
   PERMISO admin:comparar_precios ver=true editar=true
   PERMISO admin:compra_recibir ver=true editar=true
   PERMISO admin:compra_repartir ver=true editar=true
@@ -566,6 +584,11 @@
   PERMISO operador:anular_compra ver=false editar=false
   PERMISO operador:anular_venta ver=false editar=false
   PERMISO operador:apagar_cuenta_empresa ver=false editar=false
+  PERMISO operador:caja_abrir_sesion ver=false editar=false
+  PERMISO operador:caja_anular_movimiento_ajeno ver=false editar=false
+  PERMISO operador:caja_cerrar_sesion ver=false editar=false
+  PERMISO operador:caja_mover_efectivo ver=false editar=false
+  PERMISO operador:caja_ver ver=false editar=false
   PERMISO operador:calibrar_rendimiento_local ver=false editar=false
   PERMISO operador:cancelar_conteo ver=false editar=false
   PERMISO operador:capacidades_sucursal ver=false editar=false
@@ -584,6 +607,7 @@
   PERMISO operador:categoria_alta ver=true editar=true
   PERMISO operador:categorias ver=false editar=false
   PERMISO operador:clientes ver=false editar=false
+  PERMISO operador:cobrar_cuenta ver=false editar=false
   PERMISO operador:comparar_precios ver=false editar=false
   PERMISO operador:compra_recibir ver=false editar=false
   PERMISO operador:compra_repartir ver=false editar=false
@@ -696,11 +720,11 @@
   MOTIVOS Devolución de cliente (no revendible), Mal preparado / quemado, Otro, Robo o faltante, Roto o caído, Vencido
   DESTINOS Degustación / cortesía, Elaboración interna, Evento, Otro, Personal
   SUCURSALES Casa central/true
-  ACCIONES 133
+  ACCIONES 139
 ### 7a. Aceptar con un CUIT inválido
   resultado: {"ok":false,"mensaje":"El CUIT no tiene un formato válido. Escribilo con 11 números."}
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F llevaIvaDeCompras=false moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F llevaIvaDeCompras=false moneda=ARS nombre=Empresa en alta permisosEditables=true rolesPropiosMax=0 slug=F zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true rolesPropiosMax=0 slug=E zonaHoraria=America/Argentina/Buenos_Aires
   INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=dueno@gmail.com empresaId=F enviadaEn=null estado=PENDIENTE hashToken=<enmascarado> id=inv1 invitadoPorId=null revocadaEn=null rolEmpresa=gerente venceEn=<enmascarado>
   INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv2 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
   INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=otra@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv3 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
@@ -720,8 +744,8 @@
   AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
 ### 7b. Aceptar con un CUIT válido
   resultado: {"ok":true,"empresaId":"F","nombreEmpresa":"Empresa en alta"}
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F llevaIvaDeCompras=false moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F llevaIvaDeCompras=false moneda=ARS nombre=Empresa en alta permisosEditables=true rolesPropiosMax=0 slug=F zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true rolesPropiosMax=0 slug=E zonaHoraria=America/Argentina/Buenos_Aires
   INVITACION aceptadaEn=<enmascarado> aceptadaPorId=dueño creadaEn=<enmascarado> cuitDeclarado=30712345671 email=dueno@gmail.com empresaId=F enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=null revocadaEn=null rolEmpresa=gerente venceEn=<enmascarado>
   INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv2 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
   INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=otra@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv3 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
@@ -745,8 +769,8 @@
   AUDITORIA actorId=dueño campo=activo creadoEn=<enmascarado> descripcion=Usuario "dueno@gmail.com" en la sucursal "Casa central": alta por invitación empresaId=F entidad=UsuarioSucursal entidadId=usuc1 id=id#15 sucursalId=id#13 valorAnterior=null valorNuevo=true
 ### 7c. Aceptar otra vez el mismo enlace
   resultado: {"ok":false,"mensaje":"Este enlace ya no sirve: venció, se usó o la plataforma lo canceló. Pedile a la plataforma que te mande otro."}
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F llevaIvaDeCompras=false moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F llevaIvaDeCompras=false moneda=ARS nombre=Empresa en alta permisosEditables=true rolesPropiosMax=0 slug=F zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true rolesPropiosMax=0 slug=E zonaHoraria=America/Argentina/Buenos_Aires
   INVITACION aceptadaEn=<enmascarado> aceptadaPorId=dueño creadaEn=<enmascarado> cuitDeclarado=30712345671 email=dueno@gmail.com empresaId=F enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=null revocadaEn=null rolEmpresa=gerente venceEn=<enmascarado>
   INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv2 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
   INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=otra@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv3 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
@@ -770,8 +794,8 @@
   AUDITORIA actorId=dueño campo=activo creadoEn=<enmascarado> descripcion=Usuario "dueno@gmail.com" en la sucursal "Casa central": alta por invitación empresaId=F entidad=UsuarioSucursal entidadId=usuc1 id=id#15 sucursalId=id#13 valorAnterior=null valorNuevo=true
 ### 8a. Activar módulos
   resultado: {"empresaId":"E","cambiados":[{"modulo":"stock","antes":null,"despues":"ACTIVO"},{"modulo":"salon","antes":null,"despues":"ACTIVO"}],"activos":["salon","stock"],"efectivos":["administracion","catalogo_basico","clientes_basico","recetas","salon","stock"]}
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F llevaIvaDeCompras=false moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F llevaIvaDeCompras=false moneda=ARS nombre=Empresa en alta permisosEditables=true rolesPropiosMax=0 slug=F zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true rolesPropiosMax=0 slug=E zonaHoraria=America/Argentina/Buenos_Aires
   INVITACION aceptadaEn=<enmascarado> aceptadaPorId=dueño creadaEn=<enmascarado> cuitDeclarado=30712345671 email=dueno@gmail.com empresaId=F enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=null revocadaEn=null rolEmpresa=gerente venceEn=<enmascarado>
   INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv2 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
   INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=otra@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv3 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
@@ -797,8 +821,8 @@
   AUDITORIA actorId=dueño campo=activo creadoEn=<enmascarado> descripcion=Usuario "dueno@gmail.com" en la sucursal "Casa central": alta por invitación empresaId=F entidad=UsuarioSucursal entidadId=usuc1 id=id#15 sucursalId=id#13 valorAnterior=null valorNuevo=true
 ### 8b. Desactivar un módulo y activar otro
   resultado: {"empresaId":"E","cambiados":[{"modulo":"carta","antes":null,"despues":"ACTIVO"},{"modulo":"salon","antes":"ACTIVO","despues":"INACTIVO"}],"activos":["carta","stock"],"efectivos":["administracion","carta","catalogo_basico","stock"]}
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F llevaIvaDeCompras=false moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F llevaIvaDeCompras=false moneda=ARS nombre=Empresa en alta permisosEditables=true rolesPropiosMax=0 slug=F zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true rolesPropiosMax=0 slug=E zonaHoraria=America/Argentina/Buenos_Aires
   INVITACION aceptadaEn=<enmascarado> aceptadaPorId=dueño creadaEn=<enmascarado> cuitDeclarado=30712345671 email=dueno@gmail.com empresaId=F enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=null revocadaEn=null rolEmpresa=gerente venceEn=<enmascarado>
   INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv2 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
   INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=otra@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv3 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
@@ -825,8 +849,8 @@
   AUDITORIA actorId=dueño campo=activo creadoEn=<enmascarado> descripcion=Usuario "dueno@gmail.com" en la sucursal "Casa central": alta por invitación empresaId=F entidad=UsuarioSucursal entidadId=usuc1 id=id#15 sucursalId=id#13 valorAnterior=null valorNuevo=true
 ### 8c. Repetir el mismo pedido (sin cambios)
   resultado: {"empresaId":"E","cambiados":[],"activos":["carta","stock"],"efectivos":["administracion","carta","catalogo_basico","stock"]}
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F llevaIvaDeCompras=false moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F llevaIvaDeCompras=false moneda=ARS nombre=Empresa en alta permisosEditables=true rolesPropiosMax=0 slug=F zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true rolesPropiosMax=0 slug=E zonaHoraria=America/Argentina/Buenos_Aires
   INVITACION aceptadaEn=<enmascarado> aceptadaPorId=dueño creadaEn=<enmascarado> cuitDeclarado=30712345671 email=dueno@gmail.com empresaId=F enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=null revocadaEn=null rolEmpresa=gerente venceEn=<enmascarado>
   INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv2 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
   INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=otra@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv3 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
@@ -852,9 +876,9 @@
   AUDITORIA actorId=dueño campo=rolEmpresa creadoEn=<enmascarado> descripcion=Cuenta de "dueno@gmail.com" en la empresa: acepta la invitación como gerente empresaId=F entidad=UsuarioEmpresa entidadId=dueño id=id#14 sucursalId=null valorAnterior=null valorNuevo=gerente
   AUDITORIA actorId=dueño campo=activo creadoEn=<enmascarado> descripcion=Usuario "dueno@gmail.com" en la sucursal "Casa central": alta por invitación empresaId=F entidad=UsuarioSucursal entidadId=usuc1 id=id#15 sucursalId=id#13 valorAnterior=null valorNuevo=true
 ### 8d. Perfil lite de política
-  resultado: {"empresaId":"E","politica":{"permisosEditables":false,"dosPaneles":false},"cambiadas":["permisosEditables","dosPaneles"]}
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F llevaIvaDeCompras=false moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=false estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=false slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  resultado: {"empresaId":"E","politica":{"permisosEditables":false,"dosPaneles":false,"rolesPropiosMax":0},"cambiadas":["permisosEditables","dosPaneles"]}
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F llevaIvaDeCompras=false moneda=ARS nombre=Empresa en alta permisosEditables=true rolesPropiosMax=0 slug=F zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=false estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=false rolesPropiosMax=0 slug=E zonaHoraria=America/Argentina/Buenos_Aires
   INVITACION aceptadaEn=<enmascarado> aceptadaPorId=dueño creadaEn=<enmascarado> cuitDeclarado=30712345671 email=dueno@gmail.com empresaId=F enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=null revocadaEn=null rolEmpresa=gerente venceEn=<enmascarado>
   INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv2 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
   INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=otra@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv3 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
@@ -880,9 +904,9 @@
   AUDITORIA actorId=dueño campo=rolEmpresa creadoEn=<enmascarado> descripcion=Cuenta de "dueno@gmail.com" en la empresa: acepta la invitación como gerente empresaId=F entidad=UsuarioEmpresa entidadId=dueño id=id#14 sucursalId=null valorAnterior=null valorNuevo=gerente
   AUDITORIA actorId=dueño campo=activo creadoEn=<enmascarado> descripcion=Usuario "dueno@gmail.com" en la sucursal "Casa central": alta por invitación empresaId=F entidad=UsuarioSucursal entidadId=usuc1 id=id#15 sucursalId=id#13 valorAnterior=null valorNuevo=true
 ### 8e. Una perilla suelta que pisa el perfil
-  resultado: {"empresaId":"E","politica":{"permisosEditables":false,"dosPaneles":true},"cambiadas":["dosPaneles"]}
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F llevaIvaDeCompras=false moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=false slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  resultado: {"empresaId":"E","politica":{"permisosEditables":false,"dosPaneles":true,"rolesPropiosMax":0},"cambiadas":["dosPaneles"]}
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F llevaIvaDeCompras=false moneda=ARS nombre=Empresa en alta permisosEditables=true rolesPropiosMax=0 slug=F zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=false rolesPropiosMax=0 slug=E zonaHoraria=America/Argentina/Buenos_Aires
   INVITACION aceptadaEn=<enmascarado> aceptadaPorId=dueño creadaEn=<enmascarado> cuitDeclarado=30712345671 email=dueno@gmail.com empresaId=F enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=null revocadaEn=null rolEmpresa=gerente venceEn=<enmascarado>
   INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv2 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
   INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=otra@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv3 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
@@ -909,8 +933,8 @@
   AUDITORIA actorId=dueño campo=activo creadoEn=<enmascarado> descripcion=Usuario "dueno@gmail.com" en la sucursal "Casa central": alta por invitación empresaId=F entidad=UsuarioSucursal entidadId=usuc1 id=id#15 sucursalId=id#13 valorAnterior=null valorNuevo=true
 ### 9. registrarCambioAuditado: no-op, número, booleano, alta y baja
   resultado: "ver filas AUDITORIA"
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F llevaIvaDeCompras=false moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires
-  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=false slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F llevaIvaDeCompras=false moneda=ARS nombre=Empresa en alta permisosEditables=true rolesPropiosMax=0 slug=F zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=false rolesPropiosMax=0 slug=E zonaHoraria=America/Argentina/Buenos_Aires
   INVITACION aceptadaEn=<enmascarado> aceptadaPorId=dueño creadaEn=<enmascarado> cuitDeclarado=30712345671 email=dueno@gmail.com empresaId=F enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=null revocadaEn=null rolEmpresa=gerente venceEn=<enmascarado>
   INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv2 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
   INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=otra@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv3 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>

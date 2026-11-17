@@ -1,6 +1,8 @@
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { esIdentificador } from "@/core/datos/identificador";
 import type { ComandoCancelarConteo } from "./cancelar-conteo.schema";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 
 /**
  * Guard del comando «cancelar un conteo físico» (formato, ANTES de abrir la transacción; puro). `conteoId` tiene que ser un texto no
@@ -9,6 +11,6 @@ import type { ComandoCancelarConteo } from "./cancelar-conteo.schema";
  */
 export function guardComandoCancelarConteo(entrada: unknown): ResultadoDato<ComandoCancelarConteo> {
   const { conteoId } = (entrada ?? {}) as { conteoId?: unknown };
-  if (!esIdentificador(conteoId)) return rechazar("formato", "No se encontró ese conteo.");
+  if (!esIdentificador(conteoId)) return rechazar("formato", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.conteo }));
   return aceptar(entrada as ComandoCancelarConteo);
 }
