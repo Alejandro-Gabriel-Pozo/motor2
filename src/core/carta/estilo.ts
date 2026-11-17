@@ -2,6 +2,7 @@ import { colorDeTextoLegible, resolveHeroInk, resolvePrimaryForeground } from ".
 import { variablesDeLaEscala } from "./escala";
 import { canalesDeMarcaHex, marcaGuardadaLegible, tintaSobreMarca } from "./marca-derivada";
 import { CLAVES_TEMA_V1, validarValorTema, type ClaveTema, type DefinicionClaveTema, type FamiliaTipografica } from "./tema";
+import { DEFAULTS_DEL_LIBRO_MAQUETA, LIBRO_ESTILO_MAQUETA } from "./libro-estilo-maqueta";
 
 /**
  * ADR-006 (`docs/adr/ADR-006-carta-como-modulo-interno.md`), Fase 2: resuelve el Json guardado de `TemaCartaSucursal.valores`
@@ -128,7 +129,9 @@ function normalizarFuente(v: string): string {
 function valorResuelto(obj: Record<string, unknown>, d: DefinicionClaveTema): string {
   const crudo = Object.hasOwn(obj, d.clave) ? obj[d.clave] : undefined;
   const valido = typeof crudo === "string" ? validarValorTema(d.clave, crudo) : null;
-  const v = valido && valido.ok && valido.valor !== null ? valido.valor : d.defaultCarta;
+  // Estilo de la maqueta (`libro-estilo-maqueta.ts`): lo que la sucursal no cargó toma el por defecto de la maqueta; lo cargado manda.
+  const porDefecto = LIBRO_ESTILO_MAQUETA ? (DEFAULTS_DEL_LIBRO_MAQUETA[d.clave] ?? d.defaultCarta) : d.defaultCarta;
+  const v = valido && valido.ok && valido.valor !== null && valido.valor !== "" ? valido.valor : porDefecto;
   return d.tipo === "tamanoFuente" || d.tipo === "altoBandaMobile" ? normalizarFuente(v) : v;
 }
 
