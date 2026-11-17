@@ -6,6 +6,8 @@ import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate"
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { agruparVentasPorDia, filtrarEventosKardex, quitarDineroDeEventos, resolverRangoHistorial, resumirCompras, type QueMostrar, type RangoHistorial } from "@/core/reportes/public";
 import { obtenerHistorialProducto, obtenerIngredientesRecetaVigente } from "@/server/consultas/reportes/historial-producto";
+import { leerProductoDelEspacio } from "@/server/consultas/catalogo/espacio-del-producto";
+import { capacidadesDelProducto } from "@/core/catalogo/public";
 import { HistorialFiltros } from "./historial-filtros";
 import { TablaHistorialEventos } from "./tabla-historial";
 import { GraficoSaldoCorriente } from "./grafico-saldo";
@@ -65,6 +67,10 @@ export default async function HistorialProductoPage({
   // Sin la clave de importes el dinero no sale del servidor: ocultar la columna al dibujar no alcanza, los props de un componente cliente viajan en el payload.
   const eventos = historial ? (mostrarDinero ? historial.eventos : quitarDineroDeEventos(historial.eventos)) : [];
 
+  // Qué resumen lleva (E4-4): una MP se compra, un PV se vende y una Reventa, las dos. Sin el dato (no debería pasar) no se muestra ninguno de los dos: todo nace cerrado.
+  const producto = historial ? await leerProductoDelEspacio(ctx.db, historial.productoId) : null;
+  const puede = producto ? capacidadesDelProducto({ tipo: producto.tipo, seProduce: producto.seProduce, claseDeUso: producto.claseDeUso }) : null;
+
   // Solo para un PV sin stock propio (§4, decisiones 7-8) — para el resto, ni se consulta.
   const ingredientes = historial && !historial.tieneStockPropio ? await obtenerIngredientesRecetaVigente(historial.productoId, ctx.db, ctx.sucursalId) : null;
 
@@ -109,8 +115,8 @@ export default async function HistorialProductoPage({
           ) : (
             <CartelSinStockPropio productoId={historial.productoId} ingredientes={ingredientes ?? []} />
           )}
-          {historial.tipo === "MP" && <ComoSeCompro resumen={resumirCompras(eventos)} unidad={historial.unidadStockNombre} mostrarDinero={mostrarDinero} zona={ctx.empresaZonaHoraria} />}
-          {historial.tipo === "PV" && <ComoSeVendio filas={agruparVentasPorDia(eventos, ctx.empresaZonaHoraria)} mostrarDinero={mostrarDinero} />}
+          {puede?.seCompra && <ComoSeCompro resumen={resumirCompras(eventos)} unidad={historial.unidadStockNombre} mostrarDinero={mostrarDinero} zona={ctx.empresaZonaHoraria} />}
+          {puede?.seVende && <ComoSeVendio filas={agruparVentasPorDia(eventos, ctx.empresaZonaHoraria)} mostrarDinero={mostrarDinero} />}
           <details className="mt-2">
             <summary className="cursor-pointer text-sm font-medium">Movimiento por movimiento (auditoría)</summary>
             <div className="mt-2">

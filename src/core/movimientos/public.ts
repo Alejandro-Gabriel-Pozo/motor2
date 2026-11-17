@@ -23,6 +23,7 @@ export {
   productoValidoParaProceso,
   DECIMALES_DE_STOCK,
   redondearACantidadDeUnidad,
+  seVendeDeSuStockPropio,
   tieneStockReal,
 } from "./transiciones";
 export { DESTINOS_CONSUMO_SEMILLA, MOTIVOS_MERMA_SEMILLA } from "./motivos-semilla";

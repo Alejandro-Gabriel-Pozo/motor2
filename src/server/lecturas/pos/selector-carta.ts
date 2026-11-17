@@ -77,7 +77,7 @@ export async function cargarSelectorCartaPos(
     conCarta ? resolverMenuCarta(sucursalId, db, ahora, precioLocalActivoLeido, "salon", true) : Promise.resolve(null),
     db.producto.findMany({
       where: { tipo: "PV", ...whereDisponibleEn(sucursalId), ...whereNoOcultoEn(sucursalId) },
-      select: { id: true, codigo: true, nombre: true, precioVenta: true, pasoVenta: true, seProduce: true, unidadStock: { select: { decimales: true } } },
+      select: { id: true, codigo: true, nombre: true, precioVenta: true, pasoVenta: true, seProduce: true, claseDeUso: true, unidadStock: { select: { decimales: true } } },
     }),
     preciosLocalesVigentes(sucursalId, db, undefined, precioLocalActivoLeido),
     // P18 / D18: el descuento de producto es de la Carta; sin el módulo no se lee y el precio mostrado es el de lista (el que `agregarItems` congela).
@@ -124,7 +124,7 @@ export async function cargarSelectorCartaPos(
       ...(aplicado.precioLista !== null ? { precioLista: aplicado.precioLista } : {}),
       decimales: p.unidadStock.decimales,
       pasoVenta: p.pasoVenta !== null ? Number(p.pasoVenta) : null,
-      tieneStockReal: tieneStockReal("PV", p.seProduce),
+      tieneStockReal: tieneStockReal("PV", p.seProduce, p.claseDeUso),
     };
   });
   const generos: GenerosSelectorCartaPos = {

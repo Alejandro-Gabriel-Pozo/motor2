@@ -5,7 +5,7 @@ import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/li
 import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { listarPresentaciones } from "@/server/actions/catalogo/productos";
 import { leerProductoDelEspacio } from "@/server/consultas/catalogo/espacio-del-producto";
-import { PRESENTACIONES_VISIBLES } from "@/core/catalogo/public";
+import { PRESENTACIONES_VISIBLES, capacidadesDelProducto } from "@/core/catalogo/public";
 import { formatearCantidad } from "@/core/formato-de-numero";
 import { cargarMarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/datos-del-marco";
 import { MarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/marco";
@@ -29,7 +29,7 @@ export default async function CompraDelProductoPage({ params }: { params: Promis
   const { id } = await params;
   const producto = await leerProductoDelEspacio(ctx.db, id);
   if (!producto) notFound();
-  if (producto.tipo !== "MP" || producto.esAnclaDeAdicional || !PRESENTACIONES_VISIBLES) {
+  if (!capacidadesDelProducto({ tipo: producto.tipo, seProduce: producto.seProduce, claseDeUso: producto.claseDeUso }).seCompra || producto.esAnclaDeAdicional || !PRESENTACIONES_VISIBLES) {
     return (
       <div className="flex flex-col gap-2">
         <p className="text-sm">
@@ -43,7 +43,7 @@ export default async function CompraDelProductoPage({ params }: { params: Promis
 
   return (
     <MarcoDelEspacio
-      producto={{ id: producto.id, nombre: producto.nombre, codigo: producto.codigo, tipo: "MP", modoDeVenta: producto.modoDeVenta, disponibleAca: marco.disponibleAca, sucursalNombre: ctx.sucursalNombre }}
+      producto={{ id: producto.id, nombre: producto.nombre, codigo: producto.codigo, tipo: producto.tipo, modoDeVenta: producto.modoDeVenta, disponibleAca: marco.disponibleAca, sucursalNombre: ctx.sucursalNombre }}
       pasos={marco.pasos}
       actual="compra"
       ancho="ancho"

@@ -153,7 +153,7 @@ export async function obtenerHistorialProducto(
     eventos: eventosVisibles,
     totalMovimientos,
     totalConteos,
-    tieneStockPropio: tieneStockReal(producto.tipo, producto.seProduce),
+    tieneStockPropio: tieneStockReal(producto.tipo, producto.seProduce, producto.claseDeUso),
   };
 }
 

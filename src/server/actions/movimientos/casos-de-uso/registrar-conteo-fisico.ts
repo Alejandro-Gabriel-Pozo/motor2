@@ -111,7 +111,7 @@ export async function registrarConteoFisicoCasoDeUso(
     }
     // «Ocultar» (diseño 2026-11-15, R-10): un producto oculto no se cuenta. Después de «no disponible» (gana el desactivado).
     if (await productoOcultoEn(actor.sucursalId, producto.id, tx)) return fracaso("PRODUCTO_OCULTO", MENSAJE_PRODUCTO_OCULTO);
-    if (!tieneStockReal(producto.tipo, producto.seProduce)) {
+    if (!tieneStockReal(producto.tipo, producto.seProduce, producto.claseDeUso)) {
       return fracaso("SIN_STOCK_REAL", `El conteo físico es sobre materias primas (MP) o productos "Se produce", no sobre PV comunes.`);
     }
 

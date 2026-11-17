@@ -22,7 +22,7 @@ export async function verificarProductoTransferible(
 ): Promise<{ ok: true; producto: ProductoParaTraspaso } | { ok: false; mensaje: string }> {
   const producto = await cargarProductoParaTraspaso(tx, productoId);
   if (!producto) return { ok: false, mensaje: MENSAJE_PRODUCTO_NO_EXISTE };
-  if (!tieneStockReal(producto.tipo, producto.seProduce)) {
+  if (!tieneStockReal(producto.tipo, producto.seProduce, producto.claseDeUso)) {
     return { ok: false, mensaje: `"${producto.nombre}" no tiene stock real — no se puede transferir.` };
   }
   for (const s of sucursales) {

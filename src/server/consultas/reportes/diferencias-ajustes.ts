@@ -2,7 +2,7 @@ import "server-only";
 import { OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION } from "@/core/movimientos/public";
 import { construirIndiceRecetas, construirMapaProductos } from "@/server/lecturas/reportes/comun";
 import type { Db } from "@/lib/db-tipos";
-import { redondearCantidad } from "@/core/reportes/public";
+import { capacidadesEnReportes, redondearCantidad } from "@/core/reportes/public";
 import { resolverProximoConteo } from "@/core/stock/public";
 import type { EstadoDiferencia, RecetaQueUsaInsumo, FilaDiferenciaAjuste, InfoProductoReporte } from "@/core/reportes/public";
 
@@ -78,7 +78,7 @@ export async function generarReporteDiferenciasAjustes(
   const filas: FilaDiferenciaAjuste[] = [];
 
   for (const info of productos.values()) {
-    if (info.tipo !== "MP") continue;
+    if (!capacidadesEnReportes(info).seCompra) continue; // lo que se compra y lleva stock propio: una MP o, desde E4-4, una Reventa
 
     const enReceta = mpsEnRecetas.has(info.id);
     const grupo: "a" | "b" = !enReceta ? "a" : "b";

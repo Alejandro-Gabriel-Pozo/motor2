@@ -23,7 +23,7 @@ export async function calcularValuacionInventario(sucursalId: string, db: Db): P
     where: whereDisponibleEn(sucursalId),
     include: { unidadStock: true, insumo: true },
   });
-  const elegibles = productos.filter((p) => tieneStockReal(p.tipo, p.seProduce));
+  const elegibles = productos.filter((p) => tieneStockReal(p.tipo, p.seProduce, p.claseDeUso));
   const productoPorId = new Map(elegibles.map((p) => [p.id, p]));
 
   const [saldos, costos] = await Promise.all([

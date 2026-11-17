@@ -1,5 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
+import { capacidadesDelProducto } from "@/core/catalogo/public";
 import {
   cantidadesEfectivas,
   validarGrupo,
@@ -203,14 +204,14 @@ export async function insumosDeLosConsumos(
   consumos: readonly ConsumoDeConfiguracion[]
 ): Promise<{ ok: true; consumos: (ConsumoDeConfiguracion & { unidadId: string })[]; nombres: Map<string, string> } | { ok: false; mensaje: string }> {
   const ids = [...new Set(consumos.flatMap((c) => [c.insumoProductoId, ...(c.reemplazaAProductoId ? [c.reemplazaAProductoId] : [])]))];
-  const productos = ids.length === 0 ? [] : await tx.producto.findMany({ where: { id: { in: ids } }, select: { id: true, nombre: true, tipo: true, unidadStockId: true } });
+  const productos = ids.length === 0 ? [] : await tx.producto.findMany({ where: { id: { in: ids } }, select: { id: true, nombre: true, tipo: true, seProduce: true, claseDeUso: true, unidadStockId: true } });
   const porId = new Map(productos.map((p) => [p.id, p]));
   for (const [i, c] of consumos.entries()) {
     for (const id of [c.insumoProductoId, c.reemplazaAProductoId]) {
       if (id === null) continue;
       const p = porId.get(id);
       if (!p) return { ok: false, mensaje: `La línea ${i + 1} del consumo nombra un insumo que no se encontró.` };
-      if (p.tipo !== "MP") return { ok: false, mensaje: `La línea ${i + 1} del consumo nombra «${p.nombre}», que no es una materia prima.` };
+      if (!capacidadesDelProducto(p).loConsumeUnaOpcion) return { ok: false, mensaje: `La línea ${i + 1} del consumo nombra «${p.nombre}», que no es una materia prima.` };
     }
   }
   return {

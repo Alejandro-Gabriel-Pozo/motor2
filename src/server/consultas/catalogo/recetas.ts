@@ -1,6 +1,6 @@
 import "server-only";
 import type { Db } from "@/lib/db-tipos";
-import { ALCANCE_CENTRAL, incluirRecetaVigente, whereConReceta, whereDisponibleEnAlguna } from "@/core/catalogo/public";
+import { ALCANCE_CENTRAL, incluirRecetaVigente, whereConReceta, whereDisponibleEnAlguna, whereEsIngredienteDeReceta } from "@/core/catalogo/public";
 
 /**
  * Lecturas de Catálogo › Recetas para los Server Components (Task #41, Fase D3/D4). Mismo contrato que
@@ -32,7 +32,7 @@ export async function listarProductosConReceta(db: Db) {
  * `RecetaDeLaSucursal` (`materiasPrimas`); antes volvía la fila entera, que un cambio futuro a un componente de cliente habría llevado al navegador con el costo de consignación adentro.
  */
 export async function listarMpDisponiblesEnAlguna(db: Db) {
-  return db.producto.findMany({ where: { tipo: "MP", ...whereDisponibleEnAlguna() }, select: { id: true, nombre: true, unidadStockId: true }, orderBy: { nombre: "asc" } });
+  return db.producto.findMany({ where: { AND: [whereEsIngredienteDeReceta()], ...whereDisponibleEnAlguna() }, select: { id: true, nombre: true, unidadStockId: true }, orderBy: { nombre: "asc" } });
 }
 
 /**

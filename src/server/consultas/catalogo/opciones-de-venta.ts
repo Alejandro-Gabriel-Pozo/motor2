@@ -1,4 +1,5 @@
 import "server-only";
+import { whereLoConsumeUnaOpcion } from "@/core/catalogo/public";
 import { esBaseConfigurable, opcionesQueCambianElPrecio, seOcultaEnLaCarta, type DiferenciaDePrecio, type ModoDePrecioDeMedida, type TipoDeGrupoDeOpciones } from "@/core/opciones/public";
 import type { IngredienteDeBase } from "@/core/movimientos/public";
 import { resumenDePrecios, type ResumenDePrecios } from "@/core/pos/public";
@@ -14,7 +15,6 @@ import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
  * `paginas-solo-consultas`, ADR-026): la lectura de GO-2a (`server/lecturas/catalogo/opciones-de-venta.ts`) es la misma que usan los casos de uso y los tests; esta capa solo le
  * da a cada pantalla la forma que dibuja. Sin guarda de permiso adentro: la página la pone antes (`opciones_definir`). Ningún precio se decide acá.
  */
-
 export interface GrupoDelPanel {
   id: string;
   nombre: string;
@@ -126,7 +126,7 @@ export async function cargarGrupoDelPanel(db: Db, grupoId: string, sucursalId: s
     db.productoAdmiteGrupo.findMany({ where: { grupoId, activo: true }, select: { producto: { select: { id: true, nombre: true, precioVenta: true, seProduce: true } } } }),
     idsDeProductos.length ? db.producto.findMany({ where: { id: { in: idsDeProductos } }, select: { id: true, nombre: true } }) : Promise.resolve([]),
     idsDeUsuarios.length ? db.user.findMany({ where: { id: { in: idsDeUsuarios } }, select: { id: true, name: true } }) : Promise.resolve([]),
-    db.producto.findMany({ where: { tipo: "MP" }, orderBy: { nombre: "asc" }, select: { id: true, nombre: true, unidadStockId: true, unidadStock: { select: { nombre: true, decimales: true } } } }),
+    db.producto.findMany({ where: whereLoConsumeUnaOpcion(), orderBy: { nombre: "asc" }, select: { id: true, nombre: true, unidadStockId: true, unidadStock: { select: { nombre: true, decimales: true } } } }),
     db.unidad.findMany({ where: { activa: true }, orderBy: { nombre: "asc" }, select: { id: true, nombre: true } }),
     idsDeUnidades.length ? db.unidad.findMany({ where: { id: { in: idsDeUnidades } }, select: { id: true, nombre: true } }) : Promise.resolve([]),
   ]);
@@ -306,7 +306,7 @@ export async function cargarOpcionesDelProducto(db: Db, productoId: string, sucu
     precioLocalGuardadoDe(sucursalId, db, productoId),
     db.unidad.findMany({ where: { activa: true }, orderBy: { nombre: "asc" }, select: { id: true, nombre: true } }),
     // Lo que consume cada opción (diseño 2026-11-09): las materias primas con su unidad de stock (para nombrar cada insumo y para elegirlo al editar) y quiénes usan cada grupo, en dos lecturas para todo el producto (sin N+1).
-    db.producto.findMany({ where: { tipo: "MP" }, orderBy: { nombre: "asc" }, select: { id: true, nombre: true, unidadStock: { select: { nombre: true, decimales: true } } } }),
+    db.producto.findMany({ where: whereLoConsumeUnaOpcion(), orderBy: { nombre: "asc" }, select: { id: true, nombre: true, unidadStock: { select: { nombre: true, decimales: true } } } }),
     db.productoAdmiteGrupo.findMany({ where: { activo: true, grupo: { productosQueLoAdmiten: { some: { productoId } } } }, select: { grupoId: true, producto: { select: { id: true, nombre: true } } } }),
   ]);
   const insumoPorId = new Map(insumos.map((i) => [i.id, i]));

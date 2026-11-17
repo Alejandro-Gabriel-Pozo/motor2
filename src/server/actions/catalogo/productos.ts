@@ -9,7 +9,7 @@ import { escaparComodinesLike, quitarCaracteresInadmisibles, textoDeBusqueda } f
 import { puedeBuscarPorReferenciaDelProveedor, whereDeLosProductos } from "@/server/lecturas/catalogo/filtros-de-productos";
 import { buscarProductosPorPalabras } from "@/server/lecturas/catalogo/busqueda-de-producto";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
-import { combinarTramosDeProductos, esCoincidenciaExactaDeCodigo, leerFiltrosDeProductos, necesitaLaEmpresaEntera, MENSAJE_PRESENTACIONES_APAGADAS, PRESENTACIONES_VISIBLES, type EntradaDeFiltrosDeProductos, whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
+import { combinarTramosDeProductos, esCoincidenciaExactaDeCodigo, leerFiltrosDeProductos, necesitaLaEmpresaEntera, MENSAJE_PRESENTACIONES_APAGADAS, PRESENTACIONES_VISIBLES, type EntradaDeFiltrosDeProductos, whereDisponibleEn, whereDisponibleEnAlguna, whereSeCompra, whereEsIngredienteDeReceta, type FiltroSelectorProducto } from "@/core/catalogo/public";
 import type { CampoAusenteEnLaEdicion, CampoSensibleDelProducto, EntradaEdicionProducto, EntradaProducto } from "@/core/features/catalogo/productos.schema";
 import type { ModoDeVenta } from "@/core/opciones/public";
 import { guardComandoAgregarPresentacionAlternativa, guardComandoDarDeAltaProductoRapido, guardComandoDatosDeProducto, guardComandoSincronizarPrecioGrupoCarta } from "@/core/features/catalogo/productos.guard";
@@ -103,7 +103,7 @@ export async function buscarProductosSelector(termino: string, filtro?: FiltroSe
     ...(filtro?.soloDisponibles ? [whereDisponibleEn(ctx.sucursalId)] : []),
     ...(filtro?.soloDisponiblesEnAlguna ? [whereDisponibleEnAlguna()] : []),
     ...(filtro?.soloConStockReal ? [{ OR: [{ tipo: "MP" as const }, { tipo: "PV" as const, seProduce: true }] }] : []),
-    ...(filtro?.soloSeProduce ? [{ seProduce: true }] : []),
+    ...(filtro?.soloSeCompra ? [whereSeCompra()] : []), ...(filtro?.soloIngredienteDeReceta ? [whereEsIngredienteDeReceta()] : []), ...(filtro?.soloSeProduce ? [{ seProduce: true }] : []),
     ...(filtro?.elegibleParaReceta ? [{ OR: [{ tipo: "PV" as const }, { tipo: "MP" as const, seProduce: true }] }] : []),
     ...(filtro?.esConsignacion !== undefined ? [{ esConsignacion: filtro.esConsignacion }] : []),
   ];

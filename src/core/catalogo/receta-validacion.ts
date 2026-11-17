@@ -1,4 +1,5 @@
 import { texto } from "@/core/texto";
+import { capacidadesDelProducto } from "./capacidades-del-producto";
 import { esNumeroFinito } from "@/core/numero";
 import { CANTIDAD_MAXIMA, validarCantidad } from "@/core/datos/cantidad";
 import {
@@ -72,6 +73,9 @@ export interface ProductoParaValidar {
   id: string;
   nombre: string;
   tipo: string;
+  seProduce: boolean;
+  /** La clase de uso guardada (vacía en los productos anteriores a las clases); solo `REVENTA` cambia lo que el producto puede ser (E4-3b). */
+  claseDeUso: string | null;
   insumoId: string | null;
   unidadStockId: string;
 }
@@ -148,7 +152,7 @@ export function validarIngredientes(items: IngredienteInput[], producto: { sePro
     const delDato = validarDatosDeIngrediente(item);
     if (delDato) return delDato;
     const mp = datos.productos.get(item.insumoProductoId);
-    if (!mp || mp.tipo !== "MP") {
+    if (!mp || !capacidadesDelProducto(mp).esIngredienteDeReceta) { // E4-3b: una MP o una Reventa
       return `Cada ingrediente tiene que ser una materia prima (MP) (${mp?.nombre ?? item.insumoProductoId} no lo es).`;
     }
     // Global, no por sucursal (docs/plan-disponibilidad-por-sucursal-2026-09-23.md §5.6): la receta es del Catálogo

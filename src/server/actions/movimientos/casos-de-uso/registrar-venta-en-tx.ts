@@ -19,6 +19,7 @@ import type { GrupoPermitido } from "@/core/opciones/public";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
 import { productoOcultoEn } from "@/server/lecturas/catalogo/ocultamiento";
 import { MENSAJE_PRODUCTO_OCULTO } from "@/core/catalogo/public";
+import { seVendeDeSuStockPropio } from "@/core/movimientos/public";
 import { seccionesConStock } from "@/server/lecturas/movimientos/saldos";
 import { cargarDeudaDeRedondeo } from "@/server/lecturas/movimientos/deuda-de-redondeo";
 import { faltantesDe } from "@/core/movimientos/origen-venta";
@@ -68,7 +69,7 @@ async function revisarInsumosDeOpciones(
   obtenerProducto: Obtener
 ): Promise<{ ok: false; mensaje: string } | null> {
   for (const c of consumos) {
-    const revisada = revisarMateriaPrima(await obtenerProducto(c.insumoProductoId), nombre);
+    const revisada = revisarMateriaPrima(await obtenerProducto(c.insumoProductoId), nombre, "opcion");
     if (!revisada.ok) return { ok: false, mensaje: revisada.mensaje };
     const mp = revisada.materiaPrima;
     if (!(await productoDisponibleEn(sucursalId, mp.id, tx))) return { ok: false, mensaje: mensajeMateriaPrimaNoDisponible(nombre, mp.nombre, sucursalNombre) };
@@ -118,7 +119,9 @@ async function armarLinea(
   if (!producto) return { ok: false, mensaje: MENSAJE_PRODUCTO_NO_EXISTE };
   // GO-2b (ADR-030): el producto ANCLA de un adicional no tiene disponibilidad por sucursal (queda oculto por «sin fila = no disponible»). Saltea ese chequeo SOLO si es
   // el producto de la opción LEÍDO DE LA BASE (`anclaVerificada`), es un PV y no se produce; cualquier otro producto sigue con la disponibilidad de siempre.
-  const esAnclaVerificada = configurada?.tipo === "ADICIONAL" && configurada.anclaVerificada === producto.id && producto.tipo === "PV" && !producto.seProduce;
+  // E4-3a: «se vende de su stock propio» = un PV que se produce o una Reventa (sin receta); en un PV común es lo mismo que `seProduce`.
+  const stockPropio = seVendeDeSuStockPropio(producto.tipo, producto.seProduce, producto.claseDeUso);
+  const esAnclaVerificada = configurada?.tipo === "ADICIONAL" && configurada.anclaVerificada === producto.id && producto.tipo === "PV" && !stockPropio;
   if (!esAnclaVerificada && !(await productoDisponibleEn(sucursalId, producto.id, tx))) {
     return { ok: false, mensaje: mensajeNoDisponibleEnSucursal(producto.nombre, sucursalNombre) };
   }
@@ -127,7 +130,7 @@ async function armarLinea(
   const rechazo = rechazoDelProductoVendido({ nombre: producto.nombre, tipo: producto.tipo, pasoVenta: producto.pasoVenta === null ? null : Number(producto.pasoVenta) }, cantidad);
   if (rechazo !== null) return { ok: false, mensaje: rechazo };
   if (configurada?.tipo === "ADICIONAL" && !esAnclaVerificada) return { ok: false, mensaje: `«${producto.nombre}» no es el producto que respalda ese adicional.` };
-  if (configurada?.tipo === "PRODUCTO" && producto.seProduce) {
+  if (configurada?.tipo === "PRODUCTO" && stockPropio) {
     return { ok: false, mensaje: `«${producto.nombre}» se produce por lote: todavía no se puede vender con opciones.` };
   }
   // OPCIONES OBLIGATORIAS (fila O.430): la BARRERA FINAL de una línea SIN configurar (la venta de mostrador, que no tiene selector de opciones; o una línea del cierre sin su foto). Un producto que
@@ -142,7 +145,7 @@ async function armarLinea(
   }
 
   let pedidos: LineaArmada["pedidos"] = [];
-  if (!producto.seProduce) {
+  if (!stockPropio) {
     // Un PV que se produce por lote ya consumió su receta al producirse — la venta solo lo resta (ver registrarMovimiento, PRODUCCION).
     // GO-2b: un adicional (su ancla no tiene receta) no lee la receta: su consumo es el de su opción.
     const ingredientes = configurada?.tipo === "ADICIONAL" ? [] : await cargarRecetaVigenteParaVender(tx, { productoId: producto.id, sucursalId });
@@ -150,12 +153,12 @@ async function armarLinea(
     // el pedido y el cobro, o una venta de mostrador), no se vende; el ancla verificada de un adicional queda exceptuada (su consumo es el de su opción).
     // Una línea con opciones (`PRODUCTO`) se decide más abajo, con los pedidos reales que van al libro (decisión del dueño 2026-10-29: una base sin receta se vende si lo elegido descuenta insumos).
     if (configurada?.tipo !== "PRODUCTO") {
-      const sinReceta = rechazoSinOrigenDeStock({ nombre: producto.nombre, seProduce: producto.seProduce, esAnclaDeAdicional: esAnclaVerificada, ingredientesDeLaRecetaVigente: ingredientes.length });
+      const sinReceta = rechazoSinOrigenDeStock({ nombre: producto.nombre, seProduce: stockPropio, esAnclaDeAdicional: esAnclaVerificada, ingredientesDeLaRecetaVigente: ingredientes.length });
       if (sinReceta !== null) return { ok: false, codigo: CODIGO_PRODUCTO_SIN_RECETA, mensaje: sinReceta };
     }
     const base: IngredienteDeBase[] = [];
     for (const ing of ingredientes) {
-      const revisada = revisarMateriaPrima(await obtenerProducto(ing.insumoProductoId), producto.nombre);
+      const revisada = revisarMateriaPrima(await obtenerProducto(ing.insumoProductoId), producto.nombre, "receta");
       if (!revisada.ok) return { ok: false, mensaje: revisada.mensaje };
       const mp = revisada.materiaPrima;
       if (!(await productoDisponibleEn(sucursalId, mp.id, tx))) {
@@ -181,7 +184,7 @@ async function armarLinea(
         // La misma regla pura, alimentada con lo que la línea descuenta de verdad: decisión y Kardex salen de los mismos `pedidos`.
         const sinReceta = rechazoSinOrigenDeStock({
           nombre: producto.nombre,
-          seProduce: producto.seProduce,
+          seProduce: stockPropio,
           esAnclaDeAdicional: false,
           ingredientesDeLaRecetaVigente: ingredientes.length,
           opciones: { insumos: pedidos.length, nombres: configurada.opciones.map((o) => o.nombre) },
@@ -198,7 +201,7 @@ async function armarLinea(
 
   return {
     ok: true,
-    linea: { productoId: producto.id, nombre: producto.nombre, seProduce: producto.seProduce, cantidadVendida: cantidad, precioVenta, precioListaVenta, costoUnitarioAlVender, promoCuentaId: item.promoCuentaId ?? null, pedidos },
+    linea: { productoId: producto.id, nombre: producto.nombre, seProduce: stockPropio, cantidadVendida: cantidad, precioVenta, precioListaVenta, costoUnitarioAlVender, promoCuentaId: item.promoCuentaId ?? null, pedidos },
   };
 }
 

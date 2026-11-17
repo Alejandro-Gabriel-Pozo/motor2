@@ -1,4 +1,4 @@
-import { validarPasoVenta } from "@/core/catalogo/public";
+import { capacidadesDelProducto, validarPasoVenta } from "@/core/catalogo/public";
 import { validarCantidad } from "@/core/datos/cantidad";
 import { validarImporte, validarImportesVistosPorId } from "@/core/datos/importe";
 import { LARGO_MAXIMO_NOTAS, validarTextoLibre } from "@/core/datos/limites";
@@ -173,18 +173,21 @@ export function alicuotaIvaDelProducto(valor: unknown): AlicuotaIva | null {
 /**
  * Guard de la alícuota de IVA de un producto (paso 13, `docs/diseno-alicuota-iva-del-producto-2026-11-12.md`; invariantes I1 e I2), con lo que mandó el cliente, SIN mirar la base. `tipo` es el del producto (en la edición, el guardado):
  *  - I1: cada alícuota que viene es una de `ALICUOTAS_IVA` o `null` («sin declarar»); `undefined` es «no viene». Cualquier otra cosa (un texto fuera de la lista, uno vacío, un número, un objeto) se rechaza;
- *  - I2: la de VENTA solo en un PV y la de COMPRA solo en una MP. En el tipo equivocado solo se admite que no venga o venga `null` (no escribe nada: el caso de uso escribe únicamente la del tipo del producto).
+ *  - I2: la de VENTA solo en un producto que se vende y la de COMPRA solo en uno que se compra, según `capacidadesDelProducto` (E4-2): un PV lleva la de venta, una MP la de compra y una REVENTA (PV que no se produce, con `claseDeUso`
+ *    'REVENTA' y `seProduce` en `false` dicho) lleva las dos. En el campo que no corresponde solo se admite que no venga o venga `null` (no escribe nada). `claseDeUso` y `seProduce` son opcionales: sin ellos el resultado es el de siempre.
  * Lista de lo permitido, no de lo prohibido: ante un tipo que no es MP ni PV, no se admite ninguna alícuota.
  */
-export function guardAlicuotaIvaDelProducto(entrada: { tipo: unknown; alicuotaIvaVenta?: unknown; alicuotaIvaCompra?: unknown }): ResultadoDato<null> {
+export function guardAlicuotaIvaDelProducto(entrada: { tipo: unknown; seProduce?: unknown; claseDeUso?: unknown; alicuotaIvaVenta?: unknown; alicuotaIvaCompra?: unknown }): ResultadoDato<null> {
   const esValida = (valor: unknown) => valor === undefined || valor === null || alicuotaIvaDelProducto(valor) !== null;
   if (!esValida(entrada.alicuotaIvaVenta) || !esValida(entrada.alicuotaIvaCompra)) {
     return rechazar("formato", "La alícuota de IVA no es una de las admitidas: elegí una de la lista, o dejala sin declarar.");
   }
-  if (entrada.tipo !== "PV" && entrada.alicuotaIvaVenta !== undefined && entrada.alicuotaIvaVenta !== null) {
+  // Una Reventa solo cuenta como tal con `seProduce` dicho en `false` (todo nace cerrado: lo que no viene no se supone).
+  const puede = capacidadesDelProducto({ tipo: typeof entrada.tipo === "string" ? entrada.tipo : "", seProduce: entrada.seProduce !== false, claseDeUso: typeof entrada.claseDeUso === "string" ? entrada.claseDeUso : null });
+  if (!puede.seVende && entrada.alicuotaIvaVenta !== undefined && entrada.alicuotaIvaVenta !== null) {
     return rechazar("formato", "El «IVA de venta» solo se carga en un producto de venta (PV).");
   }
-  if (entrada.tipo !== "MP" && entrada.alicuotaIvaCompra !== undefined && entrada.alicuotaIvaCompra !== null) {
+  if (!puede.seCompra && entrada.alicuotaIvaCompra !== undefined && entrada.alicuotaIvaCompra !== null) {
     return rechazar("formato", "El «IVA de compra» solo se carga en una materia prima (MP).");
   }
   return aceptar(null);

@@ -1,7 +1,7 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { alcanceDeSucursal, leerBaseDeCantidad } from "@/core/catalogo/public";
-import type { IngredienteParaVender } from "@/core/movimientos/public";
+import { seVendeDeSuStockPropio, type IngredienteParaVender } from "@/core/movimientos/public";
 import { cargarRecetaVigente, cargarRecetasVigentes } from "@/server/lecturas/catalogo/recetas-vigentes";
 
 /**
@@ -38,6 +38,7 @@ export async function cargarRecetaVigenteParaVender(tx: Prisma.TransactionClient
 /** Lo que el agregado de ítems del POS necesita de cada PV del pedido para la regla del origen de stock (`rechazoSinOrigenDeStock`, `core/movimientos/origen-de-stock.ts`). */
 export interface OrigenDeStockParaVender {
   nombre: string;
+  /** Se vende de su stock propio (se produce, o es Reventa: E4-3a) y no de una receta; el nombre quedó de cuando solo era lo primero. */
   seProduce: boolean;
   /** Ingredientes de la receta EFECTIVA de la sucursal (la propia si la tiene habilitada, si no la central); 0 sin receta. */
   ingredientesDeLaRecetaVigente: number;
@@ -55,7 +56,7 @@ export async function cargarOrigenDeStockParaVender(
 ): Promise<Map<string, OrigenDeStockParaVender>> {
   const ids = [...new Set(productoIds)];
   if (ids.length === 0) return new Map();
-  const productos = await tx.producto.findMany({ where: { id: { in: ids } }, select: { id: true, nombre: true, seProduce: true } });
+  const productos = await tx.producto.findMany({ where: { id: { in: ids } }, select: { id: true, nombre: true, tipo: true, seProduce: true, claseDeUso: true } });
   const recetas = await cargarRecetasVigentes(tx, alcanceDeSucursal(sucursalId), { where: { productoId: { in: ids } }, include: { _count: { select: { ingredientes: true } } } });
-  return new Map(productos.map((p) => [p.id, { nombre: p.nombre, seProduce: p.seProduce, ingredientesDeLaRecetaVigente: recetas.get(p.id)?._count.ingredientes ?? 0 }]));
+  return new Map(productos.map((p) => [p.id, { nombre: p.nombre, seProduce: p.seProduce || seVendeDeSuStockPropio(p.tipo, p.seProduce, p.claseDeUso), ingredientesDeLaRecetaVigente: recetas.get(p.id)?._count.ingredientes ?? 0 }]));
 }

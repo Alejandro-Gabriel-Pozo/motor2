@@ -109,6 +109,7 @@ export default async function FichaProductoPage({
     modoDeVenta: modoDeVentaDe(p.modoDeVenta),
     precioVenta: Number(p.precioVenta),
     seProduce: p.seProduce,
+    claseDeUso: p.claseDeUso,
     esAnclaDeAdicional: esDeRespaldo,
     unidadStockNombre: p.unidadStock.nombre,
   };

@@ -16,6 +16,7 @@ import {
   ETIQUETA_DEL_MODO,
   ETIQUETA_DEL_TIPO,
   MODOS_FILTRABLES,
+  CHIP_REVENTA_VISIBLE,
   TIPOS_FILTRABLES,
   consultaDeLosFiltros,
   hayFiltrosDeProductos,
@@ -80,7 +81,7 @@ export default async function ProductosPage({
       <FiltrosDeLaListaDeProductos
         accion="/catalogo/productos"
         filtros={filtros}
-        clases={TIPOS_FILTRABLES.map((v) => ({ valor: v, etiqueta: ETIQUETA_DEL_TIPO[v] }))}
+        clases={TIPOS_FILTRABLES.filter((v) => v !== "reventa" || CHIP_REVENTA_VISIBLE).map((v) => ({ valor: v, etiqueta: ETIQUETA_DEL_TIPO[v] }))}
         estados={ESTADOS_FILTRABLES.map((v) => ({ valor: v, etiqueta: ETIQUETA_DEL_ESTADO[v] }))}
         etiquetaDeLaBusqueda={porReferencia ? "Buscar por nombre, código o cómo lo llama el proveedor" : "Buscar por nombre o código"}
         marcadorDeLaBusqueda={porReferencia ? "Nombre, código o lo que dice la factura…" : "Buscar por código o nombre…"}
@@ -106,7 +107,7 @@ export default async function ProductosPage({
                 {p.sucursalesDisponibles > 0 && faltaCompletar.has(p.id) && <Insignia tono="aviso">Falta completar</Insignia>}
               </div>
               <div className="flex items-start justify-between gap-3 text-sm text-tinta-suave">
-                <span>{ETIQUETA_DEL_TIPO[detalle.get(p.id)!.clase]}{secciones !== null && detalle.get(p.id)!.clase === "venta" && ` · ${secciones.get(p.id) ?? "—"}`}</span>
+                <span>{ETIQUETA_DEL_TIPO[detalle.get(p.id)!.clase]}{secciones !== null && (detalle.get(p.id)!.clase === "venta" || detalle.get(p.id)!.clase === "reventa") && ` · ${secciones.get(p.id) ?? "—"}`}</span>
                 {detalle.get(p.id)!.precio !== null && <span className="shrink-0 font-medium tabular-nums text-tinta">{detalle.get(p.id)!.precio}</span>}
               </div>
             </li>

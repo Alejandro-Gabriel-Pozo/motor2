@@ -1,7 +1,7 @@
 import "server-only";
 import { construirMapaProductos } from "@/server/lecturas/reportes/comun";
 import type { Db } from "@/lib/db-tipos";
-import type { FilaVentaSinReceta } from "@/core/reportes/public";
+import { capacidadesEnReportes, type FilaVentaSinReceta } from "@/core/reportes/public";
 
 /**
  * Port de generarReporteVentasSinReceta_ (Reportes.js:1063-1112) — un PV se
@@ -37,7 +37,11 @@ export async function generarReporteVentasSinReceta(
   const porProducto = new Map<string, { cantidadVentasSinReceta: number; primeraFecha: Date; ultimaFecha: Date }>();
 
   for (const v of ventas) {
-    if (productos.get(v.productoId)?.tipo !== "PV") continue;
+    // Solo un producto de venta que LLEVA receta (E4-4): una Reventa se vende de su stock propio, sin receta, y no es una «venta sin receta».
+    const info = productos.get(v.productoId);
+    if (!info) continue;
+    const puede = capacidadesEnReportes(info);
+    if (!puede.seVende || !puede.llevaReceta) continue;
     porProducto.set(v.productoId, { cantidadVentasSinReceta: Number(v.cantidad), primeraFecha: v.primeraFecha, ultimaFecha: v.ultimaFecha });
   }
 

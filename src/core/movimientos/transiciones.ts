@@ -2,6 +2,7 @@ import { Decimal } from "decimal.js";
 import { DECIMALES_DE_CANTIDAD, redondearCantidadExacta } from "@/core/datos/cantidad-exacta";
 import type { Proceso, TipoProducto } from "@/core/datos/enumerados-del-esquema";
 import type { AccionDeSucursal } from "@/core/permisos/acciones";
+import { capacidadesDelProducto } from "@/core/catalogo/public";
 
 /**
  * Port de TRANSICIONES (Movimientos.js:61-348) — fuente única de qué hace
@@ -110,8 +111,14 @@ export function esSignoFijo(proceso: Proceso): boolean {
 }
 
 /** Port de tieneStockReal_ (Movimientos.js:564-566). */
-export function tieneStockReal(tipo: TipoProducto, seProduce: boolean): boolean {
-  return tipo === "MP" || (tipo === "PV" && seProduce);
+export function tieneStockReal(tipo: TipoProducto, seProduce: boolean, claseDeUso?: string | null): boolean {
+  return capacidadesDelProducto({ tipo, seProduce, claseDeUso }).tieneStockPropio; // E4-0/E4-3a: MP, PV que se produce o Reventa, decidido en el núcleo único
+}
+
+/** La venta descuenta el stock PROPIO del producto vendido, no el de una receta: un PV que se produce o una Reventa (E4-3a). Una MP no se vende, así que acá es falso. */
+export function seVendeDeSuStockPropio(tipo: TipoProducto, seProduce: boolean, claseDeUso?: string | null): boolean {
+  const c = capacidadesDelProducto({ tipo, seProduce, claseDeUso });
+  return c.seVende && c.tieneStockPropio;
 }
 
 /**
@@ -130,16 +137,16 @@ export function tieneStockReal(tipo: TipoProducto, seProduce: boolean): boolean 
  */
 export function productoValidoParaProceso(
   proceso: Proceso,
-  producto: { tipo: TipoProducto; seProduce: boolean; esConsignacion: boolean }
+  producto: { tipo: TipoProducto; seProduce: boolean; esConsignacion: boolean; claseDeUso?: string | null }
 ): boolean {
   const t = TRANSICIONES[proceso];
 
-  // Uso 1:1 Tipo (porción Catálogo): comprar siempre es de una MP.
-  if (proceso === "COMPRA" && producto.tipo !== "MP") return false;
+  // Qué se puede comprar lo decide `capacidadesDelProducto` (E4-2): una MP, y una Reventa coherente; un PV común o un tipo desconocido no.
+  if (proceso === "COMPRA" && !capacidadesDelProducto({ tipo: producto.tipo, seProduce: producto.seProduce, claseDeUso: producto.claseDeUso }).seCompra) return false;
 
   if (proceso === "PRODUCCION") return producto.seProduce;
 
-  if (t.requiereStockReal && !tieneStockReal(producto.tipo, producto.seProduce)) return false;
+  if (t.requiereStockReal && !tieneStockReal(producto.tipo, producto.seProduce, producto.claseDeUso)) return false;
 
   // Sesión "consignación" (Movimientos.js:593-603): no se puede devolver al
   // consignante algo que no se recibió en consignación, y viceversa — un

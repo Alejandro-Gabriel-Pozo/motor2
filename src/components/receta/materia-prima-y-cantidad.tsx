@@ -97,7 +97,7 @@ export function MateriaPrimaYCantidad({
             // La cantidad es lo que sigue: el foco va ahí (el buscador queda oculto).
             document.getElementById(idCantidad)?.focus();
           }}
-          filtro={{ tipo: "MP", soloDisponiblesEnAlguna: true }}
+          filtro={{ soloIngredienteDeReceta: true, soloDisponiblesEnAlguna: true }}
           placeholder="Escribí nombre o código…"
           limpiarSenal={reinicio}
           mostrarUnidad

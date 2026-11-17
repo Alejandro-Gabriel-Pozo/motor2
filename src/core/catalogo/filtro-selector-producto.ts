@@ -16,6 +16,10 @@ export interface FiltroSelectorProducto {
   soloDisponiblesEnAlguna?: boolean;
   /** MP, o PV solo si está marcado "Se produce" — mismo criterio que `tieneStockReal` (Conteo Físico, Stock consolidado). */
   soloConStockReal?: boolean;
+  /** Lo que se puede COMPRAR (el proceso COMPRA): lo que decide `capacidadesDelProducto(...).seCompra` (una MP y una Reventa). Su espejo en consulta es `whereSeCompra` (`se-compra-consulta.ts`). */
+  soloSeCompra?: boolean;
+  /** Lo que puede ser INGREDIENTE de una receta: lo que decide `capacidadesDelProducto(...).esIngredienteDeReceta` (una MP y una Reventa). Su espejo en consulta es `whereEsIngredienteDeReceta` (`ingrediente-consulta.ts`). */
+  soloIngredienteDeReceta?: boolean;
   /** `producto.seProduce === true`, en MP o PV — quién puede ser el RESULTADO de una Producción (distinto de `soloConStockReal`: una MP comprada, no producida, tiene stock real pero no es válida acá). */
   soloSeProduce?: boolean;
   /** PV, o MP solo si está marcada "Se produce" — quién puede tener una Receta (`/catalogo/recetas`). Es el criterio inverso a `soloConStockReal`: ahí toda MP entra y el PV es la excepción, acá es al revés. */

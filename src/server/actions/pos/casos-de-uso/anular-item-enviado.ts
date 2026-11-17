@@ -64,7 +64,7 @@ export async function anularItemEnviadoCasoDeUso(
       return fracaso("RESTANTE_CAMBIO", `«${item.producto.nombre}» cambió mientras lo mirabas (ahora quedan ${formatearCantidad(restante)}): revisá y volvé a intentar.`);
     }
     const { producto } = item;
-    const pasoDelItem = producto.pasoVenta !== null ? { pasoVenta: producto.pasoVenta, tieneStockReal: tieneStockReal(producto.tipo, producto.seProduce) } : null;
+    const pasoDelItem = producto.pasoVenta !== null ? { pasoVenta: producto.pasoVenta, tieneStockReal: tieneStockReal(producto.tipo, producto.seProduce, producto.claseDeUso) } : null;
     const aAnular = validarCantidadPedido(comando.cantidad, producto.decimales, pasoDelItem);
     if (!aAnular.ok) return fracaso("CANTIDAD_INVALIDA", aAnular.mensaje);
     if (aAnular.cantidad > restante) return fracaso("EXCEDE_RESTANTE", `No se puede anular más de lo que queda de «${producto.nombre}» (${formatearCantidad(restante)}).`);

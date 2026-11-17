@@ -55,13 +55,14 @@ export interface ProductoParaTraspaso {
   nombre: string;
   tipo: TipoProducto;
   seProduce: boolean;
+  claseDeUso: string | null;
   unidadStock: { nombre: string; decimales: number };
 }
 
 export async function cargarProductoParaTraspaso(tx: Prisma.TransactionClient, productoId: string): Promise<ProductoParaTraspaso | null> {
   const p = await tx.producto.findUnique({ where: { id: productoId }, include: { unidadStock: true } });
   return p
-    ? { id: p.id, nombre: p.nombre, tipo: p.tipo, seProduce: p.seProduce, unidadStock: { nombre: p.unidadStock.nombre, decimales: p.unidadStock.decimales } }
+    ? { id: p.id, nombre: p.nombre, tipo: p.tipo, seProduce: p.seProduce, claseDeUso: p.claseDeUso, unidadStock: { nombre: p.unidadStock.nombre, decimales: p.unidadStock.decimales } }
     : null;
 }
 

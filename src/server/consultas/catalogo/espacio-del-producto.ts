@@ -1,6 +1,6 @@
 import "server-only";
 import { rechazoSinOrigenDeStock } from "@/core/movimientos/public";
-import type { HechosDelProducto } from "@/core/catalogo/public";
+import { capacidadesDelProducto, type HechosDelProducto } from "@/core/catalogo/public";
 import type { Db } from "@/lib/db-tipos";
 import { estadoDelProductoEnLaCarta } from "@/server/consultas/carta/admin";
 import { cargarOpcionesDelProducto, type OpcionesDelProductoDelPanel } from "@/server/consultas/catalogo/opciones-de-venta";
@@ -24,6 +24,8 @@ export interface ProductoDelEspacio {
   precioVenta: number;
   /** Solo una materia prima con `seProduce` tiene receta propia. */
   seProduce: boolean;
+  /** La clase de uso guardada (solo `REVENTA` cambia si el producto se compra: E4-2). */
+  claseDeUso: string | null;
   /** El producto interno que respalda el stock de un adicional (ADR-030): no se maneja con los pasos de venta. */
   esAnclaDeAdicional: boolean;
   /** La unidad de stock (la base en la que se expresan las presentaciones de compra). */
@@ -34,7 +36,7 @@ export interface ProductoDelEspacio {
 export async function leerProductoDelEspacio(db: Db, productoId: string): Promise<ProductoDelEspacio | null> {
   const p = await db.producto.findFirst({
     where: { id: productoId },
-    select: { id: true, nombre: true, codigo: true, tipo: true, modoDeVenta: true, precioVenta: true, seProduce: true, unidadStock: { select: { nombre: true } }, opcionQueRespalda: { select: { id: true } } },
+    select: { id: true, nombre: true, codigo: true, tipo: true, modoDeVenta: true, precioVenta: true, seProduce: true, claseDeUso: true, unidadStock: { select: { nombre: true } }, opcionQueRespalda: { select: { id: true } } },
   });
   if (!p) return null;
   return {
@@ -45,6 +47,7 @@ export async function leerProductoDelEspacio(db: Db, productoId: string): Promis
     modoDeVenta: modoDeVentaDe(p.modoDeVenta),
     precioVenta: Number(p.precioVenta),
     seProduce: p.seProduce,
+    claseDeUso: p.claseDeUso,
     esAnclaDeAdicional: p.opcionQueRespalda !== null,
     unidadStockNombre: p.unidadStock.nombre,
   };
@@ -95,7 +98,8 @@ export async function hechosDelProducto(
   precargado: { opciones?: OpcionesDelProductoDelPanel | null } = {}
 ): Promise<HechosDelProducto> {
   const esDeVenta = producto.tipo === "PV" && !producto.esAnclaDeAdicional;
-  const conReceta = permitidas.receta && !producto.esAnclaDeAdicional && (producto.tipo === "PV" || producto.seProduce);
+  // Lleva receta: un PV o una MP que se produce; una Reventa no (E4-4).
+  const conReceta = permitidas.receta && !producto.esAnclaDeAdicional && capacidadesDelProducto({ tipo: producto.tipo, seProduce: producto.seProduce, claseDeUso: producto.claseDeUso }).llevaReceta;
   const [opciones, rechazo, carta] = await Promise.all([
     esDeVenta && permitidas.opciones ? (precargado.opciones !== undefined ? Promise.resolve(precargado.opciones) : cargarOpcionesDelProducto(db, producto.id, sucursalId)) : Promise.resolve(undefined),
     conReceta ? rechazoDeLaReceta(db, producto, sucursalId) : Promise.resolve(undefined),
@@ -104,6 +108,7 @@ export async function hechosDelProducto(
   return {
     tipo: producto.tipo,
     seProduce: producto.seProduce,
+    claseDeUso: producto.claseDeUso,
     esAnclaDeAdicional: producto.esAnclaDeAdicional,
     modoDeVenta: producto.modoDeVenta,
     precioDeVenta: producto.precioVenta,

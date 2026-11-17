@@ -1,4 +1,4 @@
-import { leerBaseDeCantidad, rendimientoEfectivo, type BaseDeCantidad } from "@/core/catalogo/public";
+import { capacidadesDelProducto, leerBaseDeCantidad, rendimientoEfectivo, type BaseDeCantidad } from "@/core/catalogo/public";
 import { esBaseConfigurable } from "@/core/opciones/public";
 import type { ClasificacionNoComestibles } from "@/core/catalogo/public";
 import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
@@ -22,6 +22,8 @@ export interface InfoProductoReporte {
    */
   disponible: boolean;
   seProduce: boolean;
+  /** La clase de uso guardada (`Producto.claseDeUso`); solo `REVENTA` cambia lo que el producto puede (E4-4). Ausente en los productos anteriores a las clases. */
+  claseDeUso?: string | null;
   precioVenta: number;
   categoriaNombre: string | null;
   /** La categoría del producto: con ella se resuelve su food cost objetivo (`resolverObjetivoFoodCost`). */
@@ -47,12 +49,28 @@ export interface InfoProductoReporte {
 }
 
 /** Una fila de producto con lo que el mapa necesita (la forma del `findMany` con `categoria`, `insumo.grupo`, `unidadStock` y `proveedorConsignacion`). */
+/**
+ * Qué puede hacer un producto del mapa de reportes (E4-4 de la Reventa, docs/diseno-reventa-e4-2026-11-17.md §7): la decisión de los reportes que antes comparaban `tipo === "MP"` o `"PV"` a mano. Para MP y PV
+ * de siempre da lo mismo que esos literales; solo una REVENTA (PV que se compra y lleva stock propio) cambia.
+ */
+export function capacidadesEnReportes(info: Pick<InfoProductoReporte, "tipo" | "seProduce" | "claseDeUso">): ReturnType<typeof capacidadesDelProducto> {
+  return capacidadesDelProducto({ tipo: info.tipo, seProduce: info.seProduce, claseDeUso: info.claseDeUso });
+}
+
+/** ¿Es una Reventa? Se compra y se vende tal cual: su costo es el de su compra, no el de una receta (R9). */
+export function esReventaEnReportes(info: Pick<InfoProductoReporte, "tipo" | "seProduce" | "claseDeUso">): boolean {
+  const c = capacidadesEnReportes(info);
+  return c.seCompra && c.seVende;
+}
+
 export interface FilaDeProductoParaReporte {
   id: string;
   codigo: string;
   nombre: string;
   tipo: TipoProducto;
   seProduce: boolean;
+  /** `Producto.claseDeUso`; opcional para quien arma filas a mano (sin ella, como siempre). */
+  claseDeUso?: string | null;
   precioVenta: unknown;
   categoriaId: string | null;
   categoria: { nombre: string } | null;
@@ -101,6 +119,8 @@ export function armarMapaProductos(
         tipo: p.tipo,
         disponible: disponibilidadPorProducto.get(p.id) === true,
         seProduce: p.seProduce,
+        // Solo se marca la clase cuando existe (un producto sin clase queda con la forma de siempre).
+        ...(p.claseDeUso ? { claseDeUso: p.claseDeUso } : {}),
         precioVenta: preciosLocales.get(p.id)?.precio ?? Number(p.precioVenta),
         categoriaNombre: p.categoria?.nombre ?? null,
         categoriaId: p.categoriaId,

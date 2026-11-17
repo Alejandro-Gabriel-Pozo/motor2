@@ -36,6 +36,7 @@ export interface ProductoParaConsolidado {
   nombre: string;
   tipo: TipoProducto;
   seProduce: boolean;
+  claseDeUso?: string | null;
   unidadStock: { nombre: string };
   insumo: { nombre: string } | null;
 }
@@ -129,7 +130,7 @@ export function armarStockConsolidado(entrada: {
   movimientos: readonly MovimientoPosteriorAlConteo[];
 }): FilaStockConsolidado[] {
   const { productos, teorico, secciones, conteos, movimientos } = entrada;
-  const elegibles = productos.filter((p) => tieneStockReal(p.tipo, p.seProduce));
+  const elegibles = productos.filter((p) => tieneStockReal(p.tipo, p.seProduce, p.claseDeUso));
   const productoPorId = new Map(elegibles.map((p) => [p.id, p]));
   const seccionPorId = new Map(secciones.map((s) => [s.id, s]));
   const ultimoConteo = ultimoConteoPorClave(conteos);

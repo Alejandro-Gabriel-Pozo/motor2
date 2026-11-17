@@ -23,7 +23,7 @@ export async function detalleDeLaLista(db: Db, sucursalId: string, ids: readonly
   const [filas, preciosLocales] = await Promise.all([
     db.producto.findMany({
       where: { id: { in: [...ids] } },
-      select: { id: true, tipo: true, modoDeVenta: true, precioVenta: true, seProduce: true, opcionQueRespalda: { select: { id: true } } },
+      select: { id: true, tipo: true, modoDeVenta: true, precioVenta: true, seProduce: true, claseDeUso: true, opcionQueRespalda: { select: { id: true } } },
     }),
     preciosLocalesVigentes(sucursalId, db, ids),
   ]);
@@ -31,7 +31,7 @@ export async function detalleDeLaLista(db: Db, sucursalId: string, ids: readonly
     filas.map((p) => [
       p.id,
       {
-        clase: claseDelProducto({ tipo: p.tipo, seProduce: p.seProduce, respaldaUnaOpcion: p.opcionQueRespalda !== null }),
+        clase: claseDelProducto({ tipo: p.tipo, seProduce: p.seProduce, respaldaUnaOpcion: p.opcionQueRespalda !== null, claseDeUso: p.claseDeUso }),
         precio: textoDelPrecioEnLaLista({ tipo: p.tipo, modoDeVenta: p.modoDeVenta, precio: preciosLocales.get(p.id)?.precio ?? Number(p.precioVenta) }),
       },
     ])

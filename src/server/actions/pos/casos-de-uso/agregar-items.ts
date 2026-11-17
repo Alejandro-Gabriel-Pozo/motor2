@@ -151,7 +151,7 @@ export async function agregarItemsCasoDeUso(
       if (!(await productoDisponibleEn(actor.sucursalId, producto.id, tx))) return fracaso("PRODUCTO_INVALIDO", `«${producto.nombre}» no está disponible en «${actor.sucursalNombre}».`);
       // «Ocultar» (diseño 2026-11-15, I-6): una línea NUEVA de un producto oculto (en este local o en toda la empresa) no se agrega; lo ya cargado se cobra. Va DESPUÉS de «no disponible» (gana el desactivado, decisión técnica 7).
       if (await productoOcultoEn(actor.sucursalId, producto.id, tx)) return fracaso("PRODUCTO_INVALIDO", MENSAJE_PRODUCTO_OCULTO);
-      const paso = producto.pasoVenta !== null ? { pasoVenta: Number(producto.pasoVenta), tieneStockReal: tieneStockReal(producto.tipo, producto.seProduce) } : null;
+      const paso = producto.pasoVenta !== null ? { pasoVenta: Number(producto.pasoVenta), tieneStockReal: tieneStockReal(producto.tipo, producto.seProduce, producto.claseDeUso) } : null;
       const cantidad = validarCantidadPedido(item.cantidad, producto.unidadStock.decimales, paso);
       if (!cantidad.ok) return fracaso("PRODUCTO_INVALIDO", `«${producto.nombre}»: ${cantidad.mensaje}`);
       const precioDeLista = redondearMoneda(await resolverPrecioVenta(actor.sucursalId, producto.id, Number(producto.precioVenta), tx));
