@@ -55,8 +55,8 @@
 | Etapa | Qué pasa | Datos reales | Condición para pasar a la siguiente |
 |---|---|---|---|
 | **R1** (F1) | Entran las familias (tablas nuevas, vacías). Convivencia transitoria con el invariante de §6.4. | No se toca ninguno | — |
-| **R2** | **Migración** del contenido de cada ítem agrupado a una familia, **aditiva** (el ítem agrupado NO se modifica ni se borra), ensayada en copia de solo lectura. **Antes de tocar nada real, el dueño recibe la lista** de cada ítem agrupado → familia que se crearía, qué no se puede migrar igual y por qué (ver §6.6), y confirma | Sí (solo agrega familias y miembros) | OK del dueño a la lista + prueba de equivalencia (R3) en verde |
-| **R3** | **Prueba de equivalencia con datos reales:** la carta pública y el portal de cada sucursal salen **idénticos antes y después** (golden con datos reales de la empresa, capturas a 375 px y escritorio); y el selector del POS y los reportes ofrecen lo mismo | Lectura | Cero diferencias, o diferencias listadas y aceptadas por el dueño |
+| **R2** | **Migración** del contenido de cada ítem agrupado a una familia, **aditiva** (el ítem agrupado NO se modifica ni se borra), ensayada en copia de solo lectura. **Antes de tocar nada real, el dueño recibe dos listas:** (1) cada ítem agrupado → familia que se crearía; (2) **lo que se pierde** por ítem y sucursal (descripción, etiquetas, ★, orden, género; §6.7) y lo que no migra igual (§6.6). Confirma las dos | Sí (solo agrega familias y miembros) | OK del dueño a la lista + prueba de equivalencia (R3) en verde |
+| **R3** | **Prueba de equivalencia con datos reales:** la carta pública y el portal de cada sucursal salen **idénticos antes y después, salvo lo declarado en la lista de pérdidas de R2** (golden con datos reales de la empresa, capturas a 375 px y escritorio); y el selector del POS y los reportes ofrecen lo mismo | Lectura | Cero diferencias fuera de la lista de pérdidas aceptada por el dueño |
 | **R4** | **Se OCULTA el ítem agrupado** con un interruptor **reversible** (la pantalla y la lectura dejan de usarlo; los datos quedan) | Reversible | Un período de uso sin reclamos |
 | **R5** | **Se borra** (tablas, acciones, pantallas), con **aviso expreso al dueño antes** y **autorización por base** (con respaldo): es destructivo. Se retira el trigger transitorio | Destructivo | Decisión explícita del dueño |
 
@@ -67,16 +67,18 @@
 | # | Brecha | Por qué | Salida propuesta |
 |---|---|---|---|
 | B1 | **Alcance:** el ítem agrupado es **de una sucursal** (`ItemAgrupadoCarta.sucursalId`, único `(sucursalId, productoId)` en sus opciones); la familia es **de la empresa**, con nombre único y un producto en una sola familia | Dos sucursales pueden tener «Gaseosa 500cc» con productos distintos, o el mismo producto agrupado de dos maneras | La lista de R2 los muestra; cada conflicto lo decide el dueño (no se unifica solo) |
-| B2 | **Lo que lleva el ítem y la familia no tiene:** `descripcion`, `tags`, `especial` (★), `orden`, `generoCartaId` (por sucursal) | La familia de Pedernal solo tiene nombre e interruptores (orden y ★ por empresa en 0081, que el dueño dejó por sucursal) | **Pregunta al dueño (abajo)** |
+| B2 | **Lo que lleva el ítem y la familia no tiene:** `descripcion`, `tags`, `especial` (★), `orden`, `generoCartaId` (por sucursal) | La familia de Pedernal solo tiene nombre e interruptores | **RESUELTA por el dueño (§6.7): se pierden**, y R2 los lista antes de migrar |
 | B3 | **Cómo se ve:** el ítem agrupado muestra **un renglón con un precio** (el mayor si las opciones difieren); la familia, según la regla de §9, puede salir «sueltos» si los precios difieren sin medidas | La carta **no sale igual** en esos ítems | La lista de R2 los marca; son los «no equivalentes» que el dueño decide (precios a unificar, o aceptar la forma nueva) |
 | B4 | **Contenido de carta del miembro:** un producto agrupado puede no tener `ContenidoCartaProducto` visible (el ítem lleva su contenido) | La familia se arma sobre productos visibles en la sucursal | R2 crearía el contenido faltante: **escribe datos**; se lista y se aprueba |
 | B5 | **POS y reportes** leen agrupados | Ver el inventario de arriba | R3 y condición de R4 |
 
-### 6.7 Pregunta pendiente para el dueño (cambia el modelo de datos)
-El ítem agrupado de hoy lleva por sucursal: **descripción, etiquetas, ★, orden y género**. Para que la carta salga igual después de reemplazarlo:
-- **A (recomendada):** una tabla por sucursal para la familia (`ContenidoCartaFamilia`: descripción, etiquetas, ★, orden), igual a lo que ya tiene cada producto en `ContenidoCartaProducto`. Agrega campos que Pedernal no tiene en la familia; el motivo es «mostrar lo mismo» (lo que pidió el dueño).
-- **B:** la familia NO lleva descripción ni etiquetas (solo nombre); lo que hoy cargaron se pierde, y se lista antes de migrar.
-El género del ítem (carpeta del POS) lo define el POS (E4/E7).
+### 6.7 Respuesta del dueño (2026-11-17, literal, registrada en `motor2-docs`): «Solo el nombre, como Pedernal» (opción B, NO la recomendada) — CONFIRMADA
+La familia lleva **solo el nombre** (más los dos interruptores), igual que Pedernal. **La descripción, las etiquetas, la estrella y el orden por sucursal del ítem agrupado NO se trasladan y se pierden al retirarlo.** Consecuencias en el diseño:
+- **No hay tabla `ContenidoCartaFamilia`** (no se agrega nada a la familia).
+- **R2 produce la LISTA DE LO QUE SE PIERDE**, por ítem agrupado y sucursal (descripción, etiquetas, ★, orden, género), con datos reales en copia de solo lectura, **antes de migrar**, para que el dueño la vea. Sin esa lista aprobada no se migra.
+- **R3 declara la diferencia:** la carta **no sale idéntica** en esos casos: desaparecen la descripción, las etiquetas, la ★ y el orden propio del ítem, y el precio del renglón agrupado (el mayor) se reemplaza por la forma que dé la regla de familia (§9; puede salir «sueltos»). La prueba de equivalencia pasa a ser «idéntico **salvo lo declarado en la lista**»; todo lo demás (secciones, productos visibles, precios de cada producto, portal) debe coincidir.
+- **R4 y R5 no se adelantan:** R4 espera a que el POS y los reportes lean familias; R5, con aviso expreso al dueño y autorización por base.
+- **Lugar de una familia en una sección «a mano» (PROPUESTA, el dueño lo corrige):** como Pedernal (renglón sin lugar guardado = al final, alfabético), las familias salen después de los renglones ordenados a mano, en orden alfabético. Darles lugar propio sería un campo que nadie pidió. El renglón `FAMILIA` entra a O1 recién con F4.
 
 ## 7. Atomicidad y concurrencia
 
