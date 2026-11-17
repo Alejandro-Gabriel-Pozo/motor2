@@ -32,7 +32,7 @@ export const AREAS_DEL_MENU: readonly { id: AreaId; label: string }[] = [
 /** Una fila: una pantalla (`href` exacto) o todas las de un prefijo (`prefijo`, p. ej. los reportes); el orden de la tabla es el orden en el menú. `grupo`: el subencabezado dentro del área. */
 type Fila = { area: AreaId; grupo: string | null } & ({ href: string; prefijo?: never } | { prefijo: string; href?: never });
 
-export const FILAS_DEL_MENU: readonly Fila[] = [
+const FILAS_DEL_MENU: readonly Fila[] = [
   // Ventas: lo que se hace al vender y lo que se mira del negocio.
   { area: "ventas", grupo: "Salón", href: "/mesas" },
   { area: "ventas", grupo: "Salón", href: "/mesas/mostrador" },
