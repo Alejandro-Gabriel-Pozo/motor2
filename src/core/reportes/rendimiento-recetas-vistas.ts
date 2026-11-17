@@ -1,4 +1,5 @@
-import { factorDeMerma } from "@/core/catalogo/public";
+import { factorDeBruto, factorDeMerma } from "@/core/catalogo/public";
+import type { BaseDeCantidad } from "@/core/catalogo/public";
 import { redondearMoneda } from "@/core/moneda";
 import { mediana } from "@/core/estadistica/mediana";
 
@@ -46,9 +47,13 @@ export function desvioEsNotable(desviacionPorcentaje: number | null): boolean {
 // receta CON merma, no solo la neta — defecto 3 de §3)
 // ---------------------------------------------------------------------------
 
-/** cantidad × (1 + merma%) — misma fórmula que descuenta el Kardex (venta.ts:85, movimientos.ts:100, costos.ts:63). */
-export function calcularCantidadTeoricaBruta(cantidadReceta: number, mermaPorcentaje: number): number {
-  return redondearCantidad(cantidadReceta * factorDeMerma(mermaPorcentaje));
+/**
+ * El BRUTO teórico de la línea: lo que la receta hace salir del stock, el mismo número que descuenta el Kardex y valoriza el costo (M3a).
+ * M3d: depende de la BASE de la versión a la que pertenece la línea. NETA (todo lo cargado hasta hoy, y el valor por defecto de este parámetro): cantidad × (1 + merma%).
+ * BRUTA: la cantidad YA es el bruto, no se suma la merma otra vez. La base la lee `leerBaseDeCantidad` en quien llama: acá una marca ilegible CIERRA (lanza), nunca se asume.
+ */
+export function calcularCantidadTeoricaBruta(cantidadReceta: number, mermaPorcentaje: number, base: BaseDeCantidad = "NETA"): number {
+  return redondearCantidad(cantidadReceta * factorDeBruto(base, mermaPorcentaje));
 }
 
 /**
@@ -60,6 +65,19 @@ export function calcularCantidadTeoricaBruta(cantidadReceta: number, mermaPorcen
  */
 export function calcularCantidadEstimadaNeta(cantidadEstimadaBruta: number, mermaPorcentaje: number): number {
   return redondearCantidad(cantidadEstimadaBruta / factorDeMerma(mermaPorcentaje));
+}
+
+/**
+ * M3d (dueño, 2026-11-17: «Si el numer que guarsa también tiene que ser bruto»): el estimado llevado a la BASE de la línea, que es lo que «Usar este valor» escribe como calibración.
+ * NETA (como hasta hoy): `calcularCantidadEstimadaNeta`. BRUTA: el bruto observado tal cual (coincide con lo que descuentan el stock y el costo; el desvío sale igual en las dos bases).
+ */
+export function calcularCantidadEstimadaEnBase(cantidadEstimadaBruta: number, mermaPorcentaje: number, base: BaseDeCantidad): number {
+  return base === "BRUTA" ? redondearCantidad(cantidadEstimadaBruta) : calcularCantidadEstimadaNeta(cantidadEstimadaBruta, mermaPorcentaje);
+}
+
+/** El rótulo de la base de una línea («Neto» / «Bruto», los textos ya aprobados) para mostrar en qué base está escrito un número. */
+export function rotuloDeBase(base: BaseDeCantidad): "Neto" | "Bruto" {
+  return base === "BRUTA" ? "Bruto" : "Neto";
 }
 
 /**

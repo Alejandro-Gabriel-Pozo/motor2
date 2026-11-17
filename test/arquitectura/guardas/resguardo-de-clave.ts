@@ -6,7 +6,7 @@ import { nivelAlcanzaElPiso } from "../../../src/core/permisos/jerarquia";
  * catálogo: su piso, su semilla (`rolesEditarSemilla`) y la lista `ACCIONES_QUE_DA_SOLO_EL_GERENTE`:
  *  - «libre»: piso operario y de fábrica la tiene el operador;
  *  - «delegable»: piso operario y de fábrica solo `admin`, sin estar en la lista (la da quien tiene `gestion_permisos`);
- *  - «la_da_solo_el_gerente»: piso operario, de fábrica solo `admin` y en la lista (la da SOLO el gerente: DEC-0024);
+ *  - «la_da_solo_el_gerente»: piso operario, de fábrica solo `admin` y en la lista (la da SOLO el gerente: DEC-0025);
  *  - «gobierno»: piso de administrador de sistema o de gerente (no se delega nunca a un rol de nivel operario).
  * Los guardianes que protegían un dato de dinero o de proveedor con «piso administrador» exigen ahora, como mínimo, «la_da_solo_el_gerente».
  */

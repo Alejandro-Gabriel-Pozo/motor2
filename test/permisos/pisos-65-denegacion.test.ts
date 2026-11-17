@@ -16,7 +16,7 @@ import type { AccionDeSucursal } from "../../src/core/permisos/acciones";
 /**
  * PISOS-65 (2026-11-17), pruebas de denegación: de las 65 que bajaron de piso administrador a operario, `caja_cerrar_sesion`, `anular_venta`, `compra_recibir` y `carta_ver`.
  *  - el empleado (rol «operador» de fábrica) SIN la fila es rechazado por el guard;
- *  - un administrador que no es el gerente no puede dársela (DEC-0024): mensaje exacto, nada escrito ni auditado;
+ *  - un administrador que no es el gerente no puede dársela (DEC-0025): mensaje exacto, nada escrito ni auditado;
  *  - el gerente se la da y el empleado pasa (con una Server Action real: cerrar la caja);
  *  - una de gobierno (`ver_auditoria`) no se le da a nadie de nivel operario, ni el gerente: «Esta acción es de gobierno de la empresa y no se delega.»
  */

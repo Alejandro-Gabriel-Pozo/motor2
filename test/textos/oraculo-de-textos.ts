@@ -14,6 +14,8 @@ export const ORACULO_DE_TEXTOS: Readonly<Record<string, string>> = {
   "aviso.oculto": "Oculto",
   "aviso.oculto_en_la_empresa": "Oculto en toda la empresa",
   "rechazo.TIENE_EXISTENCIA": "Primero dejá la existencia en 0.",
+  "aviso.receta_guardada_calibraciones_descartadas_por_base": "Se guardó la versión {version} de «{producto}» (ahora cargada en bruto). Se descartaron {cantidad} ajustes de sucursal porque eran del valor «neto» y ya no coinciden con la receta: {detalle}. Si hace falta, volvé a ajustarlos desde el reporte de rendimiento.",
+  "aviso.receta_guardada_calibracion_descartada_por_base": "Se guardó la versión {version} de «{producto}» (ahora cargada en bruto). Se descartó 1 ajuste de sucursal porque era del valor «neto» y ya no coincide con la receta: {detalle}. Si hace falta, volvé a ajustarlo desde el reporte de rendimiento.",
   "columna.importe": "Importe",
   "columna.cobrado": "Cobrado",
   "columna.margen": "Margen",

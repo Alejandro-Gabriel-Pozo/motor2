@@ -26,11 +26,11 @@ Para cada renglón del cobro que **no trae** `cuentaDeCobroId` y cuyo medio **ad
 | |A| | Resultado | Estado |
 |---|---|---|
 | 1 | se asigna esa cuenta al renglón (movimiento COBRO, `Cobro` y arqueo quedan en esa cuenta) | CONFIRMADA («RESPUESTA: b») |
-| 0 | el renglón queda **sin cuenta**, como hoy (no se rechaza: el dueño no pidió exigirla) | PROPUESTA |
+| 0 | el renglón queda **sin cuenta**, como hoy: el cobro se registra igual y después se ordena (**la venta nunca se frena por falta de cuenta**) | CONFIRMADA («A (aceptar sin cuenta)…», 2026-11-17) |
 | 2 o más | rechazo de regla `CUENTA_DE_COBRO_A_ELEGIR` (hay que elegir una), sin escribir nada | CONFIRMADA («con más de una cuenta activa hay que elegir») |
 
 Un renglón que **sí trae** cuenta se valida como hoy (`validarParDeCobro`, sin cambios). El efectivo nunca lleva cuenta.
-**Lectura de «exactamente una» (PROPUESTA, supuesto declarado; el dueño lo corrige):** una activa **compatible con el medio**. Si la única cuenta activa de la sucursal es de un tipo que el medio no admite (p. ej. solo hay una cuenta bancaria y se paga con débito), no se asigna: queda sin cuenta, como hoy. Con una sola cuenta activa por sucursal (C3b) el caso «2 o más» no se da con datos nuevos; queda por datos anteriores a C3b y para cuando el dueño cambie esa regla.
+**Lectura de «exactamente una» — CONFIRMADA (2026-11-17):** una cuenta activa **compatible con el medio**. Respuesta del dueño, chat con el orquestador general (registrada en `motor2-docs`), literal: «A (aceptar sin cuenta): el cobro se registra igual, queda “sin cuenta” y después lo ordenás. La venta nunca se frena.» Si la única cuenta activa de la sucursal es de un tipo que el medio no admite (p. ej. solo hay una cuenta bancaria y se paga con débito), no se asigna: el cobro se registra igual y queda sin cuenta, como hoy. **Principio nuevo del dueño: la venta nunca se frena por falta de cuenta.** Con una sola cuenta activa por sucursal (C3b) el caso «2 o más» no se da con datos nuevos; queda por datos anteriores a C3b y para cuando el dueño cambie esa regla.
 **Diferencia con Pedernal (declarada con su motivo):** en Pedernal el cobro no asigna cuenta por sí solo (no encontré esa regla en `src/modulos/caja` ni `ventas`; NO VERIFICADO exhaustivamente) y una sucursal puede tener varias cuentas; en Motor2 es decisión expresa del dueño (2026-11-17, «RESPUESTA: b», y 2026-11-16, «Por ahora es lo primero»).
 
 ## 6. Historia y persistencia (nivel 6)
@@ -55,6 +55,7 @@ Las lecturas de cobranzas y del arqueo no cambian: ya muestran la cuenta de cada
 - **Combinaciones (regla del 2026-10-28), oráculo escrito aparte del código** (`test/caja/oraculo-de-cuenta-por-defecto.ts`) y test exhaustivo contra Postgres real: dimensiones (tipo de medio: 6) × (cuentas activas compatibles en la sucursal: 0, 1, 2) × (el renglón trae cuenta: no / una compatible / una incompatible / de otra sucursal / inactiva) → resultado esperado y cuenta con que queda cada renglón. Guardián: si aparece un tipo de medio o de cuenta nuevo sin declarar en el oráculo, falla.
 - **Núcleo puro** `cuentaPorDefectoDelRenglon(tipoDeMedio, cuentasActivas)` con propiedades (fast-check): nunca devuelve una cuenta inactiva, incompatible ni de otra sucursal; con una explícita no la cambia.
 - **Concurrencia (Postgres real, varias vueltas):** cobro vs. desactivar la única cuenta; cobro vs. crear una segunda cuenta; dos cobros a la vez; sin error crudo y con resultado coherente (con la cuenta, o sin cuenta si la desactivación ganó).
+- **No se pierde el cobro:** con 2 o más compatibles, el rechazo `CUENTA_DE_COBRO_A_ELEGIR` no escribe nada y el reintento con la MISMA clave y una cuenta elegida registra el cobro (prueba en Postgres real; mutación: que el rechazo deje escrita la clave de reintento → rojo).
 - **Idempotencia:** el mismo cobro dos veces con la misma clave; el segundo devuelve `yaExistia` con la misma cuenta aunque entretanto cambien las cuentas activas.
 - **Mutaciones:** quitar el filtro de compatibilidad → rojo; quitar el filtro «activa» → rojo; asignar con 2 o más → rojo; hacer que la huella incluya la cuenta resuelta → rojo la prueba de idempotencia.
 
@@ -63,6 +64,7 @@ Las lecturas de cobranzas y del arqueo no cambian: ya muestran la cuenta de cada
 | Situación | Resultado esperado |
 |---|---|
 | Repetición / doble clic con la misma clave | mismo cobro (`yaExistia`), misma cuenta |
+| Hay 2 o más cuentas activas compatibles y el renglón no trae cuenta | el servidor responde `CUENTA_DE_COBRO_A_ELEGIR` **sin escribir nada** (ni cobranza ni clave de reintento): el cobro no se pierde, el cajero elige una cuenta y **reintenta con la misma clave** (como el pedido cambió y la primera vez no se escribió nada, no hay `CLAVE_REUTILIZADA`); la pantalla ofrece la lista de cuentas activas compatibles |
 | Se crea una segunda cuenta activa justo mientras se cobra | una transacción aborta y reintenta; con 2 compatibles el cobro responde `CUENTA_DE_COBRO_A_ELEGIR`; nunca error crudo (con C3b la creación misma se rechaza si ya hay una activa) |
 | Se desactiva la única cuenta justo mientras se cobra | o entra el cobro con la cuenta (si ganó) o queda sin cuenta (si ganó la desactivación); nunca queda asignada una inactiva |
 | Se reactiva otra cuenta mientras se cobra | igual: se relee el conjunto vigente |
@@ -77,5 +79,6 @@ Las lecturas de cobranzas y del arqueo no cambian: ya muestran la cuenta de cada
 
 ## 11. Preguntas abiertas
 
-- **Q-P3-1:** la lectura de «exactamente una» como «una activa compatible con el medio» (sección 5). PROPUESTA; si el dueño prefiere «la única activa de la sucursal, sea del tipo que sea», se rechazaría el cobro cuando no es compatible en vez de dejarlo sin cuenta.
-- **Q-P3-2:** con 0 cuentas activas compatibles, ¿se deja sin cuenta (como hoy) o se exige tener una? PROPUESTA: como hoy.
+- **Q-P3-1 — CONFIRMADA (2026-11-17):** «exactamente una» = una activa compatible con el medio (cita en la sección 5).
+- **Q-P3-2 — CONFIRMADA (2026-11-17):** con 0 cuentas activas compatibles el cobro se registra igual y queda sin cuenta («La venta nunca se frena», misma cita).
+- **Sin preguntas abiertas** en esta etapa.

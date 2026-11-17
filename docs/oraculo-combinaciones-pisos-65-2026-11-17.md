@@ -5,7 +5,7 @@ Regla «Combinaciones» del dueño (AGENTS.md, 2026-10-28). Este archivo es la t
 - `test/permisos/combinaciones-pisos-65.test.ts`: recorre contra Postgres real (con `guardarPermisos` y el gate de verdad) las 40 combinaciones de «Guardar la matriz» y las 20 de «Acceso».
 - `test/arquitectura/combinaciones-pisos-65-declaradas.test.ts`: falla si aparece una clase de acción, un piso o una propiedad de `AccionSemilla` nuevos sin declarar si afectan o no.
 
-Diseño de origen: `docs/diseno-pisos-65-2026-11-17.md`. Pedido del dueño (2026-11-17): «Si bajamos las 65 acciones de piso administrador a operador, esas celdas dejan de estar cerradas y la empresa decide fila por fila. Quedan cerradas de verdad solo las 14 de gobierno y de gerente […] «esta acción es de gobierno de la empresa y no se delega»». Regla de quién otorga (DEC-0024), confirmada: «Así me refería a que se baje el piso y después el gerente edite.»
+Diseño de origen: `docs/diseno-pisos-65-2026-11-17.md`. Pedido del dueño (2026-11-17): «Si bajamos las 65 acciones de piso administrador a operador, esas celdas dejan de estar cerradas y la empresa decide fila por fila. Quedan cerradas de verdad solo las 14 de gobierno y de gerente […] «esta acción es de gobierno de la empresa y no se delega»». Regla de quién otorga (DEC-0025), confirmada: «Así me refería a que se baje el piso y después el gerente edite.»
 
 ## Dimensiones que cambian el resultado
 
@@ -44,7 +44,7 @@ Cada propiedad del catálogo declara si cambia el resultado de las tablas de aba
 
 ## Guardar la matriz (R × C × Q × M)
 
-Orden de las razones (la primera que corresponda): una celda de gobierno o de gerente que se quiere DAR a un rol que no la alcanza → RECHAZA_GOBIERNO («Esta acción es de gobierno de la empresa y no se delega.»); la matriz del rol `admin` la edita solo el gerente → RECHAZA_MATRIZ_DEL_ADMIN; dar una de las 65 a un rol de nivel operario sin ser el gerente → RECHAZA_SOLO_EL_GERENTE_LA_DA (DEC-0024); si no, GUARDA. Quitar una fila de un rol de nivel operario siempre se puede (limpiar un dato viejo). Representantes: L `producto_disponibilidad`, O `caja_abrir_sesion`, D `caja_cerrar_sesion`, GS `ver_auditoria`, GG `traspasar_gerencia`.
+Orden de las razones (la primera que corresponda): una celda de gobierno o de gerente que se quiere DAR a un rol que no la alcanza → RECHAZA_GOBIERNO («Esta acción es de gobierno de la empresa y no se delega.»); la matriz del rol `admin` la edita solo el gerente → RECHAZA_MATRIZ_DEL_ADMIN; dar una de las 65 a un rol de nivel operario sin ser el gerente → RECHAZA_SOLO_EL_GERENTE_LA_DA (DEC-0025); si no, GUARDA. Quitar una fila de un rol de nivel operario siempre se puede (limpiar un dato viejo). Representantes: L `producto_disponibilidad`, O `caja_abrir_sesion`, D `caja_cerrar_sesion`, GS `ver_auditoria`, GG `traspasar_gerencia`.
 
 | R | C | Q | M | Resultado |
 |---|---|---|---|---|

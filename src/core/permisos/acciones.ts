@@ -345,7 +345,7 @@ export const ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE: readonly AccionClave[] = [
 
 /**
  * Las acciones que bajaron del piso «administrador» al de operario (PISOS-65, decisión del dueño 2026-11-17): la empresa decide fila por fila,
- * pero darle una de estas a un rol de nivel operario es SOLO del gerente de la empresa; quitarla, no (DEC-0024, confirmada por el dueño 2026-11-17).
+ * pero darle una de estas a un rol de nivel operario es SOLO del gerente de la empresa; quitarla, no (DEC-0025, confirmada por el dueño 2026-11-17).
  * Nacen cerradas: de fábrica solo la tiene el rol `admin`.
  */
 export const ACCIONES_QUE_DA_SOLO_EL_GERENTE: readonly AccionClave[] = [

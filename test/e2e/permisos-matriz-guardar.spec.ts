@@ -114,7 +114,7 @@ test("si otra persona cambió el permiso mientras se editaba, no se guarda nada 
   }
 });
 
-// PISOS-65 (2026-11-17, DEC-0023): las 14 de gobierno y de gerente siguen cerradas para un rol de nivel operario, y la celda 🚫 dice por qué.
+// PISOS-65 (2026-11-17, DEC-0024): las 14 de gobierno y de gerente siguen cerradas para un rol de nivel operario, y la celda 🚫 dice por qué.
 test("la celda cerrada de una acción de gobierno dice «Esta acción es de gobierno de la empresa y no se delega.»", async ({ paginaAutenticada: page }) => {
   await operador();
   await page.goto("/administracion/permisos");

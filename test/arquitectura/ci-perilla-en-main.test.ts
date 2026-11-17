@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
- * Perilla `CI_EN_MAIN` (docs/ci-perilla-ci-en-main-2026-11-15.md): en un push a `main` los trabajos pesados de `ci.yml` y `seguridad.yml` se omiten salvo que la variable de repositorio valga `si`.
+ * Perilla `CI_EN_MAIN` (docs/ci-perilla-ci-en-main-2026-11-15.md) y filtro de alcance (docs/ci-saltar-build-y-e2e-si-solo-docs-2026-11-17.md): en un push a `main` los trabajos pesados de `ci.yml` y `seguridad.yml` se omiten salvo que la variable de repositorio valga `si`.
  * Este guardián fija la regla de seguridad de esa perilla: la condición existe en CADA trabajo y NO puede omitir nada fuera de «push a main con la perilla apagada» (en particular, jamás un
  * `pull_request`: el Gate requerido de los PR sigue exigiendo todo). No compara texto contra una plantilla: EVALÚA la condición real del workflow sobre todas las combinaciones de evento, rama y valor
  * de la variable. La condición solo puede estar escrita con un conjunto cerrado de símbolos (lista de permitidos): cualquier otra cosa (una función, una variable, otro contexto) es un problema.
@@ -20,6 +20,8 @@ interface Contexto {
   evento: string;
   ref: string;
   perilla: string | undefined;
+  /** Lo que dice el job `alcance` (`needs.alcance.outputs.alcance`): «solo-docs», «completo» o vacío (el filtro falló o no corrió). */
+  alcance: string;
 }
 
 /** Ids de los jobs (claves de dos espacios bajo `jobs:`) con su texto. */
@@ -39,7 +41,7 @@ function condicionDeJob(job: string): string | null {
   return m ? (m[1] as string).trim() : null;
 }
 
-const SIMBOLOS_PERMITIDOS = /^(?:\s|github\.event_name|github\.ref|vars\.CI_EN_MAIN|always\(\)|'[^'"\\]*'|==|!=|&&|\|\||!|\(|\))+$/;
+const SIMBOLOS_PERMITIDOS = /^(?:\s|github\.event_name|github\.ref|vars\.CI_EN_MAIN|needs\.alcance\.outputs\.alcance|cancelled\(\)|always\(\)|'[^'"\\]*'|==|!=|&&|\|\||!|\(|\))+$/;
 
 /**
  * Evalúa la condición de un job para un contexto. Devuelve `"corre"` u `"omitido"`; o un texto de problema si la condición no se puede evaluar con seguridad.
@@ -54,10 +56,12 @@ function evaluar(condicion: string, ctx: Contexto): "corre" | "omitido" | { prob
     .replace(/github\.event_name/g, "__e")
     .replace(/github\.ref/g, "__r")
     .replace(/vars\.CI_EN_MAIN/g, "__p")
+    .replace(/needs\.alcance\.outputs\.alcance/g, "__a")
+    .replace(/cancelled\(\)/g, "false")
     .replace(/always\(\)/g, "true");
   try {
-    const f = new Function("__e", "__r", "__p", `"use strict"; return (${js.replace(/==/g, "===")});`) as (e: string, r: string, p: string) => unknown;
-    return f(ctx.evento, ctx.ref, ctx.perilla ?? "") === true ? "corre" : "omitido";
+    const f = new Function("__e", "__r", "__p", "__a", `"use strict"; return (${js.replace(/==/g, "===")});`) as (e: string, r: string, p: string, a: string) => unknown;
+    return f(ctx.evento, ctx.ref, ctx.perilla ?? "", ctx.alcance) === true ? "corre" : "omitido";
   } catch (e) {
     return { problema: `la condición «${cuerpo}» no se pudo evaluar: ${(e as Error).message}` };
   }
@@ -66,9 +70,17 @@ function evaluar(condicion: string, ctx: Contexto): "corre" | "omitido" | { prob
 const EVENTOS = ["push", "pull_request", "workflow_dispatch", "schedule"];
 const REFS = ["refs/heads/main", "refs/heads/ci/algo", "refs/heads/otra", "refs/pull/1/merge"];
 const PERILLAS: (string | undefined)[] = [undefined, "", "si", "no", "SI", "true"];
+/** Lo que puede decir el filtro de alcance: las dos respuestas, vacío (falló) y cosas raras (todas distintas de «solo-docs» corren todo). */
+const ALCANCES = ["solo-docs", "completo", "", "Solo-Docs", "solo-docs "];
+/** Los únicos jobs que el filtro de alcance puede omitir (en pull_request con «solo-docs»). */
+const JOBS_QUE_SALTA_EL_FILTRO = ["build", "e2e"];
 
-/** El oráculo escrito aparte: solo se omite en push a main con la perilla distinta de «si». */
-const debeOmitirse = (c: Contexto) => c.evento === "push" && c.ref === "refs/heads/main" && c.perilla !== "si";
+/**
+ * El oráculo escrito aparte: se omite en push a main con la perilla distinta de «si»; y los jobs `build` y `e2e` también cuando el filtro dijo EXACTAMENTE «solo-docs» (cualquier otra cosa, o vacío,
+ * corre: falla cerrado). Ningún otro job se omite jamás por el filtro.
+ */
+const debeOmitirse = (c: Contexto, job: string) =>
+  (c.evento === "push" && c.ref === "refs/heads/main" && c.perilla !== "si") || (JOBS_QUE_SALTA_EL_FILTRO.includes(job) && c.alcance === "solo-docs");
 
 /** Problemas de un workflow (texto). Lista vacía = bien. */
 function problemasDe(archivo: string, workflow: string): string[] {
@@ -86,14 +98,16 @@ function problemasDe(archivo: string, workflow: string): string[] {
     for (const evento of EVENTOS) {
       for (const ref of REFS) {
         for (const perilla of PERILLAS) {
-          const ctx = { evento, ref, perilla };
-          const r = evaluar(condicion, ctx);
-          if (typeof r === "object") {
-            problemas.push(`${archivo}: el job ${id}: ${r.problema}`);
-            return problemas;
+          for (const alcance of ALCANCES) {
+            const ctx = { evento, ref, perilla, alcance };
+            const r = evaluar(condicion, ctx);
+            if (typeof r === "object") {
+              problemas.push(`${archivo}: el job ${id}: ${r.problema}`);
+              return problemas;
+            }
+            const esperado = debeOmitirse(ctx, id) ? "omitido" : "corre";
+            if (r !== esperado) problemas.push(`${archivo}: el job ${id} con ${evento} en ${ref}, perilla ${JSON.stringify(perilla)} y alcance ${JSON.stringify(alcance)} da «${r}» y tendría que dar «${esperado}»`);
           }
-          const esperado = debeOmitirse(ctx) ? "omitido" : "corre";
-          if (r !== esperado) problemas.push(`${archivo}: el job ${id} con ${evento} en ${ref} y perilla ${JSON.stringify(perilla)} da «${r}» y tendría que dar «${esperado}»`);
         }
       }
     }
@@ -108,8 +122,8 @@ describe("CI: la perilla CI_EN_MAIN (workflows reales)", () => {
     });
   }
 
-  it("ci.yml tiene los cinco jobs esperados con la perilla (estatico, build, integracion, e2e, gate) y seguridad.yml los suyos", () => {
-    expect([...jobsDe(leer(WORKFLOWS[0])).keys()]).toEqual(["estatico", "build", "integracion", "e2e", "gate"]);
+  it("ci.yml tiene los seis jobs esperados con la perilla (alcance, estatico, build, integracion, e2e, gate) y seguridad.yml los suyos", () => {
+    expect([...jobsDe(leer(WORKFLOWS[0])).keys()]).toEqual(["alcance", "estatico", "build", "integracion", "e2e", "gate"]);
     expect([...jobsDe(leer(WORKFLOWS[1])).keys()]).toEqual(["dependencias", "pruebas-de-seguridad", "zap"]);
   });
 
@@ -137,6 +151,9 @@ describe("CI: la perilla CI_EN_MAIN (violaciones inyectadas, tienen que ponerse 
     { titulo: "la perilla invertida (apagada = corre)", de: "vars.CI_EN_MAIN != 'si'", a: "vars.CI_EN_MAIN == 'si'" },
     { titulo: "el gate en `always()` a secas (pero entonces falla en main con la perilla apagada: no está permitido sin la perilla)", de: GATE, a: "if: always()" },
     { titulo: "un símbolo fuera de la lista de permitidos (`github.actor`)", de: "github.event_name == 'push' &&", a: "github.actor == 'bot' &&" },
+    { titulo: "build deja de saltarse con «solo-docs» (se quita la mitad del filtro)", de: " && needs.alcance.outputs.alcance != 'solo-docs'", a: "" },
+    { titulo: "el filtro invertido (se salta con «completo»)", de: "needs.alcance.outputs.alcance != 'solo-docs'", a: "needs.alcance.outputs.alcance != 'completo'" },
+    { titulo: "el filtro con `==` (se salta todo salvo «solo-docs»)", de: "needs.alcance.outputs.alcance != 'solo-docs'", a: "needs.alcance.outputs.alcance == 'solo-docs'" },
     { titulo: "la condición sin las llaves de GitHub", de: SANA, a: "if: !(github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CI_EN_MAIN != 'si')" },
   ];
 

@@ -6,9 +6,9 @@ Fecha: 2026-11-17. Estado: implementado en la rama `claude/pisos-65-operario`. D
 
 **Necesidad (dueño, 2026-11-17, chat con el orquestador general):** «Si asi: decisiones 2 y 3 de la lista anterior. Si bajamos las 65 acciones de piso administrador a operador, esas celdas dejan de estar cerradas y la empresa decide fila por fila. Quedan cerradas de verdad solo las 14 de gobierno y de gerente, y ahí el mensaje debería decir claro por qué: «esta acción es de gobierno de la empresa y no se delega». // Creo q es mas barato».
 
-**Regla de quién otorga (DEC-0024, CONFIRMADA):** «Así me refería a que se baje el piso y después el gerente edite.» (2026-11-17, chat del dueño). Solo el gerente le da una de las 65 a un rol de nivel operario.
+**Regla de quién otorga (DEC-0025, CONFIRMADA):** «Así me refería a que se baje el piso y después el gerente edite.» (2026-11-17, chat del dueño). Solo el gerente le da una de las 65 a un rol de nivel operario.
 
-Qué entra: (1) las 65 acciones pasan de `nivelMinimo: "administrador"` a `"operario"`, sin tocar `rolesEditarSemilla` (todo sigue naciendo cerrado: solo `admin` las tiene de fábrica); (2) las 14 de gobierno y de gerente no se bajan, y su celda cerrada y su rechazo dicen «Esta acción es de gobierno de la empresa y no se delega.» (DEC-0023); (3) solo el gerente otorga las 65 a un rol de nivel operario; quitar sigue permitido a quien hoy puede; (4) oráculo de combinaciones y pruebas de denegación.
+Qué entra: (1) las 65 acciones pasan de `nivelMinimo: "administrador"` a `"operario"`, sin tocar `rolesEditarSemilla` (todo sigue naciendo cerrado: solo `admin` las tiene de fábrica); (2) las 14 de gobierno y de gerente no se bajan, y su celda cerrada y su rechazo dicen «Esta acción es de gobierno de la empresa y no se delega.» (DEC-0024); (3) solo el gerente otorga las 65 a un rol de nivel operario; quitar sigue permitido a quien hoy puede; (4) oráculo de combinaciones y pruebas de denegación.
 
 Qué NO entra: ninguna pantalla ni opción nueva; ninguna migración; no se extiende la regla (3) a las 24 claves de clase O (sugerencia F8 del PR, no implementada).
 
@@ -32,7 +32,7 @@ La lista es propia (no «piso operario y semilla solo admin»): eso incluiría 2
 | Incertidumbre | Un `anterior` que miente esquiva la regla (3) en el bucle, pero el chequeo de concurrencia lo compara con la base y rechaza todo (hay prueba). |
 | Error parcial | Todo o nada: un rechazo en cualquier celda corta el lote sin auditoría. |
 | Datos faltantes | Sin fila no hay acceso (las 65 nacen cerradas). |
-| Cambio de permisos | Toda fila vieja de un rol que no es `admin` sobre las 65 da acceso desde el despliegue. Medido el 2026-11-17 en la base real: 0 filas; en otras instalaciones repetir la consulta de riesgos del PR antes de desplegar y frenar si da más de 0. Quitar: un administrador que no es gerente PUEDE quitar una de las 65 (la regla solo restringe dar; declarado en DEC-0024). Revertir PISOS-65 deja inertes las filas dadas (falla cerrado). |
+| Cambio de permisos | Toda fila vieja de un rol que no es `admin` sobre las 65 da acceso desde el despliegue. Medido el 2026-11-17 en la base real: 0 filas; en otras instalaciones repetir la consulta de riesgos del PR antes de desplegar y frenar si da más de 0. Quitar: un administrador que no es gerente PUEDE quitar una de las 65 (la regla solo restringe dar; declarado en DEC-0025). Revertir PISOS-65 deja inertes las filas dadas (falla cerrado). |
 
 ## 5. Pruebas (nivel 10)
 
@@ -40,7 +40,7 @@ Oráculo `docs/oraculo-combinaciones-pisos-65-2026-11-17.md` (dimensiones R, C, 
 
 ## 6. Diferencia con Pedernal (declarada)
 
-En Pedernal solo el gerente edita roles; las 65 quedan «sin piso» como en Pedernal y cerradas por semilla. En Motor2 el administrador con `gestion_permisos` sigue editando los roles de nivel operario, así que la regla (3) acota solo el DAR de estas 65 al gerente (DEC-0024). Motivo: decisión del dueño del 2026-11-17 (cita arriba).
+En Pedernal solo el gerente edita roles; las 65 quedan «sin piso» como en Pedernal y cerradas por semilla. En Motor2 el administrador con `gestion_permisos` sigue editando los roles de nivel operario, así que la regla (3) acota solo el DAR de estas 65 al gerente (DEC-0025). Motivo: decisión del dueño del 2026-11-17 (cita arriba).
 
 ## 7. Riesgos declarados
 

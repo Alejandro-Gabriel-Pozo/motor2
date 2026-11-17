@@ -148,7 +148,7 @@ describe("guardarPermisos — concurrencia real", () => {
       expect(await estado(compartida), `iteración ${i}`).toEqual(soloVer);
     }
   });
-  // PISOS-65 (DEC-0024): las 65 las da solo el gerente. Las pruebas usan `caja_cerrar_sesion` (una de las 65).
+  // PISOS-65 (DEC-0025): las 65 las da solo el gerente. Las pruebas usan `caja_cerrar_sesion` (una de las 65).
   describe("PISOS-65: dar una de las 65 bajo concurrencia", () => {
     const DE_LAS_65 = "caja_cerrar_sesion";
     const conTodo = { puedeVer: true, puedeEditar: true };

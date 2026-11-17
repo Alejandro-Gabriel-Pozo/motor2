@@ -84,7 +84,7 @@ function otorgaMas(anterior: EstadoPermiso, nuevo: EstadoPermiso): boolean {
 }
 
 /**
- * DEC-0024 (confirmada por el dueño, 2026-11-17: «Así me refería a que se baje el piso y después el gerente edite.»): ¿este cambio le DA a un rol de nivel
+ * DEC-0025 (confirmada por el dueño, 2026-11-17: «Así me refería a que se baje el piso y después el gerente edite.»): ¿este cambio le DA a un rol de nivel
  * operario una de las 65 acciones que bajaron del piso administrador (`ACCIONES_QUE_DA_SOLO_EL_GERENTE`)? Dar una es solo del gerente; quitar no se restringe.
  * La matriz de un rol que solo edita el gerente (el admin) ya la cubre `laMatrizDelRolLaEditaSoloElGerente`.
  */
@@ -92,7 +92,7 @@ export function otorgaUnaAccionQueDaSoloElGerente(rol: RolDeMatriz, accionClave:
   return claveEnCatalogo(accionClave) && esAccionQueDaSoloElGerente(accionClave) && !laMatrizDelRolLaEditaSoloElGerente(rol) && otorgaMas(anterior, nuevo);
 }
 
-/** DEC-0024: el rechazo de `guardarPermisos` cuando quien actúa NO es el gerente y el cambio otorga una de las 65. Pura: quien actúa lo mide el caso de uso. */
+/** DEC-0025: el rechazo de `guardarPermisos` cuando quien actúa NO es el gerente y el cambio otorga una de las 65. Pura: quien actúa lo mide el caso de uso. */
 export function mensajeSiNoPuedeOtorgarLaAccion(actor: PersonaParaJerarquia, rol: RolDeMatriz, accionClave: string, anterior: EstadoPermiso, nuevo: EstadoPermiso): string | null {
   return otorgaUnaAccionQueDaSoloElGerente(rol, accionClave, anterior, nuevo) && nivelDe(actor) !== "gerente" ? MENSAJE_SOLO_EL_GERENTE_LA_DA : null;
 }

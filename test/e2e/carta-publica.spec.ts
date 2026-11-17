@@ -265,10 +265,10 @@ test.describe("carta de una sucursal", () => {
         await expect(filas.flan).toContainText("$ 3.200");
         await expect(filas.flan.locator("[data-opciones-sin-costo]")).toHaveCount(0);
         await expect(page.locator("body")).not.toContainText("Sin guarnición");
-        // Legibilidad (escala única, DEC-35; jerarquía única del modelo unificado): el nombre de la tabla y el del flan son 19 px (rol Producto); las filas de la tabla (las opciones) y sus precios, 16 px
+        // Legibilidad (escala única, DEC-35; jerarquía única del modelo unificado): el nombre de la tabla y el del flan son 21,6 px con el libro al estilo de la maqueta (rol Producto; 1.35rem, «si» del dueño, 2026-11-17; sin el libro, 19 px); las filas de la tabla (las opciones) y sus precios, 16 px
         // (roles Opción y Opción precio); la etiqueta del grupo 14 px (rol Aclaración 600) y la línea de lo que no cuesta 15 px (rol Elección).
-        expect(await tamanoPx(filas.cafe.getByRole("heading", { name: cafe }))).toBe(19);
-        expect(await tamanoPx(filas.flan.getByRole("heading", { name: flan }))).toBe(19);
+        expect(await tamanoPx(filas.cafe.getByRole("heading", { name: cafe }))).toBe(21.6);
+        expect(await tamanoPx(filas.flan.getByRole("heading", { name: flan }))).toBe(21.6);
         expect(await tamanoPx(tabla.getByRole("rowheader").first().locator("[data-rol=opcion]"))).toBe(16);
         expect(await tamanoPx(tabla.locator("tbody [data-rol=opcion-precio]").first())).toBe(16);
         expect(await tamanoPx(extrasCafe.locator("[data-rol=aclaracion-rotulo]"))).toBe(14);

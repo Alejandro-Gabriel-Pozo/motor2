@@ -228,6 +228,16 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 
 ### DEC-0023
 - **Fecha:** 2026-11-17
+- **Quién:** la sesión Sonnet del frente 2 (unidades y clasificación), etapa M3d; aceptación directa del dueño.
+- **Qué decidió:** el aviso que ve quien guarda una receta que pasa de neta a bruta y descarta calibraciones de sucursal (dos claves: singular y plural). Lo que ve distinto el personal: antes, ese guardado no avisaba nada específico (las calibraciones se arrastraban como valor neto sobre una línea bruta); ahora dice «Se guardó la versión N de «Receta» (ahora cargada en bruto). Se descartaron K ajustes de sucursal porque eran del valor «neto» y ya no coinciden con la receta: «Sucursal» para «Ingrediente» (cantidad), … Si hace falta, volvé a ajustarlos desde el reporte de rendimiento.»; con una sola dice «Se descartó 1 ajuste…».
+- **Por qué:** el dueño aceptó descartar con registro (sin convertir) las calibraciones al pasar una receta de neta a bruta y aprobó el texto del aviso (`docs/diseno-merma-m3d-rendimiento-y-calibracion-2026-11-17.md`, §12).
+- **Costo de revertir:** bajo: sacar las dos claves del catálogo y del oráculo y volver al mensaje de siempre; no hay migración ni datos.
+- **Dónde:** `src/core/textos/catalogo.ts`, `src/server/actions/catalogo/casos-de-uso/guardar-version-de-receta.ts`
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «ok» — 2026-11-17 — chat del dueño con el orquestador (`motor2-docs`, registro d335641, respuesta al texto del aviso de descarte de calibraciones)
+
+### DEC-0024
+- **Fecha:** 2026-11-17
 - **Quién:** la sesión Sonnet de PISOS-65 (las 65 acciones bajan de piso administrador a operario); aceptación directa del dueño.
 - **Qué decidió:** en las celdas cerradas de la matriz de permisos (las 14 acciones de gobierno y de gerente, que no se bajan: 12 de administrador de sistema y 2 de gerente) la pantalla (el `title` de la celda 🚫) y el guardado dicen exactamente «Esta acción es de gobierno de la empresa y no se delega.» (clave `rechazo.ACCION_DE_GOBIERNO`). Reemplaza el texto «Esta acción es de un nivel más alto que el de este rol: no se le puede dar» de la pantalla y el mensaje `FUERA_DE_NIVEL` del guardado (rol, nivel y clave), que se borran.
 - **Por qué:** el dueño bajó las 65 acciones de piso administrador a operador para que la empresa decida fila por fila; quedan cerradas de verdad solo las 14 de gobierno y de gerente, y pidió que el mensaje dijera por qué.
@@ -236,7 +246,7 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 - **Estado:** ACEPTADA
 - **Cita del dueño:** «esta acción es de gobierno de la empresa y no se delega» — 2026-11-17 — chat del dueño con el orquestador general
 
-### DEC-0024
+### DEC-0025
 - **Fecha:** 2026-11-17
 - **Quién:** la sesión Sonnet de PISOS-65; aceptación directa del dueño.
 - **Qué decidió:** darle a un rol de nivel operario (el operador o un rol propio) una de las 65 acciones que bajaron del piso administrador es SOLO del gerente de la empresa (`ACCIONES_QUE_DA_SOLO_EL_GERENTE`, `otorgaUnaAccionQueDaSoloElGerente` y `mensajeSiNoPuedeOtorgarLaAccion` en `src/core/permisos/`): un administrador que no es el gerente recibe «Solo el gerente de la empresa puede darle esta acción a un rol de nivel operario. No se guardó nada.» y no se escribe ni se audita nada. Quitarla no se restringe: quien hoy puede editar la matriz de un rol operario puede quitar una de las 65. Las 65 siguen naciendo cerradas (de fábrica solo las tiene el rol `admin`). El texto del mensaje no lo dictó el dueño: queda literal en `matriz.ts`.

@@ -14,7 +14,7 @@ import { ACCIONES, ACCIONES_QUE_DA_SOLO_EL_GERENTE, type AccionClave, type Nivel
  *    `producto_sincronizar_precio_carta` (S-41) y la clave fina `producto_campos_sensibles` (M.2: precio, factor y unidades del producto; se suma a `producto_editar`).
  *  - **L, libres**: piso «operario» y semilla `admin` y `operador`: lo operativo de todos los días.
  *  - **A (D desde PISOS-65), las 65 que bajaron del piso administrador**: piso «operario», semilla SOLO `admin` y en `ACCIONES_QUE_DA_SOLO_EL_GERENTE`: la empresa decide fila por fila, pero darles
- *    una a un rol de nivel operario es solo del gerente (DEC-0024; decisión del dueño 2026-11-17). Nacen cerradas. Se llaman «A» por la lista histórica; ya no hay claves de piso «administrador».
+ *    una a un rol de nivel operario es solo del gerente (DEC-0025; decisión del dueño 2026-11-17). Nacen cerradas. Se llaman «A» por la lista histórica; ya no hay claves de piso «administrador».
  *
  * Lo que fija, por clase: (1) cada clave del catálogo está declarada en UNA clase y las declaradas existen; (2) la clase declarada es la que sus datos dicen (piso y semilla); (3) las 14 de
  * gobierno conservan su piso exacto; (4) las claves de piso operario con semilla solo `admin` son exactamente las de la clase O (una clave nueva de ese tipo declara su clase).

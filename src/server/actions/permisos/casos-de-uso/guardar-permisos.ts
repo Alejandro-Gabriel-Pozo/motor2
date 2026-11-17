@@ -44,7 +44,7 @@ type ResultadoGuardarPermisos = ResultadoCaso<
  *   la empresa (`mensajeSiNoPuedeEditarLaMatrizDelRol`, puro, en `core/permisos/matriz.ts`; quien actúa se lee de la base dentro de la transacción). Un
  *   administrador que no es el gerente recibe «Solo el gerente de la empresa puede editar los permisos del rol administrador.» y no se guarda nada; los demás
  *   roles los sigue editando quien tiene `gestion_permisos`. Es una regla del caso de uso: el permiso de la pantalla (`gestion_permisos`) no cambia.
- * - DEC-0024 (PISOS-65, confirmada por el dueño el 2026-11-17): darle a un rol de nivel operario una de las 65 acciones que bajaron del piso administrador
+ * - DEC-0025 (PISOS-65, confirmada por el dueño el 2026-11-17): darle a un rol de nivel operario una de las 65 acciones que bajaron del piso administrador
  *   (`ACCIONES_QUE_DA_SOLO_EL_GERENTE`) es SOLO del gerente (`mensajeSiNoPuedeOtorgarLaAccion`); quitarla no se restringe. Las 14 de gobierno y de gerente
  *   siguen cerradas para todo rol de nivel operario: `ACCION_DE_GOBIERNO` con el texto del catálogo.
  * - Concurrencia: cada cambio trae lo que la persona VIO (`anterior`). Si en la base ya es otra cosa, alguien más la cambió mientras tanto: se rechaza el
@@ -86,7 +86,7 @@ export async function guardarPermisosCasoDeUso(actor: Pick<ContextoUsuario, "usu
     // Lo que efectivamente se va a guardar (con Ver ⊇ Editar y la salvaguarda). Un cambio que no cambia nada, se ignora.
     const efectivos: { rolId: string; rolNombre: string; accionClave: AccionClave; anterior: EstadoPermiso; nuevo: EstadoPermiso }[] = [];
     let rolSoloDelGerente: RolDeMatriz | null = null; // D13/D14: el primer rol que cambia y cuya matriz edita solo el gerente
-    let otorgaDeLas65: { rol: RolDeMatriz; accionClave: string; anterior: EstadoPermiso; nuevo: EstadoPermiso } | null = null; // DEC-0024: la primera celda que da una de las 65
+    let otorgaDeLas65: { rol: RolDeMatriz; accionClave: string; anterior: EstadoPermiso; nuevo: EstadoPermiso } | null = null; // DEC-0025: la primera celda que da una de las 65
     for (const c of cambios) {
       const rol = rolPorId.get(c.rolId);
       if (!rol) return fracaso("ROL_NO_ENCONTRADO", "No se encontró uno de los roles (¿está desactivado?). No se guardó nada.");
@@ -111,7 +111,7 @@ export async function guardarPermisosCasoDeUso(actor: Pick<ContextoUsuario, "usu
         const rechazo = mensajeSiNoPuedeEditarLaMatrizDelRol(quienActua, rolSoloDelGerente);
         if (rechazo) return fracaso("MATRIZ_SOLO_DEL_GERENTE", rechazo);
       }
-      // DEC-0024 (confirmada por el dueño, 2026-11-17): darle a un rol de nivel operario una de las 65 acciones que bajaron del piso administrador es SOLO del gerente.
+      // DEC-0025 (confirmada por el dueño, 2026-11-17): darle a un rol de nivel operario una de las 65 acciones que bajaron del piso administrador es SOLO del gerente.
       if (otorgaDeLas65) {
         const rechazo = mensajeSiNoPuedeOtorgarLaAccion(quienActua, otorgaDeLas65.rol, otorgaDeLas65.accionClave, otorgaDeLas65.anterior, otorgaDeLas65.nuevo);
         if (rechazo) return fracaso("SOLO_EL_GERENTE_LA_DA", rechazo);
