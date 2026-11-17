@@ -4,6 +4,7 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { crearMembresias } from "../setup/membresia";
 import { prismaAdmin } from "../setup/cliente-duenio";
+import { elegirClaseDelAlta } from "./fixtures/alta";
 
 /**
  * Circuito completo del alta con el tilde "Activo en todas las sucursales" (§4, P5) y su efecto real en el catálogo de
@@ -62,7 +63,7 @@ async function abrirEnDosSucursales(browser: Browser, baseURL: string | undefine
 
 async function darDeAltaPV(page: import("@playwright/test").Page, nombre: string) {
   await page.goto("/catalogo/productos/nuevo");
-  await page.getByLabel("¿Qué es?").selectOption({ label: "Producto vendible" });
+  await elegirClaseDelAlta(page, "Producto vendible");
   await page.getByRole("textbox", { name: "Nombre", exact: true }).fill(nombre);
   await page.getByRole("combobox", { name: "Unidad de stock" }).selectOption({ label: "kg" });
   // Como Pedernal, el alta ya no ofrece «Activo en todas las sucursales»: el producto nace disponible en todas.

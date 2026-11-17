@@ -653,7 +653,6 @@ const CALCULO_SOBRE_DATOS_CARGADOS =
   "cálculo que recibe los datos YA cargados por la consulta de la página que lo llama (estructuras internas: items, mapas de productos, índices de recetas), sin ids del cliente: su aislamiento es el del `db` y el de esa consulta, que sí está en la matriz";
 const AYUDANTE_DE_RECETAS =
   "ayudante genérico de recetas que recibe el alcance (central o de una sucursal) y los argumentos de Prisma del que lo llama: se ejerce a través de las acciones y consultas de recetas, que sí están en la matriz";
-const CARTA_PUBLICA = "carta pública: anónima POR DISEÑO (lo que la empresa publica a propósito, con lista cerrada de campos: GT-13, `test/arquitectura/carta-publica-lista-cerrada.test.ts` y `test/carta/`)";
 
 /**
  * Las puertas que NO se pueden invocar en la matriz, con el motivo. Lista CERRADA que solo se achica (`MAXIMO_SIN_GENERADOR` en la cobertura): una puerta nueva que no se pueda derivar ni escribir
@@ -680,12 +679,6 @@ export const SIN_GENERADOR: Readonly<Record<string, string>> = {
   "consulta|consultas/reportes/periodo-precios.ts|calcularComparativaPreciosDelPeriodo": CALCULO_SOBRE_DATOS_CARGADOS,
   "consulta|consultas/reportes/periodo-precios.ts|calcularTendenciaPreciosDelPeriodo": CALCULO_SOBRE_DATOS_CARGADOS,
   "consulta|consultas/reportes/periodo-ratio.ts|calcularRatioGastoVentas": CALCULO_SOBRE_DATOS_CARGADOS,
-  "lectura|lecturas/carta/publica.ts|resolverCartaPublica": CARTA_PUBLICA,
-  "lectura|lecturas/carta/publica.ts|resolverConfigPortal": CARTA_PUBLICA,
-  "lectura|lecturas/carta/publica.ts|resolverPortalCarta": CARTA_PUBLICA,
-  // Portal de la empresa PR-A: las dos funciones DUALES (las que llama la entrada pública sin sesión) se ejercen igual que las de siempre.
-  "lectura|lecturas/carta/publica.ts|resolverPortalCartaDual": CARTA_PUBLICA,
-  "lectura|lecturas/carta/publica.ts|resolverConfigPortalDual": CARTA_PUBLICA,
   "lectura|lecturas/catalogo/datos-de-producto.ts|datosParaGuardar": "función PURA de armado de los datos de un producto, no lee la base",
   "lectura|lecturas/catalogo/datos-de-producto.ts|validarDatosDeProducto": "valida la entrada completa de un alta o edición de producto: se ejerce a través de `darDeAltaProducto` y `actualizarProducto`, que sí están en la matriz con ids ajenos en cada campo",
   "lectura|lecturas/catalogo/ocultamiento.ts|ocultosQueQuedarianConExistencia": "recibe las líneas YA armadas de una anulación (producto, sección, cantidad con signo) y la operación; sin ids del cliente: se ejerce a través de `anularVenta` (el caso de uso, 2026-11-16, «Ocultar» E3c2), que sí está en la matriz, y la prueba `test/movimientos/anular-venta-producto-oculto.test.ts`",
@@ -693,3 +686,30 @@ export const SIN_GENERADOR: Readonly<Record<string, string>> = {
   "lectura|lecturas/catalogo/recetas-vigentes.ts|cargarRecetaVigente": AYUDANTE_DE_RECETAS,
   "lectura|lecturas/catalogo/recetas-vigentes.ts|cargarRecetasVigentes": AYUDANTE_DE_RECETAS,
 };
+
+/** El motivo de la categoría PUBLICA_ANONIMA_POR_CLAVE: una sola redacción para sus cinco puertas. */
+const MOTIVO_PUBLICA_ANONIMA_POR_CLAVE =
+  "carta pública: anónima POR DISEÑO (lo que la empresa publica a propósito, con lista cerrada de campos: GT-13 y GT-10); se accede por el código/clave público de la empresa (su slug), sin sesión ni usuario, y solo devuelve lo PUBLICADO de esa empresa. No entra en la matriz (que ejerce puertas con sesión) y su aislamiento lo prueba `test/aislamiento/publica-anonima-por-clave.test.ts`, contra Postgres real y con el rol de la app";
+
+/**
+ * Categoría DECLARADA y nombrada de excepción al aislamiento (criterio de Pedernal: toda excepción tiene NOMBRE, MOTIVO y una PRUEBA propia que cae si aparece otra): las puertas que un ANÓNIMO ejerce por la clave pública
+ * de la empresa. No son «puertas que no se pudieron derivar» (SIN_GENERADOR) sino anónimas a propósito. Lista CERRADA con su propio techo (`MAXIMOS.PUBLICA_ANONIMA_POR_CLAVE`, solo baja): una puerta nueva anónima obliga a declararse
+ * acá Y a entrar en `publica-anonima-por-clave.test.ts`, que el guardián de `denegacion-por-defecto.test.ts` exige por nombre.
+ */
+export const PUBLICA_ANONIMA_POR_CLAVE: Readonly<Record<string, string>> = {
+  "lectura|lecturas/carta/publica.ts|resolverCartaPublica": MOTIVO_PUBLICA_ANONIMA_POR_CLAVE,
+  "lectura|lecturas/carta/publica.ts|resolverConfigPortal": MOTIVO_PUBLICA_ANONIMA_POR_CLAVE,
+  "lectura|lecturas/carta/publica.ts|resolverPortalCarta": MOTIVO_PUBLICA_ANONIMA_POR_CLAVE,
+  // Portal de la empresa PR-A: las dos funciones DUALES (las que llama la entrada pública sin sesión) pertenecen a la misma categoría que las de siempre.
+  "lectura|lecturas/carta/publica.ts|resolverPortalCartaDual": MOTIVO_PUBLICA_ANONIMA_POR_CLAVE,
+  "lectura|lecturas/carta/publica.ts|resolverConfigPortalDual": MOTIVO_PUBLICA_ANONIMA_POR_CLAVE,
+};
+
+/** Las categorías cuyas puertas la matriz NO ejerce (y la unión de sus claves): el único lugar que las suma, para que ningún punto que saltea puertas se olvide de una. */
+export const CATEGORIAS_SIN_EJERCER: Readonly<Record<string, Readonly<Record<string, string>>>> = { SIN_GENERADOR, PUBLICA_ANONIMA_POR_CLAVE };
+
+/** ¿La matriz deja esta puerta sin ejercer, por la categoría que sea? */
+export const noSeEjerceEnLaMatriz = (clave: string): boolean => Object.values(CATEGORIAS_SIN_EJERCER).some((categoria) => Object.hasOwn(categoria, clave));
+
+/** Cuántas puertas deja sin ejercer la matriz en total (la suma de todas las categorías). */
+export const cantidadSinEjercer = (): number => new Set(Object.values(CATEGORIAS_SIN_EJERCER).flatMap((categoria) => Object.keys(categoria))).size;
