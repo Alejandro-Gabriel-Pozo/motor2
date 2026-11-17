@@ -32,6 +32,10 @@ export const CLAVES_TEMA_SIMPLE = [
   "restaurante_whatsapp",
   "restaurante_footer_maps_url",
 ] as const;
+/** Largo máximo del rubro en la pantalla simple: el de Pedernal (`zuluhub-erp` `src/primitivas/texto/datos-de-carta-publica.ts:15`, `LARGO_MAXIMO_DEL_RUBRO_DE_CARTA = 40`). El catálogo del Tema admite 120; se exige 40 SOLO si el rubro cambia (un rubro ya cargado más largo no bloquea el guardado mientras no se toque). */
+export const LARGO_MAXIMO_DEL_RUBRO_SIMPLE = 40;
+export const MENSAJE_RUBRO_DEMASIADO_LARGO = `El rubro puede tener hasta ${LARGO_MAXIMO_DEL_RUBRO_SIMPLE} caracteres.`;
+
 export type ClaveTemaSimple = (typeof CLAVES_TEMA_SIMPLE)[number];
 
 const objetoPlano = (v: unknown): Record<string, unknown> => (typeof v === "object" && v !== null && !Array.isArray(v) ? (v as Record<string, unknown>) : {});

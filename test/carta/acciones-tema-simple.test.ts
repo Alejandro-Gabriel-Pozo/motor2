@@ -125,6 +125,28 @@ describe("guardado simple del tema de la carta", () => {
       expect(v.hero_ink).toBe("claro");
     });
 
+    it("rubro de 41 caracteres que cambia: se rechaza sin escribir; de 40 pasa", async () => {
+      await prisma.temaCartaSucursal.create({ data: { sucursalId: centralId, valores: { hero_ink: "claro" }, aplicarEnCarta: true } });
+      const antes = await fila();
+      const r = await guardar({ hero_etiqueta_superior: "x".repeat(41) });
+      expect(r).toEqual({ ok: false, mensaje: "El rubro puede tener hasta 40 caracteres." });
+      expect(await fila()).toEqual(antes);
+      expect((await guardar({ hero_etiqueta_superior: "x".repeat(40) })).ok).toBe(true);
+    });
+
+    it("rubro ya guardado de 60 que NO cambia no se rechaza (se guarda lo demás); si se toca y sigue largo, sí", async () => {
+      const largo = "r".repeat(60);
+      await prisma.temaCartaSucursal.create({ data: { sucursalId: centralId, valores: { hero_etiqueta_superior: largo }, aplicarEnCarta: true } });
+      expect((await guardar({ hero_etiqueta_superior: largo, restaurante_subtitulo: "Huinganco" })).ok).toBe(true);
+      expect(await guardado()).toMatchObject({ hero_etiqueta_superior: largo, restaurante_subtitulo: "Huinganco" });
+      const version = await versionVigente();
+      expect((await guardar({ hero_etiqueta_superior: largo + "x", restaurante_subtitulo: "Huinganco" })).ok).toBe(false);
+      expect(await versionVigente()).toBe(version);
+      // Idempotencia: repetir lo mismo con el rubro largo no versiona.
+      expect((await guardar({ hero_etiqueta_superior: largo, restaurante_subtitulo: "Huinganco" })).ok).toBe(true);
+      expect(await versionVigente()).toBe(version);
+    });
+
     it("dos guardados a la vez de la foto con la misma versión: gana uno y la fila queda con una sola foto", async () => {
       await prisma.temaCartaSucursal.create({ data: { sucursalId: centralId, valores: {}, aplicarEnCarta: true } });
       const version = await versionVigente();
