@@ -198,6 +198,7 @@ Inventario verificado en el código de Motor2 (2026-11-15). Antes de E1 todos va
 | `src/core/features/clientes/clientes.guard.ts` | RAZON_SOCIAL | alta y edición de cliente |
 | `src/server/actions/clientes/casos-de-uso/actualizar-cliente.ts` | RAZON_SOCIAL | edición de cliente (estricta solo si cambia) |
 | `src/core/features/carta/secciones.guard.ts` | ELECCION | sección de carta |
+| `src/core/carta/portal-sembrar.ts` | ELECCION | nombre de la tarjeta que se SIEMBRA al crear el portal nuevo desde la etiqueta que la sucursal ya tenía en el portal (colores del portal, 2026-11-17); si no entra en una tarjeta no se crea nada |
 | `src/core/features/carta/portal-de-empresa.guard.ts` | ELECCION | nombre (opcional) de la tarjeta del portal de la empresa (PR-A, 2026-11-17); la línea superior y el título del portal tienen reglas propias (1 a 40 y 1 a 60), como Pedernal |
 | `src/server/actions/carta/casos-de-uso/guardar-seccion-carta.ts` | ELECCION | edición de sección de carta (estricta solo si cambia) |
 | `src/core/features/carta/familias.guard.ts` | PRODUCTO | familia de productos (F1: alta estricta; en la edición el guard solo recorta y el caso de uso aplica la estricta si el nombre cambia) |
