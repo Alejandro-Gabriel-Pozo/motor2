@@ -211,7 +211,7 @@ function tomarDeFamilia(
       const parte = { productoId: c.productoId, seccionId: seccion.id, loteVencimiento: c.lote, cantidad: tomar };
       libro.tomar(parte);
       partes.push(parte);
-      restante = redondearACantidadDeUnidad(restante - tomar, 8); // A1b: resta limpia a 8 decimales (float: 0,00015 − 0,0001 = 4,9999999999999996e-5 perdía el resto)
+      restante = redondearACantidadDeUnidad(restante - tomar, 8); // A1b: resta limpia a 8 decimales (float: 0,00015 − 0,0001 = 4,999999999999998e-5 perdía el resto)
     }
   }
   return { partes, restante };

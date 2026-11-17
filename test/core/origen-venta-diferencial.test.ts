@@ -4,7 +4,7 @@ import { redondearCantidadExacta } from "@/core/datos/cantidad-exacta";
 import { asignarConsumoReferencia } from "./fixtures/origen-venta-referencia";
 
 /**
- * Etapa aparte de A1b 2026-11-16 («origen-venta: resta exacta del resto del pedido»). EXCEPCIÓN DECLARADA al «no se edita en ningún paso posterior» del encabezado de arriba: el
+ * Etapa aparte de A1b 2026-11-16 («origen-venta: resto limpio a 8 decimales»). EXCEPCIÓN DECLARADA al «no se edita en ningún paso posterior» del encabezado de arriba: el
  * `asignarConsumo` real ahora resta el resto con `redondearACantidadDeUnidad(restante − tomar, 8)`, así que ya NO es idéntico a la referencia congelada, que conserva la resta en float
  * (ruido de 1e-16: 0,2368 vs 0,23680000000000012, y restos de 0,00005 que PIERDE con pedidos de más de 4 decimales). Motivo: un resto de 0,00005 perdido era stock que no se descontaba.
  * Por eso el primer test compara redondeando a 8 decimales (cualquier diferencia de estructura, orden, lote o cantidad ≥ 1e-8 sigue fallando) y el segundo, con pedidos de 5

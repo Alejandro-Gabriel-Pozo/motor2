@@ -103,7 +103,7 @@ describe("asignarOrigenDeLaVenta: la sección de cada venta", () => {
     expect(ventas[0]!.seccionId).toBe(COCINA.id);
     expect(ventas[0]!.loteVencimiento).toEqual(vence1);
     expect(ventas[0]!.consumos).toEqual([]);
-    expect(ventas[0]!.partesPropias!.map((p) => [p.loteVencimiento, p.cantidad])).toEqual([[vence1, 0.4], [vence2, 0.2]]); // origen-venta (resta exacta del resto): antes `0.6 - 0.4` = 0,19999999999999996 en float
+    expect(ventas[0]!.partesPropias!.map((p) => [p.loteVencimiento, p.cantidad])).toEqual([[vence1, 0.4], [vence2, 0.2]]); // origen-venta (resto limpio a 8 decimales): antes `0.6 - 0.4` = 0,19999999999999996 en float
     expect(pedidosPlanos).toEqual([]);
   });
 });

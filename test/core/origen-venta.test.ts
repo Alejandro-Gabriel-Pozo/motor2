@@ -203,7 +203,7 @@ describe("elegirSeccionDeStockPropio (PV que se produce)", () => {
 });
 
 // Etapa aparte de A1b (2026-11-16): el resto de un pedido se calculaba con `restante -= tomar` en float (en `tomarDeFamilia`, que usa `asignarConsumo`, y en
-// `elegirSeccionDeStockPropio`) y perdía restos de más de 4 decimales (0,00015 − 0,0001 = 4,9999999999999996e-5, que el redondeo lleva a 0 en vez de 0,0001).
+// `elegirSeccionDeStockPropio`) y perdía restos de más de 4 decimales (0,00015 − 0,0001 = 4,999999999999998e-5, que el redondeo lleva a 0 en vez de 0,0001).
 // Ahora es `redondearACantidadDeUnidad(restante − tomar, 8)`. Cada prueba marcada «reproduce el bug» FALLA contra el código anterior (verificado revirtiendo el `src`).
 describe("resta del resto del pedido (pedidos con más de 4 decimales)", () => {
   const sumaDe = (partes: { cantidad: number }[]) => redondearCantidadExacta(partes.reduce((suma, p) => suma + p.cantidad, 0), 8);
