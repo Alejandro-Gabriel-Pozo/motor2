@@ -44,7 +44,7 @@ const PUBLICACION_CARTA: Readonly<Record<string, readonly string[]>> = {
   Empresa: ["id", "nombre", "slug"],
   ItemAgrupadoCarta: ["descripcion", "especial", "id", "nombre", "opciones", "orden", "seccionCartaId", "tags"],
   // O1 (orden de renglones): el modo de orden (alfabético o a mano) de cada sección en la sucursal. Se LEE en el servidor para decidir cómo se ordena; no viaja a `CartaV1` (sale el orden ya resuelto).
-  ModoDeOrdenDeSeccionCarta: ["modo", "seccionCartaId"],
+  ModoDeOrdenDeSeccionCarta: ["modo"],
   ModuloEmpresa: ["estado", "modulo"],
   OpcionItemAgrupadoCarta: ["orden", "producto"],
   PortalCartaEmpresa: ["valores"],
@@ -55,7 +55,7 @@ const PUBLICACION_CARTA: Readonly<Record<string, readonly string[]>> = {
   Producto: ["categoria", "contenidosCarta", "gruposAdmitidos", "id", "modoDeVenta", "nombre", "opcionesAdmitidas", "precioVenta"],
   PromoCarta: ["descripcion", "id", "orden", "precio", "seccionCartaId", "sucursales", "titulo"],
   PromoCartaSucursal: ["activa", "precioLocal"],
-  SeccionCarta: ["descripcion", "id", "imagenUrl", "nombre", "orden", "titulo"],
+  SeccionCarta: ["descripcion", "id", "imagenUrl", "modosDeOrden", "nombre", "orden", "titulo"],
   Sucursal: ["activo", "empresaId", "id", "nombre", "temaCarta"],
   SucursalPublica: ["etiqueta", "orden", "posH", "posW", "posX", "posY", "publicada", "slug", "subtituloPortal", "sucursal"],
   TemaCartaSucursal: ["aplicarEnCarta", "valores"],

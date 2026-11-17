@@ -55,7 +55,7 @@ export async function resolverMenuCartaConDiagnostico(
   // Filtro explícito por la empresa de la sucursal, además del RLS: con un rol que lo salta, secciones/promos/agrupados no se mezclan entre empresas.
   const { empresaId } = sucursal;
 
-  const [productos, secciones, promosLeidas, agrupados, modosDeOrden] = await Promise.all([
+  const [productos, secciones, promosLeidas, agrupados] = await Promise.all([
     db.producto.findMany({
       where: { empresaId, tipo: "PV", ...whereDisponibleEn(sucursalId), ...whereNoOcultoEn(sucursalId), contenidosCarta: { some: { ...whereCartaDeSucursal(sucursalId), visibleEnCarta: true } }, ...(GENERO_E_ITEM_AGRUPADO_VISIBLE ? { opcionesItemAgrupadoCarta: { none: whereCartaDeSucursal(sucursalId) } } : {}) },
       select: {
@@ -78,6 +78,8 @@ export async function resolverMenuCartaConDiagnostico(
         descripcion: true,
         imagenUrl: true,
         orden: true,
+        // O1: el modo de orden de la sección en ESTA sucursal, por la relación (una sola consulta). Sin fila = `A_MANO` (como siempre): una base sin filas arma la misma carta que antes.
+        modosDeOrden: { where: { sucursalId }, select: { modo: true }, take: 1 },
       },
     }),
     promos !== "ninguna"
@@ -105,8 +107,6 @@ export async function resolverMenuCartaConDiagnostico(
         },
       },
     }),
-    // O1: el modo de orden de cada sección en ESTA sucursal. Sin fila = `A_MANO` (como siempre): una base sin filas arma la misma carta que antes.
-    db.modoDeOrdenDeSeccionCarta.findMany({ where: { empresaId, sucursalId }, select: { seccionCartaId: true, modo: true } }),
   ]);
 
   const idsConPrecio = [...new Set([...productos.map((p) => p.id), ...agrupados.flatMap((ag) => ag.opciones.map((o) => o.producto.id))])];
@@ -153,7 +153,7 @@ export async function resolverMenuCartaConDiagnostico(
   const entrada: Parameters<typeof armarMenuCarta>[0] = {
     sucursal: { id: sucursal.id, nombre: sucursal.nombre },
     generadoEn: ahora,
-    secciones,
+    secciones: secciones.map((x) => ({ id: x.id, nombre: x.nombre, titulo: x.titulo, descripcion: x.descripcion, imagenUrl: x.imagenUrl, orden: x.orden })),
     productos: productos.flatMap((p) =>
       // El `where` ya exige la fila de contenido de ESTA sucursal; el guard es solo para el tipo.
       p.contenidosCarta[0]
@@ -180,7 +180,7 @@ export async function resolverMenuCartaConDiagnostico(
       opciones: ag.opciones.map((o) => ({ productoId: o.producto.id, nombre: o.producto.nombre, precioVenta: Number(o.producto.precioVenta), orden: o.orden })),
     })),
     ...(conOpciones ? { opcionesDeProductos } : {}),
-    modosDeOrden,
+    modosDeOrden: secciones.flatMap((x) => (x.modosDeOrden[0] ? [{ seccionCartaId: x.id, modo: x.modosDeOrden[0].modo }] : [])),
   };
   const armado = armarMenuCarta(entrada);
   // Fase 5, paso 10b (DEC-20, decisión del dueño): la carta IMPRESA sale COMPLETA, sin lo «agotado hoy» (una opción apagada hoy en la sucursal: su fila, su celda y, si era la única de un grupo
