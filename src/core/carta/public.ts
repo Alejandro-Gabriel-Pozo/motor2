@@ -26,6 +26,8 @@ export { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, type A
 // GO-3 (ADR-032): los tipos de cupo y la lectura tolerante del primer despliegue (solo los cupos de sección activos; una promo con un cupo activo de tipo nuevo no se ofrece).
 export { ORIGEN_FUERA_DE_LA_CARTA, borradorInicial, categoriasDe, comandoDeProducto, origenInferido, productosDelOrigen, tieneOpciones } from "./armar-lugar-de-lista";
 export type { BorradorDeProducto } from "./armar-lugar-de-lista";
+// Armado de promos «como Pedernal» (primer paso, solo pantalla; docs/diseno-promociones-igual-a-pedernal-2026-11-17.md).
+export { ARMADO_DE_PROMO_COMO_PEDERNAL, cantidadesDelFormulario, comoLoVeElCliente, esCantidadExacta, estadoDeLaPromo, loQueLlevaLaPromo, renglonDeLaLista, type ParteDeLaPromoParaLeer } from "./armado-de-promo-como-pedernal";
 export { SUMAR_LUGAR_DE_LISTA_VISIBLE, WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO, WHERE_CUPO_DE_SECCION_ACTIVO, cuposDeSeccionActivos } from "./cupos-de-promo";
 export type { TipoDeCupo } from "./cupos-de-promo";
 // GO-3b (D3): la administración de los cupos sin borrar (la clave natural de cada cupo y la diferencia contra lo que hay) y los tipos de cupo para el guard.
@@ -117,3 +119,25 @@ export { opcionesParaLaCarta } from "./opciones-en-carta";
 // Fase 6, bloque 3 (6.18): lo que la vista previa de un producto en la carta recibe ya calculado (tipo; la calcula `server/consultas/carta/vista-previa-de-un-producto.ts`).
 export type { VistaPreviaDeLaCarta } from "./vista-previa-del-producto";
 export { LIBRO_ESTILO_MAQUETA, conDefaultsDeLaMaqueta } from "./libro-estilo-maqueta";
+// Portal de la empresa como Pedernal (PR-A, 2026-11-17): la imagen por dirección externa (partes), el dominio del portal (variantes, textos, colores, teléfono, zonas en centésimas, código del QR) y la parte pura de la lectura dual.
+export { leerDireccionDeImagen, sonPartesDeImagenValidas, urlDeImagenExterna } from "./imagen-externa";
+export type { PartesDeImagen } from "./imagen-externa";
+export {
+  centesimasDesdeTexto,
+  esCodigoDePortalValido,
+  esColorDePortalValido,
+  esTelefonoDeTarjetaValido,
+  esVarianteDePortal,
+  generarCodigoDePortal,
+  lineaDelPortalDesdeTexto,
+  mismaImagen,
+  mismaTarjeta,
+  mismaZona,
+  mismosDatosDelPortal,
+  textoDesdeCentesimas,
+  tituloDelPortalDesdeTexto,
+  zonaDentroDeLaImagen,
+} from "./portal-de-empresa";
+export type { DatosDelPortal, TarjetaDePortal, ZonaDePortal } from "./portal-de-empresa";
+export { entradasDelPortalNuevo, valoresDelPortalDual } from "./portal-de-empresa-lectura";
+export type { SucursalDelPortal } from "./portal-de-empresa-lectura";

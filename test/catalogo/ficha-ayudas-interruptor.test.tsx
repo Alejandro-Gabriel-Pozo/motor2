@@ -40,7 +40,7 @@ const comunes = {
   presentacionesIniciales: [],
 };
 const harina: ProductoExistente = { id: "p1", codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: "u-kg", unidadCompraId: "u-kg", factorConversion: 1, precioVenta: 0, observaciones: null };
-const dibujar = (Form: typeof ProductoForm, existente?: ProductoExistente) => renderToStaticMarkup(<Form {...comunes} productoExistente={existente} />);
+const dibujar = (Form: typeof ProductoForm, existente?: ProductoExistente) => renderToStaticMarkup(<Form {...comunes} altaComoPedernal={false} productoExistente={existente} />);
 
 const AYUDAS = [
   "El tipo no se puede cambiar una vez creado el producto",
@@ -95,8 +95,13 @@ describe("ficha del producto, alta: el aviso «No se va a poder vender todavía�
     expect(html).toContain("No se va a poder vender todavía.");
   });
 
-  it("en el formulario va como rama propia, fuera de `AyudaDeFicha`", () => {
-    const fuente = readFileSync("src/app/(app)/catalogo/productos/producto-form.tsx", "utf-8");
-    expect(fuente).toMatch(/naceSinPoderVenderse \? \(\s*<AvisoAltaSinPrecio \/>\s*\) : \(\s*<AyudaDeFicha>/);
+  it("en el formulario va como rama propia, fuera de `AyudaDeFicha` (la pantalla anterior, en la casilla; la de «¿Qué es?», suelta en el formulario)", () => {
+    // Pantalla anterior (interruptor ALTA_DE_PRODUCTO_COMO_PEDERNAL apagado): la casilla «Activo en todas las sucursales» (archivo propio desde #422) lleva el aviso como rama, no dentro de la ayuda.
+    const casilla = readFileSync("src/app/(app)/catalogo/productos/casilla-activo-en-todas.tsx", "utf-8");
+    expect(casilla).toMatch(/naceSinPoderVenderse \? \(\s*<AvisoAltaSinPrecio \/>\s*\) : \(\s*<AyudaDeFicha>/);
+    // Pantalla como Pedernal: el aviso va solo, sin envolverlo en `AyudaDeFicha` (que el interruptor de ayudas oculta).
+    const formulario = readFileSync("src/app/(app)/catalogo/productos/producto-form.tsx", "utf-8");
+    expect(formulario).toMatch(/naceSinPoderVenderse && <AvisoAltaSinPrecio \/>/);
+    expect(formulario).not.toMatch(/<AyudaDeFicha>\s*<AvisoAltaSinPrecio/);
   });
 });

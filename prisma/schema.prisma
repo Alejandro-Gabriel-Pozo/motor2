@@ -168,6 +168,8 @@ model Sucursal {
   disponibilidadesProducto DisponibilidadProducto[]
   ocultamientosProducto    OcultamientoProducto[]
   modosDeOrdenDeSeccion    ModoDeOrdenDeSeccionCarta[]
+  portalTarjetas           PortalTarjeta[]
+  portalZonas              PortalZona[]
   cajas                    Caja[]
   cuentasDeCobro           CuentaDeCobro[]
   sesionesDeCaja           SesionCaja[]
@@ -416,6 +418,10 @@ model Producto {
 
   /// Cómo nombra la COCINA este producto de venta en la comanda (2026-11-15; docs/diseno-nombre-de-cocina-como-pedernal-2026-11-15.md). NULL = no tiene: la comanda usa `nombre`. Solo un PV; CHECK `Producto_nombre_de_cocina_chk` (1 a 80, sin saltos de línea ni espacios en los bordes) que agrega la migración a mano (Prisma no declara CHECK).
   nombreDeCocina String?
+  /// Qué ES el producto para el negocio (E1 de «clases de producto como Pedernal», 2026-11-17): MATERIA_PRIMA, INSUMO, REVENTA, ELABORADO o VENDIBLE. NULL = todavía sin clase (todo lo ya cargado; el relleno es un script aparte con
+  /// autorización expresa). Se escribe UNA vez y no cambia (disparador). `tipo` sigue mandando en el código; la clase se suma al lado. CHECK `Producto_claseDeUso_chk` (lista cerrada), `Producto_claseDeUso_tipo_chk`
+  /// (MP→MATERIA_PRIMA/INSUMO/ELABORADO; PV→VENDIBLE; REVENTA llega en E4) y `Producto_claseDeUso_seProduce_chk` (ELABORADO ⇔ seProduce en una MP), hechos a mano en la migración. Hoy nada la lee.
+  claseDeUso String?
 
   /// Solo tiene sentido si tipo=MP (Catalogo.js:951, 1723-1726) — un PV no
   /// se compra, no tiene Insumo. Se valida en la capa de aplicación, con el
@@ -2481,6 +2487,92 @@ model PortalCartaEmpresa {
   actualizadoEn DateTime @updatedAt
 }
 
+/// Portal de la EMPRESA como en Pedernal (docs/diseno-carta-portal-e-identidad-niveles-6-a-10-2026-11-17.md §6.1 y §13; Pedernal 0078): una fila por empresa (`@@unique([empresaId])`). LECTURA DUAL: la lectura pública usa estas tablas solo si la empresa tiene esta fila; si no, `SucursalPublica` y `PortalCartaEmpresa.valores`
+/// (el Json) como siempre. `codigo` es la llave pública del QR: 22 a 64 de `[A-Za-z0-9_-]`, ÚNICO en toda la plataforma (excepción declarada a «toda única lleva la empresa»), inmutable (disparador) y lo genera la aplicación con 128 bits de azar. `variante`: `A` (tarjetas) | `B` (imagen con zonas); nace `A`.
+/// `lineaSuperior` (1 a 40), `titulo` (1 a 60) y los tres colores (`#rrggbb` en minúsculas) son OPCIONALES: vacío = el valor por defecto, que vive una sola vez en el código. La imagen de fondo va POR PARTES (proveedor `CLOUDINARY`, cuenta, id público, versión, extensión: las cinco o ninguna).
+/// `id` lo manda la aplicación (uuid nativo: idempotencia del alta); `version` la sube la aplicación (control optimista); las fechas, el reloj inyectado. Nada se borra. Los CHECK, las funciones de validación y los disparadores los agrega la migración a mano (Prisma no los declara).
+model PortalDeEmpresa {
+  id              String          @id @db.Uuid
+  empresaId       String          @unique @default(dbgenerated("app_empresa_actual()"))
+  empresa         Empresa         @relation(fields: [empresaId], references: [id])
+  codigo          String          @unique
+  variante        String          @default("A")
+  lineaSuperior   String?
+  titulo          String?
+  colorEncabezado String?
+  colorPagina     String?
+  colorDetras     String?
+  logoVisible     Boolean         @default(true)
+  imagenProveedor String?
+  imagenCuenta    String?
+  imagenIdPublico String?
+  imagenVersion   String?
+  imagenExtension String?
+  /// El usuario que lo creó (sin FK: la auditoría lo nombra).
+  creadoPorId     String
+  version         Int             @default(1)
+  creadoEn        DateTime        @default(now()) @db.Timestamptz(3)
+  /// Cuándo cambió por última vez (reloj inyectado de la acción; sin default a propósito).
+  actualizadoEn   DateTime        @db.Timestamptz(3)
+  tarjetas        PortalTarjeta[]
+  zonas           PortalZona[]
+
+  @@unique([empresaId, id])
+}
+
+/// Tarjeta de la variante A: una por (portal, sucursal). Se oculta (`visible = false`), no se borra. `nombre` (1 a 80) opcional: vacío = el nombre de la carta de la sucursal. `telefono` SOLO DÍGITOS de 1 a 40 (decisión del dueño, 2026-11-17: «solo números»). Foto por partes (las cinco o ninguna).
+model PortalTarjeta {
+  empresaId     String          @default(dbgenerated("app_empresa_actual()"))
+  empresa       Empresa         @relation(fields: [empresaId], references: [id])
+  portalId      String          @db.Uuid
+  portal        PortalDeEmpresa @relation(fields: [empresaId, portalId], references: [empresaId, id])
+  sucursalId    String
+  sucursal      Sucursal        @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  orden         Int
+  visible       Boolean         @default(true)
+  nombre        String?
+  telefono      String?
+  fotoProveedor String?
+  fotoCuenta    String?
+  fotoIdPublico String?
+  fotoVersion   String?
+  fotoExtension String?
+  version       Int             @default(1)
+  creadoEn      DateTime        @default(now()) @db.Timestamptz(3)
+  /// Cuándo cambió por última vez (reloj inyectado de la acción; sin default a propósito).
+  actualizadoEn DateTime        @db.Timestamptz(3)
+
+  @@id([portalId, sucursalId])
+  @@index([empresaId, portalId])
+  @@index([empresaId, sucursalId])
+}
+
+/// Zona de la variante B: un rectángulo sobre la imagen de fondo, en % (0 a 100, dos decimales), por esquina superior izquierda y tamaño (a diferencia de `SucursalPublica.posX/posY/posW/posH`, que guarda el CENTRO). Dentro de la imagen: `x + ancho <= 100` e `y + alto <= 100` (CHECK). Una zona por (portal, sucursal).
+/// `id` lo manda la aplicación (uuid nativo). Se oculta (`visible = false`), no se borra.
+model PortalZona {
+  id            String          @id @db.Uuid
+  empresaId     String          @default(dbgenerated("app_empresa_actual()"))
+  empresa       Empresa         @relation(fields: [empresaId], references: [id])
+  portalId      String          @db.Uuid
+  portal        PortalDeEmpresa @relation(fields: [empresaId, portalId], references: [empresaId, id])
+  sucursalId    String
+  sucursal      Sucursal        @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  x             Decimal         @db.Decimal(5, 2)
+  y             Decimal         @db.Decimal(5, 2)
+  ancho         Decimal         @db.Decimal(5, 2)
+  alto          Decimal         @db.Decimal(5, 2)
+  visible       Boolean         @default(true)
+  version       Int             @default(1)
+  creadoEn      DateTime        @default(now()) @db.Timestamptz(3)
+  /// Cuándo cambió por última vez (reloj inyectado de la acción; sin default a propósito).
+  actualizadoEn DateTime        @db.Timestamptz(3)
+
+  @@unique([empresaId, id])
+  @@unique([portalId, sucursalId])
+  @@index([empresaId, portalId])
+  @@index([empresaId, sucursalId])
+}
+
 // ===================================================================
 // POS: mapa de mesas del salón (docs/plan-mapa-de-mesas-2026-09-24.md) y toma de pedido (docs/plan-tomar-pedido-2026-09-25.md).
 //
@@ -2745,6 +2837,9 @@ model Empresa {
   disponibilidadProductoRel      DisponibilidadProducto[]
   ocultamientoProductoRel        OcultamientoProducto[]
   modosDeOrdenDeSeccionRel       ModoDeOrdenDeSeccionCarta[]
+  portalesDeEmpresa              PortalDeEmpresa[]
+  portalTarjetas                 PortalTarjeta[]
+  portalZonas                    PortalZona[]
   familiasDeProducto             FamiliaDeProducto[]
   miembrosDeFamilia              MiembroDeFamilia[]
   cajas                          Caja[]

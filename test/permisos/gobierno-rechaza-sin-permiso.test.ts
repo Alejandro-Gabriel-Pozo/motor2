@@ -15,7 +15,7 @@ import type { ResultadoAccion } from "../../src/server/actions/tipos";
 import { actualizarCapacidad } from "../../src/server/actions/permisos/capacidades-sucursal";
 import { actualizarActivoRol, crearRol, renombrarRol } from "../../src/server/actions/permisos/roles";
 import { guardarPermisos } from "../../src/server/actions/permisos/permisos";
-import { actualizarActivoSucursal, crearSucursalConAdmin, renombrarSucursal } from "../../src/server/actions/auth/sucursales";
+import { actualizarActivoSucursal, cambiarHoraDeCorteDeSucursal, crearSucursalConAdmin, renombrarSucursal } from "../../src/server/actions/auth/sucursales";
 import {
   actualizarActivoMembresia,
   actualizarActivoUsuarioEnEmpresa,
@@ -28,7 +28,7 @@ import {
 } from "../../src/server/actions/auth/usuarios";
 
 /**
- * Red del Hito 3 (paso 0.3 de `docs/plan-hito-3-pureza.md`), ANTES de mover las 16 mutaciones de auth y permisos a casos de uso (Fase I):
+ * Red del Hito 3 (paso 0.3 de `docs/plan-hito-3-pureza.md`), ANTES de mover las 17 mutaciones de auth y permisos a casos de uso (Fase I):
  * cada una rechaza a quien no tiene el permiso y, al rechazar, no cambia NINGUNA tabla de gobierno. Tres actores:
  *   - el `operador` de fábrica (sin la fila de la matriz);
  *   - un rol PROPIO que tiene la fila (Ver y Editar) de las 13 claves pero está bajo el piso (`administrador`, o `gerente` para traspasar la gerencia): el piso
@@ -81,6 +81,7 @@ const MUTACIONES: Mutacion[] = [
   { nombre: "crearSucursalConAdmin", clave: "alta_sucursal", contexto: "empresa", edicionDePermisos: false, llamar: (e) => crearSucursalConAdmin({ nombre: "Sur", emailPrimerAdmin: e.admin.email }) },
   { nombre: "actualizarActivoSucursal", clave: "activar_sucursal", contexto: "empresa", edicionDePermisos: false, llamar: (e) => actualizarActivoSucursal(e.sucursalNorte, false) },
   { nombre: "renombrarSucursal", clave: "renombrar_sucursal", contexto: "empresa", edicionDePermisos: false, llamar: (e) => renombrarSucursal(e.sucursalNorte, "Oeste") },
+  { nombre: "cambiarHoraDeCorteDeSucursal", clave: "renombrar_sucursal", contexto: "empresa", edicionDePermisos: false, llamar: (e) => cambiarHoraDeCorteDeSucursal(e.sucursalNorte, "06:00") },
   {
     nombre: "agregarOActualizarUsuario",
     clave: "gestion_usuarios",
@@ -104,7 +105,7 @@ function mensajeDelGuard(m: Mutacion, nombreDelRol: string): string {
   return textoDeDenegacion({ motivo: "SIN_PERMISO", caso: "ROLES_SIN_LA_ACCION", para: "editar", accion: m.clave, roles: [nombreDelRol] });
 }
 
-/** Foto completa de las tablas de gobierno (y de lo que tocan las 16 mutaciones), por id: una actualización que no cambia conteos también se ve. */
+/** Foto completa de las tablas de gobierno (y de lo que tocan las 17 mutaciones), por id: una actualización que no cambia conteos también se ve. */
 async function fotoDeGobierno() {
   const porId = { orderBy: { id: "asc" as const } };
   return {
@@ -180,10 +181,10 @@ beforeEach(async () => {
   };
 });
 
-describe("las 16 mutaciones de gobierno rechazan sin el permiso y no cambian ninguna tabla", () => {
-  it("la lista son las 16 (una por mutación de auth/permisos)", () => {
-    expect(MUTACIONES).toHaveLength(16);
-    expect(new Set(MUTACIONES.map((m) => m.nombre)).size).toBe(16);
+describe("las 17 mutaciones de gobierno rechazan sin el permiso y no cambian ninguna tabla", () => {
+  it("la lista son las 17 (una por mutación de auth/permisos)", () => {
+    expect(MUTACIONES).toHaveLength(17);
+    expect(new Set(MUTACIONES.map((m) => m.nombre)).size).toBe(17);
   });
 
   it.each(MUTACIONES.map((m) => [m.nombre, m] as const))("operador de fábrica: %s rechaza con el mensaje del guard", async (_n, m) => {

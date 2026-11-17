@@ -146,6 +146,7 @@ export const CATALOGO = {
       { archivo: "src/server/actions/auth/casos-de-uso/invitar-a-vincular.ts", nombre: "invitarAVincularCasoDeUso" },
       { archivo: "src/server/actions/auth/casos-de-uso/actualizar-activo-sucursal.ts", nombre: "actualizarActivoSucursalCasoDeUso" },
       { archivo: "src/server/actions/auth/casos-de-uso/renombrar-sucursal.ts", nombre: "renombrarSucursalCasoDeUso" },
+      { archivo: "src/server/actions/auth/casos-de-uso/cambiar-hora-de-corte-de-sucursal.ts", nombre: "cambiarHoraDeCorteDeSucursalCasoDeUso" },
       { archivo: "src/server/actions/auth/casos-de-uso/actualizar-activo-usuario-en-empresa.ts", nombre: "actualizarActivoUsuarioEnEmpresaCasoDeUso" },
       { archivo: "src/server/actions/auth/casos-de-uso/invitacion-gestionable.ts", nombre: "invitacionGestionable" },
       { archivo: "src/server/actions/auth/casos-de-uso/invitaciones-de-usuario-en-tx.ts", nombre: "rotarInvitacionPendiente" },
