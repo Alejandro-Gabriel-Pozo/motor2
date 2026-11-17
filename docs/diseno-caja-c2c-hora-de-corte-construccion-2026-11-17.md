@@ -12,7 +12,7 @@ Nota de construcción. El diseño completo (niveles 1 a 10, tabla «¿qué pasa 
 - Guard `guardComandoCambiarHoraDeCorteDeSucursal` (`src/core/features/sucursales/sucursal.guard.ts`) y `horaDeCorteValida` / `horaDeCorteDeColumnaTime` (`src/core/tiempo/fecha-de-negocio.ts`): lista de permitidos `HH:MM` estricta, 00:00 a 23:59 (la misma forma que ya exigía `fechaDeNegocio`). La base conserva su CHECK como tercera barrera.
 - Persistencia: `cambiarHoraDeCorteDeSucursalEnBase` (`src/server/persistencia/auth/sucursales.ts`).
 - Lectura: `listarSucursales` suma `horaDeCorte` («HH:MM», ya convertida de la columna `TIME(0)`), con el mismo `select` cerrado.
-- Pantalla mínima: en `administracion/sucursales`, una columna «Hora de corte del día» con campo `HH:MM` y botón «Guardar» (solo quien tiene `renombrar_sucursal` en editar; los demás ven la hora como texto). Ayuda: «A esta hora empieza el día de negocio de la caja».
+- Pantalla mínima: en `administracion/sucursales`, un campo «Hora de corte» (rótulo mínimo) con `HH:MM` y botón «Guardar» (solo quien tiene `renombrar_sucursal` en editar; los demás ven la hora como texto). Ayuda: «A esta hora empieza el día de negocio de la caja».
 - Sin migración de esquema.
 
 ## Archivos de zona restringida / inventarios tocados (mínimo, y por qué)
@@ -44,3 +44,7 @@ Nota de construcción. El diseño completo (niveles 1 a 10, tabla «¿qué pasa 
 - Un gerente que lo sea por transferencia de gerencia y no tenga el rol `admin` en ninguna sucursal no puede cambiar la hora (consecuencia del piso de `renombrar_sucursal`; ya señalada en el diseño).
 - El cambio contra una apertura de sesión a la vez se probó contra Postgres local en 8 vueltas; no es una prueba de ausencia de la carrera, sino de que no apareció un error crudo ni un sello incoherente.
 - Contra una base de producción: no verificado.
+
+## Regla de pantallas (2026-11-17): la pantalla es un SUPUESTO sin maqueta
+
+Pedernal NO tiene esta pantalla (respuesta de su orquestadora, ZuluHub-ERP `4fa7f3b8` y ZuluHub-docs `6b0b88d`): la única UI que llama a `editarSucursal` es «Contacto de la sucursal» y no manda la hora de corte; la leyenda sale de `10-ux-ui/01-arquitectura-de-experiencia.md:252` y el permiso es `sucursales.editar` (gerente y administrador). Por eso esta pantalla se declara SUPUESTO (P5) y NO se presenta al dueño como «igual». Textos: «Guardar» y la leyenda «Rige para lo que se cree desde ahora; lo abierto sigue como está.»; el rótulo «Hora de corte» queda en la lista de preguntas pendientes de textos. Se quitó la frase propia «A esta hora empieza el día de negocio de la caja». Queda como diferencia: Pedernal montaría el campo en el grupo y el patrón de «Contacto de la sucursal»; acá va en la fila de la sucursal (tabla de Administración → Sucursales) y NO se verificó contra capturas lado a lado (NO VERIFICADO).

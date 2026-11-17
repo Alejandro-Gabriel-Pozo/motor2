@@ -62,7 +62,7 @@ export default async function SucursalesPage() {
                   s.nombre
                 )}
                 <div className="mt-2 space-y-1">
-                  <p className="text-xs text-tinta-tenue">Hora de corte del día</p>
+                  <p className="text-xs text-tinta-tenue">Hora de corte</p>
                   {renombrar.editar ? (
                     <FormConResultado
                       accion={async (formData: FormData) => {
@@ -74,7 +74,7 @@ export default async function SucursalesPage() {
                       <div className="w-28">
                         <Campo
                           name="horaDeCorte"
-                          aria-label={`Hora de corte del día de la sucursal "${s.nombre}"`}
+                          aria-label={`Hora de corte de la sucursal "${s.nombre}"`}
                           defaultValue={s.horaDeCorte}
                           placeholder="HH:MM"
                           maxLength={5}
@@ -88,7 +88,7 @@ export default async function SucursalesPage() {
                   ) : (
                     <p>{s.horaDeCorte}</p>
                   )}
-                  <p className="text-xs text-tinta-tenue">A esta hora empieza el día de negocio de la caja.</p>
+                  <p className="text-xs text-tinta-tenue">Rige para lo que se cree desde ahora; lo abierto sigue como está.</p>
                 </div>
               </td>
               <td>{s.activo ? "Sí" : "No"}</td>
