@@ -44,6 +44,18 @@ export async function cargarPresentacionActiva(
   };
 }
 
+/**
+ * La unidad que se tecleó en una línea de compra, solo si existe en la empresa (RLS); `null` si no. Sin reglas: quien llama decide si esa unidad se admite
+ * (presentación, unidad por defecto, unidad de stock o conversión exacta del catálogo de unidades fijas).
+ */
+export async function cargarUnidadDeCompraTecleada(
+  tx: Prisma.TransactionClient,
+  args: { unidadId: string }
+): Promise<{ id: string; nombre: string; decimales: number; magnitud: MagnitudUnidad; codigoFijo: string | null } | null> {
+  const unidad = await tx.unidad.findUnique({ where: { id: args.unidadId }, select: { id: true, nombre: true, decimales: true, magnitud: true, codigoFijo: true } });
+  return unidad ?? null;
+}
+
 /** Un ingrediente de la receta vigente, con la cantidad/merma central y las calibraciones locales de la sucursal que produce. */
 export interface IngredienteRecetaParaProducir {
   insumoProductoId: string;

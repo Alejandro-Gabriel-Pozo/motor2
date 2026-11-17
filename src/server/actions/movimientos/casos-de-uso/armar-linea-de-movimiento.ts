@@ -1,5 +1,5 @@
 import "server-only";
-import type { Prisma } from "@prisma/client";
+import type { MagnitudUnidad, Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
 import { textoDe } from "@/core/textos/texto-de";
 import { esNumeroEstricto } from "@/core/numero";
@@ -8,8 +8,9 @@ import { DECIMALES_DE_STOCK, TRANSICIONES, convertirCantidadAUnidadDeStock, esSi
 import { obtenerLoteMasProximoAVencer, resolverConsumoPorFamilia } from "@/server/lecturas/movimientos/saldos";
 import { crearCacheProducto } from "@/server/persistencia/movimientos/producto-cache";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
+import { convertirCantidadExacta } from "@/core/catalogo/unidades-de-medida";
 import { factorDeBruto, rendimientoEfectivo } from "@/core/catalogo/public";
-import { PRESENTACION_AMBIGUA, cargarPresentacionActiva, cargarRecetaVigenteParaProducir } from "@/server/persistencia/movimientos/cargar-linea-de-movimiento";
+import { PRESENTACION_AMBIGUA, cargarPresentacionActiva, cargarUnidadDeCompraTecleada, cargarRecetaVigenteParaProducir } from "@/server/persistencia/movimientos/cargar-linea-de-movimiento";
 import type { DatosMovimientoInput, ItemMovimientoInput } from "@/core/features/movimientos/movimiento.schema";
 
 /**
@@ -23,6 +24,9 @@ import type { DatosMovimientoInput, ItemMovimientoInput } from "@/core/features/
  * Prisma directas, que ahora pasan por `cargarPresentacionActiva`/`cargarRecetaVigenteParaProducir`
  * (server/persistencia/movimientos/cargar-linea-de-movimiento.ts).
  */
+/** PROPUESTA (texto sin aprobar del dueño): respaldo «Valor inválido.» (el mismo de los guards de permisos y secciones) hasta que el dueño apruebe una frase propia para este rechazo. */
+const MENSAJE_UNIDAD_DE_COMPRA_NO_ADMITIDA = "Valor inválido.";
+
 export interface LineaCalculada {
   productoId: string;
   /** Valor final a persistir en MovimientoStock.cantidad (ya con signo). */
@@ -114,6 +118,16 @@ export async function armarLineaMovimiento(
     return { ok: false, mensaje: textoDe("aviso.no_se_puede_registrar_la_compra", { producto: producto.nombre, causa: "rechazo.PRESENTACION_AMBIGUA" }) };
   }
 
+  // Lista de permitidos de la unidad tecleada (Compra/Devolución a proveedor; oráculo de compras C1 negativo y C6 negativo): (a) presentación real y activa (arriba), (b) la unidad de compra por defecto del producto,
+  // (c) la unidad de stock (factor 1), (d) otra unidad de la MISMA dimensión con conversión exacta del catálogo de unidades fijas. Cualquier otra se RECHAZA antes de escribir nada: nunca se ignora en silencio.
+  let unidadTecleada: { id: string; nombre: string; decimales: number; magnitud: MagnitudUnidad; codigoFijo: string | null } | null = null;
+  if (transicion.aplicaFactorConversion && item.unidadCompraId && !presentacion && item.unidadCompraId !== producto.unidadCompraId && item.unidadCompraId !== producto.unidadStockId) {
+    unidadTecleada = await cargarUnidadDeCompraTecleada(tx, { unidadId: item.unidadCompraId });
+    const sePuedeConvertir = unidadTecleada !== null && unidadTecleada.codigoFijo !== null && producto.unidadStock.codigoFijo !== null;
+    if (!sePuedeConvertir) return { ok: false, mensaje: MENSAJE_UNIDAD_DE_COMPRA_NO_ADMITIDA };
+  }
+  const tecleoLaDeStock = transicion.aplicaFactorConversion && !presentacion && !!item.unidadCompraId && item.unidadCompraId === producto.unidadStockId && item.unidadCompraId !== producto.unidadCompraId;
+
   let numCant: number;
   let precioEntrada: number;
   let pesoReal: number | null = null;
@@ -122,7 +136,7 @@ export async function armarLineaMovimiento(
     // src/core/features/compras/compra.guard.ts): un dato inválido RECHAZA el movimiento entero con un mensaje. Antes: una cantidad
     // basura o 0 salteaba la línea en silencio, un precio NaN o negativo se guardaba como 0, un peso real inválido se ignoraba y 2,5
     // en una unidad entera se redondeaba a 3.
-    const unidadDeCompra = presentacion?.unidadCompra ?? producto.unidadCompra ?? producto.unidadStock;
+    const unidadDeCompra = presentacion?.unidadCompra ?? unidadTecleada ?? (tecleoLaDeStock ? producto.unidadStock : (producto.unidadCompra ?? producto.unidadStock));
     const validada = guardLineaCompra(producto.nombre, { cantidad: item.cantidad, precioTotal: item.precioTotal, pesoReal: item.pesoReal }, unidadDeCompra, producto.unidadStock);
     if (!validada.ok) return { ok: false, mensaje: validada.mensaje };
     numCant = validada.valor.cantidad;
@@ -167,9 +181,21 @@ export async function armarLineaMovimiento(
     if (presentacion) {
       unidadCompraId = presentacion.unidadCompraId;
       factor = presentacion.factorConversion;
+    } else if (unidadTecleada) {
+      unidadCompraId = unidadTecleada.id;
+    } else if (tecleoLaDeStock) {
+      unidadCompraId = producto.unidadStockId;
+      factor = 1;
     }
 
-    if (pesoReal !== null) {
+    if (unidadTecleada) {
+      // (d) Conversión exacta, sin redondeo (`convertirCantidadExacta`): otra dimensión o una cantidad que no cabe exacta en la unidad de stock rechazan la línea entera. Un peso real no cruza de tipo acá (misma dimensión).
+      const exacta = pesoReal === null ? convertirCantidadExacta(String(numCant), unidadTecleada.codigoFijo!, producto.unidadStock.codigoFijo!) : null;
+      if (exacta === null || !exacta.ok) return { ok: false, mensaje: MENSAJE_UNIDAD_DE_COMPRA_NO_ADMITIDA };
+      cantidadStock = Number(exacta.cantidad);
+      detalle = `${numCant} ${unidadTecleada.nombre} = ${cantidadStock} ${producto.unidadStock.nombre}`;
+      huboConversion = true;
+    } else if (pesoReal !== null) {
       cantidadStock = pesoReal;
       detalle = `Peso real: ${pesoReal} ${producto.unidadStock.nombre} (${numCant} compradas)`;
       huboConversion = true;
