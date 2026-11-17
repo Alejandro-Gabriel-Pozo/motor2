@@ -76,13 +76,15 @@ export function CartaVista({
               <button
                 type="button"
                 data-ir-a={paginaDeSeccion(i)}
-                className="group flex min-h-11 w-full items-baseline gap-2.5 py-3 text-left transition-opacity hover:opacity-80"
+                // El libro de la maqueta no baja la opacidad al pasar el mouse: sobre el fondo oscuro, el número de marca (11 px) a 80 % de opacidad queda en ~3,5:1 (axe, WCAG 1.4.3) y el CI lo vio cuando
+                // el mouse seguía sobre la entrada mientras la carta se deslizaba. En su lugar subraya el título (no toca ningún color).
+                className={`group flex min-h-11 w-full items-baseline gap-2.5 py-3 text-left${LIBRO_ESTILO_MAQUETA ? "" : " transition-opacity hover:opacity-80"}`}
               >
                 <span className="w-7 shrink-0 font-light tabular-nums" style={{ fontSize: estilo.valores.carta_fuente_indice_numero, color: c.indiceNumeros ?? MARCA_PARA_TEXTO }}>
                   {String(i + 1).padStart(2, "0")}
                 </span>
                 <span
-                  className="flex-1 carta-titulo font-medium leading-snug"
+                  className={`flex-1 carta-titulo font-medium leading-snug${LIBRO_ESTILO_MAQUETA ? " group-hover:underline" : ""}`}
                   style={{ fontSize: estilo.valores.carta_fuente_indice_item, color: c.indiceTitulos ?? undefined }}
                 >
                   {seccion.titulo ?? seccion.nombre}

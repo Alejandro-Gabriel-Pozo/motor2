@@ -200,3 +200,47 @@ describe("los vínculos (Instagram, WhatsApp, Maps, Facebook) NO son parte del e
     }
   });
 });
+
+describe("el índice del libro no baja la opacidad al pasar el mouse (contraste, axe, 2026-11-17)", () => {
+  // El CI vio 3,5:1 en el número de marca (11 px) de la entrada del índice con el mouse encima (`hover:opacity-80` sobre fondo oscuro). En el libro la entrada no cambia de opacidad; subraya el título.
+  const carta = {
+    version: 1 as const,
+    generadoEn: "2026-11-17T12:00:00.000Z",
+    sucursal: { id: "s", nombre: "Huinganco" },
+    secciones: [{ id: "a", nombre: "Platos", titulo: null, descripcion: null, imagenUrl: null, orden: 1, items: [], promos: [] }],
+  };
+  const dibujar = async (libro: boolean) => {
+    vi.resetModules();
+    vi.doMock("../../src/core/carta/libro-estilo-maqueta", async (original) => ({ ...(await original<typeof import("../../src/core/carta/libro-estilo-maqueta")>()), LIBRO_ESTILO_MAQUETA: libro }));
+    const { CartaVista } = await import("../../src/components/carta-publica/carta-vista");
+    const html = renderToStaticMarkup(<CartaVista carta={carta as never} estilo={resolverEstiloCarta({})} />);
+    vi.doUnmock("../../src/core/carta/libro-estilo-maqueta");
+    return html;
+  };
+  const entrada = (html: string) => /<button[^>]*data-ir-a[^>]*>[\s\S]*?<\/button>/.exec(html)?.[0] ?? "";
+
+  it("con el libro: la entrada no lleva `hover:opacity` y el título se subraya al pasar el mouse", async () => {
+    const e = entrada(await dibujar(true));
+    expect(e).not.toBe("");
+    expect(e).not.toContain("hover:opacity");
+    expect(e).toContain("group-hover:underline");
+  });
+  it("sin el libro: la entrada de siempre (baja la opacidad, sin subrayado)", async () => {
+    const e = entrada(await dibujar(false));
+    expect(e).toContain("hover:opacity-80");
+    expect(e).not.toContain("group-hover:underline");
+  });
+});
+
+describe("contraste del texto de marca con la paleta por defecto del libro (oráculo, WCAG 1.4.3: 4,5:1 para texto chico)", () => {
+  const FONDO = DEFAULTS_DEL_LIBRO_MAQUETA.color_fondo_dia!;
+  // La marca que se use para TEXTO sale de `--carta-primary-texto`: la marca acercada a la tinta lo justo. Se prueba con la marca por defecto de la maqueta y con otras de cualquier tono.
+  for (const marca of [DEFAULTS_DEL_LIBRO_MAQUETA.color_marca!, "#92400e", "#2d6a4f", "#1d3557", "#e63946", "#ffd166", "#000000", "#ffffff"]) {
+    it(`marca ${marca} como texto sobre ${FONDO}: ≥ 4,5:1`, () => {
+      const e = resolverEstiloCarta(conDefaultsDeLaMaqueta({ color_marca: marca }, true));
+      const comoTexto = e.variablesCss["--carta-primary-texto"] ?? marca;
+      const hex = /^#/.test(comoTexto) ? comoTexto : "#" + (comoTexto.match(/\d+/g) ?? []).slice(0, 3).map((n) => Number(n).toString(16).padStart(2, "0")).join("");
+      expect(contrasteHex(hex, FONDO)).toBeGreaterThanOrEqual(4.5);
+    });
+  }
+});
