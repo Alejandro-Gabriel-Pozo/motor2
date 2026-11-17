@@ -44,9 +44,9 @@ const FOCO: Readonly<Record<VarianteDeBoton, string>> = {
   seleccion: "focus-visible:outline-foco",
 };
 const TAMANOS: Readonly<Record<TamanoDeBoton, string>> = {
-  normal: "min-h-11 px-4 text-sm md:min-h-9 md:px-3",
-  compacto: "min-h-11 px-3 text-sm md:min-h-8",
-  chico: "min-h-11 px-2 text-xs md:min-h-7",
+  normal: "min-h-(--objetivo-minimo) px-6 text-sm",
+  compacto: "min-h-(--objetivo-minimo) px-3 text-sm",
+  chico: "min-h-(--objetivo-minimo) px-2 text-xs",
   tactil: "min-h-11 px-3 text-sm",
   "en-fila": "min-h-11 min-w-11 px-2 text-sm md:min-h-0 md:min-w-0 md:px-0",
 };
@@ -68,7 +68,7 @@ describe("Boton: variantes y tamaños", () => {
         const dibujadas = clases(html);
         for (const clase of [...esperadas.split(" "), ...esperadosDelTamano.split(" ")]) expect(dibujadas, `${variante}/${tamano} sin «${clase}»`).toContain(clase);
         // Foco con el token de SU variante y forma del sistema.
-        for (const clase of [FORMA[variante], "font-medium", "focus-visible:outline-2", "focus-visible:outline-offset-2", FOCO[variante]]) expect(dibujadas, `${variante}/${tamano} sin «${clase}»`).toContain(clase);
+        for (const clase of [FORMA[variante], "font-semibold", "focus-visible:outline-2", "focus-visible:outline-offset-2", FOCO[variante]]) expect(dibujadas, `${variante}/${tamano} sin «${clase}»`).toContain(clase);
         // Un solo color de contorno: el de la variante, nunca los dos.
         expect(dibujadas.filter((c) => /^focus-visible:outline-(?!2$|offset)/.test(c)), `${variante}/${tamano}`).toEqual([FOCO[variante]]);
         expect(dibujadas.filter((c) => /^rounded/.test(c)), `${variante}/${tamano}: un solo radio`).toEqual([FORMA[variante]]);
@@ -96,14 +96,15 @@ describe("Boton: variantes y tamaños", () => {
     }
   });
 
-  it("zona táctil de 44 px en celular y el tamaño compacto solo desde md:", () => {
+  it("zona táctil de 44 px en celular y en escritorio; solo en-fila baja desde md:", () => {
     for (const variante of Object.keys(VARIANTES) as VarianteDeBoton[]) {
       for (const tamano of TAMANOS_QUE_BAJAN) {
         const dibujadas = claseDeBoton(variante, tamano).split(" ");
-        expect(dibujadas, `${variante}/${tamano}`).toContain("min-h-11");
+        expect(dibujadas, `${variante}/${tamano}`).toContain(tamano === "en-fila" ? "min-h-11" : "min-h-(--objetivo-minimo)");
         // Toda altura menor está detrás de `md:`: sin `min-h-*` sin prefijo que no sea la de 44 px.
-        expect(dibujadas.filter((c) => /^min-h-/.test(c)), `${variante}/${tamano}`).toEqual(["min-h-11"]);
-        expect(dibujadas.some((c) => /^md:min-h-/.test(c))).toBe(true);
+        expect(dibujadas.filter((c) => /^min-h-/.test(c)), `${variante}/${tamano}`).toEqual([tamano === "en-fila" ? "min-h-11" : "min-h-(--objetivo-minimo)"]);
+        // V3 (como Pedernal): 44 px también en escritorio; solo la acción de texto de una fila (`en-fila`) baja desde `md:`.
+        expect(dibujadas.some((c) => /^md:min-h-/.test(c)), `${variante}/${tamano}`).toBe(tamano === "en-fila");
       }
     }
   });
@@ -154,7 +155,7 @@ describe("Boton: variantes y tamaños", () => {
   it("className se suma al final sin quitar las clases del sistema", () => {
     const dibujadas = clases(renderToStaticMarkup(<Boton className="w-full">x</Boton>));
     expect(dibujadas[dibujadas.length - 1]).toBe("w-full");
-    expect(dibujadas).toContain("min-h-11");
+    expect(dibujadas).toContain("min-h-(--objetivo-minimo)");
   });
 });
 

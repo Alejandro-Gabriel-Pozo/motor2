@@ -68,7 +68,7 @@ describe("EnvolturaDeCampo", () => {
   it("etiquetaOculta: la etiqueta existe y atada pero solo para lectores de pantalla (sr-only); sin ella, se ve", () => {
     expect(clasesDe(dibujar({ etiquetaOculta: true }), "label")).toEqual(["sr-only"]);
     expect(dibujar({ etiquetaOculta: true })).toContain(">Nombre</label>");
-    expect(clasesDe(dibujar(), "label")).toContain("font-medium");
+    expect(clasesDe(dibujar(), "label")).toContain("font-semibold");
     expect(clasesDe(dibujar(), "label")).not.toContain("sr-only");
   });
 
@@ -81,7 +81,7 @@ describe("EnvolturaDeCampo", () => {
   it("el aspecto del control es de tokens: borde de control, o de error si hay error; nunca colores de escala ni modo oscuro", () => {
     const sinError = (/<input[^>]*class="([^"]*)"/.exec(dibujar())?.[1] ?? "").split(/\s+/);
     const conError = (/<input[^>]*class="([^"]*)"/.exec(dibujar({ error: "mal" }))?.[1] ?? "").split(/\s+/);
-    for (const clase of ["border-borde-control", "bg-superficie", "text-tinta", "focus-visible:outline-foco", "disabled:bg-superficie-suave", "disabled:text-tinta-tenue", "text-base", "md:text-sm"]) {
+    for (const clase of ["border-borde-control", "bg-superficie", "text-tinta", "focus-visible:outline-foco", "disabled:bg-superficie-suave", "disabled:text-tinta-tenue", "text-base"]) {
       expect(sinError, clase).toContain(clase);
     }
     expect(sinError).not.toContain("border-error");
@@ -155,15 +155,14 @@ describe("Campo", () => {
   });
 
   it("tamaño normal por defecto y compacto desde md:, ambos con 44 px en celular; nunca el corte sm:", () => {
-    const alturas: Record<TamanoDeCampo, string> = { normal: "md:min-h-9", compacto: "md:min-h-8" };
-    for (const tamano of ["normal", "compacto"] as const) {
+        for (const tamano of ["normal", "compacto"] as const) {
       const input = clasesDe(renderToStaticMarkup(<Campo etiqueta="x" tamano={tamano} />), "input");
-      expect(input, tamano).toContain("min-h-11");
-      expect(input, tamano).toContain(alturas[tamano]);
-      expect(input.filter((c) => /^min-h-/.test(c)), tamano).toEqual(["min-h-11"]);
+      expect(input, tamano).toContain("min-h-(--objetivo-minimo)");
+      expect(input.some((c) => c.startsWith("md:min-h-")), tamano).toBe(false);
+      expect(input.filter((c) => /^min-h-/.test(c)), tamano).toEqual(["min-h-(--objetivo-minimo)"]);
       expect(input.some((c) => c.startsWith("sm:")), tamano).toBe(false);
     }
-    expect(clasesDe(renderToStaticMarkup(<Campo etiqueta="x" />), "input")).toContain("md:min-h-9");
+    expect(clasesDe(renderToStaticMarkup(<Campo etiqueta="x" />), "input")).toContain("min-h-(--objetivo-minimo)");
   });
 
   it("sin modo oscuro ni colores de escala en el HTML que dibuja", () => {
@@ -175,7 +174,7 @@ describe("Campo", () => {
   it("className se suma al final sin quitar las clases del sistema", () => {
     const input = clasesDe(renderToStaticMarkup(<Campo etiqueta="x" className="w-24" />), "input");
     expect(input[input.length - 1]).toBe("w-24");
-    expect(input).toContain("min-h-11");
+    expect(input).toContain("min-h-(--objetivo-minimo)");
   });
 
   it("acepta ref (React 19: una prop más) y la deja en el input", () => {

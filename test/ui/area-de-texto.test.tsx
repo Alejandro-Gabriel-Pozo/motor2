@@ -66,11 +66,11 @@ describe("AreaDeTexto", () => {
 
   it("clases de tokens (borde de control, o de error), piso de 44 px en celular; nunca sm:, modo oscuro ni colores de escala", () => {
     const sinError = clasesDe(renderToStaticMarkup(<AreaDeTexto etiqueta="x" />), "textarea");
-    for (const clase of ["border-borde-control", "bg-superficie", "text-tinta", "focus-visible:outline-foco", "disabled:bg-superficie-suave", "disabled:text-tinta-tenue", "min-h-11", "md:min-h-9", "text-base", "md:text-sm", "resize-y"]) {
+    for (const clase of ["border-borde-control", "bg-superficie", "text-tinta", "focus-visible:outline-foco", "disabled:bg-superficie-suave", "disabled:text-tinta-tenue", "min-h-(--objetivo-minimo)", "text-base", "resize-y"]) {
       expect(sinError, clase).toContain(clase);
     }
-    expect(sinError.filter((c) => /^min-h-/.test(c))).toEqual(["min-h-11"]);
-    expect(clasesDe(renderToStaticMarkup(<AreaDeTexto etiqueta="x" tamano="compacto" />), "textarea")).toContain("md:min-h-8");
+    expect(sinError.filter((c) => /^min-h-/.test(c))).toEqual(["min-h-(--objetivo-minimo)"]);
+    expect(clasesDe(renderToStaticMarkup(<AreaDeTexto etiqueta="x" tamano="compacto" />), "textarea")).toContain("min-h-(--objetivo-minimo)");
     const conError = clasesDe(renderToStaticMarkup(<AreaDeTexto etiqueta="x" error="mal" />), "textarea");
     expect(conError).toContain("border-error");
     expect(conError).not.toContain("border-borde-control");
@@ -83,7 +83,7 @@ describe("AreaDeTexto", () => {
   it("className se suma al final sin quitar las clases del sistema", () => {
     const clases = clasesDe(renderToStaticMarkup(<AreaDeTexto etiqueta="x" className="font-mono" />), "textarea");
     expect(clases[clases.length - 1]).toBe("font-mono");
-    expect(clases).toContain("min-h-11");
+    expect(clases).toContain("min-h-(--objetivo-minimo)");
   });
 
   it("acepta ref (React 19: una prop más) y la deja en el <textarea>", () => {

@@ -56,7 +56,7 @@ interface PropsDeEnvolturaDeCampo {
 }
 
 const ASPECTO_DEL_CONTROL =
-  "w-full rounded border bg-superficie px-3 text-base text-tinta focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-foco disabled:bg-superficie-suave disabled:text-tinta-tenue md:text-sm";
+  "w-full rounded-[0.625rem] border-2 bg-superficie px-3 text-base text-tinta focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-foco disabled:bg-superficie-suave disabled:text-tinta-tenue";
 
 export function EnvolturaDeCampo({ id, etiqueta, etiquetaOculta = false, requerido = false, ayuda, lectura, error, invalido = false, children }: PropsDeEnvolturaDeCampo) {
   const generado = useId();
@@ -69,7 +69,7 @@ export function EnvolturaDeCampo({ id, etiqueta, etiquetaOculta = false, requeri
   return (
     <div className="flex flex-col gap-1">
       {etiqueta != null ? (
-        <label htmlFor={idControl} className={etiquetaOculta ? "sr-only" : "text-sm font-medium"}>
+        <label htmlFor={idControl} className={etiquetaOculta ? "sr-only" : "text-sm font-semibold"}>
           {etiqueta}
           {requerido ? <span aria-hidden="true"> *</span> : null}
         </label>
@@ -99,10 +99,10 @@ export function EnvolturaDeCampo({ id, etiqueta, etiquetaOculta = false, requeri
   );
 }
 
-/** El alto de un control de una línea por tamaño: 44 px en celular y el del escritorio desde `md:`. Lo comparten `Campo` y `Selector`. */
+/** El alto de un control de una línea por tamaño: el objetivo táctil de la superficie (`--objetivo-minimo`: 44 px en administración, 48 px en operación; Frente «Visual» V3, como Pedernal). Lo comparten `Campo` y `Selector`. */
 export const ALTURA_DEL_CAMPO: Record<TamanoDeCampo, string> = {
-  normal: "min-h-11 md:min-h-9",
-  compacto: "min-h-11 md:min-h-8",
+  normal: "min-h-(--objetivo-minimo)",
+  compacto: "min-h-(--objetivo-minimo)",
 };
 
 /**
