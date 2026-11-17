@@ -61,6 +61,23 @@ describe("cambiarPoliticaDeEmpresa", () => {
     expect(await auditoria()).toHaveLength(1);
   });
 
+  it("la perilla de roles propios la cambia la plataforma, queda en la auditoría con el antes y el después, y un perfil NO la toca", async () => {
+    const resultado = await cambiarPoliticaDeEmpresa(prismaAdmin, { slug: "principal", rolesPropiosMax: 3 }, AUTOR);
+    expect(resultado.cambiadas).toEqual(["rolesPropiosMax"]);
+    expect((await prismaAdmin.empresa.findUniqueOrThrow({ where: { id: EMPRESA_POR_DEFECTO_ID } })).rolesPropiosMax).toBe(3);
+    expect(await auditoria()).toMatchObject([{ accion: "politica-cambiada", empresaAfectadaId: EMPRESA_POR_DEFECTO_ID, detalle: { perilla: "rolesPropiosMax", antes: 100, despues: 3 } }]);
+    await cambiarPoliticaDeEmpresa(prismaAdmin, { slug: "principal", perfil: "lite" }, AUTOR);
+    expect((await prismaAdmin.empresa.findUniqueOrThrow({ where: { id: EMPRESA_POR_DEFECTO_ID } })).rolesPropiosMax).toBe(3);
+  });
+
+  it("la perilla de roles propios acepta solo enteros de 0 a 1000 y repetir el mismo valor no cambia nada", async () => {
+    for (const malo of [-1, 1001, 1.5, Number.NaN]) await expect(cambiarPoliticaDeEmpresa(prismaAdmin, { slug: "principal", rolesPropiosMax: malo }, AUTOR)).rejects.toBeInstanceOf(PoliticaDeEmpresaError);
+    await cambiarPoliticaDeEmpresa(prismaAdmin, { slug: "principal", rolesPropiosMax: 2 }, AUTOR);
+    const repetido = await cambiarPoliticaDeEmpresa(prismaAdmin, { slug: "principal", rolesPropiosMax: 2 }, AUTOR);
+    expect(repetido.cambiadas).toEqual([]);
+    expect(await auditoria()).toHaveLength(1);
+  });
+
   it("pedir lo que ya está así no cambia nada ni ensucia la auditoría", async () => {
     const resultado = await cambiarPoliticaDeEmpresa(prismaAdmin, { slug: "principal", perfil: "completo" }, AUTOR);
     expect(resultado.cambiadas).toEqual([]);

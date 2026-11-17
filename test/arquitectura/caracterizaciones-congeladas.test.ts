@@ -316,18 +316,18 @@ const CONGELADAS: Record<string, Congelada> = {
           "Caja y cobro C1, PR-B (ADITIVO; seis claves nuevas, semilla solo `admin`, todo nace cerrado): `caja_ver`, `caja_abrir_sesion`, `caja_cerrar_sesion`, `caja_mover_efectivo`, `caja_anular_movimiento_ajeno` y `cobrar_cuenta` (de sucursal, módulo provisorio `salon`). `ACCIONES 133 a 139` (en las dos fotos) y las doce filas `PERMISO` por foto de las seis claves (admin ver=true editar=true; operador ver=false editar=false). Revisado con `git diff -U0`. Ninguna otra respuesta del guard ni ningún otro permiso cambia: el operador no recibe ninguna (todas «ver=false editar=false»).",
       },
       {
-        blob: "22f3ad5659d6daf834e82fc6152b4afc993c6944",
-        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `470f5b2d` (la mezcla de origin/main que dejó la acción `compra_controlar_recepcion` junto al resto del catálogo).
-        commit: "470f5b2d",
+        blob: "d2cf938879b39888f5fac6ade93629421e30ec5a",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `8102cb4c` (Roles propios (P2): guardianes al día).
+        commit: "8102cb4c",
         motivo:
-          "Compras N3: acción compra_controlar_recepcion (admin y operador); solo suma líneas PERMISO y ACCIONES 134. Revisado con `git diff`: se suman 4 líneas `PERMISO` (admin y operador `compra_controlar_recepcion ver=true editar=true`, una por cada una de las dos fotos) y `ACCIONES` pasa de 133 a 134 en las dos fotos; ninguna otra línea cambia.",
+          "Roles propios, P2 (ADITIVO; la perilla `rolesPropiosMax` nace en 0; NO cambia comportamiento de acceso): `Empresa.rolesPropiosMax` (migración 20261117100100) aparece en las 28 filas EMPRESA de la huella y en 2 líneas `resultado:` de `cambiar-politica` (las que vuelcan la política de empresa), en 0. Revisado con `git diff`: solo se suma `rolesPropiosMax=0` (la huella ya incluía las acciones de caja de #368); ningún permiso, rol, resultado ni mensaje cambia. Aprobada por el dueño el 2026-11-17: «Sí, aprobada (Recomendada)» (motor2-docs, seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md).",
       },
       {
-        blob: "8c2e41f229e72224c9b722f306358cc0f9e4cb0e",
-        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `6aedaff9` (la punta de la rama de Compras N3 antes de integrar `origin/main` en `15f3399d`).
-        commit: "6aedaff9",
+        blob: "7c3e168e3eae0b8a989e151376b382946cfe6b20",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `e8b07af3` (Roles P2 en `main`).
+        commit: "e8b07af3",
         motivo:
-          "Compras N3 sobre el origin/main integrado (15f3399d): la huella de la rama (compra_controlar_recepcion, `ACCIONES 134`) suma las seis claves de la caja de Caja y cobro C1 PR-B (ya declaradas arriba con el blob `30eb8c0f`): `ACCIONES` pasa de 134 a 140 en las dos fotos y se suman las doce filas `PERMISO` por foto de las seis claves (admin ver=true editar=true; operador ver=false editar=false). Fusión de dos regeneraciones declaradas, sin ningún cambio nuevo de comportamiento. Revisado con `git diff -U0` contra el commit `1107fdc8`: no cambia ninguna otra línea.",
+          "Compras N3 sobre el origin/main integrado (e8b07af3, con Caja C1 PR-B y Roles P2 ya declarados arriba con los blobs `30eb8c0f` y `d2cf9388`): la acción `compra_controlar_recepcion` (admin y operador) suma a la huella 4 líneas `PERMISO` (una por foto y rol: `compra_controlar_recepcion ver=true editar=true`) y `ACCIONES` pasa de 139 a 140 en las dos fotos; ninguna otra línea cambia. Las dos entradas anteriores de esta rama (blobs `22f3ad56` y `8c2e41f2`) describían estados intermedios sin Roles P2 y se reemplazan por esta, la del estado final.",
       },
     ],
   },

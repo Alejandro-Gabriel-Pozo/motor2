@@ -223,6 +223,13 @@ Principio del diseño de Pedernal que se conserva (§6.1 de H4b): **el comportam
 - **Rutas (cuando se construya):** `plataforma/**` (pantalla de plantillas y pisos), `src/server/operaciones-de-plataforma/**`, `src/core/permisos/**` (conjunto efectivo, pisos; **zona restringida con acciones/matrices: por turno**), `src/server/actions/permisos/**`, `prisma/schema.prisma` (solo los modelos nuevos y las columnas de `Rol`), migraciones `20261117100400+`.
 - **Dependencias:** Roles P1/Parte (usa `acciones.ts` y la matriz), Datos (molde de tabla nueva y regla del nombre de rol), Textos (T2: todo texto visible nuevo por el catálogo con DEC), Pantallas (el menú de la consola), Ocultar (acción propia de gerente y administrador: ya alineada).
 
+## 11 bis. Límite declarado: quién puede escribir `Empresa.rolesPropiosMax` (P2)
+
+- La migración `20261117100100_roles_propios_max` dice que «`motor2_app` sigue solo con lectura» sobre `Empresa`. Eso solo es cierto con el recorte M.1 (S-35, «Grants de la consola») APLICADO en la base: `crear-rol-motor2-plataforma.sql -v restringir=1`. El recorte está PENDIENTE en producción; hasta que se aplique, `motor2_app` conserva escritura sobre `Empresa` (también en las bases locales y de CI) y, por lo tanto, sobre la perilla.
+- Por eso el cupo de roles propios se hace cumplir en el servidor (caso de uso + candado por empresa), pero la base NO impide que alguien con la conexión de `motor2_app` suba el tope. Solo la separación de roles lo impide, y la verifica el paso manual `scripts/operaciones/verificar-grants-m1.sql` (ACL de `Empresa` y privilegios por columna), antes y después de aplicar M.1.
+- Límite que queda aun con M.1: nada impide un `GRANT UPDATE ("rolesPropiosMax") ON "Empresa" TO motor2_app` (un grant por columna) hecho por el dueño de las tablas; ningún test de la suite lo detecta, porque la base de pruebas no tiene M.1 aplicado y por eso no hay un `has_column_privilege` que se pueda aserir ahí sin dar un rojo falso. La defensa es el paso manual de arriba.
+- La migración no se tocó para no alterar su texto ya revisado; este apartado es la declaración.
+
 ## 12. Qué no verifiqué
 - Las líneas 330 a 759 de la 0061 (RLS, privilegios, políticas de plataforma) ni su reversión.
 - Cuántas acciones hay por piso hoy en Motor2 (uso los números de la auditoría previa: 58 / 61 / 12 / 2).
