@@ -1296,7 +1296,14 @@ const CONGELADAS: Record<string, Congelada> = {
         // El commit PADRE de este (d7a3dcc0) es el último antes de la regeneración; el texto lo cambió el commit que agrega esta entrada (Frente 6, «Nueva sección» con solo el nombre).
         commit: "d7a3dcc0",
         motivo:
-          "Frente 6, «Nueva sección de carta» con solo el nombre (cambio de texto de ADMINISTRACIÓN, no de la carta pública; dueño, 2026-11-16: «Sí, ese orden (Recomendada)», paso 1 «nueva sección con solo el nombre»; interruptor `ALTA_DE_SECCION_SOLO_NOMBRE`; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). En «Carta › Parametrización › Secciones» (a 1280 y a 375 px) el alta deja de mostrar «Título (opcional, si no se usa el nombre)», «Descripción (opcional)», «Imagen (URL https, opcional)» y «Orden» (el orden viaja escondido con el valor sugerido; los otros datos se completan en la pantalla de la sección). 16 líneas quitadas, ninguna agregada, todas de ese formulario (revisado con git diff); la carta pública y el resto quedan idénticos.",
+          "Frente 6, «Nueva sección de carta» con solo el nombre (cambio de texto de ADMINISTRACIÓN, no de la carta pública; dueño, 2026-11-16: «Sí, ese orden (Recomendada)», paso 1 «nueva sección con solo el nombre»; interruptor `ALTA_DE_SECCION_SOLO_NOMBRE`; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). En «Carta › Parametrización › Secciones» (a 1280 y a 375 px) el alta deja de mostrar «Título (opcional, si no se usa el nombre)», «Descripción (opcional)», «Imagen (URL https, opcional)» y «Orden» (el orden ya no se pide ni viaja en un campo: la página lo calcula al dibujarse, como la cantidad de secciones de ese momento; los otros datos se completan en la pantalla de la sección). 16 líneas quitadas, ninguna agregada, todas de ese formulario (revisado con git diff); la carta pública y el resto quedan idénticos.",
+      },
+      {
+        blob: "8d710c586464619cb03d4742f47146bcb2e5a2fc",
+        // El commit PADRE de este (7afd14dd) es el último antes de la regeneración; el texto lo cambió el commit que agrega esta entrada (Frente 6, paso 2: ayudas de la ficha del producto).
+        commit: "7afd14dd",
+        motivo:
+          "Frente 6, ayudas de la ficha del producto ocultas (cambio de texto de ADMINISTRACIÓN, no de la carta pública; dueño, 2026-11-16: «Sí, ese orden (Recomendada)», paso 2 «textos de la ficha del producto»; interruptor `FICHA_AYUDAS_VISIBLES`; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). En las opciones de venta del producto «Pizzas» (a 1280 y a 375 px) salen tres líneas: «Qué se elige al venderlo y cómo cambia el precio… Biblioteca de opciones», «No se borra nada: lo que admite de cada opción queda guardado.» y «Con el precio de lista de «…», sin descuentos. Es la forma que le da la carta pública…». 6 líneas quitadas, ninguna agregada, todas de esa pantalla (revisado con git diff); la carta pública y el resto quedan idénticos.",
       },
     ],
   },

@@ -203,7 +203,6 @@
   [enlace: Precios]
   [enlace: Opciones]
   ## Opciones
-  Qué se elige al venderlo y cómo cambia el precio. El precio del producto está en la pestaña Precios. Los grupos y sus opciones se arman en la [enlace: Biblioteca de opciones].
   [botón: + Nuevo grupo]
   [botón: Agregar un grupo existente]
   ### Tipos de Pizza
@@ -281,9 +280,7 @@
   [botón: Editar consumo (lector: «Editar consumo de Pizza bomba»)]
   [botón: + Opción (lector: «+ Opción en Tipos de Pizza»)]
   [botón: Quitar de este producto (lector: «Quitar Tipos de Pizza de este producto»)]
-  No se borra nada: lo que admite de cada opción queda guardado.
   ### Cómo se va a ver en la carta
-  Con el precio de lista de «LB Precio y carta», sin descuentos. Es la forma que le da la carta pública; si cambia algo arriba, se actualiza al guardar.
   ### Pizza muzzarella
   $ 18.000
   ### Pizza de verduras asadas
@@ -308,7 +305,6 @@
   [enlace: Precios]
   [enlace: Opciones]
   ## Opciones
-  Qué se elige al venderlo y cómo cambia el precio. El precio del producto está en la pestaña Precios. Los grupos y sus opciones se arman en la [enlace: Biblioteca de opciones].
   [botón: + Nuevo grupo]
   [botón: Agregar un grupo existente]
   ### Tipos de Pizza
@@ -386,9 +382,7 @@
   [botón: Editar consumo (lector: «Editar consumo de Pizza bomba»)]
   [botón: + Opción (lector: «+ Opción en Tipos de Pizza»)]
   [botón: Quitar de este producto (lector: «Quitar Tipos de Pizza de este producto»)]
-  No se borra nada: lo que admite de cada opción queda guardado.
   ### Cómo se va a ver en la carta
-  Con el precio de lista de «LB Precio y carta», sin descuentos. Es la forma que le da la carta pública; si cambia algo arriba, se actualiza al guardar.
   ### Pizza muzzarella
   $ 18.000
   ### Pizza de verduras asadas
