@@ -38,9 +38,9 @@ export function productoCartesiano(dimensiones: Record<string, readonly string[]
   );
 }
 
-/** Los valores declarados de cada dimensión en «Dimensiones que cambian el resultado» (letra en negrita → lista de valores). */
-export function dimensionesDelOraculo(): Record<string, string[]> {
-  const tabla = tablaDelOraculo("Dimensiones que cambian el resultado");
+/** Los valores declarados de cada dimensión en «Dimensiones que cambian el resultado» (letra en negrita → lista de valores). Sin `texto`, las del oráculo de «una sola compra»; el de la recepción separada pasa el suyo. */
+export function dimensionesDelOraculo(texto?: string): Record<string, string[]> {
+  const tabla = tablaDelOraculo("Dimensiones que cambian el resultado", texto);
   const salida: Record<string, string[]> = {};
   for (const f of tabla.filas) {
     const letra = /\*\*(\w+)\*\*/.exec(f["Dimensión"] ?? "")?.[1];

@@ -19,6 +19,31 @@ export {
 } from "./correccion";
 export { decidirAnulacionDeFactura, decidirCorreccionDeDatos } from "./reglas-de-la-factura";
 export {
+  CONDICIONES_DE_CONTROL,
+  ESTADOS_DE_RECEPCION,
+  ETIQUETA_DE_CONDICION_DE_CONTROL,
+  LARGO_MAXIMO_DE_LA_OBSERVACION,
+  MENSAJE_RECEPCION_NO_ENCONTRADA,
+  MENSAJE_RECEPCION_YA_RECIBIDA,
+  decidirConfirmacionDeRecepcion,
+  decidirRegistroDeControl,
+  estadoInicialDeLaParte,
+  mensajeFechaDeStockFueraDeRango,
+  validarControlDeLinea,
+  validarEntradasDeRecepcion,
+} from "./recepcion";
+export type {
+  CodigoDeRechazoDeControl,
+  CodigoDeRechazoDeEntradas,
+  CodigoDeRechazoDeRecepcion,
+  CodigoDeRechazoDeRegistroDeControl,
+  CondicionDeControl,
+  EntradaDeConfirmacionDeRecepcion,
+  EntradaDeRecepcion,
+  EntradaDeRegistroDeControl,
+  SeccionParaRecibir,
+} from "./recepcion";
+export {
   ETIQUETA_DE_MEDIO_DE_PAGO,
   MEDIOS_DE_PAGO,
   decidirDeclaracionDePago,

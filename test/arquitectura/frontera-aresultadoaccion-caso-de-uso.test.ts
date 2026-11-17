@@ -54,6 +54,9 @@ const SIN_ENVOLTORIO_TODAVIA: Record<string, string> = {
   "server/actions/pos/casos-de-uso/abrir-cuenta-de-mostrador.ts":
     "abrirCuentaDeMostrador (server/actions/pos/cuenta-apertura.ts; ADR-039, M1.4c) arma { ok, mensaje, cuentaId } a mano — devuelve ResultadoAbrirCuentaDeMostrador, no ResultadoAccion: el doble clic y dos cajeros tienen " +
     "que recibir la MISMA cuenta (su id) y las pruebas lo verifican. Mismo criterio que enviar-a-cocina.ts: un solo dato de `datos` (el id de la cuenta que el usuario ya ve), nunca el resto. Diseño permanente, no un olvido.",
+  "server/actions/movimientos/casos-de-uso/confirmar-recepcion-de-factura.ts":
+    "confirmarRecepcionDeFactura (server/actions/movimientos/facturas-proveedor.ts; Compras N3, paridad con Pedernal `yaExistia`) arma { ok, mensaje, yaExistia } a mano — devuelve ResultadoConfirmarRecepcion, no ResultadoAccion: repetir confirmar es ÉXITO y la pantalla " +
+    "tiene que mostrar «ya estaba recibida» como información y no como una recepción nueva. Un solo booleano de `datos`, nunca los ids internos (operacionId, movimientos) ni el código. Mismo criterio que enviar-a-cocina.ts. Diseño permanente, no un olvido.",
   "server/actions/pos/casos-de-uso/enviar-a-cocina.ts":
     "enviarACocina (server/actions/pos/cuenta-pedido.ts; Hito 4, bloque 4.1, paso 11) arma { ...ok(r.mensaje), numeroEnvio: r.datos.numeroEnvio, envioNuevo: " +
     "r.datos.envioNuevo } a mano — devuelve ResultadoEnvioACocina, no ResultadoAccion: la pantalla imprime la comanda solo del envío que creó ESTA llamada " +

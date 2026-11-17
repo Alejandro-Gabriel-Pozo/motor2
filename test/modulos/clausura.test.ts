@@ -5,12 +5,12 @@ import { modulosEfectivos, modulosQueIncluyen, validarCambioDeModulos } from "..
 const ordenados = (s: Iterable<string>) => [...s].sort();
 
 describe("catálogo de módulos (ADR-014 + ADR-015)", () => {
-  it("tiene 15 módulos: 1 fijo, 3 de soporte y 11 vendibles (9 disponibles; Gastos y servicios y Centros de costos en desarrollo)", () => {
-    expect(MODULOS).toHaveLength(15);
+  it("tiene 16 módulos: 1 fijo, 3 de soporte y 12 vendibles (10 disponibles; Gastos y servicios y Centros de costos en desarrollo)", () => {
+    expect(MODULOS).toHaveLength(16);
     const porTipo = (tipo: string) => MODULOS.filter((m) => m.tipo === tipo).map((m) => m.id);
     expect(porTipo("fijo")).toEqual(["administracion"]);
     expect(ordenados(porTipo("soporte"))).toEqual(["catalogo_basico", "clientes_basico", "proveedores_basico"]);
-    expect(ordenados(porTipo("vendible"))).toEqual(["carta", "centros_de_costos", "compras", "consignacion", "gastos", "produccion", "promociones", "recetas", "salon", "stock", "traspasos"]);
+    expect(ordenados(porTipo("vendible"))).toEqual(["carta", "centros_de_costos", "compras", "consignacion", "gastos", "produccion", "promociones", "recepcion_de_compras", "recetas", "salon", "stock", "traspasos"]);
     expect((MODULOS as readonly ModuloDef[]).filter((m) => m.estado === "en_desarrollo").map((m) => m.id)).toEqual(["gastos", "centros_de_costos"]);
   });
 
@@ -70,10 +70,10 @@ describe("modulosEfectivos (clausura por requiere)", () => {
     expect(modulosEfectivos(["carta"]).has("salon")).toBe(false);
   });
 
-  it("con todos los vendibles en el registro están los 13 módulos disponibles; el que está en desarrollo, nunca", () => {
+  it("con todos los vendibles en el registro están los 14 módulos disponibles; el que está en desarrollo, nunca", () => {
     const vendibles = MODULOS.filter((m) => m.tipo === "vendible").map((m) => m.id);
     const efectivos = modulosEfectivos(vendibles);
-    expect(efectivos.size).toBe(13);
+    expect(efectivos.size).toBe(14);
     expect(efectivos.has("gastos")).toBe(false);
     expect(efectivos.has("centros_de_costos")).toBe(false);
   });

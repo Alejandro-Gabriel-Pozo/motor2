@@ -102,6 +102,54 @@ export async function cargarEstadoDePropuesta(db: Db, propuestaId: string): Prom
   return (await db.facturaProveedorPropuesta.findUnique({ where: { id: propuestaId }, select: { estado: true } }))?.estado ?? null;
 }
 
+export interface ParteParaRecibir {
+  id: string;
+  estadoRecepcion: string;
+  operacionId: string | null;
+}
+
+/** Compras, recepción separada (N3-a): la parte de la sucursal en esa factura (con el alcance del contexto la RLS esconde las de otras sucursales), o `null` si no tiene. */
+export async function cargarParteDeFacturaEnSucursal(tx: Db, facturaProveedorId: string, sucursalId: string): Promise<ParteParaRecibir | null> {
+  const parte = await tx.facturaProveedorSucursal.findFirst({ where: { facturaProveedorId, sucursalId }, select: { id: true, estadoRecepcion: true, operacionId: true } });
+  return parte ?? null;
+}
+
+export interface RenglonParaRecibir {
+  facturaProveedorRenglonId: string;
+  productoId: string;
+  productoNombre: string;
+  cantidadStock: number;
+  precioTotal: number;
+  precioPorUnidadStock: number;
+  loteVencimiento: Date | null;
+  detalle: string;
+}
+
+/** Compras, recepción separada (N3-a): los renglones de mercadería de la factura, en su orden, con lo que el Kardex necesita de cada uno (la parte única recibe el renglón ENTERO, en una sola sección). Los renglones sin producto (gastos) no entran al stock. */
+export async function cargarRenglonesParaRecibir(tx: Db, facturaProveedorId: string): Promise<RenglonParaRecibir[]> {
+  const filas = await tx.facturaProveedorRenglon.findMany({
+    where: { facturaProveedorId, productoId: { not: null } },
+    select: { id: true, productoId: true, cantidadStock: true, precioTotal: true, precioPorUnidadStock: true, loteVencimiento: true, detalle: true, producto: { select: { nombre: true } } },
+    orderBy: { orden: "asc" },
+  });
+  return filas.map((r) => ({
+    facturaProveedorRenglonId: r.id,
+    productoId: r.productoId as string,
+    productoNombre: r.producto?.nombre ?? "",
+    cantidadStock: Number(r.cantidadStock ?? 0),
+    precioTotal: Number(r.precioTotal),
+    precioPorUnidadStock: Number(r.precioPorUnidadStock ?? 0),
+    loteVencimiento: r.loteVencimiento,
+    detalle: r.detalle ?? "COMPRA",
+  }));
+}
+
+/** Compras, recepción separada (N3-b): los renglones de esa parte que ya tienen control (los ids de renglón). */
+export async function cargarRenglonesYaControlados(tx: Db, parteId: string): Promise<Set<string>> {
+  const filas = await tx.controlDeLineaDeRecepcion.findMany({ where: { facturaProveedorSucursalId: parteId }, select: { facturaProveedorRenglonId: true } });
+  return new Set(filas.map((f) => f.facturaProveedorRenglonId));
+}
+
 /** Las partes de la factura que se ven con el alcance del contexto (sucursal, nombre y su compra). */
 export async function cargarPartesDeFactura(tx: Db, facturaProveedorId: string): Promise<{ id: string; sucursalId: string; sucursalNombre: string; operacionId: string | null }[]> {
   const partes = await tx.facturaProveedorSucursal.findMany({

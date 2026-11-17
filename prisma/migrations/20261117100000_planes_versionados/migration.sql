@@ -239,7 +239,7 @@ ON CONFLICT ("codigo") DO NOTHING;
 
 INSERT INTO "VersionDePlan" ("id", "planId", "estado", "nombreComercial", "modulos", "motivo", "claveIdempotencia", "payloadHash")
 SELECT '00000000-0000-4000-8000-0000000a0003', p."id", 'BORRADOR', 'Actual',
-       ARRAY['stock', 'compras', 'traspasos', 'consignacion', 'recetas', 'produccion', 'carta', 'promociones', 'salon'],
+       ARRAY['stock', 'compras', 'recepcion_de_compras', 'traspasos', 'consignacion', 'recetas', 'produccion', 'carta', 'promociones', 'salon'],
        'Plan de transición: todos los módulos vendibles disponibles', '00000000-0000-4000-8000-0000000a0004', 'transicion-m1'
 FROM "Plan" p WHERE p."codigo" = 'actual'
 ON CONFLICT ("id") DO NOTHING;
