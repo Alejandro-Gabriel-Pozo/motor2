@@ -60,7 +60,7 @@ for (const ancho of [375, 1366]) {
       await pagina.getByLabel("Color (por ejemplo #0e7490)").fill("gris");
       await expect(page.getByText("Escribí el color como #0e7490")).toBeVisible();
       await pagina.getByLabel("Color (por ejemplo #0e7490)").fill("#777777");
-      await pantalla.getByLabel("Título").fill("Nuestros hoteles");
+      await pantalla.getByLabel("Título", { exact: true }).fill("Nuestros hoteles");
 
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "sin desborde horizontal").toBe(true);
       expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
@@ -82,7 +82,7 @@ for (const ancho of [375, 1366]) {
       await page.goto("/carta/portal");
       await expect(page.locator('[data-fondo-portal="encabezado"]').getByLabel("Azul")).toBeChecked();
       await expect(page.locator('[data-fondo-portal="pagina"]').getByLabel("Otro color")).toBeChecked();
-      await expect(page.getByLabel("Título")).toHaveValue("Nuestros hoteles");
+      await expect(page.getByLabel("Título", { exact: true })).toHaveValue("Nuestros hoteles");
       expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     } finally {
       await limpiar(sucursalId);
