@@ -1,7 +1,8 @@
-import { entradasDelPortalNuevo, esVarianteDePortal, sonPartesDeImagenValidas, valoresDelPortalDual, type SucursalDelPortal, LIBRO_ESTILO_MAQUETA, conDefaultsDeLaMaqueta, esSlugPublicoValido, estiloCartaPorDefecto, posicionCompleta, resolverEstiloCarta, resolverEstiloPortal, type CartaV1, type EntradaPortalCarta, type EstiloCarta, type EstiloPortal } from "@/core/carta/public";
+import { estiloDelPortalSimple, entradasDelPortalNuevo, esVarianteDePortal, sonPartesDeImagenValidas, valoresDelPortalDual, type SucursalDelPortal, LIBRO_ESTILO_MAQUETA, conDefaultsDeLaMaqueta, esSlugPublicoValido, estiloCartaPorDefecto, posicionCompleta, resolverEstiloCarta, resolverEstiloPortal, type CartaV1, type EntradaPortalCarta, type EstiloCarta, type EstiloPortal } from "@/core/carta/public";
 import type { EmpresaCarta } from "@/server/lecturas/carta/empresa";
 import { resolverMenuCarta } from "@/server/lecturas/carta/menu";
 import type { Db } from "@/lib/db-tipos";
+import { portalSimpleVisible } from "@/lib/portal-simple-visible";
 
 /**
  * ADR-006 (`docs/adr/ADR-006-carta-como-modulo-interno.md`), Fase 2: capa de LECTURA de la carta pública nueva
@@ -79,7 +80,7 @@ async function resolverPortalNuevo(empresa: EmpresaCarta, db: Db, portal: { id: 
 async function portalNuevoDeLaEmpresa(empresa: EmpresaCarta, db: Db) {
   const portal = await db.portalDeEmpresa.findFirst({
     where: { empresaId: empresa.id },
-    select: { id: true, variante: true, lineaSuperior: true, titulo: true, colorEncabezado: true, colorPagina: true, logoVisible: true, imagenProveedor: true, imagenCuenta: true, imagenIdPublico: true, imagenVersion: true, imagenExtension: true },
+    select: { id: true, variante: true, lineaSuperior: true, titulo: true, colorEncabezado: true, colorPagina: true, colorDetras: true, logoVisible: true, imagenProveedor: true, imagenCuenta: true, imagenIdPublico: true, imagenVersion: true, imagenExtension: true },
   });
   return portal && esVarianteDePortal(portal.variante) ? { ...portal, variante: portal.variante } : null;
 }
@@ -98,6 +99,20 @@ export async function resolverConfigPortalDual(empresa: EmpresaCarta, db: Db): P
   if (!portal) return resolverConfigPortal(empresa, db);
   const fila = await db.portalCartaEmpresa.findFirst({ where: { empresaId: empresa.id }, select: { valores: true } });
   const partes = { proveedor: portal.imagenProveedor, cuenta: portal.imagenCuenta, idPublico: portal.imagenIdPublico, version: portal.imagenVersion, extension: portal.imagenExtension };
+  const imagen = sonPartesDeImagenValidas(partes) ? partes : null;
+  // Pantalla simple de «Colores del portal» (interruptor `portalSimpleVisible`, nace apagado): con ella, los tres fondos con sus textos derivados y lo que la fila no cargó sigue saliendo del Json (crear la fila no cambia el portal). Apagada, la lectura de PR-A tal cual.
+  if (portalSimpleVisible()) {
+    return estiloDelPortalSimple(fila?.valores, {
+      variante: portal.variante,
+      lineaSuperior: portal.lineaSuperior,
+      titulo: portal.titulo,
+      colorEncabezado: portal.colorEncabezado,
+      colorPagina: portal.colorPagina,
+      colorDetras: portal.colorDetras,
+      imagen,
+      logoVisible: portal.logoVisible,
+    });
+  }
   return resolverEstiloPortal(
     valoresDelPortalDual(fila?.valores, {
       variante: portal.variante,
@@ -105,7 +120,7 @@ export async function resolverConfigPortalDual(empresa: EmpresaCarta, db: Db): P
       titulo: portal.titulo,
       colorEncabezado: portal.colorEncabezado,
       colorPagina: portal.colorPagina,
-      imagen: sonPartesDeImagenValidas(partes) ? partes : null,
+      imagen,
       logoVisible: portal.logoVisible,
     }),
   );
