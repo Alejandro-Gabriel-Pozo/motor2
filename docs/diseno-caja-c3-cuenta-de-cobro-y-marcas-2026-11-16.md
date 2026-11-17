@@ -242,7 +242,7 @@ Pruebas: `test/caja/caja-c3b-una-cuenta-por-sucursal.test.ts` (casos de uso y ba
 
 ## Pregunta para el dueño (2026-11-17): ¿el cobro debe usar solo la cuenta activa de la sucursal?
 
-**Estado: PENDIENTE (no se asumió nada; el orquestador la consolida para el dueño).** Escrita para quien no programa.
+**Estado: CONFIRMADA (2026-11-17).** Respuesta del dueño, chat con el orquestador general (registrada en `motor2-docs`, d335641), literal: «RESPUESTA: b» = el cobro asigna solo la cuenta activa de la sucursal cuando hay EXACTAMENTE UNA; con más de una cuenta activa hay que elegir. Se construye como etapa propia **P-C3** (diseño en `docs/diseno-caja-c3c-cuenta-activa-por-defecto-2026-11-17.md`). Escrita para quien no programa.
 
 **Qué pasa hoy.** Cada sucursal puede tener **una sola cuenta de cobro activa** (por ejemplo «Posnet Banco Nación»; decisión del dueño del 2026-11-16, «Por ahora es lo primero»). Pero cuando alguien cobra con tarjeta, QR o transferencia, el sistema **no le asigna esa cuenta solo**: si quien cobra no elige ninguna, el cobro se acepta igual y la plata queda anotada **«sin cuenta»** (verificado en el código y en las pruebas de C3b).
 
@@ -257,5 +257,5 @@ Pruebas: `test/caja/caja-c3b-una-cuenta-por-sucursal.test.ts` (casos de uso y ba
 
 **Qué recomendamos y por qué:** la opción 2. Con una sola cuenta activa por sucursal elegirla cada vez no aporta información y deja el cierre sin cuadrar contra el posnet; que el sistema la ponga sola es lo más simple y no se puede equivocar.
 
-**Qué NO se hace hasta que respondas:** no se cambia el cobro. La respuesta se registra con su cita literal y la fecha (regla del dueño); recién después se diseña el cambio (será un cambio chico dentro del caso de uso de cobrar, con su prueba de combinaciones).
+**Qué se hace ahora que respondió (la opción b = la 2 de arriba):** se construye el cambio chico dentro del caso de uso de cobrar, con su prueba de combinaciones (ver el documento de P-C3).
 
