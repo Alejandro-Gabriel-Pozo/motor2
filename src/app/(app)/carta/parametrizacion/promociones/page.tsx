@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
@@ -40,6 +41,21 @@ const refrescarSiOk = (r: ResultadoAccion) => {
   if (r.ok) refrescarVistaSiHaceFalta();
   return r;
 };
+
+/**
+ * Aire del armado «como Pedernal» (`ARMADO_DE_PROMO_COMO_PEDERNAL`, pedido del dueño 2026-11-17: «en Pedernal veo algo limpio, en Motor 2 algo apretado»): con el interruptor encendido, los bloques de cada promo van uno debajo del otro
+ * con más espacio entre sí (y sin el margen suelto que cada uno traía); apagado, no envuelve nada: la pantalla de siempre.
+ */
+function ConAire({ activo, children }: { activo: boolean; children: ReactNode }) {
+  if (!activo) return <>{children}</>;
+  return <div className="mt-4 flex flex-col gap-5 [&>*]:mt-0">{children}</div>;
+}
+
+/** Un título con lo que le cuelga (un formulario, un dato): juntos entre sí, aunque el resto vaya con aire. Apagado, no envuelve nada. */
+function Junto({ activo, children }: { activo: boolean; children: ReactNode }) {
+  if (!activo) return <>{children}</>;
+  return <div className="flex flex-col gap-2 [&>*]:mt-0">{children}</div>;
+}
 
 /**
  * CARTA-MANT: Parametrización › Promociones (prototipo aprobado). Las promos de la empresa (prendidas o no en esta sucursal, con su precio local, sus cupos, sus lugares de entradas), con el
@@ -129,6 +145,7 @@ export default async function PromocionesDeCartaPage() {
                     </>
                     )}
                   </summary>
+                  <ConAire activo={ARMADO_DE_PROMO_COMO_PEDERNAL}>
                   {puedeDefinirPromos ? (
                     <FormConResultado
                       accion={async (fd: FormData) => {
@@ -137,7 +154,7 @@ export default async function PromocionesDeCartaPage() {
                           await guardarPromoCarta({ id, seccionCartaId: campo(fd, "seccionCartaId"), titulo: campo(fd, "titulo"), descripcion: campo(fd, "descripcion"), precio: campo(fd, "precio"), orden: campo(fd, "orden") })
                         );
                       }}
-                      className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"
+                      className={ARMADO_DE_PROMO_COMO_PEDERNAL ? "mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2" : "mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"}
                     >
                       <CamposPromo secciones={datos.secciones} valores={pr} />
                       <div className="sm:col-span-2">
@@ -166,7 +183,7 @@ export default async function PromocionesDeCartaPage() {
                         const texto = campo(fd, "precioLocal").trim();
                         return refrescarSiOk(await guardarPrecioLocalPromoCarta(id, texto === "" ? null : texto, precioLocalVisto));
                       }}
-                      className="mt-3 flex flex-wrap items-end gap-2"
+                      className={ARMADO_DE_PROMO_COMO_PEDERNAL ? "mt-3 flex flex-wrap items-end gap-3" : "mt-3 flex flex-wrap items-end gap-2"}
                     >
                       <div className="flex flex-col gap-1">
                         <label htmlFor={`precio-local-${id}`} className="text-sm font-medium">
@@ -206,6 +223,7 @@ export default async function PromocionesDeCartaPage() {
                     </p>
                   )}
                   {repartoDeLasPromos && <RepartoDelPrecio precio={pr.precioAca} partes={repartoDeLasPromos[pr.id] ?? []} />}
+                  <Junto activo={ARMADO_DE_PROMO_COMO_PEDERNAL}>
                   <h3 className="mt-3 text-sm font-medium">{ARMADO_DE_PROMO_COMO_PEDERNAL ? "Qué lleva" : "Cupos"}</h3>
                   {puedeDefinirPromos ? (
                     <FormConResultado
@@ -216,7 +234,7 @@ export default async function PromocionesDeCartaPage() {
                         const deEntradas = lugaresDelFormulario(fd);
                         return refrescarSiOk(await guardarCuposPromoCarta(id, [...cupos, ...deEntradas]));
                       }}
-                      className="mt-1 flex flex-col gap-2"
+                      className={ARMADO_DE_PROMO_COMO_PEDERNAL ? "mt-1 flex flex-col gap-4" : "mt-1 flex flex-col gap-2"}
                     >
                       <p className="text-sm text-tinta-tenue">
                         {ARMADO_DE_PROMO_COMO_PEDERNAL
@@ -262,13 +280,14 @@ export default async function PromocionesDeCartaPage() {
                   ) : (
                     <p className="mt-1 text-sm text-tinta-tenue">{ARMADO_DE_PROMO_COMO_PEDERNAL ? "Sin componentes: esta promo es solo informativa, el POS la ignora." : "Sin cupos: esta promo es solo informativa, el POS la ignora."}</p>
                   )}
+                  </Junto>
 
                   {/* GO-3b (U1): las entradas de cada lugar LISTA (con una sola y mínimo = máximo, viene FIJO). */}
                   {lugares.map((l) => {
                     // Los closures "use server" capturan solo el id del lugar (texto): lo que capturan viaja al cliente.
                     const cupoId = l.id;
                     return (
-                    <div key={l.id} className="mt-3 flex flex-col gap-1" data-lugar-de-combo={l.nombre}>
+                    <div key={l.id} className={ARMADO_DE_PROMO_COMO_PEDERNAL ? "mt-3 flex flex-col gap-2" : "mt-3 flex flex-col gap-1"} data-lugar-de-combo={l.nombre}>
                       <h4 className="text-sm font-medium">
                         {l.nombre} · {esFijo(l) ? "viene fijo" : `se elige ${l.cantidadMinima === l.cantidadMaxima ? l.cantidadMaxima : `de ${l.cantidadMinima} a ${l.cantidadMaxima}`}`}
                       </h4>
@@ -320,6 +339,7 @@ export default async function PromocionesDeCartaPage() {
                     </div>
                     );
                   })}
+                  </ConAire>
                 </details>
                 {puedeActivarPromos && (
                   <FormConResultado
@@ -368,7 +388,11 @@ export default async function PromocionesDeCartaPage() {
                 })
               );
             }}
-            className="grid max-w-2xl grid-cols-1 gap-2 rounded border border-dashed p-3 sm:grid-cols-2"
+            className={
+              ARMADO_DE_PROMO_COMO_PEDERNAL
+                ? "grid max-w-2xl grid-cols-1 gap-4 rounded border border-dashed p-4 sm:grid-cols-2"
+                : "grid max-w-2xl grid-cols-1 gap-2 rounded border border-dashed p-3 sm:grid-cols-2"
+            }
           >
             <h3 className="text-sm font-medium sm:col-span-2">Nueva promo (queda prendida en esta sucursal)</h3>
             <CamposPromo secciones={seccionesActivas} />

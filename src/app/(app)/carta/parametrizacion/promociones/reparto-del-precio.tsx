@@ -9,7 +9,7 @@ export function RepartoDelPrecio({ precio, partes }: { precio: number; partes: r
   if (!partes.length) return null;
   const reparto = repartoDelPrecioDeLaPromo(precio, partes);
   return (
-    <div className="mt-3 flex flex-col gap-1" data-reparto-del-precio>
+    <div className="mt-3 flex flex-col gap-2" data-reparto-del-precio>
       <h3 className="text-sm font-medium">Reparto del precio</h3>
       {reparto.tipo === "sin-productos" ? (
         <p className="text-sm text-tinta-tenue">{TEXTO_SIN_PRODUCTOS}</p>
@@ -23,7 +23,7 @@ export function RepartoDelPrecio({ precio, partes }: { precio: number; partes: r
         </Aviso>
       ) : (
         <>
-          <ul className="flex flex-col text-sm">
+          <ul className="flex flex-col gap-1 text-sm">
             {reparto.filas.map((f, i) => (
               <li key={`${i}-${f.parte}`}>{textoDeLaFilaDelReparto(f)}</li>
             ))}

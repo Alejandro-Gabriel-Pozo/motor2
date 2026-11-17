@@ -20,6 +20,12 @@ const CLASE_NUMERO = "w-full sm:w-20";
 const CLASE_FILA_DE_CUPO = "grid grid-cols-2 gap-2 rounded border p-2 text-sm sm:flex sm:flex-wrap sm:items-center sm:rounded-none sm:border-0 sm:p-0";
 const CLASE_NOMBRE_DE_CUPO = "col-span-2 sm:min-w-[10rem] [overflow-wrap:anywhere]";
 const CLASE_CANTIDAD_DE_CUPO = "flex flex-col gap-1 sm:flex-row sm:items-center";
+/**
+ * Lo mismo con el armado «como Pedernal» encendido (`ARMADO_DE_PROMO_COMO_PEDERNAL`, aire pedido por el dueño 2026-11-17): un campo por línea también en celular, con su rótulo siempre ARRIBA, y más espacio entre filas.
+ */
+const CLASE_FILA_DE_CUPO_CON_AIRE = "flex flex-col gap-3 rounded border p-3 text-sm sm:flex-row sm:flex-wrap sm:items-end sm:rounded-none sm:border-0 sm:p-0";
+const CLASE_NOMBRE_DE_CUPO_CON_AIRE = "sm:min-w-[10rem] [overflow-wrap:anywhere]";
+const CLASE_CANTIDAD_DE_CUPO_CON_AIRE = "flex flex-col gap-1";
 
 /**
  * CARTA-MANT: un grupo plegado de la carta (una sección, los ocultos sin sección o los que están dentro de un agrupado): el nombre con cuántos productos tiene (y cuántos ocultos) en el resumen,
@@ -171,28 +177,32 @@ export function esFijo(l: LugarDeCombo): boolean {
  * el nombre es su identidad (cambiarlo es otro lugar). Abajo, una fila para sumar un lugar nuevo: una LISTA («Bebida»).
  */
 export function CamposLugares({ lugares }: { lugares: LugarDeCombo[] }) {
+  const aire = ARMADO_DE_PROMO_COMO_PEDERNAL;
+  const claseFila = aire ? CLASE_FILA_DE_CUPO_CON_AIRE : CLASE_FILA_DE_CUPO;
+  const claseNombre = aire ? CLASE_NOMBRE_DE_CUPO_CON_AIRE : CLASE_NOMBRE_DE_CUPO;
+  const claseCantidad = aire ? CLASE_CANTIDAD_DE_CUPO_CON_AIRE : CLASE_CANTIDAD_DE_CUPO;
   return (
-    <div className="flex flex-col gap-1">
+    <div className={aire ? "flex flex-col gap-3" : "flex flex-col gap-1"}>
       {lugares.map((l) => (
-        <div key={l.id} data-cupo-lugar={l.nombre} className={CLASE_FILA_DE_CUPO}>
+        <div key={l.id} data-cupo-lugar={l.nombre} className={claseFila}>
           <input type="hidden" name="lugar_id" value={l.id} />
           <input type="hidden" name={`lugar_tipo_${l.id}`} value={l.tipo} />
           <input type="hidden" name={`lugar_nombre_${l.id}`} value={l.nombre} />
-          <div className={CLASE_NOMBRE_DE_CUPO}>
+          <div className={claseNombre}>
             <Casilla etiqueta={`${l.nombre} (lista)`} name={`lugar_incluir_${l.id}`} defaultChecked />
           </div>
           {ARMADO_DE_PROMO_COMO_PEDERNAL && esCantidadExacta(l.cantidadMinima, l.cantidadMaxima) ? (
-            <label className={`${CLASE_CANTIDAD_DE_CUPO} col-span-2`}>
+            <label className={`${claseCantidad} ${aire ? "" : "col-span-2"}`.trim()}>
               Cantidad
               <CampoNumero tipo="entero" etiqueta="La cantidad exacta" name={`lugar_cantidad_${l.id}`} defaultValue={String(l.cantidadMaxima)} className={CLASE_NUMERO} />
             </label>
           ) : (
             <>
-              <label className={CLASE_CANTIDAD_DE_CUPO}>
+              <label className={claseCantidad}>
                 mín.
                 <CampoNumero tipo="entero" etiqueta="El mínimo" name={`lugar_min_${l.id}`} defaultValue={String(l.cantidadMinima)} className={CLASE_NUMERO} />
               </label>
-              <label className={CLASE_CANTIDAD_DE_CUPO}>
+              <label className={claseCantidad}>
                 máx.
                 <CampoNumero tipo="entero" etiqueta="El máximo" name={`lugar_max_${l.id}`} defaultValue={String(l.cantidadMaxima)} className={CLASE_NUMERO} />
               </label>
@@ -202,7 +212,7 @@ export function CamposLugares({ lugares }: { lugares: LugarDeCombo[] }) {
       ))}
       {/* «Sumar un lugar» (`SUMAR_LUGAR_DE_LISTA_VISIBLE`: apagado el 2026-10-28, vuelto a prender el 2026-11-11 por el pedido del «Menú ejecutivo»); aparece solo con su interruptor. */}
       {SUMAR_LUGAR_DE_LISTA_VISIBLE && (
-        <fieldset className="mt-1 grid min-w-0 grid-cols-2 gap-2 text-sm sm:flex sm:flex-wrap sm:items-end">
+        <fieldset className={aire ? "mt-1 flex min-w-0 flex-col gap-3 text-sm sm:flex-row sm:flex-wrap sm:items-end" : "mt-1 grid min-w-0 grid-cols-2 gap-2 text-sm sm:flex sm:flex-wrap sm:items-end"}>
           <legend className="mb-1 text-sm">Sumar un lugar (opcional)</legend>
           <div className="col-span-2">
             <Selector etiqueta="Tipo" name="nuevo_lugar_tipo" defaultValue="LISTA">

@@ -2,6 +2,7 @@ import { Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
 import type { ResultadoAccion } from "@/server/actions/tipos";
+import { ARMADO_DE_PROMO_COMO_PEDERNAL } from "@/core/carta/public";
 import { Aviso } from "@/ui/primitivas/aviso";
 import { Casilla } from "@/ui/primitivas/casilla";
 
@@ -24,10 +25,10 @@ export function DondeSeVe({
   guardar: (formData: FormData) => Promise<ResultadoAccion>;
 }) {
   return (
-    <div className="mt-3 flex flex-col gap-1" data-donde-se-ve={titulo}>
+    <div className={ARMADO_DE_PROMO_COMO_PEDERNAL ? "mt-3 flex flex-col gap-2" : "mt-3 flex flex-col gap-1"} data-donde-se-ve={titulo}>
       <h3 className="text-sm font-medium">Dónde se ve</h3>
       {puedeDefinir ? (
-        <FormConResultado accion={guardar} ofrecerRecargar className="flex flex-col gap-2">
+        <FormConResultado accion={guardar} ofrecerRecargar className={ARMADO_DE_PROMO_COMO_PEDERNAL ? "flex flex-col gap-3" : "flex flex-col gap-2"}>
           <Casilla
             name="soloSalon"
             defaultChecked={soloSalon}
