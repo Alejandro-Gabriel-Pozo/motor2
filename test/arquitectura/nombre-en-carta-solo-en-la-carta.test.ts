@@ -34,6 +34,7 @@ const LISTA_CERRADA: Record<string, string> = {
   "src/server/lecturas/catalogo/busqueda-de-producto.ts": "BUSCADOR DEL MOZO (POS): encuentra también por el nombre de carta de la sucursal activa (el resultado sigue mostrando código y nombre interno)",
   "src/server/lecturas/carta/choque-de-nombre.ts": "administración: junta los nombres usados en la carta de la sucursal para detectar un nombre repetido",
   "src/server/lecturas/carta/nombres-para-el-ticket.ts": "VENTA (2026-11-05, decisión del dueño): lo lee UNA vez al agregar al pedido para CONGELARLO en la línea (`CuentaItem.nombreEnTicket`); el ticket del cliente lee la copia congelada, nunca esta columna",
+  "src/server/lecturas/carta/orden-de-renglones.ts": "ADMINISTRACIÓN (O1, orden de renglones): lee el nombre de la carta de los productos de una sección para mostrarlos y compararlos (el modo alfabético ordena por el nombre que ve el comensal); no es venta, ticket ni comanda",
   "src/server/lecturas/carta/menu.ts": "CARTA: el lector de la carta (lista cerrada `PUBLICACION_CARTA`)",
   "src/server/lecturas/pos/selector-carta.ts": "SELECTOR DEL MOZO: lee el nombre de la carta de la sucursal",
   "src/server/persistencia/carta/contenido-producto.ts": "administración: escritura",

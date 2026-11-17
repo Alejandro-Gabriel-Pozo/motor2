@@ -83,7 +83,7 @@ describe("la migración deja las tablas, los índices, las claves foráneas, las
       "descripcionEnCarta:text:YES",
     ]);
     expect(forma("VersionDeOpcion")).toEqual([
-      "id:text:NO", "empresaId:text:NO", "opcionId:text:NO", "numero:integer:NO", "tipoDeDiferencia:text:NO", "diferenciaPrecio:numeric(14,2):YES", "porcentaje:numeric(7,4):YES", "factorEscala:numeric(8,4):YES", "creadoPorId:text:NO", `creadoEn:${T}:NO`,
+      "id:text:NO", "empresaId:text:NO", "opcionId:text:NO", "numero:integer:NO", "tipoDeDiferencia:text:NO", "diferenciaPrecio:numeric(14,2):YES", "porcentaje:numeric(7,4):YES", "factorEscala:numeric(8,4):YES", "creadoPorId:text:NO", `creadoEn:${T}:NO`, "baseDeCantidad:text:NO", // M2 (2026-11-17): la columna agregada queda al final de la tabla
     ]);
     expect(forma("ConsumoDeOpcion")).toEqual([
       "id:text:NO", "empresaId:text:NO", "versionDeOpcionId:text:NO", "efecto:text:NO", "insumoProductoId:text:NO", "reemplazaAProductoId:text:YES", "cantidad:numeric(14,4):NO", "unidadId:text:NO", "mermaPorcentaje:numeric(6,2):NO", "escalaConLaMedida:boolean:NO", "orden:integer:NO",
@@ -181,7 +181,7 @@ describe("la migración deja las tablas, los índices, las claves foráneas, las
       "OpcionDeGrupo_descripcion_en_carta_chk" /* Carta B, E3 */, "OpcionDeGrupo_nombre_chk", "OpcionDeGrupo_ninguna_sin_producto_chk", "OpcionDeGrupo_orden_chk", "OpcionDeGrupo_version_chk",
       "ProductoAdmiteGrupo_cantidades_chk", "ProductoAdmiteGrupo_eje_de_combinacion_chk" /* GO-3a */, "ProductoAdmiteGrupo_modo_precio_chk", "ProductoAdmiteGrupo_orden_chk", "ProductoAdmiteGrupo_version_chk",
       "ProductoAdmiteOpcion_absoluto_o_diferencia_chk", "ProductoAdmiteOpcion_cantidad_maxima_chk", "ProductoAdmiteOpcion_diferencia_chk", "ProductoAdmiteOpcion_porcentaje_chk", "ProductoAdmiteOpcion_precio_absoluto_chk", "ProductoAdmiteOpcion_tipo_de_diferencia_chk", "ProductoAdmiteOpcion_version_chk",
-      "VersionDeOpcion_diferencia_chk", "VersionDeOpcion_factor_chk", "VersionDeOpcion_numero_chk", "VersionDeOpcion_porcentaje_chk", "VersionDeOpcion_tipo_de_diferencia_chk",
+      "VersionDeOpcion_baseDeCantidad_chk", "VersionDeOpcion_diferencia_chk", "VersionDeOpcion_factor_chk", "VersionDeOpcion_numero_chk", "VersionDeOpcion_porcentaje_chk", "VersionDeOpcion_tipo_de_diferencia_chk",
     ].sort());
   });
 

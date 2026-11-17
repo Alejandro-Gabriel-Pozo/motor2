@@ -3,6 +3,8 @@ import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoActualizarRespaldoSeccion, ResultadoActualizarRespaldoSeccion } from "@/core/features/movimientos/secciones.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { fijarRespaldoDeSeccion } from "@/server/persistencia/movimientos/secciones";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 
 /**
  * Caso de uso «¿la sección sirve de RESPALDO automático al cerrar una cuenta del salón?» (`Seccion.sirveDeRespaldoEnVentas`,
@@ -27,7 +29,7 @@ export async function actualizarRespaldoSeccionCasoDeUso(
 ): Promise<ResultadoActualizarRespaldoSeccion> {
   const { sirveDeRespaldoEnVentas } = comando;
   const seccion = await actor.db.seccion.findUnique({ where: { id: comando.seccionId } });
-  if (!seccion || seccion.sucursalId !== actor.sucursalId) return fracaso("NO_ENCONTRADA", "No se encontró el depósito.");
+  if (!seccion || seccion.sucursalId !== actor.sucursalId) return fracaso("NO_ENCONTRADA", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.deposito }));
 
   await fijarRespaldoDeSeccion(actor.db, { id: seccion.id, sirveDeRespaldoEnVentas });
   return exito(`Depósito "${seccion.nombre}" ${sirveDeRespaldoEnVentas ? "ahora sirve" : "ya no sirve"} de respaldo automático en ventas.`, null);

@@ -229,6 +229,7 @@ export const DECLARACIONES: Readonly<Record<string, Declaracion>> = {
   "Venta.fecha": d("ninguna", "Instante de la venta de la cabecera (UTC): sin escritor ni lector en src/ (la tabla Venta no se escribe todavía, Etapa C); los reportes usan Operacion.fecha."),
   "Cuenta.abiertaEn": d("ninguna", "Instante de apertura de la cuenta: solo ordena y acota períodos de lectura (rotación de mesas, tickets emitidos, detalle de mesa); no cambia lo que se cobra, se ve en la carta ni el stock."),
   "CuentaItem.huellaOpciones": d("dinero", "Huella (SHA-256) de las opciones que van dentro del precio de la línea, inmutable: dos líneas del mismo producto con distinta huella son líneas distintas al cerrar la cuenta (cerrar-cuenta)."),
+  "Unidad.codigoFijo": d("visibilidad", "Cuál de las 14 unidades fijas de Pedernal es esta unidad (U1, 2026-11-17; NULL = «pendiente de completar»): hoy solo la anota; desde U2 cambia el nombre con que se ve la unidad y qué conversiones exactas se ofrecen; no toca precio ni el stock ya guardado."),
   "CuentaItem.nombreDeCocina": d("visibilidad", "Nombre con que la comanda de cocina nombra la línea, congelado al agregarla (2026-11-15): cambia lo que lee la cocina; no toca precio, stock ni ticket del cliente."),
   "CuentaItem.lineaPadreId": d("dinero", "Línea padre de un ADICIONAL (otra línea de la misma cuenta; inmutable; el adicional lleva precio de 0,01 o más, CHECK): decide a qué producto se suma el cobro y qué se anula junto."),
   "OpcionElegidaEnLinea.cantidad": d("dinero", "Foto de lo cobrado: unidades de la opción elegida por unidad vendida (1 a 10, CHECK; una MEDIDA siempre 1); el nombre de la línea las muestra como «×N»."),
@@ -267,5 +268,8 @@ export const DECLARACIONES: Readonly<Record<string, Declaracion>> = {
   "Unidad.magnitud": d("stock", "PESO, VOLUMEN o CANTIDAD: al cargar una compra, la cantidad real (peso real) solo cruza de tipo entre unidad de compra y de stock (guardPesoRealPorMagnitud); con el mismo tipo el servidor la rechaza."),
   "Insumo.activo": d("ninguna", "Baja lógica del insumo (agrupa productos por nombre): lo escribe actualizar-activo-insumo y en src/ ninguna consulta lo usa para filtrar ni decidir; no cambia plata, carta ni stock."),
   "RecetaDeCombinacionVersion.numero": d("ninguna", "Familia GO-3a retirada del código (cerco go3a-retirado): sin escritor ni lector en src/; el modelo sigue en el esquema hasta la migración de retiro."),
+  "Empresa.rolesPropiosMax": d("ninguna", "Tope de roles propios activos que la plataforma le deja a la empresa (P2); es gobierno de permisos, no toca dinero, carta ni stock."),
   "Empresa.permisosEditables": d("ninguna", "Política de permisos de plataforma (ADR-008/ADR-010); no toca dinero, carta ni stock."),
+  "RecetaVersion.baseDeCantidad": d("stock", "NETA o BRUTA (M2, 2026-11-17): en qué base están escritas las cantidades de la versión; hoy nada la lee (todo lo cargado es NETA), desde M3 decide si lo que sale del stock y se costea es la cantidad tal cual (BRUTA) o la cantidad más su merma (NETA)."),
+  "VersionDeOpcion.baseDeCantidad": d("stock", "NETA o BRUTA (M2, 2026-11-17): la base de los consumos de la versión de opción, igual que la de la receta; hoy nada la lee (todo lo cargado es NETA), desde M3 decide cuánto stock descuenta y cuánto cuesta el consumo."),
 };

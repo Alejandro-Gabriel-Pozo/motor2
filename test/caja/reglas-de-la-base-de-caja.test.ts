@@ -74,12 +74,17 @@ async function armar(c: Client): Promise<Armado> {
   const sesion = randomUUID();
   await c.query(`INSERT INTO "Caja" ("id","sucursalId","nombre") VALUES ($1,$2,'Caja 1')`, [caja, s.sucursalId]);
   await c.query(`INSERT INTO "MedioDePago" ("id","tipo") VALUES ($1,'EFECTIVO')`, [efectivo]);
+  // C2: toda sesión cuelga de la jornada ABIERTA de su sucursal y fecha de negocio (la caja abre una sola vez por día de negocio).
+  await c.query(`INSERT INTO "JornadaDeSucursal" ("id","sucursalId","fechaDeNegocio") VALUES ($1,$2,'2026-01-15')`, [randomUUID(), s.sucursalId]);
   await c.query(
-    `INSERT INTO "SesionCaja" ("id","sucursalId","cajaId","estado","fechaDeNegocio","zonaHoraria","abiertaPorId","claveIdempotencia","huella") VALUES ($1,$2,$3,'ABIERTA','2026-01-15','America/Argentina/Buenos_Aires',$4,$5,$6)`,
+    `INSERT INTO "SesionCaja" ("id","sucursalId","cajaId","estado","fechaDeNegocio","abiertaEn","zonaHoraria","abiertaPorId","claveIdempotencia","huella") VALUES ($1,$2,$3,'ABIERTA','2026-01-15','2026-01-15T15:00:00Z','America/Argentina/Buenos_Aires',$4,$5,$6)`,
     [sesion, s.sucursalId, caja, s.admin.id, randomUUID(), HUELLA],
   );
   return { caja, efectivo, sesion };
 }
+
+/** Inicia el cierre (ABIERTA → EN_CIERRE): desde ahí no entra plata y SOLO entra el conteo (arqueo y billetes). */
+const iniciarCierre = (c: Client, a: Armado) => c.query(`UPDATE "SesionCaja" SET "estado" = 'EN_CIERRE', "cierreIniciadoEn" = now(), "cierreIniciadoPorId" = $2 WHERE "id" = $1`, [a.sesion, s.admin.id]);
 
 const movimiento = (a: Armado, clase: string, importe: string, extra: { motivo?: string | null; anulaA?: string | null; clave?: string | null; medio?: string } = {}) => ({
   texto: `INSERT INTO "MovimientoCaja" ("id","sucursalId","sesionId","clase","medioDePagoId","importe","motivo","anulaAId","claveIdempotencia","creadoPorId") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
@@ -91,12 +96,13 @@ describe("sesión: una sola sin cerrar por caja y el ciclo ABIERTA → CERRADA",
   it("un segundo INSERT de sesión abierta para la misma caja es 23505 (índice SesionCaja_una_sin_cerrar_por_caja_key)", async () => {
     const c = await comoApp();
     const a = await armar(c);
-    const otra = `INSERT INTO "SesionCaja" ("id","sucursalId","cajaId","estado","fechaDeNegocio","zonaHoraria","abiertaPorId","claveIdempotencia","huella") VALUES ($1,$2,$3,'ABIERTA','2026-01-15','America/Argentina/Buenos_Aires',$4,$5,$6)`;
+    await c.query(`INSERT INTO "JornadaDeSucursal" ("id","sucursalId","fechaDeNegocio") VALUES ($1,$2,'2026-01-16')`, [randomUUID(), s.sucursalId]);
+    const otra = `INSERT INTO "SesionCaja" ("id","sucursalId","cajaId","estado","fechaDeNegocio","abiertaEn","zonaHoraria","abiertaPorId","claveIdempotencia","huella") VALUES ($1,$2,$3,'ABIERTA','2026-01-15','2026-01-15T15:00:00Z','America/Argentina/Buenos_Aires',$4,$5,$6)`;
     expect(await falla(c, otra, [randomUUID(), s.sucursalId, a.caja, s.admin.id, randomUUID(), HUELLA])).toBe("23505");
     await c.query("ROLLBACK");
   });
 
-  it("la sesión solo pasa de ABIERTA a CERRADA y la cerrada no se toca", async () => {
+  it("la sesión solo cambia con las marcas de su estado (el ciclo completo está en reglas-de-la-base-de-caja-c1b)", async () => {
     const c = await comoApp();
     const a = await armar(c);
     expect(await mensaje(c, `UPDATE "SesionCaja" SET "observacion" = 'x' WHERE "id" = $1`, [a.sesion])).toMatch(/SesionCaja_marcas_chk|sesion_caja/);
@@ -108,6 +114,7 @@ describe("arqueo: denominaciones permitidas (CHECK ArqueoBillete_denominacion_ch
   it("una denominación inexistente (5, 15, 30000) es 23514", async () => {
     const c = await comoApp();
     const a = await armar(c);
+    await iniciarCierre(c, a);
     for (const den of [5, 15, 30000, 0]) {
       expect(await falla(c, `INSERT INTO "ArqueoBillete" ("id","sucursalId","sesionId","denominacion","cantidad") VALUES ($1,$2,$3,$4,1)`, [randomUUID(), s.sucursalId, a.sesion, den]), `denominación ${den}`).toBe("23514");
     }
@@ -117,6 +124,7 @@ describe("arqueo: denominaciones permitidas (CHECK ArqueoBillete_denominacion_ch
   it("cada una de las 10 denominaciones válidas pasa", async () => {
     const c = await comoApp();
     const a = await armar(c);
+    await iniciarCierre(c, a);
     for (const den of DENOMINACIONES_VALIDAS) {
       expect(await falla(c, `INSERT INTO "ArqueoBillete" ("id","sucursalId","sesionId","denominacion","cantidad") VALUES ($1,$2,$3,$4,1)`, [randomUUID(), s.sucursalId, a.sesion, den]), `denominación ${den}`).toBeNull();
     }
@@ -127,6 +135,7 @@ describe("arqueo: denominaciones permitidas (CHECK ArqueoBillete_denominacion_ch
   it("la cantidad es de 0 a 99999 y no se repite una denominación en la sesión", async () => {
     const c = await comoApp();
     const a = await armar(c);
+    await iniciarCierre(c, a);
     const q = `INSERT INTO "ArqueoBillete" ("id","sucursalId","sesionId","denominacion","cantidad") VALUES ($1,$2,$3,$4,$5)`;
     expect(await falla(c, q, [randomUUID(), s.sucursalId, a.sesion, 100, -1])).toBe("23514");
     expect(await falla(c, q, [randomUUID(), s.sucursalId, a.sesion, 100, 100000])).toBe("23514");
@@ -136,13 +145,14 @@ describe("arqueo: denominaciones permitidas (CHECK ArqueoBillete_denominacion_ch
   });
 });
 
-describe("cierre: el arqueo tiene que cuadrar con lo movido, todo o nada (disparador diferido SesionCaja_verificar_cierre)", () => {
+describe("cierre (desde EN_CIERRE): el arqueo tiene que cuadrar con lo movido, todo o nada (disparador diferido SesionCaja_verificar_cierre)", () => {
   const cerrar = (c: Client, a: Armado) => c.query(`UPDATE "SesionCaja" SET "estado" = 'CERRADA', "cerradaEn" = now(), "cerradaPorId" = $2 WHERE "id" = $1`, [a.sesion, s.admin.id]);
 
   it("cerrar una sesión sin ningún arqueo falla AL COMMIT y la sesión sigue ABIERTA", async () => {
     const c = await comoApp();
     const a = await armar(c);
     expect(await insertar(c, movimiento(a, "FONDO_INICIAL", "100.00"))).toBeNull();
+    await iniciarCierre(c, a);
     await cerrar(c, a);
     await expect(c.query("COMMIT")).rejects.toThrow(/cierre_arqueo_no_cuadra_con_los_movimientos/);
     // Lo que quedó (la transacción entera se deshizo, incluido el armado): nada.
@@ -153,6 +163,7 @@ describe("cierre: el arqueo tiene que cuadrar con lo movido, todo o nada (dispar
     const c = await comoApp();
     const a = await armar(c);
     await insertar(c, movimiento(a, "FONDO_INICIAL", "100.00"));
+    await iniciarCierre(c, a);
     await c.query(`INSERT INTO "ArqueoCaja" ("id","sucursalId","sesionId","medioDePagoId","esperado","contado","conforme") VALUES ($1,$2,$3,$4,99.00,100.00,false)`, [randomUUID(), s.sucursalId, a.sesion, a.efectivo]);
     await c.query(`INSERT INTO "ArqueoBillete" ("id","sucursalId","sesionId","denominacion","cantidad") VALUES ($1,$2,$3,100,1)`, [randomUUID(), s.sucursalId, a.sesion]);
     await cerrar(c, a);
@@ -163,6 +174,7 @@ describe("cierre: el arqueo tiene que cuadrar con lo movido, todo o nada (dispar
     const c = await comoApp();
     const a = await armar(c);
     await insertar(c, movimiento(a, "FONDO_INICIAL", "100.00"));
+    await iniciarCierre(c, a);
     await c.query(`INSERT INTO "ArqueoCaja" ("id","sucursalId","sesionId","medioDePagoId","esperado","contado","conforme") VALUES ($1,$2,$3,$4,100.00,100.00,false)`, [randomUUID(), s.sucursalId, a.sesion, a.efectivo]);
     await c.query(`INSERT INTO "ArqueoBillete" ("id","sucursalId","sesionId","denominacion","cantidad") VALUES ($1,$2,$3,200,1)`, [randomUUID(), s.sucursalId, a.sesion]);
     await cerrar(c, a);
@@ -173,6 +185,7 @@ describe("cierre: el arqueo tiene que cuadrar con lo movido, todo o nada (dispar
     const c = await comoApp();
     const a = await armar(c);
     await insertar(c, movimiento(a, "FONDO_INICIAL", "100.00"));
+    await iniciarCierre(c, a);
     await c.query(`INSERT INTO "ArqueoCaja" ("id","sucursalId","sesionId","medioDePagoId","esperado","conforme") VALUES ($1,$2,$3,$4,100.00,true)`, [randomUUID(), s.sucursalId, a.sesion, a.efectivo]);
     await cerrar(c, a);
     await expect(c.query("COMMIT")).rejects.toThrow(/cierre_sin_efectivo_contado/);
@@ -182,6 +195,7 @@ describe("cierre: el arqueo tiene que cuadrar con lo movido, todo o nada (dispar
     const c = await comoApp();
     const a = await armar(c);
     await insertar(c, movimiento(a, "FONDO_INICIAL", "100.00"));
+    await iniciarCierre(c, a);
     await c.query(`INSERT INTO "ArqueoCaja" ("id","sucursalId","sesionId","medioDePagoId","esperado","contado","contadoMonedas","conforme") VALUES ($1,$2,$3,$4,100.00,100.50,0.50,false)`, [randomUUID(), s.sucursalId, a.sesion, a.efectivo]);
     await c.query(`INSERT INTO "ArqueoBillete" ("id","sucursalId","sesionId","denominacion","cantidad") VALUES ($1,$2,$3,100,1)`, [randomUUID(), s.sucursalId, a.sesion]);
     await cerrar(c, a);
@@ -374,10 +388,12 @@ describe("claves de reintento únicas y renglones agregados desde otra transacci
     const clave = (await c.query(`SELECT "claveIdempotencia" FROM "SesionCaja" WHERE "id" = $1`, [a.sesion])).rows[0].claveIdempotencia as string;
     // Se cierra la primera (con su fondo y un arqueo que cuadra) para que NO salte el índice de «una sin cerrar por caja»: la única barrera que queda es la de la clave.
     await insertar(c, movimiento(a, "FONDO_INICIAL", "100.00"));
+    await iniciarCierre(c, a);
     await c.query(`INSERT INTO "ArqueoCaja" ("id","sucursalId","sesionId","medioDePagoId","esperado","contado","conforme") VALUES ($1,$2,$3,$4,100.00,100.00,false)`, [randomUUID(), s.sucursalId, a.sesion, a.efectivo]);
     await c.query(`INSERT INTO "ArqueoBillete" ("id","sucursalId","sesionId","denominacion","cantidad") VALUES ($1,$2,$3,100,1)`, [randomUUID(), s.sucursalId, a.sesion]);
     await c.query(`UPDATE "SesionCaja" SET "estado" = 'CERRADA', "cerradaEn" = now(), "cerradaPorId" = $2 WHERE "id" = $1`, [a.sesion, s.admin.id]);
-    const otra = `INSERT INTO "SesionCaja" ("id","sucursalId","cajaId","estado","fechaDeNegocio","zonaHoraria","abiertaPorId","claveIdempotencia","huella") VALUES ($1,$2,$3,'ABIERTA','2026-01-16','America/Argentina/Buenos_Aires',$4,$5,$6)`;
+    await c.query(`INSERT INTO "JornadaDeSucursal" ("id","sucursalId","fechaDeNegocio") VALUES ($1,$2,'2026-01-16')`, [randomUUID(), s.sucursalId]);
+    const otra = `INSERT INTO "SesionCaja" ("id","sucursalId","cajaId","estado","fechaDeNegocio","abiertaEn","zonaHoraria","abiertaPorId","claveIdempotencia","huella") VALUES ($1,$2,$3,'ABIERTA','2026-01-16','2026-01-16T15:00:00Z','America/Argentina/Buenos_Aires',$4,$5,$6)`;
     // La primera está CERRADA: el único motivo posible del 23505 es la clave repetida (no el índice de «una sin cerrar por caja»).
     expect(await falla(c, otra, [randomUUID(), s.sucursalId, a.caja, s.admin.id, clave, HUELLA])).toBe("23505");
     await c.query("ROLLBACK");

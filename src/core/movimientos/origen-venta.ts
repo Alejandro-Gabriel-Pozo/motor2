@@ -211,7 +211,7 @@ function tomarDeFamilia(
       const parte = { productoId: c.productoId, seccionId: seccion.id, loteVencimiento: c.lote, cantidad: tomar };
       libro.tomar(parte);
       partes.push(parte);
-      restante -= tomar;
+      restante = redondearACantidadDeUnidad(restante - tomar, 8); // A1b: resta limpia a 8 decimales (float: 0,00015 − 0,0001 = 4,999999999999998e-5 perdía el resto)
     }
   }
   return { partes, restante };
@@ -396,7 +396,7 @@ export function elegirSeccionDeStockPropio(
     const parte = { productoId: pedido.productoId, seccionId, loteVencimiento: lote, cantidad: tomar };
     libro.tomar(parte);
     partes.push(parte);
-    restante -= tomar;
+    restante = redondearACantidadDeUnidad(restante - tomar, 8);
   }
   if (r4(restante) > 0) {
     const resto = { productoId: pedido.productoId, seccionId, loteVencimiento: partes.at(-1)?.loteVencimiento ?? null, cantidad: restante };

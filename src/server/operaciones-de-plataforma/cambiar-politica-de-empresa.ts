@@ -21,12 +21,12 @@ export async function cambiarPoliticaDeEmpresa(db: PrismaClient, pedido: CambioD
     // S-33: la fila de la empresa se toma ANTES de leerla (`FOR UPDATE`): dos corridas a la vez (dos operadores, un reintento) se serializan y la segunda lee lo que dejó la primera, en
     // vez de calcular su «antes» sobre el mismo estado y pisarla (con una auditoría que dice un «antes» que ya no era cierto).
     await tx.$queryRaw`SELECT id FROM "Empresa" WHERE slug = ${pedido.slug} FOR UPDATE`;
-    const empresa = await tx.empresa.findUnique({ where: { slug: pedido.slug }, select: { id: true, permisosEditables: true, dosPaneles: true } });
+    const empresa = await tx.empresa.findUnique({ where: { slug: pedido.slug }, select: { id: true, permisosEditables: true, dosPaneles: true, rolesPropiosMax: true } });
     if (!empresa) throw new PoliticaDeEmpresaError(`No existe una empresa con el slug "${pedido.slug}".`);
 
     await tx.$executeRaw`SELECT set_config('app.empresa_id', ${empresa.id}, true)`;
 
-    const antes: PoliticaDeEmpresa = { permisosEditables: empresa.permisosEditables, dosPaneles: empresa.dosPaneles };
+    const antes: PoliticaDeEmpresa = { permisosEditables: empresa.permisosEditables, dosPaneles: empresa.dosPaneles, rolesPropiosMax: empresa.rolesPropiosMax };
     const { despues, cambiadas } = planDeCambioDePolitica(antes, pedidas);
     if (cambiadas.length === 0) return { empresaId: empresa.id, politica: despues, cambiadas };
 

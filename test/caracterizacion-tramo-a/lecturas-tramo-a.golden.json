@@ -1997,10 +1997,10 @@
           "carta_pos_bloque": "50",
           "carta_pos_cta": "18",
           "color_marca": "",
+          "marca_derivada": "",
           "color_fondo_dia": "",
           "hero_color_fondo": "",
           "hero_ink": "",
-          "marca_derivada": "",
           "color_portada_textos": "",
           "color_portada_cta": "",
           "color_indice_titulo": "",
@@ -2230,10 +2230,10 @@
           "carta_pos_bloque": "50",
           "carta_pos_cta": "18",
           "color_marca": "",
+          "marca_derivada": "",
           "color_fondo_dia": "",
           "hero_color_fondo": "",
           "hero_ink": "",
-          "marca_derivada": "",
           "color_portada_textos": "",
           "color_portada_cta": "",
           "color_indice_titulo": "",
@@ -2613,6 +2613,7 @@
         "creadoEn": "<fecha 2026-09-30T05:00:00.000Z>",
         "sucursalId": "suc-central",
         "basadaEnVersionId": "rv-pizza-1",
+        "baseDeCantidad": "NETA",
         "rendimientoCantidad": null,
         "rendimientoUnidadId": null,
         "racionesCantidad": null,
@@ -2664,7 +2665,8 @@
               "nombre": "kg",
               "magnitud": "PESO",
               "activa": true,
-              "decimales": 2
+              "decimales": 2,
+              "codigoFijo": null
             },
             "sustitutos": []
           }

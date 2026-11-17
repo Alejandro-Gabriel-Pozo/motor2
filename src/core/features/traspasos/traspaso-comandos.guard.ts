@@ -3,6 +3,8 @@ import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { esClaveIdempotenciaValida, MENSAJE_CLAVE_DE_REINTENTO_INVALIDA } from "@/core/datos/clave-idempotencia";
 import { LARGO_MAXIMO_DETALLE, validarTextoLibre } from "@/core/datos/limites";
 import { validarDetalleLibreDeOperacion } from "@/core/movimientos/public";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 import type {
   ComandoAceptarTraspaso,
   ComandoAprobarYEnviarTraspaso,
@@ -30,7 +32,7 @@ const MENSAJE_FALTA_TRASPASO = "Falta el traspaso.";
 export const MENSAJE_SECCION_ORIGEN_NO_PROPIA = "Elegí de qué sección propia sale.";
 
 /** Mismo texto que usaban las Server Actions cuando no existe un traspaso con ese id. */
-export const MENSAJE_TRASPASO_NO_ENCONTRADO = "No se encontró ese traspaso.";
+export const MENSAJE_TRASPASO_NO_ENCONTRADO = textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.traspaso });
 
 function idDeTraspaso(id: unknown): ResultadoDato<string> {
   const traspasoId = texto(id);

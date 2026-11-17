@@ -137,4 +137,10 @@ export const ORACULO_DE_PERMISOS: Readonly<Record<string, string>> = {
   "producto_opciones_admitidas": "Elegir qué grupos y opciones de venta admite cada producto",
   "opcion_apagar_en_sucursal": "Apagar o prender una opción de venta en la sucursal",
   "promo_menu_del_dia": "Cargar el plato del día de los menús en la sucursal",
+  "caja_ver": "Ver el estado de la caja, la sesión, los movimientos y las cuentas sin cobrar",
+  "caja_abrir_sesion": "Abrir la caja de la sucursal con su fondo inicial",
+  "caja_cerrar_sesion": "Cerrar la caja de la sucursal con el arqueo",
+  "caja_mover_efectivo": "Registrar un ingreso o un egreso manual de efectivo y anular los propios",
+  "caja_anular_movimiento_ajeno": "Anular un movimiento de efectivo hecho por otra persona",
+  "cobrar_cuenta": "Cobrar una cuenta cerrada con los medios de pago",
 };

@@ -3,7 +3,9 @@
  * (transaccional, con auditoría, testeada); esto solo lee los argumentos. Es la ÚNICA vía para cambiarla: ninguna pantalla de la app lo hace.
  *
  * Uso: npm run politica-empresa -- --slug norte --actor operador@plataforma.com [--instalacion zuluhub] [--perfil lite|completo] \
- *        [--permisos-editables si|no] [--dos-paneles si|no]
+ *        [--permisos-editables si|no] [--dos-paneles si|no] [--roles-propios-max N]
+ *
+ * `--roles-propios-max N` (entero de 0 a 1000) fija cuántos roles PROPIOS activos puede tener la empresa (nace en 0; bajarlo no desactiva los que ya hay; un perfil NO lo toca).
  *
  * `--perfil` (perfil de política, no un plan de módulos) fija las dos perillas de una vez (`lite`: sin edición de permisos y menú único; `completo`: todo activo); las perillas sueltas se
  * aplican después y lo pisan.
@@ -42,6 +44,12 @@ function perfil(valor: string | undefined): NombreDePerfilDePolitica | undefined
   throw new PoliticaDeEmpresaError(`--perfil acepta ${Object.keys(PERFILES_DE_POLITICA).join(" o ")} (llegó "${valor}").`);
 }
 
+function entero(valor: string | undefined, opcion: string): number | undefined {
+  if (valor === undefined) return undefined;
+  if (!/^(0|[1-9][0-9]{0,3})$/.test(valor)) throw new PoliticaDeEmpresaError(`--${opcion} acepta un entero de 0 a 1000 (llegó "${valor}").`);
+  return Number(valor);
+}
+
 let contexto: ContextoDePlataforma | undefined;
 
 async function main() {
@@ -53,6 +61,7 @@ async function main() {
       perfil: { type: "string" },
       "permisos-editables": { type: "string" },
       "dos-paneles": { type: "string" },
+      "roles-propios-max": { type: "string" },
     },
     strict: true,
   });
@@ -61,6 +70,7 @@ async function main() {
   const permisosEditables = siONo(values["permisos-editables"], "permisos-editables");
   const dosPaneles = siONo(values["dos-paneles"], "dos-paneles");
   const perfilElegido = perfil(values.perfil);
+  const rolesPropiosMax = entero(values["roles-propios-max"], "roles-propios-max");
 
   // La conexión, el rol y el actor (un AdminPlataforma activo de la base de identidad) quedan resueltos ANTES de la operación.
   contexto = await abrirContextoDePlataforma(process.env, { instalacion: values.instalacion, actor: values.actor });
@@ -73,12 +83,13 @@ async function main() {
       ...(perfilElegido ? { perfil: perfilElegido } : {}),
       ...(permisosEditables !== undefined ? { permisosEditables } : {}),
       ...(dosPaneles !== undefined ? { dosPaneles } : {}),
+      ...(rolesPropiosMax !== undefined ? { rolesPropiosMax } : {}),
     },
     contexto.autor,
   );
 
-  const { permisosEditables: edita, dosPaneles: paneles } = resultado.politica;
-  const queda = `permisos editables: ${edita ? "sí" : "no"}, dos paneles: ${paneles ? "sí" : "no"}`;
+  const { permisosEditables: edita, dosPaneles: paneles, rolesPropiosMax: roles } = resultado.politica;
+  const queda = `permisos editables: ${edita ? "sí" : "no"}, dos paneles: ${paneles ? "sí" : "no"}, roles propios: hasta ${roles}`;
   console.log(
     resultado.cambiadas.length === 0
       ? `Sin cambios: la empresa "${values.slug}" ya estaba así (${queda}).`

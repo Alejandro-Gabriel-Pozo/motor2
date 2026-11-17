@@ -145,6 +145,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Parte P1, operador como Pedernal (pedido del dueño 2026-11-16, «como pedernal,»; CAMBIA COMPORTAMIENTO, deliberado): la semilla de `partes_ver` y `partes_editar` pasa de [admin] a [admin, operador] (`partes_desactivar` NO cambia: piso administrador). El operador pasa de no tener esas dos claves a tenerlas (ok en ver y editar) en la matriz de acceso. Revisado con `git diff -U0`: cambia SOLO lo de `partes_ver`/`partes_editar` y el rol operador; ningún otro permiso ni rol cambia.",
       },
+      {
+        blob: "22b61bd08eeb8349a96cd72a5c4a36cdbbaa7cf9",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `f17172aa` (la fusión de `caja-c1-pr-a` en `caja-c1-pr-b`, antes de las claves de la caja).
+        commit: "f17172aa",
+        motivo:
+          "Caja y cobro C1, PR-B (ADITIVO; seis claves nuevas, semilla solo `admin`, todo nace cerrado): `caja_ver`, `caja_abrir_sesion`, `caja_cerrar_sesion`, `caja_mover_efectivo`, `caja_anular_movimiento_ajeno` y `cobrar_cuenta` (de sucursal, módulo provisorio `salon`). Se suman a las listas de claves de cada bloque de la matriz de acceso (una línea por lista, mismas listas de antes con las seis claves de más; 224 líneas). Ninguna otra respuesta del guard ni ningún otro permiso cambia: el operador no recibe ninguna (todas «ver=false editar=false»).",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
@@ -286,6 +293,20 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "72fe9640",
         motivo:
           "Parte P1, operador como Pedernal (pedido del dueño 2026-11-16, «como pedernal,»; CAMBIA COMPORTAMIENTO, deliberado): la semilla de `partes_ver` y `partes_editar` pasa de [admin] a [admin, operador] (`partes_desactivar` NO cambia: piso administrador). Las filas `PERMISO operador:partes_ver` y `operador:partes_editar` pasan de ver=false editar=false a ver=true editar=true en las dos fotos. Revisado con `git diff -U0`: cambia SOLO lo de `partes_ver`/`partes_editar` y el rol operador; ningún otro permiso ni rol cambia.",
+      },
+      {
+        blob: "30eb8c0f3e1cd2ebba1151189a35d412c72905e0",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `f17172aa` (la fusión de `caja-c1-pr-a` en `caja-c1-pr-b`, antes de las claves de la caja).
+        commit: "f17172aa",
+        motivo:
+          "Caja y cobro C1, PR-B (ADITIVO; seis claves nuevas, semilla solo `admin`, todo nace cerrado): `caja_ver`, `caja_abrir_sesion`, `caja_cerrar_sesion`, `caja_mover_efectivo`, `caja_anular_movimiento_ajeno` y `cobrar_cuenta` (de sucursal, módulo provisorio `salon`). `ACCIONES 133 a 139` (en las dos fotos) y las doce filas `PERMISO` por foto de las seis claves (admin ver=true editar=true; operador ver=false editar=false). Revisado con `git diff -U0`. Ninguna otra respuesta del guard ni ningún otro permiso cambia: el operador no recibe ninguna (todas «ver=false editar=false»).",
+      },
+      {
+        blob: "d2cf938879b39888f5fac6ade93629421e30ec5a",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `8102cb4c` (Roles propios (P2): guardianes al día).
+        commit: "8102cb4c",
+        motivo:
+          "Roles propios, P2 (ADITIVO; la perilla `rolesPropiosMax` nace en 0; NO cambia comportamiento de acceso): `Empresa.rolesPropiosMax` (migración 20261117100100) aparece en las 28 filas EMPRESA de la huella y en 2 líneas `resultado:` de `cambiar-politica` (las que vuelcan la política de empresa), en 0. Revisado con `git diff`: solo se suma `rolesPropiosMax=0` (la huella ya incluía las acciones de caja de #368); ningún permiso, rol, resultado ni mensaje cambia. Aprobada por el dueño el 2026-11-17: «Sí, aprobada (Recomendada)» (motor2-docs, seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md).",
       },
     ],
   },
@@ -779,6 +800,20 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Nombre de cocina (ADITIVO; migración 20261115170000_nombre_de_cocina): la fila PRODUCTO de la lectura del estado de la receta propia suma `nombreDeCocina: null` (nadie tiene nombre de cocina en este mundo). Una sola línea agregada, a mano sobre el golden anterior: ningún otro campo ni conteo de consultas cambia.",
       },
+      {
+        blob: "6b32b67ab08eb771c7abea723f89898a39962679",
+        // El commit PADRE de este es 4db6539a (U1 integrada con main 7a8e9809, justo antes de regenerar este golden con la columna nueva).
+        commit: "4db6539a",
+        motivo:
+          "U1 de las unidades como Pedernal (migración 20261117130000_unidad_codigo_fijo; ADITIVA; regenerado con REGENERAR_CARACTERIZACION_TRAMO_A=1): la lectura `catalogo.obtenerEstadoDeRecetaPropia` devuelve el modelo Unidad entero (Prisma) y el objeto `unidad` suma `codigoFijo: null` (toda unidad existente queda «pendiente de completar»). Ninguna otra lectura ni conteo de consultas cambia. Ninguna pantalla usa el campo; lo devuelve la lectura porque Prisma trae la fila completa.",
+      },
+      {
+        blob: "9bff15574bfb7bb7c3d18a2d67e5dc5cead43831",
+        // El commit PADRE de este es a3b0efff (main con U1 mergeada, justo antes de integrarla en M2 y regenerar este golden con la columna nueva).
+        commit: "a3b0efff",
+        motivo:
+          "M2 de la merma sobre el bruto (migración 20261117140000_base_de_cantidad_en_versiones; ADITIVA, nada la lee todavía; regenerado con REGENERAR_CARACTERIZACION_TRAMO_A=1): la lectura `catalogo.obtenerEstadoDeRecetaPropia` devuelve la fila de RecetaVersion entera y suma `baseDeCantidad: \"NETA\"` (el valor por defecto de todo lo ya cargado). Ninguna otra lectura ni conteo de consultas cambia.",
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {
@@ -1008,6 +1043,27 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "499cc1f",
         motivo:
           "Nombre de cocina (ADITIVO; migración 20261115170000_nombre_de_cocina; regenerado con REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1): las filas PRODUCTO y las líneas ITEM suman `nombreDeCocina=null` (nadie tiene nombre de cocina en este mundo). Verificado por programa: sin esa columna el contenido es IDÉNTICO al blob anterior.",
+      },
+      {
+        blob: "322721c0f9c21f71ee6b4e8f022528d50d6efa94",
+        // Un commit no puede llevar su propio hash: es el commit de este mismo cambio (lote D del catálogo de textos), que cambia la línea y declara su regeneración en el commit hijo.
+        commit: "0fb5d246",
+        motivo:
+          "Lote D del catálogo de textos (aceptado por el dueño el 2026-11-16: «Sí, una sola frase (Recomendada)»): el rechazo por nombre repetido del alta de un cliente pasa de «Ya existe un cliente llamado» con el nombre entre comillas rectas a «Ya existe un cliente llamado «Fulano». Elegí otro nombre.». Cambia SOLO esa línea del paso «cliente: alta repetida»; ningún dato ni efecto.",
+      },
+      {
+        blob: "0b465d78551f40cfd613e93df75b7519d37aa4e0",
+        // El commit PADRE de este es c84370de (U1 antes de integrar main con el lote D de textos; el golden fusionado suma la línea de #379 y la columna `codigoFijo`, por eso el blob cambió).
+        commit: "c84370de",
+        motivo:
+          "U1 de las unidades como Pedernal (migración 20261117130000_unidad_codigo_fijo; ADITIVA, nada la lee todavía; regenerado con REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1): las filas UNIDAD suman `codigoFijo=null` (toda unidad existente queda «pendiente de completar»). Ninguna otra línea cambia: precios, descuentos, promos y costos siguen idénticos.",
+      },
+      {
+        blob: "f2c26bb616da2a67b6687fd11f899d8362f398d3",
+        // El commit PADRE de este es a3b0efff (main con U1 mergeada, justo antes de integrarla en M2 y regenerar este golden con la columna nueva).
+        commit: "a3b0efff",
+        motivo:
+          "M2 de la merma sobre el bruto (migración 20261117140000_base_de_cantidad_en_versiones; ADITIVA, nada la lee todavía; regenerado con REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1): las tres filas RECETA_VERSION suman `baseDeCantidad=NETA` (el valor por defecto de todo lo ya cargado). Ninguna otra línea cambia: precios, descuentos, promos y costos siguen idénticos.",
       },
     ],
   },

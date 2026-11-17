@@ -1,6 +1,7 @@
 import "server-only";
 import { textoDeCentavos } from "@/core/caja/public";
 import type { ClaseDeMovimiento, DatosDelCobroCompletos, DatosQuePideElMedio, TipoDeMedio } from "@/core/caja/public";
+import { diaDeColumnaDate, fechaDeColumnaDate } from "@/core/tiempo/zona-horaria";
 import type { Prisma } from "@prisma/client";
 
 /**
@@ -15,7 +16,7 @@ export function centavosDeDecimal(d: Prisma.Decimal): bigint {
 }
 
 export const SELECCION_DE_SESION = {
-  id: true, empresaId: true, sucursalId: true, cajaId: true, estado: true, fechaDeNegocio: true, zonaHoraria: true, abiertaEn: true, abiertaPorId: true, cerradaEn: true, claveIdempotencia: true, huella: true,
+  id: true, empresaId: true, sucursalId: true, cajaId: true, estado: true, fechaDeNegocio: true, zonaHoraria: true, horaDeCorte: true, abiertaEn: true, abiertaPorId: true, cerradaEn: true, claveIdempotencia: true, huella: true,
 } as const satisfies Prisma.SesionCajaSelect;
 export type SesionGuardada = Prisma.SesionCajaGetPayload<{ select: typeof SELECCION_DE_SESION }>;
 
@@ -43,9 +44,9 @@ export async function cargarSesionDeClave(db: Prisma.TransactionClient, empresaI
   return db.sesionCaja.findFirst({ where: { empresaId, claveIdempotencia }, select: SELECCION_DE_SESION });
 }
 
-/** La sesión sin cerrar de la caja, o `null`. */
-export async function cargarSesionAbiertaDeCaja(db: Prisma.TransactionClient, empresaId: string, cajaId: string): Promise<SesionGuardada | null> {
-  return db.sesionCaja.findFirst({ where: { empresaId, cajaId, estado: "ABIERTA" }, select: SELECCION_DE_SESION });
+/** La sesión sin cerrar de la caja (ABIERTA o EN_CIERRE: el índice único parcial deja a lo sumo una), o `null`. */
+export async function cargarSesionSinCerrarDeCaja(db: Prisma.TransactionClient, empresaId: string, cajaId: string): Promise<SesionGuardada | null> {
+  return db.sesionCaja.findFirst({ where: { empresaId, cajaId, estado: { in: ["ABIERTA", "EN_CIERRE"] } }, select: SELECCION_DE_SESION });
 }
 
 export async function cargarSesion(db: Prisma.TransactionClient, empresaId: string, id: string): Promise<SesionGuardada | null> {
@@ -54,15 +55,39 @@ export async function cargarSesion(db: Prisma.TransactionClient, empresaId: stri
 
 export async function insertarSesion(
   db: Prisma.TransactionClient,
-  args: { id: string; empresaId: string; sucursalId: string; cajaId: string; fechaDeNegocio: Date; zonaHoraria: string; abiertaEn: Date; abiertaPorId: string; claveIdempotencia: string; huella: string },
+  args: { id: string; empresaId: string; sucursalId: string; cajaId: string; fechaDeNegocio: Date; zonaHoraria: string; /** «HH:MM»: la hora de corte de la sucursal que se sella con la sesión. */ horaDeCorte: string; abiertaEn: Date; abiertaPorId: string; claveIdempotencia: string; huella: string },
 ): Promise<void> {
-  await db.sesionCaja.create({ data: { ...args, estado: "ABIERTA" }, select: { id: true } });
+  const { horaDeCorte, ...resto } = args;
+  await db.sesionCaja.create({ data: { ...resto, horaDeCorte: new Date(`1970-01-01T${horaDeCorte}:00.000Z`), estado: "ABIERTA" }, select: { id: true } });
 }
 
-/** Cierra la sesión (ABIERTA → CERRADA). Devuelve si escribió: 0 filas = ya estaba cerrada. El disparador de la base deja pasar solo ese cambio. */
-export async function cerrarSesionEnBase(db: Prisma.TransactionClient, args: { empresaId: string; id: string; cerradaEn: Date; cerradaPorId: string; observacion: string | null }): Promise<boolean> {
+/** Toma el bloqueo exclusivo de la sesión (FOR UPDATE): los cierres que llegan a la vez se ordenan acá en vez de pelearse al subir el bloqueo compartido de los disparadores (deadlock); el que espera ve la sesión ya cerrada en su reintento. */
+export async function bloquearSesion(db: Prisma.TransactionClient, empresaId: string, id: string): Promise<void> {
+  await db.$queryRaw`SELECT "id" FROM "SesionCaja" WHERE "empresaId" = ${empresaId} AND "id" = ${id}::uuid FOR UPDATE`;
+}
+
+/** Inicia el cierre (ABIERTA → EN_CIERRE). Devuelve si escribió: 0 filas = ya no estaba abierta. El disparador de la base deja pasar solo las transiciones del ciclo y el UPDATE espera a los cobros en vuelo (FOR SHARE). */
+export async function iniciarCierreEnBase(db: Prisma.TransactionClient, args: { empresaId: string; id: string; cierreIniciadoEn: Date; cierreIniciadoPorId: string }): Promise<boolean> {
   const { count } = await db.sesionCaja.updateMany({
     where: { empresaId: args.empresaId, id: args.id, estado: "ABIERTA" },
+    data: { estado: "EN_CIERRE", cierreIniciadoEn: args.cierreIniciadoEn, cierreIniciadoPorId: args.cierreIniciadoPorId },
+  });
+  return count > 0;
+}
+
+/** Cancela el cierre (EN_CIERRE → ABIERTA, sin las marcas del cierre). Devuelve si escribió: 0 filas = ya no estaba en cierre. */
+export async function cancelarCierreEnBase(db: Prisma.TransactionClient, args: { empresaId: string; id: string }): Promise<boolean> {
+  const { count } = await db.sesionCaja.updateMany({
+    where: { empresaId: args.empresaId, id: args.id, estado: "EN_CIERRE" },
+    data: { estado: "ABIERTA", cierreIniciadoEn: null, cierreIniciadoPorId: null },
+  });
+  return count > 0;
+}
+
+/** Cierra la sesión (EN_CIERRE → CERRADA). Devuelve si escribió: 0 filas = ya no estaba en cierre. El disparador de la base deja pasar solo ese cambio y no toca quién inició el cierre. */
+export async function cerrarSesionEnBase(db: Prisma.TransactionClient, args: { empresaId: string; id: string; cerradaEn: Date; cerradaPorId: string; observacion: string | null }): Promise<boolean> {
+  const { count } = await db.sesionCaja.updateMany({
+    where: { empresaId: args.empresaId, id: args.id, estado: "EN_CIERRE" },
     data: { estado: "CERRADA", cerradaEn: args.cerradaEn, cerradaPorId: args.cerradaPorId, observacion: args.observacion },
   });
   return count > 0;
@@ -77,15 +102,17 @@ export interface MovimientoGuardado {
   importeEnCentavos: bigint;
   motivo: string | null;
   anulaAId: string | null;
+  /** «AAAA-MM-DD» de la jornada cerrada que explica un AJUSTE. */
+  corrigeJornada: string | null;
   claveIdempotencia: string | null;
   creadoPorId: string;
 }
 
-const SELECCION_DE_MOVIMIENTO = { id: true, sesionId: true, sucursalId: true, clase: true, medioDePagoId: true, importe: true, motivo: true, anulaAId: true, claveIdempotencia: true, creadoPorId: true } as const satisfies Prisma.MovimientoCajaSelect;
+const SELECCION_DE_MOVIMIENTO = { id: true, sesionId: true, sucursalId: true, clase: true, medioDePagoId: true, importe: true, motivo: true, anulaAId: true, corrigeJornada: true, claveIdempotencia: true, creadoPorId: true } as const satisfies Prisma.MovimientoCajaSelect;
 
 function aMovimiento(f: Prisma.MovimientoCajaGetPayload<{ select: typeof SELECCION_DE_MOVIMIENTO }>): MovimientoGuardado {
-  const { importe, ...resto } = f;
-  return { ...resto, importeEnCentavos: centavosDeDecimal(importe) };
+  const { importe, corrigeJornada, ...resto } = f;
+  return { ...resto, corrigeJornada: corrigeJornada === null ? null : diaDeColumnaDate(corrigeJornada), importeEnCentavos: centavosDeDecimal(importe) };
 }
 
 export async function cargarMovimiento(db: Prisma.TransactionClient, empresaId: string, id: string): Promise<MovimientoGuardado | null> {
@@ -100,10 +127,10 @@ export async function cargarMovimientoDeClave(db: Prisma.TransactionClient, empr
 
 export async function insertarMovimiento(
   db: Prisma.TransactionClient,
-  args: { id: string; empresaId: string; sucursalId: string; sesionId: string; clase: ClaseDeMovimiento; medioDePagoId: string; cuentaDeCobroId?: string | null; importeEnCentavos: bigint; motivo: string | null; anulaAId: string | null; claveIdempotencia: string | null; creadoPorId: string },
+  args: { id: string; empresaId: string; sucursalId: string; sesionId: string; clase: ClaseDeMovimiento; medioDePagoId: string; cuentaDeCobroId?: string | null; importeEnCentavos: bigint; motivo: string | null; anulaAId: string | null; /** Solo un AJUSTE que explica una jornada cerrada («AAAA-MM-DD»). */ corrigeJornada?: string | null; claveIdempotencia: string | null; creadoPorId: string },
 ): Promise<void> {
-  const { importeEnCentavos, ...resto } = args;
-  await db.movimientoCaja.create({ data: { ...resto, importe: textoDeCentavos(importeEnCentavos) }, select: { id: true } });
+  const { importeEnCentavos, corrigeJornada, ...resto } = args;
+  await db.movimientoCaja.create({ data: { ...resto, corrigeJornada: corrigeJornada === undefined || corrigeJornada === null ? null : fechaDeColumnaDate(corrigeJornada), importe: textoDeCentavos(importeEnCentavos) }, select: { id: true } });
 }
 
 /** Lo esperado por (medio, cuenta) en una sesión: Σ de sus movimientos con signo, en centavos. `cuentaDeCobroId: null` = «sin cuenta» (el efectivo siempre). */

@@ -8,25 +8,25 @@ beforeEach(limpiarBaseDeTest);
 
 describe("politicaDeEmpresa (lee la política guardada en Empresa)", () => {
   it("una empresa sin tocar es «completa»: permisos editables y menú en dos paneles", async () => {
-    expect(await politicaDeEmpresa(EMPRESA_POR_DEFECTO_ID, prisma)).toEqual({ permisosEditables: true, dosPaneles: true });
+    expect(await politicaDeEmpresa(EMPRESA_POR_DEFECTO_ID, prisma)).toEqual({ permisosEditables: true, dosPaneles: true, rolesPropiosMax: 100 });
   });
 
   it("refleja permisosEditables en false sin tocar dosPaneles", async () => {
     await prismaAdmin.empresa.update({ where: { id: EMPRESA_POR_DEFECTO_ID }, data: { permisosEditables: false } });
-    expect(await politicaDeEmpresa(EMPRESA_POR_DEFECTO_ID, prisma)).toEqual({ permisosEditables: false, dosPaneles: true });
+    expect(await politicaDeEmpresa(EMPRESA_POR_DEFECTO_ID, prisma)).toEqual({ permisosEditables: false, dosPaneles: true, rolesPropiosMax: 100 });
   });
 
   it("refleja dosPaneles en false sin tocar permisosEditables", async () => {
     await prismaAdmin.empresa.update({ where: { id: EMPRESA_POR_DEFECTO_ID }, data: { dosPaneles: false } });
-    expect(await politicaDeEmpresa(EMPRESA_POR_DEFECTO_ID, prisma)).toEqual({ permisosEditables: true, dosPaneles: false });
+    expect(await politicaDeEmpresa(EMPRESA_POR_DEFECTO_ID, prisma)).toEqual({ permisosEditables: true, dosPaneles: false, rolesPropiosMax: 100 });
   });
 
   it("cada empresa tiene la suya: cambiar una no mueve a las otras", async () => {
     const otra = await prismaAdmin.empresa.create({
       data: { nombre: "Otra", slug: "otra", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", permisosEditables: false, dosPaneles: false },
     });
-    expect(await politicaDeEmpresa(otra.id, prisma)).toEqual({ permisosEditables: false, dosPaneles: false });
-    expect(await politicaDeEmpresa(EMPRESA_POR_DEFECTO_ID, prisma)).toEqual({ permisosEditables: true, dosPaneles: true });
+    expect(await politicaDeEmpresa(otra.id, prisma)).toEqual({ permisosEditables: false, dosPaneles: false, rolesPropiosMax: 0 }); // la perilla de roles propios nace en 0
+    expect(await politicaDeEmpresa(EMPRESA_POR_DEFECTO_ID, prisma)).toEqual({ permisosEditables: true, dosPaneles: true, rolesPropiosMax: 100 });
   });
 
   it("una empresa que no existe es un error, no una política por omisión", async () => {
@@ -34,7 +34,7 @@ describe("politicaDeEmpresa (lee la política guardada en Empresa)", () => {
   });
 
   it("los planes fijan las dos perillas: completo todo activo, lite ninguna", () => {
-    expect(PERFILES_DE_POLITICA.completo).toEqual({ permisosEditables: true, dosPaneles: true });
+    expect(PERFILES_DE_POLITICA.completo).toEqual({ permisosEditables: true, dosPaneles: true }); // un perfil NO toca rolesPropiosMax: la plataforma lo fija por empresa
     expect(PERFILES_DE_POLITICA.lite).toEqual({ permisosEditables: false, dosPaneles: false });
   });
 
