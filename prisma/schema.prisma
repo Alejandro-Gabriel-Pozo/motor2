@@ -416,6 +416,10 @@ model Producto {
 
   /// Cómo nombra la COCINA este producto de venta en la comanda (2026-11-15; docs/diseno-nombre-de-cocina-como-pedernal-2026-11-15.md). NULL = no tiene: la comanda usa `nombre`. Solo un PV; CHECK `Producto_nombre_de_cocina_chk` (1 a 80, sin saltos de línea ni espacios en los bordes) que agrega la migración a mano (Prisma no declara CHECK).
   nombreDeCocina String?
+  /// Qué ES el producto para el negocio (E1 de «clases de producto como Pedernal», 2026-11-17): MATERIA_PRIMA, INSUMO, REVENTA, ELABORADO o VENDIBLE. NULL = todavía sin clase (todo lo ya cargado; el relleno es un script aparte con
+  /// autorización expresa). Se escribe UNA vez y no cambia (disparador). `tipo` sigue mandando en el código; la clase se suma al lado. CHECK `Producto_claseDeUso_chk` (lista cerrada), `Producto_claseDeUso_tipo_chk`
+  /// (MP→MATERIA_PRIMA/INSUMO/ELABORADO; PV→VENDIBLE; REVENTA llega en E4) y `Producto_claseDeUso_seProduce_chk` (ELABORADO ⇔ seProduce en una MP), hechos a mano en la migración. Hoy nada la lee.
+  claseDeUso String?
 
   /// Solo tiene sentido si tipo=MP (Catalogo.js:951, 1723-1726) — un PV no
   /// se compra, no tiene Insumo. Se valida en la capa de aplicación, con el
