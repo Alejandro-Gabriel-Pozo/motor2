@@ -59,6 +59,16 @@ export const VENCIMIENTOS_DE_LISTAS: readonly VencimientoDeLista[] = [
     aprobacion: { por: "dueño (pendiente de aprobar al mergear el PR)", referencia: "PR #234" },
     motivo: "Archivos de src/ que ya pasaban de 400 líneas al instalar el cerco: cada uno se parte por responsabilidad en un trabajo aparte (propuesta de plazo: 60 días; la corrige el dueño).",
   },
+  // Textos a mano (T2 del catálogo de textos, 2026-11-16): deuda que ya existía al instalar el cerco (textos escritos a mano en `src/` y `plataforma/src/`); se declara sin pagarla (migrarlos al catálogo
+  // `src/core/textos/` es el tramo T4/T7 del diseño, familia por familia), plazo máximo desde el 2026-11-16. Aprobación del dueño del 2026-11-17 (ver `aprobacion`).
+  {
+    regla: "textos-a-mano",
+    inicio: "2026-11-16",
+    vence: "2027-01-15",
+    responsable: "dueño",
+    aprobacion: { por: "dueño, 2026-11-17, chat con el orquestador (motor2-docs a520c0e): «6.- Si, pero la idea es resolver las deudas luego de todo esto»", referencia: "PR #384" },
+    motivo: "Textos que una persona lee y que ya estaban escritos a mano al instalar el cerco: cada familia pasa al catálogo de textos en los tramos T4 y T7 del diseño. Aprobado por el dueño con la condición de que la idea es resolver esas deudas después de terminar todo el programa de paridad (se renueva con motivo y aprobación nuevos si el programa se alarga).",
+  },
   // Estructura de pantalla (PR #219, 2026-11-09): las 90 pantallas se adoptan por etapas E-B…E-H (docs/diseno-estructura-de-pantalla-1366x768-2026-11-09.md, §12). Plazo máximo; se renueva con motivo si una etapa se atrasa.
   {
     regla: "pantallas-con-estructura",
