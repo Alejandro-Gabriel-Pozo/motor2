@@ -111,10 +111,10 @@ describe("armarFilasStockParaConteo", () => {
   const mapa = (...ps: ProductoParaConteo[]) => new Map(ps.map((p) => [p.id, p]));
   const todoDisponible = (...ids: string[]) => new Map(ids.map((i) => [i, true]));
 
-  it("una fila por (producto, lote), con el saldo redondeado a los decimales de la unidad, ordenadas por nombre en castellano y por lote (sin lote primero)", () => {
+  it("una fila por (producto, lote), con el saldo redondeado a 4 decimales fijos (A1b), ordenadas por nombre en castellano y por lote (sin lote primero)", () => {
     const filas = armarFilasStockParaConteo(
       [
-        { productoId: "z", loteVencimiento: dia(5), saldo: 1.234 },
+        { productoId: "z", loteVencimiento: dia(5), saldo: 1.23456 }, // A1b 2026-11-16: antes 1.234 → 1,23 (decimales de la unidad, kg: 2); ahora el saldo se redondea a 4 decimales fijos (1,23456 → 1,2346)
         { productoId: "a", loteVencimiento: dia(3), saldo: 2 },
         { productoId: "a", loteVencimiento: null, saldo: 3 },
         { productoId: "e", loteVencimiento: null, saldo: 0.5 },
@@ -127,7 +127,7 @@ describe("armarFilasStockParaConteo", () => {
       ["Ají", null, 5, true],
       ["Ají", "2026-03-15", 2, false],
       ["Écuador", null, 0.5, false],
-      ["Zanahoria", "2026-05-15", 1.23, false],
+      ["Zanahoria", "2026-05-15", 1.2346, false], // A1b 2026-11-16: antes 1.23 (decimales de la unidad)
     ]);
     expect(filas[0]).toMatchObject({ productoId: "a", productoCodigo: "C_a", unidadStockNombre: "kg" });
   });

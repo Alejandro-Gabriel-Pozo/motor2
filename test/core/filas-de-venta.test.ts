@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { crearArrastreDeRedondeo } from "../../src/core/movimientos/arrastre-redondeo";
 import { filasDeUnaVenta, type ProductoParaFilas } from "../../src/core/movimientos/filas-de-venta";
 import type { VentaCalculada } from "../../src/core/movimientos/plan-de-la-venta";
+import { sumaExacta } from "../setup/suma-exacta";
 
 /**
  * Las filas del Kardex de una venta (Hito 5, 5.1 bloque B2b: `core/movimientos/filas-de-venta.ts`, mudadas tal cual desde `registrarVentaEnTx`): sin base. Fija las CLAVES de cada fila y su
@@ -61,25 +62,35 @@ describe("filasDeUnaVenta: una venta simple", () => {
 });
 
 describe("filasDeUnaVenta: el arrastre de redondeo entre consumos", () => {
-  it("dos consumos de 0,5 del mismo bollo (unidad sin decimales) escriben 1 y 0, no 1 y 1 — y `cantidadExacta` solo donde difiere", () => {
-    const [primera, segunda] = filas(venta({ consumos: [consumo("mp-bollo", 0.5), consumo("mp-bollo", 0.5)] }), { "mp-bollo": bollo });
-    expect(primera).toMatchObject({ proceso: "CONSUMO", cantidad: -1, cantidadExacta: -0.5 });
-    expect(segunda).toMatchObject({ proceso: "CONSUMO", cantidadExacta: -0.5 });
+  // A1b 2026-11-16 («4 decimales fijos como Pedernal» + cuenta exacta): el stock se redondea a 4 decimales y NO a los de la unidad, así que el arrastre solo actúa con consumos de MÁS de 4 decimales.
+  // Estas pruebas conservan la intención del arrastre (no se pierde ni se duplica) con consumos de 0,00005: antes eran 0,5 con la unidad de 0 decimales.
+  it("dos consumos de 0,00005 del mismo bollo escriben 0,0001 y 0, no 0,0001 y 0,0001 — y `cantidadExacta` solo donde difiere", () => {
+    const [primera, segunda] = filas(venta({ consumos: [consumo("mp-bollo", 0.00005), consumo("mp-bollo", 0.00005)] }), { "mp-bollo": bollo });
+    expect(primera).toMatchObject({ proceso: "CONSUMO", cantidad: -0.0001, cantidadExacta: -0.00005 });
+    expect(segunda).toMatchObject({ proceso: "CONSUMO", cantidadExacta: -0.00005 });
     expect(segunda!.cantidad === 0).toBe(true);
+  });
+
+  it("dos consumos de 0,5 del mismo bollo (unidad sin decimales) ahora escriben −0,5 y −0,5 exactos, sin deuda ni `cantidadExacta` (A1b: antes 1 y 0)", () => {
+    const [primera, segunda] = filas(venta({ consumos: [consumo("mp-bollo", 0.5), consumo("mp-bollo", 0.5)] }), { "mp-bollo": bollo });
+    expect(primera).toMatchObject({ proceso: "CONSUMO", cantidad: -0.5 });
+    expect(segunda).toMatchObject({ proceso: "CONSUMO", cantidad: -0.5 });
+    expect(primera!.cantidadExacta ?? null).toBeNull();
+    expect(segunda!.cantidadExacta ?? null).toBeNull();
   });
 
   it("el arrastre recibido se MUTA: la deuda de una venta pasa a la siguiente con el mismo arrastre", () => {
     const arrastre = crearArrastreDeRedondeo();
     const productoDe = () => bollo;
-    const [a] = filasDeUnaVenta(venta({ consumos: [consumo("mp-bollo", 0.5)] }), "op-1", { detalle: undefined, productoDe, arrastre });
-    const [b] = filasDeUnaVenta(venta({ consumos: [consumo("mp-bollo", 0.5)] }), "op-2", { detalle: undefined, productoDe, arrastre });
-    expect(a!.cantidad).toBe(-1);
+    const [a] = filasDeUnaVenta(venta({ consumos: [consumo("mp-bollo", 0.00005)] }), "op-1", { detalle: undefined, productoDe, arrastre });
+    const [b] = filasDeUnaVenta(venta({ consumos: [consumo("mp-bollo", 0.00005)] }), "op-2", { detalle: undefined, productoDe, arrastre });
+    expect(a!.cantidad).toBe(-0.0001); // A1b: antes −1 con 0,5 y la unidad de 0 decimales
     expect(b!.cantidad === 0).toBe(true);
   });
 
-  it("un producto que no se encontró se redondea a 2 decimales", () => {
-    const [consumida] = filas(venta({ consumos: [consumo("mp-fantasma", 0.126)] }), { "mp-fantasma": null });
-    expect(consumida).toMatchObject({ cantidad: -0.13, cantidadExacta: -0.126 });
+  it("un producto que no se encontró se redondea a 4 decimales (A1b 2026-11-16: antes 2)", () => {
+    const [consumida] = filas(venta({ consumos: [consumo("mp-fantasma", 0.12345)] }), { "mp-fantasma": null });
+    expect(consumida).toMatchObject({ cantidad: -0.1235, cantidadExacta: -0.12345 });
   });
 });
 
@@ -140,3 +151,40 @@ describe("filasDeUnaVenta: el PV que se produce y sale de más de un lote", () =
     expect(ventas[0]).toMatchObject({ seccionId: "s-cocina", loteVencimiento: diciembre, cantidad: -1, precioTotal: 100 });
   });
 });
+
+// A1b 2026-11-16 (pedido del verificador): la deuda HEREDADA de consumos antiguos con `cantidadExacta` (escritos cuando el stock se
+// redondeaba a los decimales de la unidad) se cobra sin escribir NUNCA una cantidad negativa en el Kardex (piso en 0 del arrastre).
+describe("filasDeUnaVenta: deuda heredada de consumos antiguos con cantidadExacta", () => {
+  /** La deuda como la arma `cargarDeudaDeRedondeo`: Σcantidad − ΣcantidadExacta de las filas CONSUMO con exacta (con signo). */
+  const deudaCargada = (filasAntiguas: { cantidad: number; cantidadExacta: number }[]) =>
+    sumaExacta(filasAntiguas.flatMap((f) => [f.cantidad, -f.cantidadExacta]));
+
+  const escritas = (consumos: number[], deudaInicial: number) => {
+    const arrastre = crearArrastreDeRedondeo(new Map([["mp-bollo", deudaInicial]]));
+    return consumos.map((c) => filasDeUnaVenta(venta({ consumos: [consumo("mp-bollo", c)] }), "op-1", { detalle: undefined, productoDe: () => bollo, arrastre })[0]!);
+  };
+
+  it("deuda −0,3 (antes −0,8 con exacta −0,5): cuatro consumos de 0,1 escriben 0, 0, 0 y 0,1 — se salda la deuda y nunca hay una cantidad positiva (consumo negativo)", () => {
+    const deuda = deudaCargada([{ cantidad: -0.8, cantidadExacta: -0.5 }]);
+    expect(deuda).toBe(-0.3);
+    const filasEscritas = escritas([0.1, 0.1, 0.1, 0.1], deuda);
+    expect(filasEscritas.map((f) => Math.abs(f.cantidad))).toEqual([0, 0, 0, 0.1]);
+    for (const f of filasEscritas) expect(f.cantidad <= 0).toBe(true);
+    // Σescrito − deuda inicial = Σexacto (0,4): la deuda heredada quedó saldada y el Kardex termina exacto.
+    expect(sumaExacta([...filasEscritas.map((f) => -f.cantidad), -deuda])).toBe(0.4);
+  });
+
+  it("deuda −0,00005 (antes −0,0001 con exacta −0,00005) y una parte de 0: el total empata en −0,00005 y se escribe 0, no −0,0001", () => {
+    const deuda = deudaCargada([{ cantidad: -0.0001, cantidadExacta: -0.00005 }]);
+    expect(deuda).toBe(-0.00005);
+    const [fila] = escritas([0], deuda);
+    expect(Math.abs(fila!.cantidad)).toBe(0);
+    expect(fila!.cantidad <= 0).toBe(true);
+  });
+
+  it("sin cobrar la deuda (arrastre vacío) los mismos consumos escribirían 0,1 cada uno: la prueba distingue si se ignora la deuda heredada", () => {
+    const filasEscritas = escritas([0.1, 0.1, 0.1, 0.1], 0);
+    expect(filasEscritas.map((f) => Math.abs(f.cantidad))).toEqual([0.1, 0.1, 0.1, 0.1]);
+  });
+});
+

@@ -1,6 +1,7 @@
 import "server-only";
 import { texto } from "@/core/texto";
 import { redondearMoneda } from "@/core/moneda";
+import { DECIMALES_DE_STOCK } from "@/core/movimientos/public";
 import { ZONA_ARGENTINA, diaDeCalendario, sumarDias } from "@/core/tiempo/zona-horaria";
 import { mensajeReferenciaProveedorObligatoria } from "@/core/features/compras/compra.guard";
 import {
@@ -152,7 +153,7 @@ export async function registrarFacturaProveedorCasoDeUso(
       if (!armado.ok) return fracaso("LINEA_INVALIDA", armado.mensaje);
       if (!armado.linea) continue;
       const producto = await obtenerProducto(armado.linea.productoId);
-      lineas.push({ linea: armado.linea, nombre: producto?.nombre ?? "", decimales: producto?.unidadStock.decimales ?? 0 });
+      lineas.push({ linea: armado.linea, nombre: producto?.nombre ?? "", decimales: DECIMALES_DE_STOCK });
     }
     if (!lineas.length) return fracaso("SIN_LINEAS_VALIDAS", "Ninguna línea tiene una cantidad válida.");
 

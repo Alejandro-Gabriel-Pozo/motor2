@@ -4,7 +4,7 @@ import { texto } from "@/core/texto";
 import { textoDe } from "@/core/textos/texto-de";
 import { esNumeroEstricto } from "@/core/numero";
 import { guardLineaCompra, guardPesoRealPorMagnitud } from "@/core/features/compras/compra.guard";
-import { TRANSICIONES, convertirCantidadAUnidadDeStock, esSignoFijo, precioPorUnidad, productoValidoParaProceso, redondearACantidadDeUnidad, type ConsumoParaFilas } from "@/core/movimientos/public";
+import { DECIMALES_DE_STOCK, TRANSICIONES, convertirCantidadAUnidadDeStock, esSignoFijo, precioPorUnidad, productoValidoParaProceso, redondearACantidadDeUnidad, type ConsumoParaFilas } from "@/core/movimientos/public";
 import { obtenerLoteMasProximoAVencer, resolverConsumoPorFamilia } from "@/server/lecturas/movimientos/saldos";
 import { crearCacheProducto } from "@/server/persistencia/movimientos/producto-cache";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
@@ -74,7 +74,7 @@ async function calcularConsumosProduccion(
         productoId: r.productoId,
         cantidad: r.cantidad,
         loteVencimiento: r.loteVencimiento,
-        decimalesUnidadStock: consumido?.unidadStock.decimales ?? 2,
+        decimalesUnidadStock: DECIMALES_DE_STOCK,
         esConsignacion: consumido?.esConsignacion ?? false,
         precioConsignacion: Number(consumido?.precioConsignacion ?? 0),
       });
@@ -175,7 +175,7 @@ export async function armarLineaMovimiento(
       huboConversion = true;
     } else if (factor !== 1) {
       // Decimal exacto, no float (ver `convertirCantidadAUnidadDeStock`): ya sale redondeada a los decimales de la unidad de stock.
-      const conversion = convertirCantidadAUnidadDeStock(numCant, factor, producto.unidadStock.decimales);
+      const conversion = convertirCantidadAUnidadDeStock(numCant, factor, DECIMALES_DE_STOCK);
       cantidadStock = conversion.redondeada;
       detalle = `${numCant} × ${factor} = ${conversion.exacta} ${producto.unidadStock.nombre}`;
       huboConversion = true;
@@ -187,7 +187,7 @@ export async function armarLineaMovimiento(
   // que puede dejar más decimales de la cuenta, ej. 3 CJ × 4.5 factor).
   // La conversión de una compra ya salió redondeada en decimal exacto (arriba): acá es idempotente (una cantidad ya en la grilla de la
   // unidad no se mueve); el redondeo de verdad lo hace para el resto de los casos (peso real, sin factor, otros procesos).
-  cantidadStock = redondearACantidadDeUnidad(cantidadStock, producto.unidadStock.decimales);
+  cantidadStock = redondearACantidadDeUnidad(cantidadStock, DECIMALES_DE_STOCK);
 
   const precioTotal = precioEntrada;
   const precioPorUnidadStock = precioPorUnidad(precioTotal, cantidadStock);
@@ -200,7 +200,7 @@ export async function armarLineaMovimiento(
   }
 
   const cantidadFirmada = esSignoFijo(datos.proceso)
-    ? redondearACantidadDeUnidad(cantidadStock * transicion.signoStock, producto.unidadStock.decimales)
+    ? redondearACantidadDeUnidad(cantidadStock * transicion.signoStock, DECIMALES_DE_STOCK)
     : cantidadStock; // Ajuste: ya viene firmado en `numCant` (aplicaFactorConversion siempre false acá).
 
   const consumosReceta = transicion.generaConsumoDeReceta

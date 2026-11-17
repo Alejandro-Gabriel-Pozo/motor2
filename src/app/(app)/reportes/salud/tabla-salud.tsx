@@ -4,11 +4,12 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaSaludProducto } from "@/core/reportes/public";
 import { ESTADO_STOCK_CONSOLIDADO_LABEL, ESTADO_STOCK_CONSOLIDADO_COLOR } from "@/core/stock/public";
+import { textoDe } from "@/core/textos/texto-de";
 
 const COLUMNAS: ColumnaReporte<FilaSaludProducto>[] = [
   {
     clave: "producto",
-    etiqueta: "Producto",
+    etiqueta: textoDe("columna.producto"),
     valor: (f) => `${f.codigo} — ${f.producto}`,
     render: (f) => (
       <EnlaceInterno href={`/reportes/historial?productoId=${f.productoId}`} className="underline">
@@ -16,7 +17,7 @@ const COLUMNAS: ColumnaReporte<FilaSaludProducto>[] = [
       </EnlaceInterno>
     ),
   },
-  { clave: "seccion", etiqueta: "Sección", valor: (f) => f.seccionNombre, render: (f) => f.seccionNombre },
+  { clave: "seccion", etiqueta: textoDe("columna.seccion"), valor: (f) => f.seccionNombre, render: (f) => f.seccionNombre },
   {
     clave: "consolidado",
     etiqueta: "Consolidado",

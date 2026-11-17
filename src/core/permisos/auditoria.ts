@@ -17,6 +17,9 @@ export const ENTIDADES_AUDITABLES = [
   "SesionCaja",
   "MovimientoCaja",
   "Cobranza",
+  // Caja y cobro C3: `CuentaDeCobro` (alta, edición, activar/desactivar; `entidadId` es el id, con `sucursalId` de la cuenta) y `MedioDePago` (alta, edición con los datos que pide, activar/desactivar; `sucursalId` null: es de la empresa). Nunca llevan datos personales ni el identificador externo.
+  "CuentaDeCobro",
+  "MedioDePago",
   "PermisoRol",
   "CapacidadSucursal",
   "Rol",

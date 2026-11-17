@@ -116,4 +116,20 @@ describe("crearArrastreDeRedondeo", () => {
       });
     }
   });
+
+  // A1b 2026-11-16: contraejemplo hallado por fast-check (semilla 1236636282): con 3 decimales, 0,0225 empata (22,5 u) y se escribe 0,023;
+  // la deuda queda en −0,0005 (−u/2). Una parte siguiente de 0 da un total de −u/2, que el redondeo exacto (empate alejándose del cero)
+  // llevaba a −0,001 — una cantidad NEGATIVA en el Kardex. Con Math.round daba 0.
+  it("deuda de −u/2 y una parte de 0: escribe 0 (nunca una cantidad negativa) y la deuda se mantiene acotada", () => {
+    const arrastre = crearArrastreDeRedondeo();
+    expect(arrastre.consumir("p", 0.0225, 3).cantidad).toBe(0.023);
+    const segundo = arrastre.consumir("p", 0, 3);
+    expect(segundo.cantidad).toBe(0);
+    expect(Object.is(segundo.cantidad, -0)).toBe(false);
+    // repetir la parte de 0 no cambia nada ni escribe negativos
+    const tercero = arrastre.consumir("p", 0, 3);
+    expect(tercero.cantidad).toBe(0);
+    // y la deuda sigue pudiendo cobrarse: 0,0005 exactos llevan el total a 0
+    expect(arrastre.consumir("p", 0.0005, 3).cantidad).toBe(0);
+  });
 });
