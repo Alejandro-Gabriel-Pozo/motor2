@@ -3,6 +3,7 @@ import type { PantallaDeCatalogo } from "@/core/catalogo/public";
 import { puedeVerItem } from "@/core/navegacion/estructura";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { accionesDelMenuQueElUsuarioPuedeVer } from "@/server/acceso/gate";
+import { rutaOfrecida } from "@/core/navegacion/candidatas-a-baja";
 import { PestanasDeRuta } from "@/ui/componentes/navegacion/pestanas-de-ruta";
 
 /**
@@ -26,7 +27,7 @@ export async function FilaDeCatalogo({
 }) {
   const claves = [...new Set(pestanas.flatMap((p) => (p.algunaDe ? [...p.algunaDe] : [p.accion])))];
   const puedeVer = visibles ?? (await accionesDelMenuQueElUsuarioPuedeVer(ctx.usuarioId, ctx.empresaId, ctx.sucursalId, claves, ctx.db));
-  const ofrecidas = pestanas.filter((p) => puedeVerItem(p, puedeVer));
+  const ofrecidas = pestanas.filter((p) => rutaOfrecida(p.href) && puedeVerItem(p, puedeVer));
   if (ofrecidas.length === 0 || (ofrecidas.length === 1 && ofrecidas[0].href === ruta)) return null;
   // «Envuelta» (como las filas de Movimientos y Stock): en 375 px las cuatro pestañas de Maestros pasan a otro renglón y se leen completas, en vez de quedar cortadas de costado.
   return <PestanasDeRuta etiqueta={etiqueta} disposicion="envuelta" pestanas={ofrecidas.map((p) => ({ href: p.href, texto: p.texto, actual: p.href === ruta }))} />;

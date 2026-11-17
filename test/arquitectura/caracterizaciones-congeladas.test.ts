@@ -329,6 +329,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Compras N3 sobre el origin/main integrado (e8b07af3, con Caja C1 PR-B y Roles P2 ya declarados arriba con los blobs `30eb8c0f` y `d2cf9388`): la acción `compra_controlar_recepcion` (admin y operador) suma a la huella 4 líneas `PERMISO` (una por foto y rol: `compra_controlar_recepcion ver=true editar=true`) y `ACCIONES` pasa de 139 a 140 en las dos fotos; ninguna otra línea cambia. Las dos entradas anteriores de esta rama (blobs `22f3ad56` y `8c2e41f2`) describían estados intermedios sin Roles P2 y se reemplazan por esta, la del estado final.",
       },
+      {
+        blob: "95e87ddd1d6d2497e2c8c9e9116cfd57faa4c825",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `8d004cbd` (Compras N3 en `main`, con la huella de gobierno ya declarada arriba con el blob `7c3e168e`).
+        commit: "8d004cbd",
+        motivo:
+          "Roles P3, nombres visibles de los roles base (CAMBIA SOLO TEXTO; la clave interna no cambia): la siembra de fábrica imprime `ROL … nombre=administrador` y `nombre=empleado` en lugar de `admin` y `operador` (4 líneas: 2 por foto), y el rol que quedan asignando las altas por invitación se audita con el nombre visible: las 32 líneas `AUDITORIA … rol (alta por invitación)` pasan de `valorNuevo=operador`/`admin` a `valorNuevo=empleado`/`administrador` (16 por cada nombre; el CI de GitHub marcó la diferencia exacta). Ningún permiso, resultado ni mensaje cambia. Aprobada por el dueño el 2026-11-17: «5.-Si, yo agregaria encargado. O si se lo puede crear lo hago yo» (nombres Gerente, Administrador y Empleado y regeneración de las dos huellas; motor2-docs, seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md, sección «Respuestas del dueño en el chat sobre libro, menú, Compras, depósitos, roles y T2»).",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-aceptacion.golden.txt": {
@@ -343,6 +350,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "a428877",
         motivo:
           "E1 (paridad con Pedernal; CAMBIA COMPORTAMIENTO, decisión del dueño, 2026-11-15, chat con el orquestador, relatada: «Como Pedernal (Recomendada)» para los mensajes del CUIT): validarCuit usa los textos de Pedernal (apps/plataforma/logica/errores-de-plataforma.ts:84-88 de ZuluHub-ERP). Cambian SOLO las dos líneas de mensaje de CUIT (formato y dígito verificador); el resto de la huella queda idéntico.",
+      },
+      {
+        blob: "7b760b98948fcfa93a27d4c0674713de6425a66c",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `d6127dda` (la integración de `main` en Roles P3).
+        commit: "d6127dda",
+        motivo:
+          "Roles P3, nombres visibles de los roles base (CAMBIA SOLO TEXTO): el valor nuevo de las auditorías de alta de rol por invitación (`valorNuevo`) pasa de `admin`/`operador` a `administrador`/`empleado` (4 líneas: 2 por foto). Ningún permiso, resultado ni mensaje cambia. Aprobada por el dueño el 2026-11-17: «5.-Si, yo agregaria encargado. O si se lo puede crear lo hago yo» (nombres Gerente, Administrador y Empleado y regeneración de las dos huellas; motor2-docs, seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md, sección «Respuestas del dueño en el chat sobre libro, menú, Compras, depósitos, roles y T2»).",
       },
     ],
   },
@@ -1390,9 +1404,16 @@ const CONGELADAS: Record<string, Congelada> = {
           "Frente 6, ayudas de la ficha del producto ocultas (cambio de texto de ADMINISTRACIÓN, no de la carta pública; dueño, 2026-11-16: «Sí, ese orden (Recomendada)», paso 2 «textos de la ficha del producto»; interruptor `FICHA_AYUDAS_VISIBLES`; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). En las opciones de venta del producto «Pizzas» (a 1280 y a 375 px) salen tres líneas: «Qué se elige al venderlo y cómo cambia el precio… Biblioteca de opciones», «No se borra nada: lo que admite de cada opción queda guardado.» y «Con el precio de lista de «…», sin descuentos. Es la forma que le da la carta pública…». 6 líneas quitadas, ninguna agregada, todas de esa pantalla (revisado con git diff); la carta pública y el resto quedan idénticos.",
       },
       {
-        blob: "e3e113d8a8600ed05e6fc703ef926ca141fe326e",
-        // El commit PADRE de este es 132f760c (el libro con los tests ajustados, justo antes de regenerar la línea de base del navegador).
-        commit: "132f760c",
+        blob: "3120761030f653cca1239c7a3c7c84a061121f1d",
+        // El commit PADRE de este (8e336b9f) es el último antes de la regeneración; el texto lo cambió el commit que agrega esta entrada (Frente 6, paso 4: seis pantallas candidatas a baja ocultas).
+        commit: "8e336b9f",
+        motivo:
+          "Frente 6, paso 4: pantallas candidatas a baja ocultas sin borrar (cambio de texto de ADMINISTRACIÓN, no de la carta pública; dueño, 2026-11-16: «Sí, ocultarlas sin borrar (Recomendada)»; interruptor `CANDIDATAS_A_BAJA_VISIBLES`; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). En las pantallas de «Carta › Parametrización» y de la ficha de contenido de la carta (a 1280 y a 375 px) salen cuatro líneas: dos veces «[enlace: Ítems agrupados]» y dos veces «[enlace: Géneros (carpetas del selector del POS) ›]». 4 líneas quitadas, ninguna agregada, todas de esas pantallas (revisado con git diff); la carta pública y el resto quedan idénticos.",
+      },
+      {
+        blob: "3fb599d69709bc2762339823ab836ad1bba3effc",
+        // El commit PADRE de este es f4770a5a (el libro con los tests ajustados, integrado con main a continuación; el blob es el del golden ya con la unión de los cambios del paso 4 y del libro).
+        commit: "f4770a5a",
         motivo:
           "Libro de la carta al estilo de la maqueta de Pedernal (Frente 6, PR #391; SOLO PRESENTACIÓN, interruptor LIBRO_ESTILO_MAQUETA; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1): cambian SOLO líneas de presentación de la carta pública sin tema cargado: el rótulo «← PORTAL» del botón de volver, el tamaño de nombre y precio (19 px → 21,6 px) y de los títulos del índice y de la banda, el peso 700 del precio del renglón, la tinta base (`--carta-ink`) y los colores de las líneas. Dueño, 2026-11-17: «Portal con una flechita…», «si» (letra), «blanco y negrita». Ningún texto de producto, precio ni dato cambia.",
       },

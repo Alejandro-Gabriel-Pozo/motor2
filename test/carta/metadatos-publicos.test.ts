@@ -77,13 +77,22 @@ describe("metadatos de la carta de una sucursal", () => {
     await sembrarSucursal({
       nombre: "Sucursal 3",
       slug: "tres",
-      tema: { restaurante_nombre: "La Cantina", restaurante_descripcion: "Pastas caseras frente al lago.", hero_imagen_fondo_url: "https://cdn.ejemplo.com/hero.jpg" },
+      tema: { restaurante_nombre: "La Cantina", restaurante_descripcion: "Pastas caseras frente al lago.", hero_imagen_fondo_url: "https://cdn.ejemplo.com/hero.jpg", restaurante_logo_url: "https://cdn.ejemplo.com/logo-sucursal.png" },
     });
     const m = await metadatosDeLaSucursal({ params: Promise.resolve({ empresa: EMPRESA, sucursal: "tres" }) });
     expect(m.title).toBe("La Cantina · Carta · Empresa B");
     expect(m.description).toBe("Pastas caseras frente al lago.");
-    expect((m.openGraph as { images?: unknown }).images).toEqual(["https://cdn.ejemplo.com/hero.jpg"]);
-    expect((m.twitter as { images?: unknown }).images).toEqual(["https://cdn.ejemplo.com/hero.jpg"]);
+    // Dueño, 2026-11-17: «Como pedernal»: la imagen de la vista previa es el LOGO, no la imagen de fondo de la portada.
+    expect((m.openGraph as { images?: unknown }).images).toEqual(["https://cdn.ejemplo.com/logo-sucursal.png"]);
+    expect((m.twitter as { images?: unknown }).images).toEqual(["https://cdn.ejemplo.com/logo-sucursal.png"]);
+  });
+
+  it("sin logo cargado la vista previa sale sin imagen, aunque haya imagen de fondo de la portada", async () => {
+    await cargarNombre(NOMBRE_VALIDO);
+    await sembrarSucursal({ nombre: "Sucursal 4", slug: "cuatro", tema: { restaurante_nombre: "La Cantina", hero_imagen_fondo_url: "https://cdn.ejemplo.com/hero.jpg" } });
+    const m = await metadatosDeLaSucursal({ params: Promise.resolve({ empresa: EMPRESA, sucursal: "cuatro" }) });
+    expect((m.openGraph as { images?: unknown }).images).toBeUndefined();
+    expect((m.twitter as { images?: unknown }).images).toBeUndefined();
   });
 
   it("sin dominio de cartas configurado no se declara canónica ni base (solo existe la ruta técnica)", async () => {

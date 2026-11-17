@@ -44,7 +44,7 @@ test("agregar un email nuevo crea una invitación (no un usuario) y aparece en �
   const email = `nueva-${e.marca}@local.test`;
   const page = await paginaDeUsuarios(browser, baseURL);
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Rol").selectOption({ label: "operador" });
+  await page.getByLabel("Rol").selectOption({ label: "empleado" });
   await page.getByRole("button", { name: "Guardar" }).click();
 
   await expect(page.getByRole("status").filter({ hasText: "Invitación enviada" })).toBeVisible();
@@ -130,7 +130,7 @@ test("con la sesión de la persona invitada: ve a qué sucursales entra, acepta 
 
   await page.goto(`/invitacion#t=${inv.token}`);
   await expect(page.getByText(e.b.sucursalNombre)).toBeVisible();
-  await expect(page.getByText("operador")).toBeVisible();
+  await expect(page.getByText("empleado")).toBeVisible();
   await sinViolaciones(page);
   await page.getByRole("button", { name: "Aceptar la invitación" }).click();
 
