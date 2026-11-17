@@ -7,6 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { actualizarProducto, type DatosProductoEdicion } from "../../src/server/actions/catalogo/productos";
 import { TRATAMIENTO_DE_AUSENTE } from "../../src/core/features/catalogo/completar-edicion-de-producto";
 
+import { crearCategoriaDeTest } from "../setup/categoria-de-prueba";
 /**
  * EDICIÓN PARCIAL del producto (decisión 0356 de Pedernal, 13/11/2026; el dueño pidió ser iguales a Pedernal en todo, 2026-11-13), por la Server Action pública y contra Postgres real:
  * un campo AUSENTE (`undefined`) no se toca; `null` o vacío enviado a propósito sí lo borra; un valor lo actualiza.
@@ -59,7 +60,7 @@ describe("edición parcial del producto (decisión 0356 de Pedernal)", () => {
       prisma.unidad.create({ data: { nombre: "kg", magnitud: "PESO", decimales: 2 } }),
       prisma.unidad.create({ data: { nombre: "g", magnitud: "PESO", decimales: 2 } }),
     ]);
-    const [categoriaA, categoriaB] = await Promise.all([prisma.categoriaProducto.create({ data: { nombre: "Almacén" } }), prisma.categoriaProducto.create({ data: { nombre: "Carnes" } })]);
+    const [categoriaA, categoriaB] = await Promise.all([crearCategoriaDeTest(prisma, { nombre: "Almacén" }), crearCategoriaDeTest(prisma, { nombre: "Carnes" })]);
     const [insumoA, insumoB] = await Promise.all([prisma.insumo.create({ data: { nombre: "Harina" } }), prisma.insumo.create({ data: { nombre: "Sal" } })]);
     const [proveedorA, proveedorB] = await Promise.all([
       prisma.proveedor.create({ data: { codigo: "PRV_A", nombre: "Proveedor A" } }),

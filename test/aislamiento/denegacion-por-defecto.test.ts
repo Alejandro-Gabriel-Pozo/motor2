@@ -52,7 +52,8 @@ const MAXIMOS = {
   // Sube a propósito de 32 a 33 con la integración de Catálogo: la búsqueda por la referencia del proveedor devuelve solo un booleano, igual que su par de las faltas filtrables.
   // Sube a propósito de 34 a 37 con Productos P1: la marca «Falta completar», el precio y la clase, y la sección de la carta de cada fila de la lista devuelven solo lo que se les pasa (ids), sin texto libre propio.
   // Sube a propósito de 37 a 38 con «Ocultar» (etapa d, 2026-11-16): `cargarLoQueMuestraOcultar` devuelve solo cuatro banderas, sin fila ni texto libre donde ir el marcador propio. DEUDA a la vista del dueño: el techo sigue siendo un trinquete.
-  SIN_MARCA_PROPIA: 38,
+  // Sube a propósito de 38 a 39 con el historial de precios (Frente 6, paso 7): `historialDePreciosDelProducto` devuelve solo fecha, alcance y dos números por cambio, sin texto libre donde ir el marcador propio.
+  SIN_MARCA_PROPIA: 39,
   OK_SIN_EFECTO_POR_DISENO: 2,
   // Sube a propósito de 2 a 3 con la caja (C1): `abrirSesionDeCaja` se ejerce parada en la sucursal vacía (S1 ya tiene su caja abierta: la lectura de caja necesita esa sesión abierta como dato propio).
   EN_LA_SUCURSAL_VACIA: 3,

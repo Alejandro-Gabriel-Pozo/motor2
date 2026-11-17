@@ -1,6 +1,7 @@
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 
+import { crearCategoriaDeTest } from "../setup/categoria-de-prueba";
 /**
  * Circuito Catálogo — tocar «Editar» en la lista de productos.
  *
@@ -13,7 +14,7 @@ import { prisma } from "./fixtures/db";
 test("al abrir un producto de la lista y tocar «Editar», la pantalla de edición carga TODOS los datos del producto", async ({ paginaAutenticada: page }) => {
   const sufijo = Date.now();
   const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
-  const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E Categoría ${sufijo}` } });
+  const categoria = await crearCategoriaDeTest(prisma, { nombre: `E2E Categoría ${sufijo}` });
   const producto = await prisma.producto.create({
     data: {
       codigo: `E2E-${sufijo}`,

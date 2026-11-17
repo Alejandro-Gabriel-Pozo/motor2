@@ -23,6 +23,7 @@ import {
 } from "./fixtures/compra-por-pasos";
 import { activarEmpresaB, crearUsuarioEn, paginaConSesion, suspenderEmpresaB, type EmpresasDeLaPrueba } from "./fixtures/multiempresa";
 
+import { crearCategoriaDeTest, limpiarCategoriasDeTest } from "../setup/categoria-de-prueba";
 /**
  * Accesibilidad (WCAG 2.1 A/AA vía axe-core) sobre pantallas puntuales: la pública (login, sin sesión), dos reportes (Costos y márgenes,
  * Promociones), la matriz de permisos, las seis pantallas de catálogo/administración con formularios sueltos (categorías, unidades,
@@ -108,7 +109,7 @@ const conTitulo = (page: import("@playwright/test").Page, titulo: string | RegEx
 
 testAutenticado("catalogo/categorias: sin violaciones de axe", async ({ paginaAutenticada: page }) => {
   const nombre = `E2E A11y Categoría ${Date.now()}`;
-  await prisma.categoriaProducto.create({ data: { nombre } });
+  await crearCategoriaDeTest(prisma, { nombre });
   try {
     await page.goto("/catalogo/categorias");
     await conTitulo(page, /Categorías/);
@@ -116,7 +117,7 @@ testAutenticado("catalogo/categorias: sin violaciones de axe", async ({ paginaAu
     await expect(page.getByText(nombre).filter({ visible: true })).toHaveCount(1);
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   } finally {
-    await prisma.categoriaProducto.deleteMany({ where: { nombre } });
+    await limpiarCategoriasDeTest(prisma, { nombre });
   }
 });
 
@@ -137,14 +138,14 @@ testAutenticado("catalogo/clientes: la lista con un cliente, con «Editar» desp
 
 testAutenticado("catalogo/margen-objetivo: sin violaciones de axe", async ({ paginaAutenticada: page }) => {
   const nombre = `E2E A11y Objetivo ${Date.now()}`;
-  await prisma.categoriaProducto.create({ data: { nombre } });
+  await crearCategoriaDeTest(prisma, { nombre });
   try {
     await page.goto("/catalogo/margen-objetivo");
     await conTitulo(page, /Margen objetivo/);
     await expect(page.getByLabel(`Food cost objetivo de ${nombre} (%)`)).toBeVisible();
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   } finally {
-    await prisma.categoriaProducto.deleteMany({ where: { nombre } });
+    await limpiarCategoriasDeTest(prisma, { nombre });
   }
 });
 
@@ -1028,8 +1029,8 @@ testAutenticado(
     const marca = `${Date.now()}`;
     const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
-    const conSeccion = await prisma.categoriaProducto.create({ data: { nombre: `E2E A11y Cat Carta ${marca}` } });
-    const sinSeccion = await prisma.categoriaProducto.create({ data: { nombre: `E2E A11y Cat Suelta ${marca}` } });
+    const conSeccion = await crearCategoriaDeTest(prisma, { nombre: `E2E A11y Cat Carta ${marca}` });
+    const sinSeccion = await crearCategoriaDeTest(prisma, { nombre: `E2E A11y Cat Suelta ${marca}` });
     const seccionCarta = await prisma.seccionCarta.create({ data: { nombre: `E2E A11y Sección Carta ${marca}`, orden: 1 } });
     const pvs = await Promise.all(
       [conSeccion, sinSeccion].map((c, i) =>
@@ -1057,7 +1058,7 @@ testAutenticado(
       await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: { in: pvs.map((p) => p.id) } } });
       await prisma.seccionCarta.deleteMany({ where: { id: seccionCarta.id } });
       await prisma.producto.deleteMany({ where: { id: { in: pvs.map((p) => p.id) } } });
-      await prisma.categoriaProducto.deleteMany({ where: { id: { in: [conSeccion.id, sinSeccion.id] } } });
+      await limpiarCategoriasDeTest(prisma, { id: { in: [conSeccion.id, sinSeccion.id] } });
     }
   }
 );
@@ -1068,7 +1069,7 @@ testAutenticado("carta: sin violaciones de axe, con formularios abiertos y «Fue
   // ellos el select "Sección de carta" del contenido, docs/plan-carta-seccion-directa-2026-09-25.md).
   const marca = `${Date.now()}`;
   const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
-  const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E A11y Carta Cat ${marca}` } });
+  const categoria = await crearCategoriaDeTest(prisma, { nombre: `E2E A11y Carta Cat ${marca}` });
   const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E A11y Carta Sección ${marca}`, titulo: "Del fuego", orden: 1 } });
   const [conContenido, sinContenido] = await Promise.all(
     ["Con", "Sin"].map((q) =>
@@ -1108,7 +1109,7 @@ testAutenticado("carta: sin violaciones de axe, con formularios abiertos y «Fue
     await prisma.seccionCarta.deleteMany({ where: { id: seccion.id } });
     await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: [conContenido.id, sinContenido.id] } } });
     await prisma.producto.deleteMany({ where: { id: { in: [conContenido.id, sinContenido.id] } } });
-    await prisma.categoriaProducto.deleteMany({ where: { id: categoria.id } });
+    await limpiarCategoriasDeTest(prisma, { id: categoria.id });
   }
 });
 
@@ -1118,7 +1119,7 @@ testAutenticado("carta/agrupados: sin violaciones de axe, con un ítem abierto, 
   // las opciones (orden y quitar) y el select "Agregar producto" (hay un PV suelto disponible para listar).
   const marca = `${Date.now()}`;
   const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
-  const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E A11y Agrupado Cat ${marca}` } });
+  const categoria = await crearCategoriaDeTest(prisma, { nombre: `E2E A11y Agrupado Cat ${marca}` });
   const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E A11y Agrupado Sección ${marca}` } });
   const productos = await Promise.all(
     [
@@ -1150,7 +1151,7 @@ testAutenticado("carta/agrupados: sin violaciones de axe, con un ítem abierto, 
     await prisma.seccionCarta.deleteMany({ where: { id: seccion.id } });
     await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: ids } } });
     await prisma.producto.deleteMany({ where: { id: { in: ids } } });
-    await prisma.categoriaProducto.deleteMany({ where: { id: categoria.id } });
+    await limpiarCategoriasDeTest(prisma, { id: categoria.id });
   }
 });
 

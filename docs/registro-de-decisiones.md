@@ -235,3 +235,23 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 - **Dónde:** `src/core/textos/catalogo.ts`, `src/server/actions/catalogo/casos-de-uso/guardar-version-de-receta.ts`
 - **Estado:** ACEPTADA
 - **Cita del dueño:** «ok» — 2026-11-17 — chat del dueño con el orquestador (`motor2-docs`, registro d335641, respuesta al texto del aviso de descarte de calibraciones)
+
+### DEC-0024
+- **Fecha:** 2026-11-17
+- **Quién:** la sesión Sonnet de PISOS-65 (las 65 acciones bajan de piso administrador a operario); aceptación directa del dueño.
+- **Qué decidió:** en las celdas cerradas de la matriz de permisos (las 14 acciones de gobierno y de gerente, que no se bajan: 12 de administrador de sistema y 2 de gerente) la pantalla (el `title` de la celda 🚫) y el guardado dicen exactamente «Esta acción es de gobierno de la empresa y no se delega.» (clave `rechazo.ACCION_DE_GOBIERNO`). Reemplaza el texto «Esta acción es de un nivel más alto que el de este rol: no se le puede dar» de la pantalla y el mensaje `FUERA_DE_NIVEL` del guardado (rol, nivel y clave), que se borran.
+- **Por qué:** el dueño bajó las 65 acciones de piso administrador a operador para que la empresa decida fila por fila; quedan cerradas de verdad solo las 14 de gobierno y de gerente, y pidió que el mensaje dijera por qué.
+- **Costo de revertir:** bajo: volver a escribir las dos frases anteriores en `permisos-matriz.tsx` y `guardar-permisos.ts` y sacar la clave del catálogo y del oráculo; no hay migración ni datos.
+- **Dónde:** `src/core/textos/catalogo.ts`, `src/server/actions/permisos/casos-de-uso/guardar-permisos.ts`, `src/app/(app)/administracion/permisos/permisos-matriz.tsx`
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «esta acción es de gobierno de la empresa y no se delega» — 2026-11-17 — chat del dueño con el orquestador general
+
+### DEC-0025
+- **Fecha:** 2026-11-17
+- **Quién:** la sesión Sonnet de PISOS-65; aceptación directa del dueño.
+- **Qué decidió:** darle a un rol de nivel operario (el operador o un rol propio) una de las 65 acciones que bajaron del piso administrador es SOLO del gerente de la empresa (`ACCIONES_QUE_DA_SOLO_EL_GERENTE`, `otorgaUnaAccionQueDaSoloElGerente` y `mensajeSiNoPuedeOtorgarLaAccion` en `src/core/permisos/`): un administrador que no es el gerente recibe «Solo el gerente de la empresa puede darle esta acción a un rol de nivel operario. No se guardó nada.» y no se escribe ni se audita nada. Quitarla no se restringe: quien hoy puede editar la matriz de un rol operario puede quitar una de las 65. Las 65 siguen naciendo cerradas (de fábrica solo las tiene el rol `admin`). El texto del mensaje no lo dictó el dueño: queda literal en `matriz.ts`.
+- **Por qué:** el dueño bajó el piso de las 65 para que la empresa decida fila por fila y pidió que luego edite el gerente: sin esta regla un administrador podría darse a un rol propio el dinero, las anulaciones y los reportes.
+- **Costo de revertir:** bajo: borrar la lista, la función de `matriz.ts` y su llamada en `guardar-permisos.ts`; las filas ya dadas quedan como están (acceso real por la matriz), no hay migración.
+- **Dónde:** `src/core/permisos/acciones.ts`, `src/core/permisos/matriz.ts`, `src/server/actions/permisos/casos-de-uso/guardar-permisos.ts`
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Así me refería a que se baje el piso y después el gerente edite.» — 2026-11-17 — chat del dueño con el orquestador general (decisión base: «Si bajamos las 65 acciones de piso administrador a operador, esas celdas dejan de estar cerradas y la empresa decide fila por fila.»)

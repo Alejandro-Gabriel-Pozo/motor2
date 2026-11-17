@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { validarCambioDeModulos } from "@/core/modulos/clausura";
+import { ACCION_DE_APAGADO_RECHAZADO, apagadoRechazadoPorComprasPendientes, MODULO_CON_GUARDA_DE_APAGADO, textoDeApagadoRechazado } from "@/core/modulos/guarda-de-apagado";
 import { explicarErrorDeCambio, nombreDeModulo, vistaDeModulos, type FilaDeModulo } from "@/core/modulos/vista-de-modulos";
 import { auditarEnTransaccion, type AutorEnInstalacion } from "./auditoria";
 import { bloquearEmpresa } from "./ciclo-de-vida";
@@ -11,6 +12,9 @@ import { bloquearEmpresa } from "./ciclo-de-vida";
  * Mismas reglas que el resto de la consola: el cambio y su fila de auditoría de plataforma (el administrador como autor, ADR-012 §5) en UNA transacción, con el cerrojo de la
  * fila de la empresa (`FOR UPDATE`); el `empresaId` del cliente se vuelve a leer en la transacción; desactivar deja la fila en INACTIVO y nunca la borra (la plataforma no
  * tiene DELETE). La validación es la de `validarCambioDeModulos`, la MISMA clausura que usa el guard de la app: el cambio rige en el próximo pedido de los usuarios.
+ *
+ * Guarda de apagado (docs/diseno-compras-guarda-de-apagado-2026-11-17.md): apagar `recepcion_de_compras` con compras pendientes de recibir lo rechaza la BASE (un disparador de `ModuloEmpresa`, que cuenta todas las sucursales); acá
+ * ese error se traduce a un resultado `ok: false` con el texto de siempre y, como la transacción ya se revirtió, el intento rechazado deja su propia fila en la auditoría de plataforma («modulo-desactivar-rechazado»).
  */
 type Db = PrismaClient;
 
@@ -40,6 +44,24 @@ export async function cambiarModulosDesdeLaConsola(db: Db, autor: AutorEnInstala
   const { activar, desactivar } = parseo.data;
   if (activar.length === 0 && desactivar.length === 0) return { ok: false, mensaje: "No hay nada que cambiar." };
 
+  try {
+    return await aplicarCambioDeModulos(db, autor, empresaId, activar, desactivar);
+  } catch (error) {
+    const rechazo = apagadoRechazadoPorComprasPendientes(error);
+    if (!rechazo) throw error;
+    // Nada cambió (la sentencia falló y la transacción se revirtió). El rastro del intento va en otra escritura: si ella falla, el rechazo igual se informa y el texto lo dice (la base ya cerró).
+    let conRastro = true;
+    try {
+      await auditarEnTransaccion(db, autor, ACCION_DE_APAGADO_RECHAZADO, empresaId, { modulo: MODULO_CON_GUARDA_DE_APAGADO, pendientes: rechazo.cantidad });
+    } catch {
+      conRastro = false;
+    }
+    return { ok: false, mensaje: textoDeApagadoRechazado(rechazo) + (conRastro ? "" : " No se pudo dejar el rastro del intento en la auditoría de plataforma.") };
+  }
+}
+
+/** El cambio y su auditoría en UNA transacción (el cuerpo de siempre). Si la base rechaza el apagado (guarda de la recepción separada), la excepción sale tal cual y la traduce quien llama. */
+function aplicarCambioDeModulos(db: Db, autor: AutorEnInstalacion, empresaId: string, activar: string[], desactivar: string[]): Promise<ResultadoDeModulos> {
   return db.$transaction(
     async (tx): Promise<ResultadoDeModulos> => {
       const empresa = await bloquearEmpresa(tx, empresaId);

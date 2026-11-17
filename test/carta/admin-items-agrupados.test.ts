@@ -3,6 +3,7 @@ import { limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { cargarAdminCarta, cargarAdminItemsAgrupados } from "../../src/server/consultas/carta/admin";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
+import { crearCategoriaDeTest } from "../setup/categoria-de-prueba";
 /**
  * Lectura del admin de los ítems agrupados (docs/plan-agrupacion-items-carta-2026-09-24.md, M6), contra Postgres real:
  * `/carta` ya no avisa como "sin contenido" a un PV agrupado (sale a través del grupo), y `/carta/agrupados`
@@ -22,8 +23,8 @@ describe("admin de ítems agrupados", () => {
     const u = await prisma.unidad.create({ data: { nombre: "u", magnitud: "CANTIDAD", decimales: 0 } });
     central = (await prisma.sucursal.create({ data: { nombre: "Central" } })).id;
     otra = (await prisma.sucursal.create({ data: { nombre: "Otra" } })).id;
-    const cGas = (await prisma.categoriaProducto.create({ data: { nombre: "Gaseosa 500 CC" } })).id;
-    const cAgua = (await prisma.categoriaProducto.create({ data: { nombre: "Aguas" } })).id;
+    const cGas = (await crearCategoriaDeTest(prisma, { nombre: "Gaseosa 500 CC" })).id;
+    const cAgua = (await crearCategoriaDeTest(prisma, { nombre: "Aguas" })).id;
     bebidasId = (await prisma.seccionCarta.create({ data: { nombre: "Bebidas sin alcohol", orden: 1 } })).id;
     await prisma.seccionCarta.create({ data: { nombre: "Otras bebidas", orden: 2 } });
     let n = 0;

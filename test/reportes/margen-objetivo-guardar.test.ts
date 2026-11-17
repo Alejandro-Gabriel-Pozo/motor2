@@ -23,6 +23,7 @@ import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembr
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { guardarMargenObjetivo } from "../../src/server/actions/reportes/margen-objetivo";
 
+import { crearCategoriaDeTest } from "../setup/categoria-de-prueba";
 /**
  * `guardarMargenObjetivo` (Hito 4, bloque C, paso H4C-16): lo que ningún test fijaba. (1) Los rechazos de formato y su ORDEN: una categoría rota (`undefined`, un
  * texto vacío) gana sobre un porcentaje inválido con «Categoría inválida.» (`margen-objetivo-configurable` y la huella de dinero solo miran la categoría que no
@@ -38,7 +39,7 @@ describe("guardarMargenObjetivo: orden de los rechazos y atomicidad", () => {
     const base = await sembrarBase();
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
-    categoriaId = (await prisma.categoriaProducto.create({ data: { nombre: "Pastas" } })).id;
+    categoriaId = (await crearCategoriaDeTest(prisma, { nombre: "Pastas" })).id;
   });
 
   const objetivos = async () =>

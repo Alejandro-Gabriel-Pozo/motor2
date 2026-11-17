@@ -8,6 +8,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { requierePermiso, requierePermisoDeEmpresa } from "../../src/server/acceso/gate";
 import { actualizarProducto, sincronizarPrecioGrupoCarta, type DatosProducto } from "../../src/server/actions/catalogo/productos";
 
+import { crearCategoriaDeTest } from "../setup/categoria-de-prueba";
 /**
  * Claves de producto de CONTEXTO EMPRESA (`producto_editar`, `producto_asignar_insumo`, `producto_sincronizar_precio_carta`): valen si CUALQUIER
  * membresía activa del usuario en la empresa las tiene, no solo la de la sucursal en la que está parado. El producto es un dato de la empresa:
@@ -38,7 +39,7 @@ describe("claves de producto: valen con cualquier membresía de la empresa", () 
     // Un rol personalizado sin ninguna fila de permisos: no tiene ninguna de las claves.
     rolConsultaId = (await prisma.rol.create({ data: { nombre: "consulta" } })).id;
     unidadId = (await prisma.unidad.create({ data: { nombre: "u", magnitud: "CANTIDAD", decimales: 0 } })).id;
-    const categoriaId = (await prisma.categoriaProducto.create({ data: { nombre: "Gaseosa" } })).id;
+    const categoriaId = (await crearCategoriaDeTest(prisma, { nombre: "Gaseosa" })).id;
     productoId = (await sembrarProductoDisponible({ codigo: "CPE_1", nombre: "Producto de prueba", tipo: "PV", categoriaId, precioVenta: 1000, unidadStockId: unidadId }, sucursalA)).id;
     hermanoId = (await sembrarProductoDisponible({ codigo: "CPE_2", nombre: "Hermano", tipo: "PV", categoriaId, precioVenta: 1000, unidadStockId: unidadId }, sucursalA)).id;
     // La sincronización necesita que el producto esté en un ítem agrupado de la carta.
