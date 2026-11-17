@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { EMPRESA_POR_DEFECTO_ID, crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
-import { activarTodosLosModulos } from "../setup/modulos";
+import { fijarModulosActivos, MODULOS_VENDIBLES } from "../setup/modulos";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { requierePermiso } from "../../src/server/acceso/gate";
 import { guardarPermisos } from "../../src/server/actions/permisos/permisos";
@@ -41,7 +41,7 @@ const pedirLaFila = async (clave: string) => guardarPermisos([{ rolId: s.operado
 beforeEach(async () => {
   await limpiarBaseDeTest();
   s = await sembrarSalon();
-  await activarTodosLosModulos(EMPRESA_POR_DEFECTO_ID);
+  await fijarModulosActivos(EMPRESA_POR_DEFECTO_ID, [...MODULOS_VENDIBLES, "recepcion_de_compras"]);
   // De fábrica el operador no tiene ninguna de las cuatro: se asegura (la semilla exacta no importa para esta prueba).
   await prismaAdmin.permisoRol.deleteMany({ where: { rolId: s.operador.id, accionClave: { in: [...LAS_4] } } });
   // `sembrarSalon` devuelve en `admin` al USUARIO administrador; el rol de clave «admin» se busca aparte.
