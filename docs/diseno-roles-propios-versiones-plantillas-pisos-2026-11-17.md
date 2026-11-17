@@ -174,7 +174,7 @@ Principio del diseño de Pedernal que se conserva (§6.1 de H4b): **el comportam
 | Situación | Qué pasa |
 |---|---|
 | Un administrador intenta asignar un rol con el interruptor encendido | Rechazo claro en el servidor; no se escribe nada; queda registrado el intento denegado (como los demás rechazos de permiso) |
-| Un administrador invita a una persona nueva con un rol | **Pregunta abierta (§10, q6):** hoy la invitación lleva el rol; con EB-5 el administrador no puede elegirlo. Opciones: solo el gerente invita con rol, o el administrador invita y el gerente asigna el rol después |
+| Un administrador invita a una persona nueva | **CONFIRMADA (2026-11-17, q6): «El administrador invita y queda sin rol hasta que el gerente lo asigna (Recomendada)».** El administrador sigue pudiendo invitar; la persona queda **sin rol** (no puede hacer nada) hasta que el gerente se lo asigna. Hoy la invitación lleva el rol: con EB-5 el administrador no lo elige |
 | Persona con un rol ya asignado por un administrador antes de encender | Conserva su rol: nada se toca |
 | El gerente cambia a alguien de rol a la vez que se enciende el interruptor | Se serializan; el que llega segundo ve el estado nuevo |
 | Se enciende y se arrepienten | Se apaga: vuelve a valer lo de antes |
@@ -212,7 +212,9 @@ Principio del diseño de Pedernal que se conserva (§6.1 de H4b): **el comportam
 
 **Decisiones del orquestador, declaradas (el dueño las corrige):** el rol propio reutiliza `Rol`; `TODOS_LOS_ROLES` queda vacía por ahora; la edición de la matriz de los roles base por la empresa se quita al final (EB-4).
 
-**Siguiente (permisos), redactada para quien no programa (q6):** «Cuando el administrador invita a una persona nueva, hoy elige también el rol que tendrá. Si desde ahora solo el gerente puede asignar roles: (A, recomendada) el administrador sigue pudiendo invitar y la persona queda **sin rol** hasta que el gerente se lo asigna (hasta entonces no puede hacer nada); (B) solo el gerente puede invitar a personas nuevas.»
+**Respondida (q6, 2026-11-17, AskUserQuestion, relatada por el orquestador general):** «El administrador invita y queda sin rol hasta que el gerente lo asigna (Recomendada)». CONFIRMADA; ver §7 ter.
+
+**Siguiente:** ninguna pregunta de permisos pendiente antes de construir; las de abajo se hacen cuando llegue cada etapa.
 
 **En cola, después:** (q7) EB-4, cuando llegue su turno: ¿se le quita a la empresa la edición de la matriz de los roles base (Q2-A de Pedernal)? (quita algo que hoy existe; recomendado: sí, al final); (q8) en EB-5, ¿cuánto aviso previo se da antes de encender en una empresa real (recomendado: el que el dueño decida por empresa, con la lista de a quiénes afecta)?
 
