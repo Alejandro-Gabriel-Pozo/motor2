@@ -45,8 +45,8 @@ describe("cargarRecetaVigenteParaVender: la receta de un PV en números planos, 
   it("devuelve los ingredientes por id, con Number() hecho, los sustitutos por orden y SOLO las calibraciones de la sucursal pedida", async () => {
     const deCentral = await prisma.$transaction((tx) => cargarRecetaVigenteParaVender(tx, { productoId: panId, sucursalId: centralId }));
     expect(deCentral).toEqual([
-      { insumoProductoId: harinaId, cantidad: 0.5, mermaPorcentaje: 10, rendimientosLocales: [{ sucursalId: centralId, cantidad: 0.45, mermaPorcentaje: null }], insumoSustitutoIds: sustitutosEnOrden },
-      { insumoProductoId: azucarId, cantidad: 0.3, mermaPorcentaje: 0, rendimientosLocales: [], insumoSustitutoIds: [] },
+      { insumoProductoId: harinaId, cantidad: 0.5, mermaPorcentaje: 10, baseDeCantidad: "NETA", rendimientosLocales: [{ sucursalId: centralId, cantidad: 0.45, mermaPorcentaje: null }], insumoSustitutoIds: sustitutosEnOrden },
+      { insumoProductoId: azucarId, cantidad: 0.3, mermaPorcentaje: 0, baseDeCantidad: "NETA", rendimientosLocales: [], insumoSustitutoIds: [] }, // M3a (2026-11-17): la base de la versión viaja a cada línea; toda receta cargada es NETA
     ]);
     // Los valores son `number` (no `Decimal`): la conversión se hace en el borde de la lectura.
     expect(typeof deCentral[0]!.cantidad).toBe("number");
