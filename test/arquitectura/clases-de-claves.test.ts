@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ACCIONES, type AccionClave, type NivelDeAccion } from "../../src/core/permisos/acciones";
+import { ACCIONES, ACCIONES_QUE_DA_SOLO_EL_GERENTE, type AccionClave, type NivelDeAccion } from "../../src/core/permisos/acciones";
 
 /**
  * GT-26 (tanda T14 del plan de endurecimiento de seguridad; plan 1.4, decisión 22 del dueño, fila O.99c de `docs/pureza-integracion.md`): LAS CLASES DE CLAVES. **No cambia la matriz ni ningún
@@ -13,9 +13,8 @@ import { ACCIONES, type AccionClave, type NivelDeAccion } from "../../src/core/p
  *    a cualquier rol propio (un «encargado») sin tocar el piso. Hoy: los reportes de piso operario que se siembran cerrados, las 11 `pos_*`, `receta_sucursal_editar` y
  *    `producto_sincronizar_precio_carta` (S-41) y la clave fina `producto_campos_sensibles` (M.2: precio, factor y unidades del producto; se suma a `producto_editar`).
  *  - **L, libres**: piso «operario» y semilla `admin` y `operador`: lo operativo de todos los días.
- *  - **A, de piso administrador**: hoy solo la alcanza el rol `admin` (no existe `Rol.nivel`: todo otro rol es «operario» frente al piso) y no se puede delegar. Son las CANDIDATAS a pasar a O que el
- *    plan (1.4) deja como decisión del dueño POR FAMILIA (precio, stock, anulaciones, dinero, carta, recetas, reportes de dinero); nada de eso se ejecuta por defecto. Se declaran para que subir
- *    o bajar una de piso, o pasarla a O, sea una decisión a la vista.
+ *  - **A (D desde PISOS-65), las 65 que bajaron del piso administrador**: piso «operario», semilla SOLO `admin` y en `ACCIONES_QUE_DA_SOLO_EL_GERENTE`: la empresa decide fila por fila, pero darles
+ *    una a un rol de nivel operario es solo del gerente (DEC-0025; decisión del dueño 2026-11-17). Nacen cerradas. Se llaman «A» por la lista histórica; ya no hay claves de piso «administrador».
  *
  * Lo que fija, por clase: (1) cada clave del catálogo está declarada en UNA clase y las declaradas existen; (2) la clase declarada es la que sus datos dicen (piso y semilla); (3) las 14 de
  * gobierno conservan su piso exacto; (4) las claves de piso operario con semilla solo `admin` son exactamente las de la clase O (una clave nueva de ese tipo declara su clase).
@@ -211,11 +210,11 @@ const A = [
 const DECLARADAS: Readonly<Record<Clase, readonly string[]>> = { G, O, L, A };
 
 /** La clase que dicen los DATOS de la clave (piso y semilla). `undefined` = no encaja en ninguna (una combinación nueva que hay que decidir). */
-function claseDeducida(piso: NivelDeAccion, semilla: readonly string[]): Clase | undefined {
+function claseDeducida(piso: NivelDeAccion, semilla: readonly string[], enLaListaDelGerente: boolean): Clase | undefined {
   if (piso === "administrador_sistema" || piso === "gerente") return "G";
   if (piso === "administrador") return "A";
   const s = [...semilla].sort().join(",");
-  if (s === "admin") return "O";
+  if (s === "admin") return enLaListaDelGerente ? "A" : "O";
   if (s === "admin,operador") return "L";
   return undefined;
 }
@@ -249,7 +248,7 @@ describe("GT-26 — las clases de claves (G gobierno, O operativas sensibles, L 
 
   it("la clase declarada es la que dicen el piso y la semilla de la clave", () => {
     const desparejas = ACCIONES.flatMap((a) => {
-      const deducida = claseDeducida(a.nivelMinimo, a.rolesEditarSemilla);
+      const deducida = claseDeducida(a.nivelMinimo, a.rolesEditarSemilla, (ACCIONES_QUE_DA_SOLO_EL_GERENTE as readonly string[]).includes(a.clave));
       const declarada = declaradaDe.get(a.clave);
       return deducida === declarada ? [] : [`${a.clave}: declarada ${declarada}, pero su piso «${a.nivelMinimo}» y su semilla [${a.rolesEditarSemilla.join(", ")}] dicen ${deducida ?? "ninguna"}`];
     });
@@ -269,18 +268,32 @@ describe("GT-26 — las clases de claves (G gobierno, O operativas sensibles, L 
     }
   });
 
-  it("toda clave de piso operario con semilla SOLO admin es de la clase O (y al revés): la clase delegable por configuración está a la vista", () => {
-    const deLosDatos = ACCIONES.filter((a) => a.nivelMinimo === "operario" && a.rolesEditarSemilla.length === 1 && a.rolesEditarSemilla[0] === "admin").map((a) => a.clave).sort();
+  it("toda clave de piso operario con semilla SOLO admin y fuera de la lista del gerente es de la clase O (y al revés): la clase delegable por configuración está a la vista", () => {
+    const deLosDatos = ACCIONES.filter((a) => a.nivelMinimo === "operario" && a.rolesEditarSemilla.length === 1 && a.rolesEditarSemilla[0] === "admin" && !(ACCIONES_QUE_DA_SOLO_EL_GERENTE as readonly string[]).includes(a.clave)).map((a) => a.clave).sort();
     expect(deLosDatos).toEqual([...O].sort());
   });
 
   it("el detector de clase distingue las cuatro y rechaza lo que no encaja (casos sintéticos)", () => {
-    expect(claseDeducida("administrador_sistema", ["admin"])).toBe("G");
-    expect(claseDeducida("gerente", [])).toBe("G");
-    expect(claseDeducida("administrador", ["admin"])).toBe("A");
-    expect(claseDeducida("operario", ["admin"])).toBe("O");
-    expect(claseDeducida("operario", ["operador", "admin"])).toBe("L");
-    expect(claseDeducida("operario", ["operador"])).toBeUndefined();
-    expect(claseDeducida("operario", [])).toBeUndefined();
+    expect(claseDeducida("administrador_sistema", ["admin"], false)).toBe("G");
+    expect(claseDeducida("gerente", [], false)).toBe("G");
+    expect(claseDeducida("administrador", ["admin"], false)).toBe("A");
+    expect(claseDeducida("operario", ["admin"], false)).toBe("O");
+    expect(claseDeducida("operario", ["admin"], true)).toBe("A");
+    expect(claseDeducida("operario", ["operador", "admin"], false)).toBe("L");
+    expect(claseDeducida("operario", ["operador"], false)).toBeUndefined();
+    expect(claseDeducida("operario", [], false)).toBeUndefined();
+  });
+
+  it("la lista de las que da solo el gerente es exactamente la clase A declarada (PISOS-65)", () => {
+    expect([...ACCIONES_QUE_DA_SOLO_EL_GERENTE].sort()).toEqual([...A].sort());
+  });
+
+  it("mutación: sacar una clave de la lista del gerente la deja como clase O y el test de «la clase declarada» se pone rojo", () => {
+    const sinLaPrimera = (ACCIONES_QUE_DA_SOLO_EL_GERENTE as readonly string[]).slice(1);
+    const desparejas = ACCIONES.filter((a) => {
+      const deducida = claseDeducida(a.nivelMinimo, a.rolesEditarSemilla, sinLaPrimera.includes(a.clave));
+      return deducida !== declaradaDe.get(a.clave);
+    }).map((a) => a.clave);
+    expect(desparejas).toEqual([ACCIONES_QUE_DA_SOLO_EL_GERENTE[0]]);
   });
 });

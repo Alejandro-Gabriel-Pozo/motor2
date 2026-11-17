@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { ACCIONES, nivelMinimoDeAccion, type AccionClave, type NivelDeAccion } from "../../src/core/permisos/acciones";
-import { nivelAlcanzaElPiso } from "../../src/core/permisos/jerarquia";
+import { ACCIONES, type NivelDeAccion } from "../../src/core/permisos/acciones";
 import { CAMPOS, hallarLectores } from "./guardas/campos-sensibles";
 import { inventariarFuente } from "./guardas/inventario";
+import { alcanzaElResguardo } from "./guardas/resguardo-de-clave";
 import { esPagina, exportadasQueAlcanzan, lectoresEnFuente, paginasQueAlcanzan } from "./guardas/lectores-de-campos";
 
 /**
@@ -166,10 +166,10 @@ const clavesDe = (ruta: string): { claves: Set<string>; dinamicas: number } => {
   return { claves: new Set([...inv.usos, ...inv.valoresDeMapa].map((u) => u.clave)), dinamicas: inv.dinamicos.length };
 };
 
-/** ¿Alguna de las claves alcanza el piso? Una clave que no está en el catálogo no cuenta. */
+/** ¿Alguna de las claves alcanza el piso (PISOS-65: para «administrador», el resguardo «la da solo el gerente» o más)? Una clave que no está en el catálogo no cuenta. */
 const algunaAlcanza = (claves: ReadonlySet<string>, piso: NivelDeAccion): boolean => {
   const catalogo = new Set<string>(ACCIONES.map((a) => a.clave));
-  return [...claves].some((c) => catalogo.has(c) && nivelAlcanzaElPiso(nivelMinimoDeAccion(c as AccionClave), piso));
+  return [...claves].some((c) => catalogo.has(c) && alcanzaElResguardo(c, piso));
 };
 
 /** El piso de un campo; `NUNCA` se trata como el más alto (ninguna clave lo alcanza, salvo `gerente`) y además lo prohíbe otro test. */

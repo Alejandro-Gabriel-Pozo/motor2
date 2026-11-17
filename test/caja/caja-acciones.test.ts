@@ -67,8 +67,9 @@ beforeEach(async () => {
     actores[`menos-${faltante}`] = await crearUsuarioConMembresia({ email: `menos-${faltante}@test.com`, sucursalId: s.sucursalId, rolId: rol.id });
   }
   actores.ninguna = await crearUsuarioConMembresia({ email: "ninguna@test.com", sucursalId: s.sucursalId, rolId: (await rolCon("sin-caja", [])).id });
-  // El «operador de caja»: las tres de piso operario Y las de piso administrador con la fila prendida (la fila no alcanza: el piso manda).
+  // PISOS-65 (2026-11-17): las seis claves son de piso operario. `cajero` tiene las seis filas prendidas (el gerente se las dio: cierra); `cajero-basico`, solo las tres que se daban de fábrica al operario (ver, abrir, cobrar): sin la fila no cierra.
   actores.cajero = await crearUsuarioConMembresia({ email: "cajero@test.com", sucursalId: s.sucursalId, rolId: (await rolCon("cajero", TODAS)).id });
+  actores["cajero-basico"] = await crearUsuarioConMembresia({ email: "cajero-basico@test.com", sucursalId: s.sucursalId, rolId: (await rolCon("cajero-basico", ["caja_ver", "caja_abrir_sesion", "cobrar_cuenta"])).id });
   for (const exacta of ["caja_ver", "caja_abrir_sesion", "cobrar_cuenta"] as const) {
     actores[`solo-${exacta}`] = await crearUsuarioConMembresia({ email: `solo-${exacta}@test.com`, sucursalId: s.sucursalId, rolId: (await rolCon(`solo-${exacta}`, [exacta])).id });
   }
@@ -81,7 +82,7 @@ afterAll(() => {
 interface Accion {
   nombre: string;
   exige: Clave;
-  /** Quién la tiene con el permiso exacto (el piso manda: las de piso administrador solo las alcanza el administrador). */
+  /** Quién la tiene con el permiso exacto. */
   exacto: string;
   /** Prepara lo que la acción necesita (corre como admin) y devuelve la llamada. */
   preparar: () => Promise<() => Promise<{ ok: boolean; mensaje: string; codigo?: string }>>;
@@ -186,13 +187,22 @@ describe("cada acción de la caja verifica en el servidor el permiso EXACTO, sin
   });
 });
 
-describe("el operador de caja cobra pero no cierra la caja", () => {
-  it("con las seis filas prendidas, abre y cobra, pero NO cierra, NO mueve efectivo ni anula (el PISO administrador manda sobre la fila)", async () => {
+describe("el operador de caja cobra pero no cierra la caja (sin la fila: PISOS-65, el piso ya no la cierra)", () => {
+  it("con las seis filas prendidas (las que da el gerente), abre, cierra la caja, mueve efectivo y anula", async () => {
     await como(actores.cajero!);
+    const abierta = await abrirSesionDeCaja({ claveIdempotencia: randomUUID(), fondo: "0" });
+    expect(abierta).toMatchObject({ ok: true });
+    expect(await registrarMovimientoDeCaja({ claveIdempotencia: randomUUID(), sesionId: abierta.sesionId!, sentido: "INGRESO", importe: "10", motivo: "Cambio" })).toMatchObject({ ok: true });
+    await iniciarElCierre(abierta.sesionId!);
+    expect(await cerrarSesionDeCaja({ sesionId: abierta.sesionId!, ...conteoVacio })).toMatchObject({ ok: true });
+  });
+
+  it("con solo las tres filas de fábrica del operario (ver, abrir, cobrar), abre y cobra, pero NO cierra, NO mueve efectivo ni anula (sin la fila no hay acceso)", async () => {
+    await como(actores["cajero-basico"]!);
     const abierta = await abrirSesionDeCaja({ claveIdempotencia: randomUUID(), fondo: "200" });
     expect(abierta).toMatchObject({ ok: true, yaExistia: false });
     const cuenta = await cuentaCerrada();
-    await como(actores.cajero!);
+    await como(actores["cajero-basico"]!);
     const medio = await efectivoId();
     expect(await cobrarCuenta({ claveIdempotencia: randomUUID(), cuentaId: cuenta.id, totalVisto: "6000", renglones: [{ medioDePagoId: medio, importe: "6000" }] })).toMatchObject({ ok: true });
     const antes = await foto();

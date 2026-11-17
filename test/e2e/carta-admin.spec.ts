@@ -2,6 +2,7 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { menuCartaPublicado } from "./fixtures/carta-menu";
 
+import { crearCategoriaDeTest, limpiarCategoriasDeTest } from "../setup/categoria-de-prueba";
 /**
  * Admin de la carta (/carta, docs/plan-carta-catalogo-2026-09-24.md, M10) de punta a punta: lo que se carga en la
  * pantalla (sección de carta, contenido del PV con su sección elegida DIRECTO —docs/plan-carta-seccion-directa-2026-09-25.md— y
@@ -13,7 +14,7 @@ test("cargar la carta desde el admin la publica en la carta pública", async ({ 
   const nombreSeccion = `E2E Carta Sección ${marca}`;
   const nombrePromo = `E2E Carta Promo ${marca}`;
   const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
-  const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E Carta Cat ${marca}` } });
+  const categoria = await crearCategoriaDeTest(prisma, { nombre: `E2E Carta Cat ${marca}` });
   const producto = await prisma.producto.create({
     data: { codigo: `E2E_CARTA_ADMIN_${marca}`, nombre: `E2E Carta Plato ${marca}`, tipo: "PV", categoriaId: categoria.id, precioVenta: 12345, unidadStockId: unidad.id },
   });
@@ -122,7 +123,7 @@ test("cargar la carta desde el admin la publica en la carta pública", async ({ 
     await prisma.seccionCarta.deleteMany({ where: { id: { in: seccionIds } } });
     await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });
     await prisma.producto.deleteMany({ where: { id: producto.id } });
-    await prisma.categoriaProducto.deleteMany({ where: { id: categoria.id } });
+    await limpiarCategoriasDeTest(prisma, { id: categoria.id });
   }
 });
 

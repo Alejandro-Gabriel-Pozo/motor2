@@ -308,9 +308,7 @@ export interface DatosProducto extends Pick<EntradaProducto, "alicuotaIvaVenta" 
    * `unidadStockId` cuando el producto "se produce" (R3, `validarPasoVenta`).
    */
   pasoVenta?: number | null;
-  seProduce?: boolean;
-  /** Qué es (E2 de clases): solo en el alta; se escribe una vez. Ver `EntradaProducto.claseDeUso`. */
-  claseDeUso?: string;
+  seProduce?: boolean; claseDeUso?: string; // claseDeUso (E2 de clases): solo en el alta, se escribe una vez (ver `EntradaProducto.claseDeUso`)
   esConsignacion?: boolean;
   proveedorConsignacionId?: string | null;
   precioConsignacion?: number;

@@ -7,6 +7,7 @@ import { moduloDelCatalogo } from "@/core/modulos/catalogo";
 import { ACCIONES } from "@/core/permisos/acciones";
 import { nivelDe } from "@/core/permisos/jerarquia";
 import { dimensionesDeRecepcion, tablaDeRecepcion } from "../setup/oraculo-compras-recepcion";
+import { resguardoDe } from "./guardas/resguardo-de-clave";
 
 /**
  * GUARDIÁN de dimensiones nuevas de la recepción separada de compras (regla «Combinaciones» del dueño, AGENTS.md). El oráculo `docs/oraculo-combinaciones-compras-recepcion-2026-11-16.md` declara las dimensiones y, para cada
@@ -15,7 +16,7 @@ import { dimensionesDeRecepcion, tablaDeRecepcion } from "../setup/oraculo-compr
  *      que el oráculo no define, o «no afecta» sin motivo;
  *  (b) los estados de recepción del código (y el CHECK de la base) no son exactamente los valores declarados de la dimensión E (menos ANULADA, que sale de la factura);
  *  (c) los niveles de persona que existen no son los valores declarados de la dimensión O;
- *  (d) el módulo `recepcion_de_compras` o la acción `compra_recibir` dejaron de ser lo que el oráculo da por cierto (módulo vendible que requiere Compras; acción del módulo, de sucursal y de piso administrador);
+ *  (d) el módulo `recepcion_de_compras` o la acción `compra_recibir` dejaron de ser lo que el oráculo da por cierto (módulo vendible que requiere Compras; acción del módulo, de sucursal, piso operario y semilla solo admin que da solo el gerente);
  *  (e) N3-b: lo mismo para el control por línea (entradas de `decidirRegistroDeControl`, de `validarControlDeLinea` y de las entradas de stock; la acción `compra_controlar_recepcion` del módulo, de sucursal, de piso operario y con semilla admin y
  *      operador; las condiciones del código y del CHECK de la base son los valores de la dimensión C menos FUERA_DE_LISTA; la dimensión K es la C más SIN_CONTROL).
  */
@@ -75,7 +76,9 @@ describe("guardián: la recepción separada de compras declara todas sus dimensi
     expect(DIMENSIONES["M"]).toEqual(["APAGADO", "ENCENDIDO"]);
     expect(moduloDelCatalogo("recepcion_de_compras")).toMatchObject({ tipo: "vendible", estado: "disponible", requiere: ["compras"] });
     const accion = ACCIONES.find((a) => a.clave === "compra_recibir");
-    expect(accion).toMatchObject({ modulo: "recepcion_de_compras", contexto: "sucursal", nivelMinimo: "administrador" });
+    // PISOS-65 (2026-11-17): el piso es operario; la protección es «de fábrica solo admin» y «la da solo el gerente» (resguardo, no piso).
+    expect(accion).toMatchObject({ modulo: "recepcion_de_compras", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] });
+    expect(resguardoDe("compra_recibir")).toBe("la_da_solo_el_gerente");
   });
 
   it("control de sanidad: el lector ve las entradas y las dimensiones declaradas", () => {

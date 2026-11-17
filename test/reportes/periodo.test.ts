@@ -13,6 +13,7 @@ import { darRecetaDeReventa } from "../setup/receta-de-venta";
 import { comprobanteDePrueba, nroFacturaDePrueba } from "../setup/comprobante-de-prueba";
 import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
+import { crearCategoriaDeTest } from "../setup/categoria-de-prueba";
 describe("obtenerReportePorPeriodo", () => {
   let sucursalId: string;
   let seccionId: string;
@@ -542,7 +543,7 @@ describe("generarReporteVentasPorCategoria", () => {
   });
 
   it("agrupa la facturación por Categoría y detecta PV activos sin categoría asignada", async () => {
-    const categoria = await prisma.categoriaProducto.create({ data: { nombre: "Panadería" } });
+    const categoria = await crearCategoriaDeTest(prisma, { nombre: "Panadería" });
     const pvConCategoria = await conRecetaDeReventa(await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 50, categoriaId: categoria.id }, sucursalId));
     const pvSinCategoria = await sembrarProductoDisponible({ codigo: "PV_2", nombre: "Torta", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 80 }, sucursalId);
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pvConCategoria.id, cantidadVendida: 2 }] });

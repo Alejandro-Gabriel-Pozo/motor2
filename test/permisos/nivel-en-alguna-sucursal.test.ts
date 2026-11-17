@@ -21,7 +21,7 @@ import { modulosQueIncluyen } from "../../src/core/modulos/clausura";
  *  - operador en las dos: ni ver ni editar, desde ninguna;
  *  - FALLO CERRADO: la membresía de admin inactiva, la sucursal de admin inactiva, el rol de admin inactivo y el módulo `consignacion` apagado no cuentan; sin membresías, ni ver ni editar;
  *  - AISLAMIENTO ENTRE EMPRESAS: ser admin en una sucursal de OTRA empresa no abre nada en la empresa activa (y el control inverso, estando en la otra, sí).
- * Con el RBAC por clave de la matriz de fábrica: `pagar_consignante` es de piso administrador, así que un rol de operario nunca la tiene aunque tenga la fila.
+ * Con el RBAC por clave de la matriz de fábrica: `pagar_consignante` es de piso operario y de fábrica solo `admin` (PISOS-65: la da solo el gerente), así que un rol de operario no la tiene sin la fila.
  */
 const E = EMPRESA_POR_DEFECTO_ID;
 const CLAVE = "pagar_consignante" as const;
