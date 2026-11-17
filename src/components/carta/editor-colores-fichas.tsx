@@ -44,7 +44,6 @@ export function GrupoDeColor({ clave, rotulo, inicial, actual, abierto }: { clav
             <Ficha key={p.hex} nombre={nombre} valor={p.hex} marcada={eleccion === p.hex} muestra={p.hex} rotulo={p.nombre} alCambiar={setEleccion} />
           ))}
           <Ficha nombre={nombre} valor="otro" marcada={eleccion === "otro"} muestra={valido ? actual : null} rotulo="Otro color" alCambiar={setEleccion} />
-          <Ficha nombre={nombre} valor="ninguna" marcada={eleccion === "ninguna"} muestra={null} rotulo="Sin color" alCambiar={setEleccion} />
         </div>
         {eleccion === "otro" && <Campo etiqueta="Otro color" name={`otro_${clave}`} type="text" maxLength={7} inputMode="text" autoComplete="off" spellCheck={false} defaultValue={inicial.otro} error={errorDeOtro} />}
         {usado !== null && (

@@ -164,7 +164,7 @@ describe("las pantallas de la carta usan la misma escala (paso 4: sin tamaños a
     expect(html).toContain("--carta-fs-titulo:1.5rem");
     expect(html).toMatch(/class="portal-etiqueta carta-rol-etiqueta[^"]*"/);
     expect(html).toMatch(/<h1 class="portal-titulo carta-rol-titulo[^"]*"/);
-    expect(html).toMatch(/<p class="carta-rol-aclaracion[^"]*">Todavía no hay cartas publicadas\.<\/p>/);
+    expect(html).toMatch(/<p class="(portal-vacio )?carta-rol-aclaracion[^"]*">Todavía no hay cartas publicadas\.<\/p>/);
     expect(html).toMatch(/<footer class="portal-footer carta-rol-etiqueta/);
   });
 });

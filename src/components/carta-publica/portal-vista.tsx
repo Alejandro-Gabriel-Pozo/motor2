@@ -66,7 +66,6 @@ function TarjetaMaqueta({ s, href, modo }: { s: EntradaPortalCarta; href: string
     <>
       <span className="min-w-0">
         <span className="portal-card-nombre block carta-titulo font-medium">{s.etiqueta}</span>
-        {s.subtitulo && <span className="portal-tarjeta-detalle block">{s.subtitulo}</span>}
         {s.telefono && <span className="portal-tarjeta-detalle block">{s.telefono}</span>}
       </span>
       <span className="portal-ver-carta shrink-0 font-semibold">Ver carta</span>
