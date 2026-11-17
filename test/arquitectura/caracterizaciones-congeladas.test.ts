@@ -1305,6 +1305,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Frente 6, ayudas de la ficha del producto ocultas (cambio de texto de ADMINISTRACIÓN, no de la carta pública; dueño, 2026-11-16: «Sí, ese orden (Recomendada)», paso 2 «textos de la ficha del producto»; interruptor `FICHA_AYUDAS_VISIBLES`; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). En las opciones de venta del producto «Pizzas» (a 1280 y a 375 px) salen tres líneas: «Qué se elige al venderlo y cómo cambia el precio… Biblioteca de opciones», «No se borra nada: lo que admite de cada opción queda guardado.» y «Con el precio de lista de «…», sin descuentos. Es la forma que le da la carta pública…». 6 líneas quitadas, ninguna agregada, todas de esa pantalla (revisado con git diff); la carta pública y el resto quedan idénticos.",
       },
+      {
+        blob: "3120761030f653cca1239c7a3c7c84a061121f1d",
+        // El commit PADRE de este (8e336b9f) es el último antes de la regeneración; el texto lo cambió el commit que agrega esta entrada (Frente 6, paso 4: seis pantallas candidatas a baja ocultas).
+        commit: "8e336b9f",
+        motivo:
+          "Frente 6, paso 4: pantallas candidatas a baja ocultas sin borrar (cambio de texto de ADMINISTRACIÓN, no de la carta pública; dueño, 2026-11-16: «Sí, ocultarlas sin borrar (Recomendada)»; interruptor `CANDIDATAS_A_BAJA_VISIBLES`; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). En las pantallas de «Carta › Parametrización» y de la ficha de contenido de la carta (a 1280 y a 375 px) salen cuatro líneas: dos veces «[enlace: Ítems agrupados]» y dos veces «[enlace: Géneros (carpetas del selector del POS) ›]». 4 líneas quitadas, ninguna agregada, todas de esas pantallas (revisado con git diff); la carta pública y el resto quedan idénticos.",
+      },
     ],
   },
 };
