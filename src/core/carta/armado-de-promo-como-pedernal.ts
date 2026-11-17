@@ -21,10 +21,12 @@ export interface ParteDeLaPromoParaLeer {
   productoFijo: string | null;
 }
 
-/** Cómo se lee una parte: «2 × Hamburguesa» (fija), «1 de Entrada» (cantidad exacta) o «de 0 a 2 de Entrada» (rango). */
+/**
+ * Cómo se lee una parte, como la maqueta (`combos.html:289`, `textoComp`): «Hamburguesa» o «2 × Hamburguesa» (fija: sin «1 ×»), «1 de Bebidas a elección» (cantidad exacta, se elige) o, para lo heredado con rango que la maqueta no tiene, «de 0 a 2 de Entrada».
+ */
 export function textoDeLaParte(p: ParteDeLaPromoParaLeer): string {
-  if (p.productoFijo !== null && p.cantidadMinima === p.cantidadMaxima) return `${p.cantidadMaxima} × ${p.productoFijo}`;
-  if (p.cantidadMinima === p.cantidadMaxima) return `${p.cantidadMaxima} de ${p.nombre}`;
+  if (p.productoFijo !== null && p.cantidadMinima === p.cantidadMaxima) return p.cantidadMaxima > 1 ? `${p.cantidadMaxima} × ${p.productoFijo}` : p.productoFijo;
+  if (p.cantidadMinima === p.cantidadMaxima) return `${p.cantidadMaxima} de ${p.nombre} a elección`;
   return `de ${p.cantidadMinima} a ${p.cantidadMaxima} de ${p.nombre}`;
 }
 

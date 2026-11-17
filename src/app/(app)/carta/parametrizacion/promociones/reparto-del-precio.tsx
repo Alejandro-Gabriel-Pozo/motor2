@@ -1,23 +1,40 @@
-import { textosDeLaPantallaDePromos } from "@/core/carta/public";
+import { ARMADO_DE_PROMO_COMO_PEDERNAL, textosDeLaPantallaDePromos } from "@/core/carta/public";
+import { formatearMonto } from "@/core/formato-de-numero";
 import { Aviso } from "@/ui/primitivas/aviso";
-import { TEXTO_DEL_REPARTO, TEXTO_NO_SE_REPARTE, TEXTO_SIN_PRODUCTOS, repartoDelPrecioDeLaPromo, textoDeLaFilaDelReparto, type ParteParaRepartir } from "@/core/pos/public";
+import { TEXTO_DEL_REPARTO, TEXTO_NO_SE_REPARTE, TEXTO_SIN_PRODUCTOS, repartoDelPrecioDeLaPromo, type ParteParaRepartir } from "@/core/pos/public";
 
 /**
- * «Reparto del precio» de una promo (solo lectura; detrás de `ARMADO_DE_PROMO_COMO_PEDERNAL`, lo decide la página): la parte del precio de la promo en ESTA sucursal (`precio`) que le toca a cada
- * componente, con su precio de lista. No escribe nada. Sin componentes no se dibuja.
+ * Las dos tarjetas de lectura de la ficha de un combo «como la maqueta» (`combos.html` de Pedernal): «Cómo lo ve el cliente» (el nombre y el precio en negrita y, en gris, lo que lleva) y «Reparto del precio» (cada producto con la parte del precio
+ * de ESTA sucursal que le toca y, en gris, su precio de lista). Solo lectura: no escriben nada. Sin componentes no se dibujan.
  */
+export function ComoLoVeElCliente({ titulo, precio, loQueLleva }: { titulo: string; precio: number; loQueLleva: string }) {
+  const t = textosDeLaPantallaDePromos(ARMADO_DE_PROMO_COMO_PEDERNAL);
+  return (
+    <section aria-labelledby="titulo-como-lo-ve" className="flex flex-col gap-2 rounded-lg border border-borde p-4" data-como-lo-ve-el-cliente>
+      <h2 id="titulo-como-lo-ve" className="text-base font-semibold">
+        {t.comoLoVeElCliente}
+      </h2>
+      <p className="font-semibold">
+        {titulo} {formatearMonto(precio)}
+      </p>
+      <p className="text-sm text-tinta-suave">{loQueLleva}</p>
+    </section>
+  );
+}
+
 export function RepartoDelPrecio({ precio, partes }: { precio: number; partes: readonly ParteParaRepartir[] }) {
   if (!partes.length) return null;
   const reparto = repartoDelPrecioDeLaPromo(precio, partes);
-  // El reparto solo se dibuja con el armado «como Pedernal»: siempre con sus textos.
-  const t = textosDeLaPantallaDePromos(true);
+  const t = textosDeLaPantallaDePromos(ARMADO_DE_PROMO_COMO_PEDERNAL);
   return (
-    <div className="mt-3 flex flex-col gap-2" data-reparto-del-precio>
-      <h3 className="text-sm font-medium">Reparto del precio</h3>
+    <section aria-labelledby="titulo-reparto" className="flex flex-col gap-2 rounded-lg border border-borde p-4" data-reparto-del-precio>
+      <h2 id="titulo-reparto" className="text-base font-semibold">
+        {t.repartoDelPrecio}
+      </h2>
       {reparto.tipo === "sin-productos" ? (
-        <p className="text-sm text-tinta-tenue">{TEXTO_SIN_PRODUCTOS}</p>
+        <p className="text-sm text-tinta-suave">{TEXTO_SIN_PRODUCTOS}</p>
       ) : reparto.tipo === "incompleto" ? (
-        <p className="text-sm text-tinta-tenue" data-reparto-incompleto>
+        <p className="text-sm text-tinta-suave" data-reparto-incompleto>
           {TEXTO_NO_SE_REPARTE}: {reparto.sinProducto.join(", ")}.
         </p>
       ) : reparto.tipo === "error" ? (
@@ -26,17 +43,23 @@ export function RepartoDelPrecio({ precio, partes }: { precio: number; partes: r
         </Aviso>
       ) : (
         <>
-          <ul className="flex flex-col gap-1 text-sm">
+          <ul className="flex flex-col divide-y divide-borde">
             {reparto.filas.map((f, i) => (
-              <li key={`${i}-${f.parte}`}>{textoDeLaFilaDelReparto(f)}</li>
+              <li key={`${i}-${f.parte}`} className="flex flex-col gap-1 py-2 first:pt-0">
+                <div className="flex items-start justify-between gap-3">
+                  <span className="font-semibold">
+                    {f.producto}
+                    {f.cantidad > 1 ? ` × ${f.cantidad}` : ""}
+                  </span>
+                  <span className="whitespace-nowrap font-semibold">{formatearMonto(f.reparto)}</span>
+                </div>
+                <span className="text-sm text-tinta-suave">Lista {formatearMonto(f.lista)}</span>
+              </li>
             ))}
           </ul>
-          <p className="text-xs text-tinta-tenue">
-            {TEXTO_DEL_REPARTO}
-            {reparto.usaMaximo && t.ayudaDelRepartoConRango !== null ? ` ${t.ayudaDelRepartoConRango}` : ""}
-          </p>
+          <p className="text-sm text-tinta-suave">{TEXTO_DEL_REPARTO}</p>
         </>
       )}
-    </div>
+    </section>
   );
 }

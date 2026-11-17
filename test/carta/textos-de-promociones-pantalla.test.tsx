@@ -22,16 +22,18 @@ async function dibujar(encendido: boolean) {
   vi.doMock(RUTA, async (original) => ({ ...(await original<typeof import("../../src/core/carta/armado-de-promo-como-pedernal")>()), ARMADO_DE_PROMO_COMO_PEDERNAL: encendido }));
   const formularios = await import("../../src/app/(app)/carta/parametrizacion/formularios");
   const { DondeSeVe } = await import("../../src/app/(app)/carta/parametrizacion/promociones/donde-se-ve");
-  const { PartesDeLaPromo } = await import("../../src/app/(app)/carta/parametrizacion/promociones/partes-de-la-promo");
+  const { ComponentesDelCombo } = await import("../../src/app/(app)/carta/parametrizacion/promociones/componentes-del-combo");
+  const { armarFilasDeLaPromo, componentesDeLaFicha, filasParaAgregar } = await import("../../src/core/carta/public");
   const { RepartoDelPrecio } = await import("../../src/app/(app)/carta/parametrizacion/promociones/reparto-del-precio");
   const guardar = vi.fn();
   return {
     promo: renderToStaticMarkup(<formularios.CamposPromo secciones={SECCIONES} />),
     lugares: renderToStaticMarkup(<formularios.CamposLugares lugares={LUGARES} />),
     dondeSeVe: renderToStaticMarkup(<DondeSeVe titulo="Menú" soloSalon tieneCupos={false} puedeDefinir guardar={guardar} />),
-    queLleva: renderToStaticMarkup(
-      <PartesDeLaPromo secciones={[...SECCIONES, { id: "s2", nombre: "Postres", activa: true }]} cuposDeSeccion={[{ seccionCartaId: "s1", cantidadMinima: 1, cantidadMaxima: 1 }]} lugares={[]} productos={[]} puedeEditar guardar={guardar} />
-    ),
+    queLleva: (() => {
+      const filas = armarFilasDeLaPromo({ secciones: [...SECCIONES, { id: "s2", nombre: "Postres", activa: true }], cuposDeSeccion: [{ seccionCartaId: "s1", cantidadMinima: 1, cantidadMaxima: 1 }], lugares: [] });
+      return renderToStaticMarkup(<ComponentesDelCombo componentes={componentesDeLaFicha(filas, [])} paraAgregar={filasParaAgregar(filas)} productos={[]} puedeEditar sinGuardar={false} guardar={guardar} />);
+    })(),
     reparto: renderToStaticMarkup(<RepartoDelPrecio precio={13500} partes={PARTES} />),
   };
 }
@@ -53,8 +55,7 @@ describe("interruptor APAGADO: la pantalla de siempre", () => {
     expect(h.dondeSeVe).toContain("Útil para un menú pactado con una empresa: el precio no queda publicado.");
     expect(h.dondeSeVe).toContain("Esta promo está en «solo salón» pero no tiene cupos");
     expect(h.dondeSeVe).toContain("mt-3 flex flex-col gap-1");
-    expect(h.queLleva).toContain("Agregar un componente");
-    expect(h.queLleva).toContain("Tildá la sección de la carta (o «No está en la carta»)");
+    // Apagado la ficha no existe: no hay armado por tarjetas que comparar (lo prueba `combos-como-la-maqueta.test.tsx`).
   });
 });
 
@@ -86,12 +87,11 @@ describe("interruptor ENCENDIDO: aire y pocas palabras", () => {
     expect(h.dondeSeVe).toContain("Guardar dónde se ve");
   });
 
-  it("«Qué lleva»: «Agregar componente» plegado y sin el párrafo, con «Cantidad» en la parte que ya lleva", async () => {
+  it("«Qué lleva»: «Agregar componente» y «Quitar» con las palabras de la maqueta, sin párrafos", async () => {
     const h = await dibujar(true);
-    expect(h.queLleva).toContain("Agregar componente");
+    expect(h.queLleva).toContain(">Agregar componente<");
+    expect(h.queLleva).toContain(">Quitar<");
     expect(h.queLleva).not.toContain("Agregar un componente");
-    expect(h.queLleva).not.toContain("Tildá la sección");
-    expect(h.queLleva).toContain("Cantidad");
   });
 
   it("«Reparto del precio»: la frase de la maqueta y, con un rango, sin la explicación del máximo", async () => {

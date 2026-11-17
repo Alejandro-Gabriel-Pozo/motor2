@@ -13,8 +13,8 @@ describe("RepartoDelPrecio", () => {
   it("dibuja cada componente con su parte y su lista, y el texto de la maqueta", () => {
     const html = renderToStaticMarkup(<RepartoDelPrecio precio={13500} partes={PARTES} />);
     expect(html).toContain("Reparto del precio");
-    expect(html).toMatch(/Barbacoa[^<]*11\.408,45 \(Lista [^<]*12\.000,00\)/);
-    expect(html).toMatch(/Gaseosa[^<]*2\.091,55 \(Lista [^<]*2\.200,00\)/);
+    expect(html).toMatch(/Barbacoa.*?11\.408,45.*?Lista [^<]*12\.000,00/);
+    expect(html).toMatch(/Gaseosa.*?2\.091,55.*?Lista [^<]*2\.200,00/);
     expect(html).toContain("Se reparte en proporción al precio de lista. Para el ejemplo se usa el primer producto disponible de cada elección.");
     expect(html).not.toContain("cantidad máxima");
   });

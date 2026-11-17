@@ -32,6 +32,9 @@ export type { CupoExistenteConSeccion, OperacionDeCupo } from "./parte-de-promo"
 // E2b: las partes de una promo en la pantalla de armado («Toda la sección» / «Solo estos platos») y su comando.
 export { NOMBRE_DE_LA_PARTE_FUERA_DE_LA_CARTA, armarFilasDeLaPromo, comandoDeLaFila, platosParaTildar } from "./partes-de-promo";
 export type { ComandoDeFila, FilaDeParte, ModoDeFila } from "./partes-de-promo";
+// La ficha de un combo «como la maqueta»: los componentes que lleva y los que se pueden agregar.
+export { componentesDeLaFicha, filasParaAgregar } from "./ficha-de-combo";
+export type { ComponenteDeLaFicha, TipoDeComponente } from "./ficha-de-combo";
 // Armado de promos «como Pedernal» (primer paso, solo pantalla; docs/diseno-promociones-igual-a-pedernal-2026-11-17.md).
 export { ARMADO_DE_PROMO_COMO_PEDERNAL, cantidadesDelFormulario, comoLoVeElCliente, esCantidadExacta, estadoDeLaPromo, loQueLlevaLaPromo, renglonDeLaLista, type ParteDeLaPromoParaLeer } from "./armado-de-promo-como-pedernal";
 // Los textos de la pantalla de promociones, según el interruptor (docs/palabras-de-la-pantalla-de-promociones-2026-11-17.md).

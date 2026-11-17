@@ -1,14 +1,13 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ARMADO_DE_PROMO_COMO_PEDERNAL, cantidadesDelFormulario, comoLoVeElCliente, esCantidadExacta, estadoDeLaPromo, loQueLlevaLaPromo, renglonDeLaLista, type LugarDeCombo, type ParteDeLaPromoParaLeer } from "../../src/core/carta/public";
+import { ARMADO_DE_PROMO_COMO_PEDERNAL, armarFilasDeLaPromo, cantidadesDelFormulario, componentesDeLaFicha, filasParaAgregar, comoLoVeElCliente, esCantidadExacta, estadoDeLaPromo, loQueLlevaLaPromo, renglonDeLaLista, type LugarDeCombo, type ParteDeLaPromoParaLeer } from "../../src/core/carta/public";
 import { textoDeLaParte } from "../../src/core/carta/armado-de-promo-como-pedernal";
-import { PartesDeLaPromo } from "../../src/app/(app)/carta/parametrizacion/promociones/partes-de-la-promo";
 
 /**
  * Armado de promos «como Pedernal» (primer paso, solo pantalla; docs/diseno-promociones-igual-a-pedernal-2026-11-17.md). Fija:
  *  - el interruptor nace APAGADO (la pantalla de siempre; el valor por defecto lo decide el dueño viendo la captura);
  *  - las funciones puras que escriben lo que lleva la promo, su estado y «Cómo lo ve el cliente» (oráculo escrito acá, aparte del código);
- *  - que «Qué lleva» (E2b) dibuja una fila por parte con `PartesDeLaPromo` (sustituye a `CamposQueLleva`), sin tildar nada que nadie tildó (todo nace cerrado).
+ *  - que «Qué lleva» dibuja una tarjeta por componente con `ComponentesDelCombo` (sustituye a `PartesDeLaPromo` y a `CamposQueLleva`), sin tildar nada que nadie tildó (todo nace cerrado).
  */
 const ENTRADA: ParteDeLaPromoParaLeer = { nombre: "Entrada", cantidadMinima: 0, cantidadMaxima: 2, productoFijo: null };
 const BEBIDA: ParteDeLaPromoParaLeer = { nombre: "Bebidas", cantidadMinima: 1, cantidadMaxima: 1, productoFijo: null };
@@ -23,7 +22,7 @@ describe("interruptor", () => {
 describe("cómo se lee una parte (oráculo)", () => {
   it.each([
     [ENTRADA, "de 0 a 2 de Entrada"],
-    [BEBIDA, "1 de Bebidas"],
+    [BEBIDA, "1 de Bebidas a elección"],
     [HAMBURGUESA, "2 × Hamburguesa Barbacoa"],
     [{ ...HAMBURGUESA, cantidadMinima: 1 }, "de 1 a 2 de Plato"],
   ])("%j → %s", (parte, esperado) => {
@@ -32,7 +31,7 @@ describe("cómo se lee una parte (oráculo)", () => {
 
   it("la promo sin partes se dice informativa; con partes se unen con «+»", () => {
     expect(loQueLlevaLaPromo([])).toBe("Sin componentes todavía (solo informativa)");
-    expect(loQueLlevaLaPromo([HAMBURGUESA, BEBIDA])).toBe("2 × Hamburguesa Barbacoa + 1 de Bebidas");
+    expect(loQueLlevaLaPromo([HAMBURGUESA, BEBIDA])).toBe("2 × Hamburguesa Barbacoa + 1 de Bebidas a elección");
   });
 });
 
@@ -55,62 +54,82 @@ describe("renglón de la lista y «Cómo lo ve el cliente»", () => {
   });
   it("«Cómo lo ve el cliente» lleva título, precio y componentes", () => {
     const t = comoLoVeElCliente("Combo Barbacoa", 13500, [HAMBURGUESA, BEBIDA]);
-    expect(t).toMatch(/^Combo Barbacoa .*13\.500,00 — 2 × Hamburguesa Barbacoa \+ 1 de Bebidas$/);
+    expect(t).toMatch(/^Combo Barbacoa .*13\.500,00 — 2 × Hamburguesa Barbacoa \+ 1 de Bebidas a elección$/);
   });
 });
 
-/** «Qué lleva» (E2b): una fila por parte, cada una con su propio «Guardar»; sin ningún campo de formulario suelto (la acción es `guardarParteDePromo`, una por parte). */
+/** «Qué lleva» de la ficha (E2b + maqueta): una tarjeta por componente con «Quitar»; lo que todavía no entra se ofrece en «Agregar componente»; nada viene tildado ni elegido (todo nace cerrado). */
 const SECCIONES = [
   { id: "s1", nombre: "Entrada", activa: true },
   { id: "s2", nombre: "Bebidas", activa: true },
   { id: "s3", nombre: "Postres", activa: true },
   { id: "s4", nombre: "Vinos", activa: false },
 ];
-const PRODUCTOS = [{ productoId: "p1", nombre: "Bife", nombreParaMostrar: "Bife", grupos: [], seccionCartaId: "s1", categoria: null, gruposAElegir: [] }];
-const dibujarPartes = (cuposDeSeccion: { seccionCartaId: string; cantidadMinima: number; cantidadMaxima: number }[], lugares: LugarDeCombo[] = []) =>
-  renderToStaticMarkup(<PartesDeLaPromo secciones={SECCIONES} cuposDeSeccion={cuposDeSeccion} lugares={lugares} productos={PRODUCTOS} puedeEditar guardar={async () => ({ ok: true, mensaje: "" })} />);
+const PRODUCTOS = [
+  { productoId: "p1", nombre: "Bife", nombreParaMostrar: "Bife", grupos: [], seccionCartaId: "s1", categoria: null, gruposAElegir: [] },
+  { productoId: "p2", nombre: "Gaseosa", nombreParaMostrar: "Gaseosa", grupos: [], seccionCartaId: "s2", categoria: null, gruposAElegir: [] },
+];
 const entrada = (id: string, productoId: string, nombre: string) => ({ id, activa: true, productoId, nombre, modoDeOpciones: "FIJAS" as const, opciones: [] });
+const armar = (cuposDeSeccion: { seccionCartaId: string; cantidadMinima: number; cantidadMaxima: number }[], lugares: LugarDeCombo[] = []) => armarFilasDeLaPromo({ secciones: SECCIONES, cuposDeSeccion, lugares });
+/** Se dibuja con el interruptor ENCENDIDO (los componentes toman sus textos de `textosDeLaPantallaDePromos`). */
+const dibujarQueLleva = async (cuposDeSeccion: { seccionCartaId: string; cantidadMinima: number; cantidadMaxima: number }[], lugares: LugarDeCombo[] = [], sinGuardar = false) => {
+  vi.resetModules();
+  vi.doMock("../../src/core/carta/armado-de-promo-como-pedernal", async (original) => ({ ...(await original<typeof import("../../src/core/carta/armado-de-promo-como-pedernal")>()), ARMADO_DE_PROMO_COMO_PEDERNAL: true }));
+  const { ComponentesDelCombo } = await import("../../src/app/(app)/carta/parametrizacion/promociones/componentes-del-combo");
+  const filas = armar(cuposDeSeccion, lugares);
+  return renderToStaticMarkup(
+    <ComponentesDelCombo componentes={componentesDeLaFicha(filas, PRODUCTOS)} paraAgregar={filasParaAgregar(filas)} productos={PRODUCTOS} puedeEditar sinGuardar={sinGuardar} guardar={async () => ({ ok: true, mensaje: "" })} />
+  );
+};
+afterEach(() => {
+  vi.doUnmock("../../src/core/carta/armado-de-promo-como-pedernal");
+  vi.resetModules();
+});
 
-describe("«Qué lleva»: una fila por parte, todo nace cerrado", () => {
-  it("promo sin componentes: nada tildado, no se dibuja «Qué lleva» y todo (secciones y «No está en la carta») está plegado en «Agregar un componente»", () => {
-    const html = dibujarPartes([]);
-    expect(html).not.toContain("data-que-lleva");
+describe("«Qué lleva»: una tarjeta por componente, todo nace cerrado", () => {
+  it("combo sin componentes: «Todavía no lleva nada», sin tarjetas ni nada tildado, y «Agregar componente» disponible", async () => {
+    const html = await dibujarQueLleva([]);
+    expect(html).toContain("Todavía no lleva nada");
+    expect(html).not.toContain("data-componente-del-combo");
     expect(html).not.toContain('checked=""');
-    const plegado = html.split("data-agregar-componente")[1]!;
-    for (const nombre of ["Entrada", "Bebidas", "Postres", "Vinos", "No está en la carta"]) expect(plegado).toContain(`data-cupo-seccion="${nombre}"`);
-    expect(plegado).toContain("Vinos (apagada)");
+    expect(html).toMatch(/<button[^>]*data-agregar-componente[^>]*>Agregar componente<\/button>/);
+    expect(html).not.toMatch(/<button[^>]*disabled=""[^>]*data-agregar-componente/);
   });
 
-  it("lo que ya lleva va arriba, tildado y con la modalidad elegida; el resto, plegado y sin tildar (rango heredado con mín. y máx.; cantidad exacta con una sola cantidad)", () => {
-    const html = dibujarPartes([
+  it("combo sin guardar: el botón «Agregar componente» está apagado", async () => {
+    expect(await dibujarQueLleva([], [], true)).toMatch(/<button[^>]*disabled=""[^>]*data-agregar-componente|<button[^>]*data-agregar-componente[^>]*disabled=""/);
+  });
+
+  it("lo que ya lleva sale como tarjeta con su tipo y «Quitar»; lo que no, no sale", async () => {
+    const html = await dibujarQueLleva([
       { seccionCartaId: "s1", cantidadMinima: 0, cantidadMaxima: 2 },
       { seccionCartaId: "s2", cantidadMinima: 1, cantidadMaxima: 1 },
     ]);
-    const [arriba, plegado] = html.split("data-agregar-componente");
-    expect(arriba).toContain("data-que-lleva");
-    expect(arriba).toContain('data-cupo-seccion="Entrada"');
-    expect(arriba).toContain('data-cupo-seccion="Bebidas"');
-    expect(arriba).not.toContain('data-cupo-seccion="Postres"');
-    expect(arriba).toContain('<option value="TODA" selected="">Toda la sección</option>');
-    // El rango heredado se sigue leyendo «mín.» y «máx.»; la parte exacta muestra una cantidad.
-    const entradaHtml = arriba!.split('data-parte-de-promo="Bebidas"')[0]!;
-    expect(entradaHtml).toContain("mín.");
-    expect(arriba!.split('data-parte-de-promo="Bebidas"')[1]).toContain("Cantidad");
-    expect(plegado).toContain('data-cupo-seccion="Postres"');
-    expect(plegado).not.toContain('checked=""');
+    expect(html).toContain('data-componente-del-combo="de 0 a 2 de Entrada"');
+    expect(html).toContain('data-componente-del-combo="1 de Bebidas a elección"');
+    expect(html).not.toContain("Postres");
+    expect(html).toContain("A elegir en una sección de la carta");
+    expect(html).toContain("Lo que el cliente puede elegir: Gaseosa");
+    expect(html.match(/>Quitar</g)).toHaveLength(2);
   });
 
-  it("una lista con el nombre de una sección es su «Solo estos platos»: sale en la fila de la sección con sus platos; una lista con otro nombre sale entre las demás partes", () => {
+  it("una lista con el nombre de una sección es su «Solo estos platos»; con UN plato fijo y cantidad exacta es «Un producto fijo»", async () => {
     const lugares: LugarDeCombo[] = [
-      { id: "l1", tipo: "LISTA", nombre: "Entrada", cantidadMinima: 1, cantidadMaxima: 1, orden: 1, entradas: [entrada("e1", "p1", "Bife")] },
-      { id: "l2", tipo: "LISTA", nombre: "Bebida", cantidadMinima: 1, cantidadMaxima: 1, orden: 2, entradas: [] },
+      { id: "l1", tipo: "LISTA", nombre: "Entrada", cantidadMinima: 2, cantidadMaxima: 2, orden: 1, entradas: [entrada("e1", "p1", "Bife")] },
+      { id: "l2", tipo: "LISTA", nombre: "Bebida", cantidadMinima: 1, cantidadMaxima: 1, orden: 2, entradas: [entrada("e2", "p2", "Gaseosa"), entrada("e3", "p3", "Jugo")] },
     ];
-    const html = dibujarPartes([], lugares);
-    const arriba = html.split("data-agregar-componente")[0]!;
-    expect(arriba).toContain('<option value="SOLO_ESTOS" selected="">Solo estos platos</option>');
-    expect(arriba).toContain("Lo que ya lleva");
-    expect(arriba).toContain('data-entrada-de-lugar="Bife"');
-    expect(arriba).toContain('data-cupo-seccion="Bebida"');
+    const comp = componentesDeLaFicha(armar([], lugares), PRODUCTOS);
+    expect(comp.map((c) => [c.nombre, c.tipo, c.elegibles])).toEqual([
+      ["2 × Bife", "fijo", []],
+      ["1 de Bebida a elección", "seccion", ["Gaseosa", "Jugo"]],
+    ]);
+    const html = await dibujarQueLleva([], lugares);
+    expect(html).toContain("Un producto fijo");
+  });
+
+  it("para agregar se ofrecen las secciones que no entran y «No está en la carta»", () => {
+    const filas = armar([{ seccionCartaId: "s1", cantidadMinima: 1, cantidadMaxima: 1 }]);
+    expect(filasParaAgregar(filas).map((f) => f.nombre)).toEqual(["Bebidas", "Postres", "Vinos", "No está en la carta"]);
   });
 });
 

@@ -1,12 +1,9 @@
-import type { ReactNode } from "react";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/server/acceso/gate";
 import { cargarAdminCarta } from "@/server/consultas/carta/admin";
 import { cargarCombosDeLaCarta } from "@/server/consultas/carta/combos";
-import { cargarRepartoDeLasPromos } from "@/server/consultas/carta/reparto-de-las-promos";
-import { RepartoDelPrecio } from "./reparto-del-precio";
 import {
   actualizarActivaPromoCarta,
   actualizarActivaPromoCartaEnSucursal,
@@ -16,7 +13,6 @@ import {
   guardarSoloSalonPromoCarta,
 } from "@/server/actions/carta/promos";
 import { actualizarActivaEntradaDeCupo, agregarEntradaDeCupo } from "@/server/actions/carta/combos";
-import { guardarParteDePromo } from "@/server/actions/carta/promos";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
@@ -24,12 +20,12 @@ import { AgregarEntradaDeLugar } from "../../agregar-entrada-de-lugar";
 import { DondeSeVe } from "./donde-se-ve";
 import { cuposDeSeccionDelFormulario, lugaresDelFormulario } from "./lugares-del-formulario";
 import { FilaDeCarta } from "@/components/fila-de-carta";
-import { ARMADO_DE_PROMO_COMO_PEDERNAL, PESTANAS_DE_PROMOCIONES, comoLoVeElCliente, estadoDeLaPromo, loQueLlevaLaPromo, textosDeLaPantallaDePromos, type ParteDeLaPromoParaLeer } from "@/core/carta/public";
+import { ARMADO_DE_PROMO_COMO_PEDERNAL, PESTANAS_DE_PROMOCIONES, armarFilasDeLaPromo, componentesDeLaFicha, loQueLlevaLaPromo, textosDeLaPantallaDePromos } from "@/core/carta/public";
 import { EncabezadoDeCarta } from "../../encabezado-de-carta";
 import estilos from "../../carta-mant.module.css";
 import { CamposCupos, CamposLugares, CamposPromo, esFijo } from "../formularios";
 import { AvisoDelPeorCaso } from "./aviso-del-peor-caso";
-import { PartesDeLaPromo } from "./partes-de-la-promo";
+import { ListaDeCombos } from "./lista-de-combos";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { CampoNumero } from "@/components/campo-numero";
@@ -42,21 +38,6 @@ const refrescarSiOk = (r: ResultadoAccion) => {
   if (r.ok) refrescarVistaSiHaceFalta();
   return r;
 };
-
-/**
- * Aire del armado «como Pedernal» (`ARMADO_DE_PROMO_COMO_PEDERNAL`, pedido del dueño 2026-11-17: «en Pedernal veo algo limpio, en Motor 2 algo apretado»): con el interruptor encendido, los bloques de cada promo van uno debajo del otro
- * con más espacio entre sí (y sin el margen suelto que cada uno traía); apagado, no envuelve nada: la pantalla de siempre.
- */
-function ConAire({ activo, children }: { activo: boolean; children: ReactNode }) {
-  if (!activo) return <>{children}</>;
-  return <div className="mt-4 flex flex-col gap-5 [&>*]:mt-0">{children}</div>;
-}
-
-/** Un título con lo que le cuelga (un formulario, un dato): juntos entre sí, aunque el resto vaya con aire. Apagado, no envuelve nada. */
-function Junto({ activo, children }: { activo: boolean; children: ReactNode }) {
-  if (!activo) return <>{children}</>;
-  return <div className="flex flex-col gap-2 [&>*]:mt-0">{children}</div>;
-}
 
 /**
  * CARTA-MANT: Parametrización › Promociones (prototipo aprobado). Las promos de la empresa (prendidas o no en esta sucursal, con su precio local, sus cupos, sus lugares de entradas), con el
@@ -85,9 +66,27 @@ export default async function PromocionesDeCartaPage() {
   // GO-3b (U1): los combos de cada promo (lugares de entradas y sus entradas), aparte de `cargarAdminCarta` (que no cambia).
   const combos = await cargarCombosDeLaCarta(ctx.db, ctx.sucursalId);
   const seccionesActivas = datos.secciones.filter((x) => x.activa);
-  // «Reparto del precio» (solo lectura): con el interruptor apagado no se lee nada de más.
-  const repartoDeLasPromos = ARMADO_DE_PROMO_COMO_PEDERNAL ? await cargarRepartoDeLasPromos(ctx.db, ctx.sucursalId, new Date()) : null;
-
+  // Combos «como la maqueta» (`ARMADO_DE_PROMO_COMO_PEDERNAL`): la lista simple; cada combo se arma en su ficha (`./[id]`). Apagado, la pantalla de siempre.
+  if (ARMADO_DE_PROMO_COMO_PEDERNAL) {
+    const filas = datos.promos.map((pr) => {
+      const lugares = combos.porPromo[pr.id]?.lugares ?? [];
+      const componentes = componentesDeLaFicha(armarFilasDeLaPromo({ secciones: datos.secciones, cuposDeSeccion: pr.cupos, lugares }), combos.productos);
+      return { id: pr.id, titulo: pr.titulo, loQueLleva: loQueLlevaLaPromo(componentes.map((c) => c.parte), t.sinComponentes), activo: pr.activa && pr.prendidaAca, precio: pr.precioAca };
+    });
+    return (
+      <div className={estilos.raiz}>
+        <EncabezadoDeCarta entrada={t.encabezadoDeLaEntrada} pestana={t.encabezadoDeLaPestana} sucursal={ctx.sucursalNombre}>
+          <FilaDeCarta ctx={ctx} etiqueta={t.encabezadoDeLaEntrada} pestanas={PESTANAS_DE_PROMOCIONES} ruta="/carta/parametrizacion/promociones" />
+        </EncabezadoDeCarta>
+        <div className={estilos.contenido}>
+          <div className={estilos.pad}>
+            {!(puedeDefinirPromos || puedeActivarPromos || puedePrecioLocalPromos) && <AvisoSoloLectura />}
+            <ListaDeCombos filas={filas} rutaDeLaFicha="/carta/parametrizacion/promociones" puedeDefinir={puedeDefinirPromos} />
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className={estilos.raiz}>
       <EncabezadoDeCarta entrada={t.encabezadoDeLaEntrada} pestana={t.encabezadoDeLaPestana} sucursal={ctx.sucursalNombre}>
@@ -113,24 +112,10 @@ export default async function PromocionesDeCartaPage() {
             const combo = combos.porPromo[pr.id] ?? { lugares: [], version: 1, soloSalon: false };
             const lugares = combo.lugares;
             const versionDeLaPromo = combo.version;
-            // Armado «como Pedernal» (`ARMADO_DE_PROMO_COMO_PEDERNAL`): lo que lleva la promo, para el renglón de la lista y para «Cómo lo ve el cliente».
-            const partes: ParteDeLaPromoParaLeer[] = [
-              ...pr.cupos.map((c) => ({ nombre: c.seccionCarta, cantidadMinima: c.cantidadMinima, cantidadMaxima: c.cantidadMaxima, productoFijo: null })),
-              ...lugares.map((l) => ({ nombre: l.nombre, cantidadMinima: l.cantidadMinima, cantidadMaxima: l.cantidadMaxima, productoFijo: esFijo(l) ? (l.entradas.find((e) => e.activa)?.nombre ?? null) : null })),
-            ];
-            const estado = estadoDeLaPromo(pr.activa, pr.prendidaAca);
             return (
               <li key={pr.id} className="rounded border p-3" data-promo-carta={pr.titulo}>
                 <details>
                   <summary className="cursor-pointer text-sm max-md:min-h-11 max-md:py-2">
-                    {ARMADO_DE_PROMO_COMO_PEDERNAL ? (
-                      <span data-renglon-de-promo>
-                        <span className="font-medium">{pr.titulo}</span> — {loQueLlevaLaPromo(partes, t.sinComponentes)} · {estado.texto}
-                        {combo.soloSalon ? " · solo salón" : ""} — {formatearMonto(pr.precioAca)}
-                        {pr.precioLocal !== null ? (datos.precioLocalActivo ? " (precio de esta sucursal)" : " (no rige: precio local apagado)") : ""}
-                      </span>
-                    ) : (
-                    <>
                     <span className="font-medium">{pr.titulo}</span> · {formatearMonto(pr.precioAca)}
                     {pr.precioLocal !== null ? (datos.precioLocalActivo ? " (precio de esta sucursal)" : " (no rige: precio local apagado)") : ""} · {pr.seccionCarta} ·{" "}
                     {!pr.activa ? "apagada en toda la empresa" : pr.prendidaAca ? "prendida acá" : "apagada acá"} ·{" "}
@@ -142,10 +127,7 @@ export default async function PromocionesDeCartaPage() {
                     ) : (
                       "Informativa (sin cupos)"
                     )}
-                    </>
-                    )}
                   </summary>
-                  <ConAire activo={ARMADO_DE_PROMO_COMO_PEDERNAL}>
                   {puedeDefinirPromos ? (
                     <FormConResultado
                       accion={async (fd: FormData) => {
@@ -154,7 +136,7 @@ export default async function PromocionesDeCartaPage() {
                           await guardarPromoCarta({ id, seccionCartaId: campo(fd, "seccionCartaId"), titulo: campo(fd, "titulo"), descripcion: campo(fd, "descripcion"), precio: campo(fd, "precio"), orden: campo(fd, "orden") })
                         );
                       }}
-                      className={ARMADO_DE_PROMO_COMO_PEDERNAL ? "mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2" : "mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"}
+                      className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"
                     >
                       <CamposPromo secciones={datos.secciones} valores={pr} />
                       <div className="sm:col-span-2">
@@ -183,7 +165,7 @@ export default async function PromocionesDeCartaPage() {
                         const texto = campo(fd, "precioLocal").trim();
                         return refrescarSiOk(await guardarPrecioLocalPromoCarta(id, texto === "" ? null : texto, precioLocalVisto));
                       }}
-                      className={ARMADO_DE_PROMO_COMO_PEDERNAL ? "mt-3 flex flex-wrap items-end gap-3" : "mt-3 flex flex-wrap items-end gap-2"}
+                      className="mt-3 flex flex-wrap items-end gap-2"
                     >
                       <div className="flex flex-col gap-1">
                         <label htmlFor={`precio-local-${id}`} className="text-sm font-medium">
@@ -216,32 +198,8 @@ export default async function PromocionesDeCartaPage() {
                   />
 
                   {/* Cupos (Task #16, docs/plan-promo-combo-2026-09-26.md, D1): con uno o más, la promo pasa a ser ARMABLE en el POS. */}
-                  {ARMADO_DE_PROMO_COMO_PEDERNAL && (
-                    <p className="mt-3 text-sm" data-como-lo-ve-el-cliente>
-                      <span className="font-medium">Cómo lo ve el cliente: </span>
-                      {comoLoVeElCliente(pr.titulo, pr.precioAca, partes, t.sinComponentes)}
-                    </p>
-                  )}
-                  {repartoDeLasPromos && <RepartoDelPrecio precio={pr.precioAca} partes={repartoDeLasPromos[pr.id] ?? []} />}
-                  <Junto activo={ARMADO_DE_PROMO_COMO_PEDERNAL}>
                   <h3 className="mt-3 text-sm font-medium">{t.tituloDeLoQueLleva}</h3>
-                  {puedeDefinirPromos && ARMADO_DE_PROMO_COMO_PEDERNAL ? (
-                    <div className="mt-1 flex flex-col gap-2">
-                      {t.parrafoDeLasPartes !== null && <p className="text-sm text-tinta-tenue">{t.parrafoDeLasPartes}</p>}
-                      {t.mostrarAvisoDelPeorCaso && <AvisoDelPeorCaso titulo={pr.titulo} precio={pr.precio} cupos={pr.cupos} />}
-                      <PartesDeLaPromo
-                        secciones={datos.secciones}
-                        cuposDeSeccion={pr.cupos}
-                        lugares={lugares}
-                        productos={combos.productos}
-                        puedeEditar={puedeDefinirPromos}
-                        guardar={async (comando) => {
-                          "use server";
-                          return refrescarSiOk(await guardarParteDePromo({ promoCartaId: id, ...comando }));
-                        }}
-                      />
-                    </div>
-                  ) : puedeDefinirPromos ? (
+                  {puedeDefinirPromos ? (
                     <FormConResultado
                       accion={async (fd: FormData) => {
                         "use server";
@@ -250,7 +208,7 @@ export default async function PromocionesDeCartaPage() {
                         const deEntradas = lugaresDelFormulario(fd);
                         return refrescarSiOk(await guardarCuposPromoCarta(id, [...cupos, ...deEntradas]));
                       }}
-                      className={ARMADO_DE_PROMO_COMO_PEDERNAL ? "mt-1 flex flex-col gap-4" : "mt-1 flex flex-col gap-2"}
+                      className="mt-1 flex flex-col gap-2"
                     >
                       {t.parrafoDeLoQueLleva !== null && <p className="text-sm text-tinta-tenue">{t.parrafoDeLoQueLleva}</p>}
                       {t.mostrarAvisoDelPeorCaso && <AvisoDelPeorCaso titulo={pr.titulo} precio={pr.precio} cupos={pr.cupos} />}
@@ -278,14 +236,13 @@ export default async function PromocionesDeCartaPage() {
                   ) : (
                     <p className="mt-1 text-sm text-tinta-tenue">{t.sinComponentes}</p>
                   )}
-                  </Junto>
 
                   {/* GO-3b (U1): las entradas de cada lugar LISTA (con una sola y mínimo = máximo, viene FIJO). */}
-                  {!(ARMADO_DE_PROMO_COMO_PEDERNAL && puedeDefinirPromos) && lugares.map((l) => {
+                  {lugares.map((l) => {
                     // Los closures "use server" capturan solo el id del lugar (texto): lo que capturan viaja al cliente.
                     const cupoId = l.id;
                     return (
-                    <div key={l.id} className={ARMADO_DE_PROMO_COMO_PEDERNAL ? "mt-3 flex flex-col gap-2" : "mt-3 flex flex-col gap-1"} data-lugar-de-combo={l.nombre}>
+                    <div key={l.id} className="mt-3 flex flex-col gap-1" data-lugar-de-combo={l.nombre}>
                       <h4 className="text-sm font-medium">
                         {l.nombre} · {esFijo(l) ? "viene fijo" : `se elige ${l.cantidadMinima === l.cantidadMaxima ? l.cantidadMaxima : `de ${l.cantidadMinima} a ${l.cantidadMaxima}`}`}
                       </h4>
@@ -337,7 +294,6 @@ export default async function PromocionesDeCartaPage() {
                     </div>
                     );
                   })}
-                  </ConAire>
                 </details>
                 {puedeActivarPromos && (
                   <FormConResultado
@@ -386,11 +342,7 @@ export default async function PromocionesDeCartaPage() {
                 })
               );
             }}
-            className={
-              ARMADO_DE_PROMO_COMO_PEDERNAL
-                ? "grid max-w-2xl grid-cols-1 gap-4 rounded border border-dashed p-4 sm:grid-cols-2"
-                : "grid max-w-2xl grid-cols-1 gap-2 rounded border border-dashed p-3 sm:grid-cols-2"
-            }
+            className="grid max-w-2xl grid-cols-1 gap-2 rounded border border-dashed p-3 sm:grid-cols-2"
           >
             <h3 className="text-sm font-medium sm:col-span-2">{t.tituloDelAlta}</h3>
             <CamposPromo secciones={seccionesActivas} />

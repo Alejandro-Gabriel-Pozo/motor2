@@ -41,19 +41,38 @@ const DE_HOY: Record<string, string | boolean> = {
   modalidadDeLaListaPropia: "Solo estos platos (los que no están en la carta se tildan de a uno).",
   leyendaDeSumarUnLugar: "Sumar un lugar (opcional)",
   sinEntradas: "Sin entradas todavía: sumá los productos que se pueden elegir acá.",
-  ayudaDelRepartoConRango: "En las partes cargadas con un rango se usa la cantidad máxima.",
   sinPromos: "La empresa no tiene promos cargadas.",
   hacenFaltaSecciones: "Para cargar una promo hace falta al menos una sección de carta activa.",
+  // La pantalla de combos «como la maqueta» (solo se dibuja encendido): los mismos con el interruptor apagado.
+  activo: "Activo",
+  pausado: "Pausado",
+  masInformacion: "Más información",
+  comoLoVeElCliente: "Cómo lo ve el cliente",
+  repartoDelPrecio: "Reparto del precio",
+  quitar: "Quitar",
+  cancelar: "Cancelar",
+  tipoProductoFijo: "Un producto fijo",
+  tipoSeccion: "A elegir en una sección de la carta",
+  loQueElClientePuedeElegir: "Lo que el cliente puede elegir",
+  rotuloDeLaSeccionDeLaHoja: "Sección",
+  rotuloDeLaCantidad: "Cantidad",
+  rotuloDeLaSeccionDeCarta: "Sección de carta",
+  rotuloDelOrden: "Orden",
 };
 
 /** Vocabulario aprobado por el dueño el 09/11/2026 (maqueta `combos.html` de Pedernal) más «Guardar» (decisión del 2026-11-17: Motor2 no tiene versiones, no se usa «Guardar versión»). */
-const APROBADOS = new Set(["Combos", "Nuevo combo", "Nombre", "Precio", "Qué lleva", "Agregar componente", "Todavía no lleva nada", "Guardar"]);
+const APROBADOS = new Set([
+  "Combos", "Nuevo combo", "Nombre", "Precio", "Qué lleva", "Agregar componente", "Todavía no lleva nada", "Guardar",
+  "Activo", "Pausado", "Quitar", "Cancelar", "Cantidad", "Sección", "Cómo lo ve el cliente", "Reparto del precio", "Un producto fijo", "A elegir en una sección de la carta", "Lo que el cliente puede elegir",
+]);
+/** Texto NUEVO que la maqueta no tiene (orden del dueño, 2026-11-17: «Más información» es el bloque plegado de lo que Motor2 necesita por su modelo) y rótulos de hoy que ese bloque conserva. */
+const NUEVOS_DECLARADOS = new Set(["Más información"]);
 /** Rótulos que la maqueta no tiene y se conservan de hoy, sin su ayuda («(opcional)», «vacío = …», la explicación de «solo salón»). */
-const CONSERVADOS_DE_HOY = new Set(["Descripción", "Precio en esta sucursal", "Solo salón", "Sumar un lugar", "Solo estos platos"]);
+const CONSERVADOS_DE_HOY = new Set(["Descripción", "Precio en esta sucursal", "Solo salón", "Sumar un lugar", "Solo estos platos", "Sección de carta", "Orden"]);
 /** Frases de hoy con la palabra aprobada «combo» en lugar de «promo» (dudoso, anotado en la tabla del documento). */
 const DE_HOY_CON_COMBO = new Set(["La empresa no tiene combos cargados.", "Para cargar un combo hace falta al menos una sección de carta activa."]);
 /** Lo que se SACA de la pantalla encendida (párrafos y ayudas). */
-const SACADOS = ["introduccion", "soloSalonAyuda", "avisoSoloSalonSinCupos", "parrafoDeLoQueLleva", "parrafoDeAgregarComponente", "parrafoDeLasPartes", "ayudaDelRepartoConRango"];
+const SACADOS = ["introduccion", "soloSalonAyuda", "avisoSoloSalonSinCupos", "parrafoDeLoQueLleva", "parrafoDeAgregarComponente", "parrafoDeLasPartes"];
 
 const textosComoLista = (t: TextosDePromos): Record<string, unknown> => ({ ...t, quitarEntrada: t.quitarEntrada("«X»") });
 
@@ -80,7 +99,7 @@ describe("textos de la pantalla de promociones, interruptor ENCENDIDO: lista cer
       } else if (SACADOS.includes(campo)) {
         expect(valor, `${campo} se saca`).toBeNull();
       } else if (typeof valor === "string") {
-        expect(APROBADOS.has(valor) || CONSERVADOS_DE_HOY.has(valor) || DE_HOY_CON_COMBO.has(valor), `${campo}: «${valor}» no está en ninguna lista`).toBe(true);
+        expect(APROBADOS.has(valor) || NUEVOS_DECLARADOS.has(valor) || CONSERVADOS_DE_HOY.has(valor) || DE_HOY_CON_COMBO.has(valor), `${campo}: «${valor}» no está en ninguna lista`).toBe(true);
       }
     }
   });
@@ -91,11 +110,11 @@ describe("textos de la pantalla de promociones, interruptor ENCENDIDO: lista cer
     expect(t.asteriscoEnElPrecio).toBe(false);
   });
 
-  it("ningún texto es un párrafo: hasta cuatro palabras en rótulos y botones, hasta catorce en las frases de «no hay nada»", () => {
+  it("ningún texto es un párrafo: hasta cuatro palabras en rótulos y botones, hasta catorce en las frases de «no hay nada» y hasta ocho en los tipos y lecturas de la maqueta", () => {
     for (const [campo, valor] of Object.entries(t)) {
       if (typeof valor !== "string" || campo === "quitarEntrada") continue;
       const palabras = valor.split(/\s+/).length;
-      expect(palabras, `${campo}: «${valor}»`).toBeLessThanOrEqual(campo === "sinPromos" || campo === "hacenFaltaSecciones" ? 14 : 4);
+      expect(palabras, `${campo}: «${valor}»`).toBeLessThanOrEqual(campo === "sinPromos" || campo === "hacenFaltaSecciones" ? 14 : ["tipoSeccion", "loQueElClientePuedeElegir", "comoLoVeElCliente"].includes(campo) ? 8 : 4);
     }
   });
 });

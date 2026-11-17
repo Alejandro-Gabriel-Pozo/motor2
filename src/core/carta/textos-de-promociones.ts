@@ -51,11 +51,42 @@ export interface TextosDePromos {
   leyendaDeSumarUnLugar: string;
   sinEntradas: string;
   quitarEntrada: (nombre: string) => string;
-  /** Lo que sigue al reparto cuando hay partes con rango; `null` = no se dibuja. */
-  ayudaDelRepartoConRango: string | null;
   sinPromos: string;
   hacenFaltaSecciones: string;
+  /** Pantalla de combos «como la maqueta» (lista y ficha; solo se dibuja con el interruptor encendido; con `false` guardan el texto de la maqueta y no se usan). */
+  activo: string;
+  pausado: string;
+  masInformacion: string;
+  comoLoVeElCliente: string;
+  repartoDelPrecio: string;
+  quitar: string;
+  cancelar: string;
+  tipoProductoFijo: string;
+  tipoSeccion: string;
+  loQueElClientePuedeElegir: string;
+  rotuloDeLaSeccionDeLaHoja: string;
+  rotuloDeLaCantidad: string;
+  rotuloDeLaSeccionDeCarta: string;
+  rotuloDelOrden: string;
 }
+
+/** Los textos que la pantalla de combos «como la maqueta» agrega: los mismos con el interruptor apagado o encendido (con apagado no se dibujan). */
+const DE_LA_MAQUETA = {
+  activo: "Activo",
+  pausado: "Pausado",
+  masInformacion: "Más información",
+  comoLoVeElCliente: "Cómo lo ve el cliente",
+  repartoDelPrecio: "Reparto del precio",
+  quitar: "Quitar",
+  cancelar: "Cancelar",
+  tipoProductoFijo: "Un producto fijo",
+  tipoSeccion: "A elegir en una sección de la carta",
+  loQueElClientePuedeElegir: "Lo que el cliente puede elegir",
+  rotuloDeLaSeccionDeLaHoja: "Sección",
+  rotuloDeLaCantidad: "Cantidad",
+  rotuloDeLaSeccionDeCarta: "Sección de carta",
+  rotuloDelOrden: "Orden",
+};
 
 const DE_HOY: TextosDePromos = {
   encabezadoDeLaEntrada: "Promociones",
@@ -91,9 +122,9 @@ const DE_HOY: TextosDePromos = {
   leyendaDeSumarUnLugar: "Sumar un lugar (opcional)",
   sinEntradas: "Sin entradas todavía: sumá los productos que se pueden elegir acá.",
   quitarEntrada: (nombre) => `Sacar «${nombre}»`,
-  ayudaDelRepartoConRango: "En las partes cargadas con un rango se usa la cantidad máxima.",
   sinPromos: "La empresa no tiene promos cargadas.",
   hacenFaltaSecciones: "Para cargar una promo hace falta al menos una sección de carta activa.",
+  ...DE_LA_MAQUETA,
 };
 
 const COMO_PEDERNAL: TextosDePromos = {
@@ -126,9 +157,9 @@ const COMO_PEDERNAL: TextosDePromos = {
   leyendaDeSumarUnLugar: "Sumar un lugar",
   sinEntradas: "Todavía no lleva nada",
   quitarEntrada: (nombre) => `Quitar «${nombre}»`,
-  ayudaDelRepartoConRango: null,
   sinPromos: "La empresa no tiene combos cargados.",
   hacenFaltaSecciones: "Para cargar un combo hace falta al menos una sección de carta activa.",
+  ...DE_LA_MAQUETA,
 };
 
 /** Los textos de la pantalla de promociones: los de siempre (`false`) o los del armado «como Pedernal» (`true`). */
