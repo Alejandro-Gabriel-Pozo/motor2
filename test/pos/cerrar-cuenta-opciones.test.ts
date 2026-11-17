@@ -104,6 +104,38 @@ describe("cerrar una cuenta con opciones (GO-2b)", () => {
   });
 });
 
+// M3a (2026-11-17; diseño de merma §7.2): el consumo de una opción lee la base (NETA/BRUTA) de la VERSIÓN que se vendió (la foto), no la de hoy. Hoy ningún camino de la aplicación escribe BRUTA
+// (llega con M3b): la versión se marca directo en la base (superusuario) para probar los dos lados.
+describe("cerrar con opciones: la base de la versión vendida (M3a)", () => {
+  const consumoDelShot = async (baseDeCantidad: "NETA" | "BRUTA") => {
+    await prismaAdmin.consumoDeOpcion.updateMany({ where: { versionDeOpcionId: c.versionDe[c.shotId] }, data: { cantidad: "0.2000", mermaPorcentaje: "50.00" } });
+    await prismaAdmin.versionDeOpcion.update({ where: { id: c.versionDe[c.shotId] }, data: { baseDeCantidad } });
+    await pedirYEnviar(cuentaId, [{ productoId: c.cafeId, cantidad: 1, opciones: [elegida(c, c.medianoId), elegida(c, c.shotId)] }]);
+    const r = await cerrarCuenta(cuentaId);
+    expect(r.ok, r.mensaje).toBe(true);
+    const filas = await prisma.movimientoStock.findMany({ where: { proceso: "CONSUMO", productoId: c.granoId } });
+    return filas.map((f) => Number(f.cantidad));
+  };
+
+  it("versión NETA: el shot consume 0,2 con 50 % de merma = 0,3 (como siempre)", async () => {
+    expect(await consumoDelShot("NETA")).toEqual([-0.3]);
+  });
+
+  it("versión BRUTA: el shot consume 0,2 tal cual (la cantidad ya es lo que sale del stock; la merma cargada no se multiplica)", async () => {
+    expect(await consumoDelShot("BRUTA")).toEqual([-0.2]);
+  });
+
+  it("el consumo sale de la foto: si después se carga una versión nueva BRUTA de la opción, la cuenta ya pedida sigue con la NETA que se vendió", async () => {
+    await prismaAdmin.consumoDeOpcion.updateMany({ where: { versionDeOpcionId: c.versionDe[c.shotId] }, data: { cantidad: "0.2000", mermaPorcentaje: "50.00" } });
+    await pedirYEnviar(cuentaId, [{ productoId: c.cafeId, cantidad: 1, opciones: [elegida(c, c.medianoId), elegida(c, c.shotId)] }]);
+    const v2 = await prisma.versionDeOpcion.create({ data: { opcionId: c.shotId, numero: 2, tipoDeDiferencia: "MONTO", diferenciaPrecio: "200.00", baseDeCantidad: "BRUTA", creadoPorId: s.admin.id } });
+    await prisma.consumoDeOpcion.create({ data: { versionDeOpcionId: v2.id, efecto: "SUMA", insumoProductoId: c.granoId, cantidad: "0.9000", unidadId: s.kg.id, mermaPorcentaje: "50.00" } });
+    expect((await cerrarCuenta(cuentaId)).ok).toBe(true);
+    const filas = await prisma.movimientoStock.findMany({ where: { proceso: "CONSUMO", productoId: c.granoId } });
+    expect(filas.map((f) => Number(f.cantidad))).toEqual([-0.3]);
+  });
+});
+
 describe("cerrar con opciones: concurrencia (GO-2b)", () => {
   it("dos cierres a la vez: un solo juego de Operaciones (con su padre), de filas del Kardex y un ticket", async () => {
     await pedirYEnviar(cuentaId, [{ productoId: c.cafeId, cantidad: 1, opciones: grande() }]);

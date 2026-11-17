@@ -1,4 +1,4 @@
-import { factorDeMerma } from "@/core/catalogo/public";
+import { factorDeBruto } from "@/core/catalogo/public";
 import { redondearMoneda } from "@/core/moneda";
 import type { CostoMP, IngredienteRecetaReporte, InfoProductoReporte } from "./comun";
 import { precioParaObjetivo, resolverObjetivoFoodCost, superaFoodCostObjetivo, type ObjetivosDeMargen } from "./margen-objetivo";
@@ -59,7 +59,7 @@ function resolverCostoUnitario(
       completo = false;
       break;
     }
-    total += it.cantidad * factorDeMerma(it.mermaPorcentaje) * sub.costoUnitario;
+    total += it.cantidad * factorDeBruto(it.baseDeCantidad, it.mermaPorcentaje) * sub.costoUnitario;
   }
   enCurso.delete(productoId);
 
@@ -156,7 +156,7 @@ export function calcularCostosYMargenesDesde(
       for (const it of items) {
         const infoInsumo = productos.get(it.insumoProductoId);
         const c = resolverCostoUnitario(it.insumoProductoId, productos, recetaPorProducto, costos, cacheCostoIntermedios, new Set());
-        const cantidadConMerma = it.cantidad * factorDeMerma(it.mermaPorcentaje);
+        const cantidadConMerma = it.cantidad * factorDeBruto(it.baseDeCantidad, it.mermaPorcentaje);
 
         if (!c) {
           costoIncompleto = true;
@@ -308,7 +308,7 @@ export function resolverCostoRecetaCompleta(
     const c = resolverCostoUnitario(it.insumoProductoId, productos, recetaPorProducto, costosCompra, cache, new Set());
     if (!c) return null;
     if (soloComida && productos.get(it.insumoProductoId)?.esNoComestible) continue;
-    total += it.cantidad * factorDeMerma(it.mermaPorcentaje) * c.costoUnitario;
+    total += it.cantidad * factorDeBruto(it.baseDeCantidad, it.mermaPorcentaje) * c.costoUnitario;
   }
   return total;
 }
