@@ -1,5 +1,5 @@
 import "server-only";
-import { rendimientoEfectivo } from "@/core/catalogo/public";
+import { leerBaseDeCantidad, rendimientoEfectivo } from "@/core/catalogo/public";
 import { ALCANCE_CENTRAL } from "@/core/catalogo/public";
 import { cargarRecetasPropiasHabilitadas, cargarRecetasVigentes } from "@/server/lecturas/catalogo/recetas-vigentes";
 import { calcularCantidadTeoricaBruta, calcularDesviacionPorcentaje } from "@/core/reportes/public";
@@ -34,7 +34,9 @@ export async function compararRendimientosPorSucursal(
   for (const v of vigentePorProducto.values()) {
     for (const ing of v.ingredientes) {
       const central = { cantidad: Number(ing.cantidad), mermaPorcentaje: Number(ing.mermaPorcentaje) };
-      const centralBruto = calcularCantidadTeoricaBruta(central.cantidad, central.mermaPorcentaje);
+      // M3d: cada línea se pasa a bruto con la base de SU versión (diseño de merma §15); una marca ilegible CIERRA.
+      const baseDeCantidad = leerBaseDeCantidad(v.baseDeCantidad);
+      const centralBruto = calcularCantidadTeoricaBruta(central.cantidad, central.mermaPorcentaje, baseDeCantidad);
 
       const porSucursal = new Map<string, ValorPorSucursal>();
       let algunaCalibrada = false;
@@ -46,7 +48,7 @@ export async function compararRendimientosPorSucursal(
           recetaPropia ? "" : s.id
         );
         if (ef.calibrado) algunaCalibrada = true;
-        const bruto = calcularCantidadTeoricaBruta(ef.cantidad, ef.mermaPorcentaje);
+        const bruto = calcularCantidadTeoricaBruta(ef.cantidad, ef.mermaPorcentaje, baseDeCantidad);
         porSucursal.set(s.id, {
           cantidad: ef.cantidad,
           mermaPorcentaje: ef.mermaPorcentaje,
@@ -63,6 +65,7 @@ export async function compararRendimientosPorSucursal(
         productoId: v.productoId,
         productoNombre: v.producto.nombre,
         recetaIngredienteId: ing.id,
+        baseDeCantidad,
         insumoProductoId: ing.insumoProductoId,
         insumoNombre: ing.insumoProducto.nombre,
         unidadNombre: ing.unidad.nombre,

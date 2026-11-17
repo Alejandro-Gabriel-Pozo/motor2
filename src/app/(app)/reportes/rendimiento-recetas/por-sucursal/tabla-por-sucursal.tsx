@@ -1,7 +1,8 @@
 "use client";
 
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
-import { desvioEsNotable } from "@/core/reportes/public";
+import type { BaseDeCantidad } from "@/core/catalogo/public";
+import { desvioEsNotable, rotuloDeBase } from "@/core/reportes/public";
 import { textoDe } from "@/core/textos/texto-de";
 
 export interface ValorPorSucursalPlano {
@@ -17,6 +18,8 @@ export interface FilaComparacionPlana {
   productoId: string;
   productoNombre: string;
   recetaIngredienteId: string;
+  /** M3d: la base de la línea; el valor del tooltip está escrito en ella («Neto»/«Bruto»). */
+  baseDeCantidad: BaseDeCantidad;
   insumoNombre: string;
   unidadNombre: string;
   central: { cantidad: number; mermaPorcentaje: number; bruto: number };
@@ -24,13 +27,13 @@ export interface FilaComparacionPlana {
   porSucursal: Record<string, ValorPorSucursalPlano>;
 }
 
-function celdaValor(v: ValorPorSucursalPlano | undefined, unidadNombre: string) {
+function celdaValor(v: ValorPorSucursalPlano | undefined, unidadNombre: string, base: BaseDeCantidad) {
   if (!v) return <span className="text-tinta-tenue">—</span>;
   if (v.recetaPropia) return <span className="text-xs text-tinta-tenue">Receta propia de la sucursal</span>;
   return (
     <span
       className={desvioEsNotable(v.desviacionPorcentaje) ? "font-medium text-aviso-tinta" : ""}
-      title={`Neto: ${v.cantidad} ${unidadNombre} · Merma: ${v.mermaPorcentaje}%`}
+      title={`${rotuloDeBase(base)}: ${v.cantidad} ${unidadNombre} · Merma: ${v.mermaPorcentaje}%`}
     >
       {v.bruto} {unidadNombre}
       {v.calibrado && <span className="ml-1 text-xs font-normal text-tinta-tenue">(calibrado)</span>}
@@ -59,7 +62,7 @@ export function TablaPorSucursal({ filas, sucursales }: { filas: FilaComparacion
       alinear: "derecha",
       valor: (f) => f.central.bruto,
       render: (f) => (
-        <span title={`Neto: ${f.central.cantidad} ${f.unidadNombre} · Merma: ${f.central.mermaPorcentaje}%`}>
+        <span title={`${rotuloDeBase(f.baseDeCantidad)}: ${f.central.cantidad} ${f.unidadNombre} · Merma: ${f.central.mermaPorcentaje}%`}>
           {f.central.bruto} {f.unidadNombre}
         </span>
       ),
@@ -70,7 +73,7 @@ export function TablaPorSucursal({ filas, sucursales }: { filas: FilaComparacion
         etiqueta: s.nombre,
         alinear: "derecha",
         valor: (f) => f.porSucursal[s.id]?.bruto ?? null,
-        render: (f) => celdaValor(f.porSucursal[s.id], f.unidadNombre),
+        render: (f) => celdaValor(f.porSucursal[s.id], f.unidadNombre, f.baseDeCantidad),
       })
     ),
   ];

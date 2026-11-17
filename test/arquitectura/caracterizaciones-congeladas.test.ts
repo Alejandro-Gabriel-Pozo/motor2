@@ -724,6 +724,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Regla del dueño (2026-11-10, «si es dinero no puede quedar como deuda»: todo el dinero mostrado sale de `formatearMonto`; SOLO FORMATO, no cambia ningún valor, redondeo, fila ni auditoría): los avisos y alertas de texto del reporte de período («Cubre $125.700 de $234.700», «RECONSTRUIDO: $21.600…», «No se pudo costear $109.000», «+$3.405,01», «costo +$392») pasan a «$ 125.700,00», «$ 21.600,00», «$ 109.000,00», «+$ 3.405,01», «+$ 392,00» (espacio que no se parte). Cambian 10 líneas de mensajes; ninguna cifra de datos. Además una alerta se parte en 4 líneas por el ancho del serializador del golden (mismo contenido, verificado contra el golden anterior).",
       },
+      {
+        blob: "d9eebe702b33d451d7eb81e89dafca39bcf40243",
+        // El commit PADRE de este es 1f634b5c (main con M3c, #396), el último antes del cambio; el golden se regenera en el commit siguiente (M3d).
+        commit: "1f634b5c",
+        motivo:
+          "M3d (reporte de rendimiento según la base de la línea, docs/diseno-merma-m3d-rendimiento-y-calibracion-2026-11-17.md; regenerado con REGENERAR_CARACTERIZACION_DE_REPORTES=1; CAMBIA SOLO una línea nueva por fila de la entrada 29 (`rendimiento-por-sucursal.compararRendimientosPorSucursal`): `baseDeCantidad: \"NETA\"`, la base de la versión de cada línea (todas NETA hoy: ningún camino escribe BRUTA hasta M3b). Ningún número, orden ni conteo de consultas cambia: 15 líneas agregadas, 0 quitadas.",
+      },
     ],
   },
   "test/caracterizacion-tramo-a/lecturas-tramo-a.golden.json": {

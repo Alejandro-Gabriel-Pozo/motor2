@@ -1,3 +1,4 @@
+import type { BaseDeCantidad } from "@/core/catalogo/public";
 import { type RotuloLinea } from "./rendimiento-recetas-vistas";
 import { type MetodoRendimiento } from "./rendimiento-conciliado";
 
@@ -5,6 +6,8 @@ export interface FilaRendimientoSimple {
   productoVentaId: string;
   productoVentaNombre: string;
   recetaIngredienteId: string;
+  /** M3d: la base (NETA/BRUTA) de la versión de receta a la que pertenece la línea; en ella están `cantidadActual` y `cantidadEstimada`. */
+  baseDeCantidad: BaseDeCantidad;
   /** El id de la MP anclada en la receta — para el link "usar este valor" al editor (?editar=). */
   insumoProductoId: string;
   insumoONombre: string;
@@ -17,7 +20,7 @@ export interface FilaRendimientoSimple {
   calibradoLocal: boolean;
   /** Merma % EFECTIVA de esta sucursal — la que se CONGELA junto con `cantidadEstimada` al calibrar (D4, decisión del dueño). */
   mermaActual: number;
-  /** NETO (misma base que `cantidadActual` — RecetaIngrediente.cantidad es neta) — ver docstring de `calcularCantidadEstimadaNeta`, es lo que se escribe si se usa este valor. */
+  /** En la BASE de la línea (misma que `cantidadActual`, M3d): NETO en una receta neta (ver `calcularCantidadEstimadaNeta`), BRUTO en una receta bruta (el bruto observado tal cual). Es lo que se escribe si se usa este valor. */
   cantidadEstimada: number | null;
   desviacionPorcentaje: number | null;
   totalComprado: number;
@@ -85,6 +88,8 @@ export interface FilaRendimientoCompartido {
   productoVentaId: string;
   productoVentaNombre: string;
   recetaIngredienteId: string;
+  /** M3d: la base (NETA/BRUTA) de la versión de receta de la línea; en ella están `cantidadActual` y `cantidadEstimada`. */
+  baseDeCantidad: BaseDeCantidad;
   insumoProductoId: string;
   unidadRecetaNombre: string;
   /** EFECTIVO de la sucursal (rendimientoEfectivo, D2) — el central, salvo que esta sucursal lo haya calibrado. */
@@ -136,6 +141,8 @@ export interface UsoDeInsumo {
   pvProductoId: string;
   pvNombre: string;
   recetaIngredienteId: string;
+  /** M3d: la base (NETA/BRUTA) de la versión de receta de la línea; `cantidad` y `cantidadCentral` están escritas en ella. */
+  baseDeCantidad: BaseDeCantidad;
   insumoProductoId: string;
   /** EFECTIVO (rendimientoEfectivo, D2) — el central, salvo que esta sucursal lo haya calibrado. */
   cantidad: number;

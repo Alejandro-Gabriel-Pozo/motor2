@@ -1,6 +1,7 @@
 import "server-only";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
-import { describirCambioVersionReceta, describirCopiaDeRecetaPropia, describirDescarteArrastre, describirRecetaPropiaGuardada } from "@/core/catalogo/public";
+import { describirCalibracionDescartadaPorBase, describirCambioVersionReceta, describirCopiaDeRecetaPropia, describirDescarteArrastre, describirMotivoDeCambioDeBase, describirRecetaPropiaGuardada, leerBaseDeCantidad, unirEnCastellano } from "@/core/catalogo/public";
+import { textoDe } from "@/core/textos/texto-de";
 import { juzgarCantidadesDeIngredientes, validarCabecera, validarIngredientes, validarPasos, validarUnidadDeIngredientes } from "@/core/catalogo/public";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import type { BaseDeCantidad } from "@/core/catalogo/public";
@@ -43,8 +44,8 @@ import {
  *     b. dentro de esa misma transacción (desde D3, docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, paso 6: el arrastre
  *        lee/escribe `RendimientoLocalIngrediente`, que una calibración concurrente también puede estar tocando):
  *        - crea la versión con ingredientes, pasos, cabecera y la tabla puente paso↔ingrediente (persistencia);
- *        - D3, arrastre de calibraciones locales por `insumoProductoId`: se COPIAN si el ingrediente sigue y con la misma unidad; si cambió
- *          la unidad o salió de la receta se DESCARTAN (nunca se arrastran "resucitadas" con otra unidad) y cada descarte se audita
+ *        - D3, arrastre de calibraciones locales por `insumoProductoId`: se COPIAN si el ingrediente sigue, con la misma unidad y la versión nueva en la MISMA base (M3d); si cambió
+ *          la unidad, salió de la receta o la receta pasó de neta a bruta se DESCARTAN (nunca se arrastran "resucitadas" con otra unidad) y cada descarte se audita
  *          (cantidad y merma, en la sucursal de la calibración). Un cambio de cantidad/merma CENTRAL no descarta nada;
  *        - auditoría de la versión nueva (D6(b), paso 2): `RecetaVersion`/`version`, `sucursalId` siempre `null` (Catálogo Central);
  *     (si la serie ya va por una versión distinta de `comando.versionEsperada`, se corta acá con `VERSION_DESACTUALIZADA` y no se escribe nada);
@@ -133,10 +134,15 @@ export async function guardarVersionDeRecetaCasoDeUso(
   let version = 0;
   let recetaVersionId = "";
   let descartes: string[] = [];
+  // M3d: las calibraciones descartadas porque la receta pasó de neta a bruta se avisan con el texto confirmado por el dueño (2026-11-17); el resto (unidad, ingrediente quitado) con el aviso de siempre.
+  let descartesPorBase: string[] = [];
+  let descartesComunes: string[] = [];
   const rechazo: { resultado: ResultadoGuardarVersionDeReceta | null } = { resultado: null };
   await conReintento(
     async () => {
       descartes = [];
+      descartesPorBase = [];
+      descartesComunes = [];
       rechazo.resultado = null;
       await conTransaccionSerializable(base.transaccion, async (tx) => {
         // La versión anterior COMPLETA (con sus overrides locales) — D3: se arrastra a la versión nueva, salvo que el ingrediente haya cambiado de unidad o haya salido de la receta.
@@ -208,6 +214,10 @@ export async function guardarVersionDeRecetaCasoDeUso(
         // (nunca se arrastra "resucitada" con otra unidad) y se audita. Un cambio de cantidad/merma CENTRAL no
         // descarta nada — la calibración es de la sucursal, no del valor central.
         if (ultima && sucursalId === null) {
+          // M3d: la calibración hereda la base de su línea (el valor calibrado está escrito en ella). Si la versión nueva está en OTRA base que la vieja (neta → bruta), la calibración se DESCARTA
+          // con registro —no se convierte (dueño, 2026-11-17)—. Una marca ilegible en cualquiera de las dos CIERRA (lanza): nunca se asume una base.
+          const baseVieja = leerBaseDeCantidad(ultima.baseDeCantidad);
+          const baseNueva = leerBaseDeCantidad(creada.baseDeCantidad);
           const sucursalIds = new Set<string>();
           for (const viejoIng of ultima.ingredientes) for (const r of viejoIng.rendimientosLocales) sucursalIds.add(r.sucursalId);
           const sucursales = await cargarNombresDeSucursales(tx, Array.from(sucursalIds));
@@ -217,12 +227,16 @@ export async function guardarVersionDeRecetaCasoDeUso(
             if (!viejoIng.rendimientosLocales.length) continue; // nada calibrado en ninguna sucursal: nada que arrastrar ni descartar.
             const nuevoIng = creada.ingredientes.find((i) => i.insumoProductoId === viejoIng.insumoProductoId);
 
-            if (nuevoIng && nuevoIng.unidadId === viejoIng.unidadId) {
+            if (nuevoIng && nuevoIng.unidadId === viejoIng.unidadId && baseVieja === baseNueva) {
               await copiarCalibracionesLocales(tx, nuevoIng.id, viejoIng.rendimientosLocales);
               continue;
             }
 
-            const motivo = !nuevoIng ? "se quitó de la receta" : `cambió la unidad de ${viejoIng.unidad.nombre} a ${nuevoIng.unidad.nombre}`;
+            const motivo = !nuevoIng
+              ? "se quitó de la receta"
+              : nuevoIng.unidadId !== viejoIng.unidadId
+                ? `cambió la unidad de ${viejoIng.unidad.nombre} a ${nuevoIng.unidad.nombre}`
+                : describirMotivoDeCambioDeBase({ baseVieja, baseNueva });
             for (const r of viejoIng.rendimientosLocales) {
               const sucNombre = nombreSucursal.get(r.sucursalId) ?? r.sucursalId;
               const entidadId = `${r.sucursalId}:${productoId}:${viejoIng.insumoProductoId}`;
@@ -238,6 +252,9 @@ export async function guardarVersionDeRecetaCasoDeUso(
                 actorId: actor.usuarioId, sucursalId: r.sucursalId,
               });
               descartes.push(`«${sucNombre}» para "${viejoIng.insumoProducto.nombre}" (${motivo})`);
+              if (nuevoIng && nuevoIng.unidadId === viejoIng.unidadId && baseVieja === "NETA" && baseNueva === "BRUTA") {
+                descartesPorBase.push(describirCalibracionDescartadaPorBase({ sucursalNombre: sucNombre, insumoNombre: viejoIng.insumoProducto.nombre, cantidad: r.cantidad !== null ? Number(r.cantidad) : null, mermaPorcentaje: r.mermaPorcentaje !== null ? Number(r.mermaPorcentaje) : null, unidadNombre: viejoIng.unidad.nombre }));
+              } else descartesComunes.push(descartes[descartes.length - 1]);
             }
           }
         }
@@ -283,8 +300,15 @@ export async function guardarVersionDeRecetaCasoDeUso(
 
   if (rechazo.resultado) return rechazo.resultado;
 
-  const avisoDescartes = descartes.length ? ` Se descartó la calibración local de ${descartes.join(", ")}.` : "";
-  return exito(`Receta de "${producto.nombre}" guardada como versión ${version}.${avisoDescartes}`, {
+  // Lo que ya se avisa de siempre: las descartadas por unidad, por salir el ingrediente o por un cambio de base en otro sentido.
+  const avisoDescartes = descartesComunes.length ? ` Se descartó la calibración local de ${descartesComunes.join(", ")}.` : "";
+  // M3d: neta → bruta con calibraciones descartadas: el mensaje confirmado por el dueño (2026-11-17, «ok»; singular y plural).
+  const mensajePorBase = descartesPorBase.length
+    ? descartesPorBase.length === 1
+      ? textoDe("aviso.receta_guardada_calibracion_descartada_por_base", { version: String(version), producto: producto.nombre, detalle: descartesPorBase[0] })
+      : textoDe("aviso.receta_guardada_calibraciones_descartadas_por_base", { version: String(version), producto: producto.nombre, cantidad: String(descartesPorBase.length), detalle: unirEnCastellano(descartesPorBase) })
+    : null;
+  return exito(mensajePorBase !== null ? `${mensajePorBase}${avisoDescartes}` : `Receta de "${producto.nombre}" guardada como versión ${version}.${avisoDescartes}`, {
     recetaVersionId,
     version,
     calibracionesDescartadas: descartes,

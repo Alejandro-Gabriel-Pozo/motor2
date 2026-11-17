@@ -3874,6 +3874,7 @@
   resultado: [
     {
       algunaCalibrada: false,
+      baseDeCantidad: "NETA",
       central: {bruto: 0.15, cantidad: 0.15, mermaPorcentaje: 0},
       insumoNombre: "Vino tinto",
       insumoProductoId: "#33",
@@ -3888,6 +3889,7 @@
     },
     {
       algunaCalibrada: false,
+      baseDeCantidad: "NETA",
       central: {bruto: 1, cantidad: 1, mermaPorcentaje: 0},
       insumoNombre: "Caja pizza",
       insumoProductoId: "#41",
@@ -3902,6 +3904,7 @@
     },
     {
       algunaCalibrada: false,
+      baseDeCantidad: "NETA",
       central: {bruto: 0.21, cantidad: 0.2, mermaPorcentaje: 5},
       insumoNombre: "Harina 000",
       insumoProductoId: "#40",
@@ -3916,6 +3919,7 @@
     },
     {
       algunaCalibrada: true,
+      baseDeCantidad: "NETA",
       central: {bruto: 0.25, cantidad: 0.25, mermaPorcentaje: 0},
       insumoNombre: "Muzzarella A",
       insumoProductoId: "#39",
@@ -3930,6 +3934,7 @@
     },
     {
       algunaCalibrada: false,
+      baseDeCantidad: "NETA",
       central: {bruto: 0.3, cantidad: 0.3, mermaPorcentaje: 0},
       insumoNombre: "Muzzarella B",
       insumoProductoId: "#38",
@@ -3944,6 +3949,7 @@
     },
     {
       algunaCalibrada: false,
+      baseDeCantidad: "NETA",
       central: {bruto: 0.05, cantidad: 0.05, mermaPorcentaje: 0},
       insumoNombre: "Salsa casera",
       insumoProductoId: "#44",
@@ -3958,6 +3964,7 @@
     },
     {
       algunaCalibrada: false,
+      baseDeCantidad: "NETA",
       central: {bruto: 0.1, cantidad: 0.1, mermaPorcentaje: 0},
       insumoNombre: "Tomate",
       insumoProductoId: "#42",
@@ -3976,6 +3983,7 @@
   resultado: [
     {
       algunaCalibrada: true,
+      baseDeCantidad: "NETA",
       central: {bruto: 0.25, cantidad: 0.25, mermaPorcentaje: 0},
       insumoNombre: "Muzzarella A",
       insumoProductoId: "#39",
@@ -3996,6 +4004,7 @@
       anclaDesde: null,
       anclaHasta: null,
       bandaRuidoPct: 222.2,
+      baseDeCantidad: "NETA",
       calibradoLocal: false,
       cantidadActual: 1,
       cantidadActualCentral: 1,
@@ -4027,6 +4036,7 @@
       anclaDesde: null,
       anclaHasta: null,
       bandaRuidoPct: null,
+      baseDeCantidad: "NETA",
       calibradoLocal: false,
       cantidadActual: 0.1,
       cantidadActualCentral: 0.1,
@@ -4058,6 +4068,7 @@
       anclaDesde: Date(2026-02-18T03:00:00.000Z),
       anclaHasta: Date(2026-03-10T03:00:00.000Z),
       bandaRuidoPct: null,
+      baseDeCantidad: "NETA",
       calibradoLocal: false,
       cantidadActual: 0.2,
       cantidadActualCentral: 0.2,
@@ -4089,6 +4100,7 @@
       anclaDesde: null,
       anclaHasta: null,
       bandaRuidoPct: 952.4,
+      baseDeCantidad: "NETA",
       calibradoLocal: false,
       cantidadActual: 0.15,
       cantidadActualCentral: 0.15,
@@ -4120,6 +4132,7 @@
       anclaDesde: Date(2026-03-06T03:00:00.000Z),
       anclaHasta: Date(2026-03-12T03:00:00.000Z),
       bandaRuidoPct: null,
+      baseDeCantidad: "NETA",
       calibradoLocal: false,
       cantidadActual: 0.05,
       cantidadActualCentral: 0.05,
@@ -4153,6 +4166,7 @@
   resultado: [
     {
       bandaRuidoPct: 30,
+      baseDeCantidad: "NETA",
       calibradoLocal: false,
       cantidadActual: 0.25,
       cantidadActualCentral: 0.25,
@@ -4183,6 +4197,7 @@
     },
     {
       bandaRuidoPct: 32.1,
+      baseDeCantidad: "NETA",
       calibradoLocal: false,
       cantidadActual: 0.3,
       cantidadActualCentral: 0.3,
