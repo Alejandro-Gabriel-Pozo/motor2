@@ -53,6 +53,49 @@ export interface EntradaDeCerrarSesion {
   observacion: string | null;
 }
 
+/** C2, cierre del día: lo que manda la pantalla (la sucursal es la activa del contexto, nunca viaja). Los importes, como texto decimal en pesos; el de un ajuste admite signo «-». */
+export interface EntradaDeJornada {
+  /** «AAAA-MM-DD». */
+  fechaDeNegocio: string;
+}
+
+export interface EntradaDeCorregirMedioDeCobro {
+  claveIdempotencia: string;
+  cobroId: string;
+  medioDestinoId: string;
+  motivo: string;
+}
+
+export interface EntradaDeDeclararTotal {
+  claveIdempotencia: string;
+  fechaDeNegocio: string;
+  medioDePagoId: string;
+  /** Pesos como texto decimal; admite «0». */
+  importe: string;
+}
+
+export interface EntradaDeDarConformeGeneral {
+  claveIdempotencia: string;
+  fechaDeNegocio: string;
+}
+
+export interface EntradaDeCerrarJornada {
+  fechaDeNegocio: string;
+  huellaVista: string;
+  reconocimientos: readonly { clave: string; texto: string | null }[];
+  observacion: string | null;
+}
+
+export interface EntradaDeRegistrarAjuste {
+  claveIdempotencia: string;
+  sesionId: string;
+  medioDePagoId: string;
+  /** Pesos como texto decimal con signo opcional «-» (distinto de cero): suma o resta al esperado del medio. */
+  importe: string;
+  motivo: string;
+  corrigeJornada: string;
+}
+
 export interface ComandoAbrirSesion {
   /** UUID que la pantalla genera al abrir el formulario y repite en cada reintento. */
   claveIdempotencia: string;

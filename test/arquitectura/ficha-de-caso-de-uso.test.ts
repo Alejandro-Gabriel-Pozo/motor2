@@ -263,6 +263,8 @@ function permisosObservados(fuenteDelCaso: string, envolventes: string[]): strin
  * y una entrada que ningún caso de uso real usa también (no se acumulan permisos fantasma). B3 (Hito 3) suma las dos aceptaciones de invitación.
  */
 export const CASOS_SIN_PERMISO: Record<string, string> = {
+  "server/actions/caja/casos-de-uso/controles-de-la-jornada.ts":
+    "Lectura de los controles de la jornada (caja, cierre del día, etapa A, 2026-11-17): el endpoint `leerControlesDeJornada` (`actions/caja/lecturas-del-cierre.ts`) la protege con `requerirVer(\"caja_jornada_ver\")` como PRIMERA línea (el envoltorio de las lecturas, no `conPermiso*`: `caja_jornada_ver` es una clave de solo ver y `conPermiso` exige la de editar), y la usan además `iniciarAuditoria` y `cerrarJornada`, que sí van dentro de `conPermiso`. La ficha no distingue `requerirVer`, así que la lectura figura como SIN_PERMISO; el permiso exacto de la lectura lo prueba `test/caja/cierre-del-dia-acciones.test.ts` (sin la clave la lectura lanza y no devuelve nada).",
   "server/actions/auth/casos-de-uso/aceptar-invitacion-de-gerente.ts":
     "Aceptar la invitación del primer gerente (E5, ADR-020; B3-5): quien acepta todavía no tiene empresa ni membresía, así que no hay permiso que pedir. La autoridad es el token del enlace (cookie httpOnly) leído por su hash más el email de la cuenta de Google de la sesión, y los valida el propio caso de uso contra la invitación PENDIENTE (huella-de-aceptacion).",
   "server/actions/auth/casos-de-uso/aceptar-invitacion-de-usuario.ts":

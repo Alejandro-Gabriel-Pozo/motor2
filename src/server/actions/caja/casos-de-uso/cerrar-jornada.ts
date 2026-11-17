@@ -34,7 +34,7 @@ function aVisto(c: ControlDelDia, reconocido: boolean, texto: string | null): Co
  * @idempotency Por estado y huella: repetir el mismo pedido sobre la jornada ya cerrada devuelve `yaEstabaCerrada`; otro contenido recibe `JORNADA_CERRADA`; el `FOR UPDATE` serializa dos cierres a la vez.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento, también ante el choque de índice único).
  * @sideEffects registrarCambioAuditado (estado de la jornada, con la lista de controles con hallazgos y cuáles se reconocieron; sin textos ni datos personales).
- * @ficha permiso=jornada_operar transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
+ * @ficha permiso=caja_jornada_cerrar transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function cerrarJornadaCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "empresaId" | "empresaZonaHoraria" | "transaccion" | "ahora">,

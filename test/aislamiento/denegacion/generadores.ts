@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { intento, variantes, type ContextoDeArgumentos, type Generadores, type Kit, type Valor } from "./argumentos";
-import { ZONA_ARGENTINA, diaDeCalendario } from "../../../src/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA, diaDeCalendario, fechaDeColumnaDate, sumarDias } from "../../../src/core/tiempo/zona-horaria";
 import { prismaAdmin } from "../../setup/test-db";
 import type { Mundo } from "./mundo";
 import { nroFacturaDePrueba } from "../../setup/comprobante-de-prueba";
@@ -27,6 +27,12 @@ const hoy = () => new Date();
 const contextoPropio = (c: ContextoDeArgumentos) => Object.assign(Object.create(null) as Record<string, unknown>, { usuarioId: c.mundo.u1.id, empresaId: c.propio.empresaId, sucursalId: c.propio.sucursalId, db: c.db });
 const ingrediente = (k: Kit, insumoProductoId: string = k.productoId) => ({ insumoProductoId, cantidad: 1, unidadId: k.unidadId });
 const conVariantes = (...v: Array<unknown[] | false>) => variantes(...lista(...v));
+/** Caja, cierre del día (etapa A): el medio de tarjeta que arma el control positivo (corregir y declarar lo necesitan; el mundo solo trae el efectivo) y la huella con la que el control cierra una jornada ya cerrada. */
+/** Una fecha `n` días antes (la jornada cerrada que arma el mundo está 3 antes de la de la sesión abierta; el control de `cerrarJornadaDeCaja` usa otra, 5 antes, para no dejarle su estado a los demás). El planteo estático de la matriz llena el kit con marcadores de texto (no fechas): ahí se devuelve tal cual (solo se ejerce con el mundo real). */
+const diasAntes = (fecha: string, n: number): string => (/^\d{4}-\d{2}-\d{2}$/.test(fecha) ? sumarDias(fecha, -n) : fecha);
+const tresDiasAntes = (fecha: string): string => diasAntes(fecha, 3);
+const MEDIO_DE_TARJETA_DEL_CONTROL = "00000000-0000-4000-8000-00000000ca10";
+const HUELLA_DEL_CIERRE_DEL_CONTROL = "a".repeat(64);
 /** Los datos de un producto con TODAS sus referencias propias (la base de las variantes que cambian una sola por una ajena). */
 /** Los datos de una versión de opción de venta (GO-2a): un monto fijo, sin factor, con los consumos que se pidan. */
 const versionDeOpcion = (consumos: unknown[] = [], monto = 0) => ({ diferencia: { tipo: "MONTO", monto }, factorEscala: null, consumos });
@@ -444,6 +450,21 @@ const completos: Record<string, Valor> = {
   "accion|actions/caja/caja.ts|cobrarCuenta": (k, c) =>
     conVariantes(intento(c, ["cuentaCerradaId"], [{ claveIdempotencia: "00000000-0000-4000-8000-00000000ca04", cuentaId: k.cuentaCerradaId, totalVisto: "1500", renglones: [{ medioDePagoId: k.medioEfectivoId, importe: "1500" }] }])),
 
+  // --- caja, cierre del día (etapa A, 2026-11-17) ---
+  // Las acciones que solo llevan la fecha de negocio no llevan ids: se ejercen sin sesión, sin empresa y como control positivo (la fecha es la de la jornada propia de S1, la que nace con su caja abierta). El control positivo de cada una deja armado
+  // su estado previo en `PREPARACION_DEL_CONTROL`. Las que llevan un id de la sucursal (el cobro, la sesión de caja) lo ejercen también ajeno: «No se encontró…» (pertenencia).
+  "accion|actions/caja/cierre-del-dia.ts|iniciarAuditoriaDeJornada": (_k, c) => [{ fechaDeNegocio: c.propio.fechaDeNegocioDeCaja }],
+  "accion|actions/caja/cierre-del-dia.ts|cancelarAuditoriaDeJornada": (_k, c) => [{ fechaDeNegocio: c.propio.fechaDeNegocioDeCaja }],
+  "accion|actions/caja/cierre-del-dia.ts|corregirMedioDeCobroDeCaja": (k, c) =>
+    conVariantes(intento(c, ["cobroId"], [{ claveIdempotencia: "00000000-0000-4000-8000-00000000ca11", cobroId: k.cobroId, medioDestinoId: MEDIO_DE_TARJETA_DEL_CONTROL, motivo: "Se cargó en el medio equivocado" }])),
+  "accion|actions/caja/cierre-del-dia.ts|declararTotalDeMedio": (_k, c) => [{ claveIdempotencia: "00000000-0000-4000-8000-00000000ca12", fechaDeNegocio: c.propio.fechaDeNegocioDeCaja, medioDePagoId: MEDIO_DE_TARJETA_DEL_CONTROL, importe: "100" }],
+  "accion|actions/caja/cierre-del-dia.ts|darConformeGeneralDeJornada": (_k, c) => [{ claveIdempotencia: "00000000-0000-4000-8000-00000000ca13", fechaDeNegocio: c.propio.fechaDeNegocioDeCaja }],
+  "accion|actions/caja/cierre-del-dia.ts|cerrarJornadaDeCaja": (_k, c) => [{ fechaDeNegocio: diasAntes(c.propio.fechaDeNegocioDeCaja, 5), huellaVista: HUELLA_DEL_CIERRE_DEL_CONTROL, reconocimientos: [], observacion: null }],
+  "accion|actions/caja/cierre-del-dia.ts|registrarAjusteDeCaja": (k, c) =>
+    conVariantes(
+      intento(c, ["sesionDeCajaId"], [{ claveIdempotencia: "00000000-0000-4000-8000-00000000ca14", sesionId: k.sesionDeCajaId, medioDePagoId: k.medioEfectivoId, importe: "-5", motivo: "Faltó un vale", corrigeJornada: tresDiasAntes(c.propio.fechaDeNegocioDeCaja) }]),
+    ),
+
   // Un ayudante PURO de la lectura de caja (un `Decimal` de una columna a centavos): no lee la base ni recibe ids, así que se ejerce con un importe cualquiera (no escribe nada y no devuelve filas de nadie).
   "lectura|lecturas/caja/centavos-de-decimal.ts|centavosDeDecimal": () => [new Prisma.Decimal("12.34")],
 
@@ -499,6 +520,14 @@ const parametros: Record<string, Record<string, Valor>> = {
   "accion|actions/carta/registro-publico.ts|agregarSucursalAlPortal": { sucursalId: (k, c) => (c.escenario === "controlMutacion" ? c.mundo.s4Id : k.sucursalId) },
   // Caja (C1): la sesión cuyas cobranzas se leen; la lectura de `server/lecturas` recibe además la sucursal y la empresa (del contexto de quien la llama; en la matriz, la del escenario).
   "accion|actions/caja/lecturas-de-caja.ts|leerCobranzasDeSesion": { sesionId: (k) => k.sesionDeCajaId },
+  // Las lecturas del cierre del día reciben la fecha de negocio de la jornada de la sucursal; `leerConciliacionDeJornada` la de la jornada CERRADA que arma el mundo (tres días antes). Sin ids: la sucursal es la del contexto.
+  "accion|actions/caja/lecturas-del-cierre.ts|leerEstadoDeJornada": { fechaDeNegocio: (k) => k.fechaDeNegocioDeCaja },
+  "accion|actions/caja/lecturas-del-cierre.ts|leerControlesDeJornada": { fechaDeNegocio: (k) => k.fechaDeNegocioDeCaja },
+  "accion|actions/caja/lecturas-del-cierre.ts|leerConciliacionDeJornada": { fechaDeNegocio: (k) => tresDiasAntes(k.fechaDeNegocioDeCaja) },
+  // Y las lecturas de `server/lecturas/caja` que usan: la sucursal y la empresa son las del contexto de quien las llama (en la matriz, las del escenario) y la fecha, la misma.
+  "lectura|lecturas/caja/jornadas-de-sucursal.ts|consultarEstadoDeJornada": { fechaDeNegocio: (k) => k.fechaDeNegocioDeCaja },
+  "lectura|lecturas/caja/jornadas-de-sucursal.ts|listarJornadas": { args: (k) => ({ sucursalId: k.sucursalId }) },
+  "lectura|lecturas/caja/conciliacion-de-jornada.ts|consultarConciliacionDeJornada": { fechaDeNegocio: (k) => tresDiasAntes(k.fechaDeNegocioDeCaja) },
   "lectura|lecturas/caja/cobranzas-de-sesion.ts|listarCobranzasDeSesion": { args: (k) => ({ sucursalId: k.sucursalId, sesionId: k.sesionDeCajaId }) },
   "lectura|lecturas/caja/cuentas-sin-cobrar.ts|listarCuentasSinCobrar": { args: (k) => ({ empresaId: k.empresaId, sucursalId: k.sucursalId, ahora: new Date() }) },
   "accion|actions/pos/cuenta-anulacion.ts|anularItemEnviado": { cuentaItemId: (k) => k.cuentaItemEnviadoId, restanteVisto: () => 2 },
@@ -639,9 +668,49 @@ const CARTA_PUBLICA = "carta pública: anónima POR DISEÑO (lo que la empresa p
 const dejarLaSesionEnCierre = async (mundo: Mundo): Promise<void> => {
   await prismaAdmin.sesionCaja.update({ where: { id: mundo.s1.sesionDeCajaId }, data: { estado: "EN_CIERRE", cierreIniciadoEn: new Date(), cierreIniciadoPorId: mundo.u1.id } });
 };
+/**
+ * Caja, cierre del día (etapa A): las acciones del cierre se ejercen sobre la jornada de S1 (la que nace con su caja abierta; la sesión ABIERTA y las cuentas abiertas del mundo impedirían cerrar el día de verdad). Cada control deja la jornada en el
+ * estado que su acción necesita para terminar en `ok: true` SIN pasar por los impedimentos: iniciar el cierre con la jornada ya en cierre (repetirlo es éxito, `yaEstabaEnAuditoria`), cancelar y corregir/declarar/dar conforme con la jornada EN_AUDITORIA, cerrar con una
+ * jornada (otra fecha, 5 días antes) ya cerrada con el mismo pedido (`yaEstabaCerrada`) y el ajuste con una jornada cerrada ANTERIOR a la sesión. Las transiciones las valida igual el disparador de la base (se fuerzan con el dueño de la base, como `forzarJornada` de `test/caja/jornada-casos-de-uso.test.ts`).
+ */
+const llevarLaJornadaA = async (mundo: Mundo, fecha: string, estado: "EN_AUDITORIA" | "CERRADA"): Promise<void> => {
+  let j = await prismaAdmin.jornadaDeSucursal.findFirst({ where: { sucursalId: mundo.s1.sucursalId, fechaDeNegocio: fechaDeColumnaDate(fecha) } });
+  if (j === null) j = await prismaAdmin.jornadaDeSucursal.create({ data: { id: randomUUID(), empresaId: mundo.e1.empresaId, sucursalId: mundo.s1.sucursalId, fechaDeNegocio: fechaDeColumnaDate(fecha) } });
+  // Idempotente: un control que no escribe nada (repetir el cierre, por ejemplo) no repone el mundo, así que el estado puede venir ya armado del control anterior; una jornada cerrada no vuelve atrás (la base la congela).
+  let actual = j.estado;
+  if (actual === "ABIERTA") {
+    await prismaAdmin.jornadaDeSucursal.update({ where: { id: j.id }, data: { estado: "EN_AUDITORIA", auditoriaIniciadaEn: new Date(), auditoriaIniciadaPorId: mundo.u1.id } });
+    actual = "EN_AUDITORIA";
+  }
+  if (estado === "CERRADA" && actual !== "CERRADA") await prismaAdmin.jornadaDeSucursal.update({ where: { id: j.id }, data: { estado: "CERRADA", cerradaEn: new Date(), cerradaPorId: mundo.u1.id, huellaDeCierre: HUELLA_DEL_CIERRE_DEL_CONTROL } });
+};
+const crearElMedioDeTarjeta = async (mundo: Mundo): Promise<void> => {
+  if ((await prismaAdmin.medioDePago.findUnique({ where: { id: MEDIO_DE_TARJETA_DEL_CONTROL } })) === null) await prismaAdmin.medioDePago.create({ data: { id: MEDIO_DE_TARJETA_DEL_CONTROL, empresaId: mundo.e1.empresaId, tipo: "TARJETA_DEBITO" } });
+};
+const dejarLaJornadaEnAuditoria = (mundo: Mundo) => llevarLaJornadaA(mundo, mundo.s1.fechaDeNegocioDeCaja, "EN_AUDITORIA");
+const dejarLaJornadaEnAuditoriaConElMedio = async (mundo: Mundo): Promise<void> => {
+  await dejarLaJornadaEnAuditoria(mundo);
+  await crearElMedioDeTarjeta(mundo);
+};
+const dejarLaJornadaCerrada = (mundo: Mundo) => llevarLaJornadaA(mundo, diasAntes(mundo.s1.fechaDeNegocioDeCaja, 5), "CERRADA");
+/** El ajuste se registra en la sesión ABIERTA de hoy: con la jornada de hoy ya en cierre (la deja así el control de `iniciarAuditoriaDeJornada`, que no escribe y por eso no repone el mundo) la base no deja entrar plata; se la vuelve a abrir (EN_AUDITORIA → ABIERTA es una transición válida). */
+const dejarUnaJornadaAnteriorCerrada = async (mundo: Mundo): Promise<void> => {
+  await prismaAdmin.jornadaDeSucursal.updateMany({
+    where: { sucursalId: mundo.s1.sucursalId, fechaDeNegocio: fechaDeColumnaDate(mundo.s1.fechaDeNegocioDeCaja), estado: "EN_AUDITORIA" },
+    data: { estado: "ABIERTA", auditoriaIniciadaEn: null, auditoriaIniciadaPorId: null },
+  });
+  await llevarLaJornadaA(mundo, sumarDias(mundo.s1.fechaDeNegocioDeCaja, -3), "CERRADA");
+};
 export const PREPARACION_DEL_CONTROL: Readonly<Record<string, (mundo: Mundo) => Promise<void>>> = {
   "accion|actions/caja/caja.ts|cancelarCierreDeSesionDeCaja": dejarLaSesionEnCierre,
   "accion|actions/caja/caja.ts|cerrarSesionDeCaja": dejarLaSesionEnCierre,
+  "accion|actions/caja/cierre-del-dia.ts|iniciarAuditoriaDeJornada": dejarLaJornadaEnAuditoria,
+  "accion|actions/caja/cierre-del-dia.ts|cancelarAuditoriaDeJornada": dejarLaJornadaEnAuditoria,
+  "accion|actions/caja/cierre-del-dia.ts|corregirMedioDeCobroDeCaja": dejarLaJornadaEnAuditoriaConElMedio,
+  "accion|actions/caja/cierre-del-dia.ts|declararTotalDeMedio": dejarLaJornadaEnAuditoriaConElMedio,
+  "accion|actions/caja/cierre-del-dia.ts|darConformeGeneralDeJornada": dejarLaJornadaEnAuditoria,
+  "accion|actions/caja/cierre-del-dia.ts|cerrarJornadaDeCaja": dejarLaJornadaCerrada,
+  "accion|actions/caja/cierre-del-dia.ts|registrarAjusteDeCaja": dejarUnaJornadaAnteriorCerrada,
 };
 
 export const SIN_GENERADOR: Readonly<Record<string, string>> = {

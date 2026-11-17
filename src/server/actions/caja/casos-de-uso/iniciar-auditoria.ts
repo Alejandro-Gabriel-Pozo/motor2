@@ -25,7 +25,7 @@ import { bloquearJornadaParaCambiar, iniciarAuditoriaEnBase } from "@/server/per
  * @idempotency Por estado: repetirlo con la jornada ya en cierre devuelve `yaEstabaEnAuditoria` sin escribir; el `FOR UPDATE` serializa dos pedidos a la vez.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento, también ante el choque de índice único).
  * @sideEffects registrarCambioAuditado (estado de la jornada).
- * @ficha permiso=jornada_operar transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
+ * @ficha permiso=caja_jornada_iniciar_auditoria transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function iniciarAuditoriaCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "empresaId" | "empresaZonaHoraria" | "transaccion" | "ahora">,

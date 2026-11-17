@@ -166,6 +166,11 @@ const ACCIONES_CON_CASO_DE_USO = [
       "Caja y cobro C1, PR-B: abrirSesionDeCaja → caja/casos-de-uso/abrir-sesion.ts, registrarMovimientoDeCaja → registrar-movimiento-manual.ts, anularMovimientoDeCaja → anular-movimiento.ts, cerrarSesionDeCaja → cerrar-sesion.ts y cobrarCuenta → cobrar-cuenta.ts (transacción serializable, clave de reintento con huella, persistencia en server/persistencia/caja y auditoría viven en el caso de uso). La acción solo pide el permiso de sucursal, valida el formato y traduce el resultado. El archivo nace migrado: no tiene ninguna otra función.",
   },
   {
+    ruta: "src/server/actions/caja/cierre-del-dia.ts",
+    motivo:
+      "Caja, cierre del día, etapa A (2026-11-17): iniciarAuditoriaDeJornada → caja/casos-de-uso/iniciar-auditoria.ts, cancelarAuditoriaDeJornada → cancelar-auditoria.ts, corregirMedioDeCobroDeCaja → corregir-medio-de-cobro.ts, declararTotalDeMedio → declarar-total.ts, darConformeGeneralDeJornada → dar-conforme-general.ts, cerrarJornadaDeCaja → cerrar-jornada.ts y registrarAjusteDeCaja → registrar-ajuste.ts (transacción serializable, clave de reintento con huella, persistencia en server/persistencia/caja y auditoría viven en el caso de uso). La acción solo pide el permiso de sucursal, valida el formato y traduce el resultado. El archivo nace migrado: no tiene ninguna otra función.",
+  },
+  {
     ruta: "src/server/actions/movimientos/pagos-factura-proveedor.ts",
     motivo:
       "Pagos X0: declararPagoDeFacturaProveedor → movimientos/casos-de-uso/declarar-pago-de-factura-proveedor.ts y anularPagoDeFacturaProveedor → anular-pago-de-factura-proveedor.ts (transacción serializable, idempotencia, candado de la cabecera, persistencia en server/persistencia/compras y auditoría viven en el caso de uso). La acción solo pide el permiso de empresa `declarar_pago_compra`, valida el formato y delega.",

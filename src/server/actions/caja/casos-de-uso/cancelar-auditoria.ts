@@ -19,7 +19,7 @@ import { bloquearJornadaParaCambiar, cancelarAuditoriaEnBase } from "@/server/pe
  * @idempotency Por estado: repetirlo con la jornada ya abierta devuelve `yaEstabaAbierta` sin escribir; el `FOR UPDATE` serializa dos pedidos a la vez.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento, también ante el choque de índice único).
  * @sideEffects registrarCambioAuditado (estado de la jornada).
- * @ficha permiso=jornada_operar transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=NO_APLICA periodo=NO_APLICA
+ * @ficha permiso=caja_jornada_cancelar_auditoria transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function cancelarAuditoriaCasoDeUso(actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "empresaId" | "transaccion">, comando: ComandoDeJornada): Promise<ResultadoCancelarAuditoria> {
   if (!esDiaISOReal(comando.fechaDeNegocio)) return fracaso("FECHA_INVALIDA", "La fecha del día de negocio no es válida.");

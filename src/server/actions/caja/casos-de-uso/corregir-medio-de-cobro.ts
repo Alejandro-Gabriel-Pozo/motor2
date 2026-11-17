@@ -28,7 +28,7 @@ import { bloquearJornadaCompartida, cargarCobroParaCorregir, cargarCorreccionDeC
  * @idempotency Clave de reintento única por empresa más la huella del pedido; además el único `(cobro, secuencia)`.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento, también ante el choque de índice único).
  * @sideEffects registrarCambioAuditado (la corrección con medio de antes y de después, importe y motivo).
- * @ficha permiso=cobro_corregir_medio transaccion=SERIALIZABLE idempotencia=POR_CLAVE auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
+ * @ficha permiso=caja_corregir_medio_de_cobro transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function corregirMedioDeCobroCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "empresaId" | "transaccion" | "ahora">,

@@ -1,18 +1,31 @@
 import { DENOMINACIONES_DE_BILLETE, MAXIMO_DE_RENGLONES_DE_COBRO, centavosDeTexto, type ConteoDeBilletes, type RenglonDeCobro } from "@/core/caja/public";
 import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
 import { textoDeUnaLineaDesdeTexto } from "@/core/datos/texto-de-catalogo";
+import { esDiaISOReal } from "@/core/tiempo/zona-horaria";
 import type {
   ComandoAbrirSesion,
   ComandoAnularMovimiento,
+  ComandoCerrarJornada,
   ComandoCerrarSesion,
   ComandoCancelarCierre,
+  ComandoCorregirMedioDeCobro,
+  ComandoDarConformeGeneral,
+  ComandoDeJornada,
+  ComandoDeclararTotal,
+  ComandoRegistrarAjuste,
   ComandoCobrarCuenta,
   ComandoIniciarCierre,
   ComandoMovimientoManual,
   EntradaDeAbrirSesion,
   EntradaDeAnularMovimiento,
+  EntradaDeCerrarJornada,
   EntradaDeCerrarSesion,
   EntradaDeCierreDeSesion,
+  EntradaDeCorregirMedioDeCobro,
+  EntradaDeDarConformeGeneral,
+  EntradaDeDeclararTotal,
+  EntradaDeJornada,
+  EntradaDeRegistrarAjuste,
   EntradaDeCobrarCuenta,
   EntradaDeMovimientoManual,
 } from "./caja.schema";
@@ -25,6 +38,8 @@ import type {
  *  · Importes: TEXTO decimal («1234.56», a lo sumo 2 decimales, sin signo ni separador de miles), menor que el tope de la columna; pasan a centavos enteros sin `number`. Mayor que cero, salvo el fondo y las monedas, que admiten 0.
  *  · Motivo y observación: una línea de 1 a 500 caracteres con la lista de permitidos de los textos del proyecto (`textoDeUnaLineaDesdeTexto`, con signos de catálogo) y al menos una letra.
  *  · Conteo: solo las denominaciones de la planilla, cantidades enteras de 0 a 99999.
+ *  · Cierre del día (etapa A, 2026-11-17): fecha de negocio «AAAA-MM-DD» de un día real; huella de los controles = 64 hexadecimales en minúscula; reconocimientos = hasta 100 `{ clave, texto }` con la clave `modulo.control` (minúsculas y guion bajo) y el texto opcional
+ *    (una línea de la lista de permitidos o `null`); el importe de un ajuste admite el signo «-» y no puede ser cero.
  */
 export type CodigoDeRechazoDeGuardDeCaja =
   | "ENTRADA_INVALIDA"
@@ -36,7 +51,10 @@ export type CodigoDeRechazoDeGuardDeCaja =
   | "OBSERVACION_INVALIDA"
   | "RENGLONES_INVALIDOS"
   | "CONTEO_INVALIDO"
-  | "CONFORME_INVALIDO";
+  | "CONFORME_INVALIDO"
+  | "FECHA_INVALIDA"
+  | "HUELLA_INVALIDA"
+  | "RECONOCIMIENTOS_INVALIDOS";
 export type RechazoDeGuardDeCaja = { ok: false; codigo: CodigoDeRechazoDeGuardDeCaja; campo: string };
 export type ResultadoDeGuardDeCaja<T> = { ok: true; valor: T } | RechazoDeGuardDeCaja;
 
@@ -153,4 +171,98 @@ export function guardComandoCerrarSesion(entrada: EntradaDeCerrarSesion): Result
     if (observacion === null) return rechazo("OBSERVACION_INVALIDA", "observacion");
   }
   return { ok: true, valor: { sesionId: entrada.sesionId, conteo, conformeDeLosDemasMedios: entrada.conformeDeLosDemasMedios, observacion } };
+}
+
+// ----- Cierre del día (etapa A, 2026-11-17; docs/diseno-caja-cierre-del-dia-acciones-y-permisos-2026-11-17.md §5): la sucursal es la activa del contexto, nunca viaja. -----
+
+const REGEX_HUELLA = /^[0-9a-f]{64}$/;
+const REGEX_CLAVE_DE_CONTROL = /^[a-z_]+\.[a-z_]+$/;
+const LARGO_MAXIMO_DE_LA_CLAVE_DE_CONTROL = 81;
+const MAXIMO_DE_RECONOCIMIENTOS_POR_PEDIDO = 100;
+
+const esFechaDeNegocio = (valor: unknown): valor is string => esDiaISOReal(valor);
+
+/** Un importe con signo opcional «-» a centavos, distinto de cero y dentro del tope. `null` si no vale. */
+function importeConSigno(valor: unknown): bigint | null {
+  if (typeof valor !== "string") return null;
+  const negativo = valor.startsWith("-");
+  const centavos = importeEnCentavos(negativo ? valor.slice(1) : valor, false);
+  if (centavos === null) return null;
+  return negativo ? -centavos : centavos;
+}
+
+/** «Empezar» o «cancelar» el cierre del día: solo la fecha de negocio (el resto lo decide el caso de uso por el estado). */
+export function guardComandoDeJornada(entrada: EntradaDeJornada): ResultadoDeGuardDeCaja<ComandoDeJornada> {
+  if (!esObjetoPlano(entrada)) return rechazo("ENTRADA_INVALIDA", "entrada");
+  if (!esFechaDeNegocio(entrada.fechaDeNegocio)) return rechazo("FECHA_INVALIDA", "fechaDeNegocio");
+  return { ok: true, valor: { fechaDeNegocio: entrada.fechaDeNegocio } };
+}
+
+/** «Corregir el medio de un cobro»: clave, cobro, medio destino (UUID) y motivo obligatorio. */
+export function guardComandoCorregirMedioDeCobro(entrada: EntradaDeCorregirMedioDeCobro): ResultadoDeGuardDeCaja<ComandoCorregirMedioDeCobro> {
+  if (!esObjetoPlano(entrada)) return rechazo("ENTRADA_INVALIDA", "entrada");
+  if (!esClaveIdempotenciaValida(entrada.claveIdempotencia)) return rechazo("CLAVE_INVALIDA", "claveIdempotencia");
+  if (!esUuid(entrada.cobroId)) return rechazo("IDENTIFICADOR_INVALIDO", "cobroId");
+  if (!esUuid(entrada.medioDestinoId)) return rechazo("IDENTIFICADOR_INVALIDO", "medioDestinoId");
+  const motivo = textoLibre(entrada.motivo);
+  if (motivo === null) return rechazo("MOTIVO_INVALIDO", "motivo");
+  return { ok: true, valor: { claveIdempotencia: entrada.claveIdempotencia, cobroId: entrada.cobroId, medioDestinoId: entrada.medioDestinoId, motivo } };
+}
+
+/** «Declarar el total de un medio»: clave, fecha, medio (UUID) e importe (admite 0). */
+export function guardComandoDeclararTotal(entrada: EntradaDeDeclararTotal): ResultadoDeGuardDeCaja<ComandoDeclararTotal> {
+  if (!esObjetoPlano(entrada)) return rechazo("ENTRADA_INVALIDA", "entrada");
+  if (!esClaveIdempotenciaValida(entrada.claveIdempotencia)) return rechazo("CLAVE_INVALIDA", "claveIdempotencia");
+  if (!esFechaDeNegocio(entrada.fechaDeNegocio)) return rechazo("FECHA_INVALIDA", "fechaDeNegocio");
+  if (!esUuid(entrada.medioDePagoId)) return rechazo("IDENTIFICADOR_INVALIDO", "medioDePagoId");
+  const importe = importeEnCentavos(entrada.importe, true);
+  if (importe === null) return rechazo("IMPORTE_INVALIDO", "importe");
+  return { ok: true, valor: { claveIdempotencia: entrada.claveIdempotencia, fechaDeNegocio: entrada.fechaDeNegocio, medioDePagoId: entrada.medioDePagoId, importeEnCentavos: importe } };
+}
+
+/** «Dar el conforme general»: clave y fecha. */
+export function guardComandoDarConformeGeneral(entrada: EntradaDeDarConformeGeneral): ResultadoDeGuardDeCaja<ComandoDarConformeGeneral> {
+  if (!esObjetoPlano(entrada)) return rechazo("ENTRADA_INVALIDA", "entrada");
+  if (!esClaveIdempotenciaValida(entrada.claveIdempotencia)) return rechazo("CLAVE_INVALIDA", "claveIdempotencia");
+  if (!esFechaDeNegocio(entrada.fechaDeNegocio)) return rechazo("FECHA_INVALIDA", "fechaDeNegocio");
+  return { ok: true, valor: { claveIdempotencia: entrada.claveIdempotencia, fechaDeNegocio: entrada.fechaDeNegocio } };
+}
+
+/** «Cerrar el día»: fecha, huella de lo que vio la pantalla, reconocimientos (hasta 100, sin claves repetidas lo juzga el caso de uso) y observación opcional. */
+export function guardComandoCerrarJornada(entrada: EntradaDeCerrarJornada): ResultadoDeGuardDeCaja<ComandoCerrarJornada> {
+  if (!esObjetoPlano(entrada)) return rechazo("ENTRADA_INVALIDA", "entrada");
+  if (!esFechaDeNegocio(entrada.fechaDeNegocio)) return rechazo("FECHA_INVALIDA", "fechaDeNegocio");
+  if (typeof entrada.huellaVista !== "string" || !REGEX_HUELLA.test(entrada.huellaVista)) return rechazo("HUELLA_INVALIDA", "huellaVista");
+  if (!Array.isArray(entrada.reconocimientos) || entrada.reconocimientos.length > MAXIMO_DE_RECONOCIMIENTOS_POR_PEDIDO) return rechazo("RECONOCIMIENTOS_INVALIDOS", "reconocimientos");
+  const reconocimientos: { clave: string; texto: string | null }[] = [];
+  for (const [i, r] of (entrada.reconocimientos as readonly unknown[]).entries()) {
+    if (!esObjetoPlano(r)) return rechazo("RECONOCIMIENTOS_INVALIDOS", `reconocimientos.${i}`);
+    if (typeof r.clave !== "string" || r.clave.length > LARGO_MAXIMO_DE_LA_CLAVE_DE_CONTROL || !REGEX_CLAVE_DE_CONTROL.test(r.clave)) return rechazo("RECONOCIMIENTOS_INVALIDOS", `reconocimientos.${i}.clave`);
+    let texto: string | null = null;
+    if (r.texto !== null && r.texto !== undefined) {
+      texto = textoLibre(r.texto);
+      if (texto === null) return rechazo("RECONOCIMIENTOS_INVALIDOS", `reconocimientos.${i}.texto`);
+    }
+    reconocimientos.push({ clave: r.clave, texto });
+  }
+  let observacion: string | null = null;
+  if (entrada.observacion !== null && entrada.observacion !== undefined) {
+    observacion = textoLibre(entrada.observacion);
+    if (observacion === null) return rechazo("OBSERVACION_INVALIDA", "observacion");
+  }
+  return { ok: true, valor: { fechaDeNegocio: entrada.fechaDeNegocio, huellaVista: entrada.huellaVista, reconocimientos, observacion } };
+}
+
+/** «Registrar un ajuste»: clave, sesión, medio (UUID), importe con signo distinto de cero, motivo y la jornada cerrada que corrige. */
+export function guardComandoRegistrarAjuste(entrada: EntradaDeRegistrarAjuste): ResultadoDeGuardDeCaja<ComandoRegistrarAjuste> {
+  if (!esObjetoPlano(entrada)) return rechazo("ENTRADA_INVALIDA", "entrada");
+  if (!esClaveIdempotenciaValida(entrada.claveIdempotencia)) return rechazo("CLAVE_INVALIDA", "claveIdempotencia");
+  if (!esUuid(entrada.sesionId)) return rechazo("IDENTIFICADOR_INVALIDO", "sesionId");
+  if (!esUuid(entrada.medioDePagoId)) return rechazo("IDENTIFICADOR_INVALIDO", "medioDePagoId");
+  const importe = importeConSigno(entrada.importe);
+  if (importe === null) return rechazo("IMPORTE_INVALIDO", "importe");
+  const motivo = textoLibre(entrada.motivo);
+  if (motivo === null) return rechazo("MOTIVO_INVALIDO", "motivo");
+  if (!esFechaDeNegocio(entrada.corrigeJornada)) return rechazo("FECHA_INVALIDA", "corrigeJornada");
+  return { ok: true, valor: { claveIdempotencia: entrada.claveIdempotencia, sesionId: entrada.sesionId, medioDePagoId: entrada.medioDePagoId, importeEnCentavos: importe, motivo, corrigeJornada: entrada.corrigeJornada } };
 }

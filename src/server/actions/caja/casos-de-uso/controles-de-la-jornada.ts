@@ -21,7 +21,7 @@ import { horaDeCorteDeColumna } from "@/server/persistencia/caja/jornada";
 import { cargarCuentaParaCobrar } from "@/server/lecturas/caja/total-de-cuenta";
 
 /**
- * Los controles de una jornada y su HUELLA (etapa C2, docs/diseno-caja-c2-jornada-y-cierre-del-dia-2026-11-16.md, niveles 5 y 9). Helper COMPARTIDO por los casos de uso del cierre y la futura consulta de la pantalla (vive en `casos-de-uso/` porque la capa de persistencia solo la usan los casos de uso del dominio); es la lectura que usan la pantalla del cierre que mostrará los controles y pedirá cerrar con su huella y `cerrarJornada` (que
+ * Los controles de una jornada y su HUELLA (etapa C2, docs/diseno-caja-c2-jornada-y-cierre-del-dia-2026-11-16.md, niveles 5 y 9). Helper COMPARTIDO por los casos de uso del cierre y la lectura de la pantalla (`leerControlesDeJornada`, `actions/caja/lecturas-del-cierre.ts`; vive en `casos-de-uso/` porque la capa de persistencia solo la usan los casos de uso del dominio); es la lectura que usan la pantalla del cierre que mostrará los controles y pedirá cerrar con su huella y `cerrarJornada` (que
  * los recalcula dentro de su transacción y compara): si cada uno los calculara por su lado, lo que se muestra y lo que se cierra podrían diferir. Todo el cálculo es de `src/core/caja/` (`conciliarJornada`, `controlesDelDia`); acá solo se lee y se junta.
  * Determinista: con los mismos datos, la misma huella (sin reloj ni azar: `ahora` solo entra al recalcular el total vigente del ticket, que no depende de él).
  *
@@ -38,6 +38,15 @@ export interface ControlesDeLaJornada {
   huella: string;
 }
 
+/**
+ * Calcula los controles de la jornada, su conciliación por medio y su huella, dentro de la transacción (o con el cliente) que recibe; no escribe nada. La llaman `iniciarAuditoria` y `cerrarJornada` y la lectura `leerControlesDeJornada` (`actions/caja/lecturas-del-cierre.ts`, que ya pidió `caja_jornada_ver` con `requerirVer`).
+ *
+ * @contract Devuelve los controles, la conciliación y la huella de la jornada con los datos que ve, sin escribir; con el mismo estado de la base devuelve la misma huella.
+ * @idempotency No aplica: solo lee, repetirla no cambia nada.
+ * @transaction Ninguna propia: usa el cliente (o la transacción) de quien la llama, que decide el aislamiento.
+ * @sideEffects Ninguno: no escribe ni audita.
+ * @ficha permiso=SIN_PERMISO transaccion=NINGUNA idempotencia=NO_APLICA auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
+ */
 export async function leerControlesDeLaJornada(
   db: Prisma.TransactionClient,
   args: { empresaId: string; sucursalId: string; fechaDeNegocio: string; /** La jornada si ya existe (`null` = sin actividad: no hay correcciones, declaraciones ni conforme). */ jornadaId: string | null; zonaHoraria: string; ahora: Date; /** Solo lo que IMPIDE contar el día (los controles `BLOQUEA`): el resto va vacío y no se lee (más barato; la huella NO es la del cierre). */ soloImpedimentos?: boolean },

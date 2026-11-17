@@ -25,7 +25,7 @@ import { cargarJornada } from "@/server/persistencia/caja/jornada";
  * @idempotency Clave de reintento única por empresa; el pedido se compara campo por campo con el movimiento ya guardado; además el índice único.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento, también ante el choque de índice único).
  * @sideEffects registrarCambioAuditado (el ajuste con su importe, motivo y jornada que corrige).
- * @ficha permiso=movimiento_caja_ajustar transaccion=SERIALIZABLE idempotencia=POR_CLAVE auditoria=REGISTRO_AUDITORIA reloj=NO_APLICA periodo=NO_APLICA
+ * @ficha permiso=caja_registrar_ajuste transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function registrarAjusteCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "empresaId" | "transaccion">,

@@ -36,6 +36,8 @@ const SRC = join(__dirname, "../../src");
  * que `ResultadoConId`/`okConId` no filtran `codigo`/`erroresPorCampo` — mismo criterio de "solo lo necesario", con más campos.
  */
 const SIN_ENVOLTORIO_TODAVIA: Record<string, string> = {
+  "server/actions/caja/casos-de-uso/controles-de-la-jornada.ts":
+    "leerControlesDeJornada (server/actions/caja/lecturas-del-cierre.ts; caja, cierre del día, etapa A, 2026-11-17) es una LECTURA, no una mutación: devuelve los controles, la conciliación por medio y la huella como datos (importes en centavos como texto), no un ResultadoCaso con `ok`/`mensaje`, así que no hay resultado que pasar por aResultadoAccion. Nada de `datos`/`codigo` interno llega al navegador: la lectura arma a mano una lista cerrada de campos. Diseño permanente, no un olvido.",
   "server/actions/traspasos/casos-de-uso/crear-solicitud-de-traspaso.ts":
     "crearSolicitudTransferencia devuelve ResultadoConId ({ ok, mensaje, id, nombre }), no ResultadoAccion — la UI necesita el traspasoId/productoNombre recién creados para navegar. okConId/error no filtran codigo/erroresPorCampo. Diseño permanente, no un olvido.",
   "server/actions/traspasos/casos-de-uso/crear-envio-directo-de-traspaso.ts":

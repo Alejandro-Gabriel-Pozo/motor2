@@ -4,7 +4,7 @@ import { crearEmpresa } from "../../setup/crear-empresa";
 import { crearMembresia } from "../../setup/membresia";
 import { activarTodosLosModulos, fijarModulosActivos, MODULOS_VENDIBLES } from "../../setup/modulos";
 import { enElPasado, HORA_MS, DIA_MS } from "../../setup/tiempo";
-import { ZONA_ARGENTINA, diaDeCalendario, fechaDeColumnaDate, sumarDias } from "../../../src/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA, diaDeColumnaDate, diaDeCalendario, fechaDeColumnaDate, sumarDias } from "../../../src/core/tiempo/zona-horaria";
 
 /**
  * El MUNDO de la matriz de denegación por defecto (GT-3b): lo que se siembra UNA vez por archivo de test (las puertas que se prueban no escriben nada, y la matriz lo verifica con la huella de toda la base)
@@ -150,6 +150,9 @@ export interface KitDeSucursal {
   /** Caja (C1): la sesión de caja ABIERTA de la sucursal (la única sin cerrar: hay otra, cerrada, para `ultimaSesionDeLaCaja`) y un ingreso manual suyo, hecho por u1 (el que anula `anularMovimientoDeCaja`). */
   sesionDeCajaId: string;
   movimientoManualId: string;
+  /** Caja (cierre del día, etapa A): la fecha de negocio «AAAA-MM-DD» de la sesión ABIERTA (la jornada que nace con ella) y un cobro suyo en efectivo (el que corrige `corregirMedioDeCobroDeCaja`). */
+  fechaDeNegocioDeCaja: string;
+  cobroId: string;
 }
 
 /** GO-3b: el día del plato del día que siembra el mundo (mañana en la zona de las empresas del mundo: siempre se puede quitar o copiar). */
@@ -208,6 +211,8 @@ const CAMPOS_DE_SUCURSAL_REGISTRO: Record<keyof KitDeSucursal, true> = {
   platoDelDiaId: true,
   sesionDeCajaId: true,
   movimientoManualId: true,
+  fechaDeNegocioDeCaja: true,
+  cobroId: true,
 };
 export const CAMPOS_DE_SUCURSAL: ReadonlySet<string> = new Set(Object.keys(CAMPOS_DE_SUCURSAL_REGISTRO));
 
@@ -586,6 +591,16 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   await db.arqueoCaja.create({ data: { id: randomUUID(), empresaId, sucursalId, sesionId: sesionCerrada.id, medioDePagoId: k.medioEfectivoId, esperado: "3000.00", contado: "3000.00", contadoMonedas: "0.00", conforme: false } });
   await db.arqueoBillete.create({ data: { id: randomUUID(), empresaId, sucursalId, sesionId: sesionCerrada.id, denominacion: 1000, cantidad: 3 } });
   await db.sesionCaja.update({ where: { id: sesionCerrada.id }, data: { estado: "CERRADA", cerradaEn: enElPasado(2 * HORA_MS), cerradaPorId: miembro.id, observacion: `Cierre ${marca}` } });
+  // Cierre del día (etapa A): una jornada ANTERIOR ya CERRADA, con la cabecera de la foto de su conciliación (tres días antes de la de la sesión abierta; es la que lee `leerConciliacionDeJornada` y la que el ajuste corrige). Sin sesiones ni líneas: la foto de un día sin
+  // actividad. Va en UNA transacción: la base exige que la foto entre con la jornada pasando a CERRADA en esa misma transacción.
+  await db.$transaction(async (tx) => {
+    const jornadaId = randomUUID();
+    const fechaDeNegocio = fechaDeColumnaDate(sumarDias(diaDeColumnaDate((await selloDeLaSesion(enElPasado(HORA_MS / 2))).fechaDeNegocio), -3));
+    await tx.jornadaDeSucursal.create({ data: { id: jornadaId, empresaId, sucursalId, fechaDeNegocio } });
+    await tx.jornadaDeSucursal.update({ where: { id: jornadaId }, data: { estado: "EN_AUDITORIA", auditoriaIniciadaEn: enElPasado(2 * HORA_MS), auditoriaIniciadaPorId: miembro.id } });
+    await tx.jornadaDeSucursal.update({ where: { id: jornadaId }, data: { estado: "CERRADA", cerradaEn: enElPasado(HORA_MS), cerradaPorId: miembro.id, huellaDeCierre: "a".repeat(64) } });
+    await tx.cierreDeCajaDeJornada.create({ data: { id: randomUUID(), empresaId, sucursalId, jornadaId, congeladoEn: enElPasado(HORA_MS), congeladoPorId: miembro.id } });
+  });
   const sesionDeCaja = await abrirSesionDeCaja(enElPasado(HORA_MS / 2));
   await fondoDeCaja(sesionDeCaja.id, "5000.00");
   const movimientoManual = await db.movimientoCaja.create({
@@ -594,12 +609,13 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   const mesaCobrada = await db.mesa.create({ data: { id: id("mesa-e"), empresaId, sucursalId, numero: 6 } });
   const cuentaCobrada = await db.cuenta.create({ data: { id: id("cuenta-cobrada"), empresaId, mesaId: mesaCobrada.id, abiertaPorId: miembro.id, cerradaEn: enElPasado(HORA_MS), cerradaPorId: miembro.id } });
   // La cobranza, su movimiento COBRO y su renglón van en UNA transacción: la base verifica al confirmar que lo cobrado suma el total.
+  const cobroId = randomUUID();
   await db.$transaction(async (tx) => {
     const cobranzaId = randomUUID();
     const movimientoId = randomUUID();
     await tx.cobranza.create({ data: { id: cobranzaId, empresaId, sucursalId, cuentaId: cuentaCobrada.id, sesionId: sesionDeCaja.id, total: "100.00", claveIdempotencia: randomUUID(), huella: "b".repeat(64), creadoPorId: miembro.id } });
     await tx.movimientoCaja.create({ data: { id: movimientoId, empresaId, sucursalId, sesionId: sesionDeCaja.id, clase: "COBRO", medioDePagoId: k.medioEfectivoId, importe: "100.00", creadoPorId: miembro.id } });
-    await tx.cobro.create({ data: { id: randomUUID(), empresaId, sucursalId, cobranzaId, orden: 1, medioDePagoId: k.medioEfectivoId, movimientoId, importe: "100.00" } });
+    await tx.cobro.create({ data: { id: cobroId, empresaId, sucursalId, cobranzaId, orden: 1, medioDePagoId: k.medioEfectivoId, movimientoId, importe: "100.00" } });
   });
 
   return {
@@ -654,6 +670,8 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
     platoDelDiaId: platoDelDia.id,
     sesionDeCajaId: sesionDeCaja.id,
     movimientoManualId: movimientoManual.id,
+    fechaDeNegocioDeCaja: diaDeColumnaDate(sesionDeCaja.fechaDeNegocio),
+    cobroId,
   };
 }
 
