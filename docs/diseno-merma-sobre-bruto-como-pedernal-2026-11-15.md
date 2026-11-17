@@ -446,3 +446,37 @@ SELECT 'opcion' AS origen, "empresaId", count(*) AS lineas, count(*) FILTER (WHE
 - **El «sexto archivo» de la fórmula** que mencionó el encargo no se encontró (§1): si existe, M0 lo encuentra con el guardián.
 - **Congelamiento de producción:** nada se aplica ni se despliega desde este documento.
 - **Sugerencias (no implementadas):** botón explícito «pasar a bruto» sin editar; poda de la merma en opciones.
+
+## 15. Decisiones de M3 (2026-11-17): qué quedó resuelto, qué se construyó y qué falta
+
+Contraste con Pedernal hecho el 2026-11-17 sobre `ZuluHub-docs` (`052675b`: `11-especificaciones/conceptos/bruto-y-neto.md`, `ficha-de-cocina.md`, `rendimiento.md`, `receta-propia-y-receta-de-la-central.md`, `catalogo-y-niveles-maqueta.md`). **No se leyó el código de `ZuluHub-ERP` directamente**: solo lo que esas fichas citan de él (NO VERIFICADO el código).
+
+| Pregunta que había quedado abierta | Resultado | Fuente |
+|---|---|---|
+| «Usar este valor» (reporte de rendimiento) bajo bruta: ¿qué escribe? | **No es pregunta.** Pedernal fija que un valor calibrado nunca se aplica solo (CYN 75, dueño 2026-11-08: «el 75 es correcto»); Motor2 ya exige el clic y la confirmación. Qué escribe lo fija §7.4 + N-8: bruta → el bruto estimado tal cual; neta → versión nueva convertida con la confirmación de §7.1. El docstring «`cantidad` es SIEMPRE neto» (D4) es heredado: se corrige al implementar M3d | CYN 75; N-8 (dueño 2026-11-15: «Al editarla se convierte a bruto»); §7.4 |
+| Comparar el bruto entre sucursales cuando las bases de sus versiones difieren | **No es pregunta.** Cada lado se pasa a bruto con la base de SU versión (neta: `cantidad × (1 + merma/100)` como hoy; bruta: `cantidad`). El bruto es lo que sale del stock y se costea en las dos bases (N-2, N-3, I1), así que compararlos es consistente; solo cambia el rótulo «Neto», que pasa a derivado. Pedernal no tiene un reporte por sucursal equivalente (la «calibración por sucursal» figura como otra idea sin construir) | N-2, N-3, I1; `receta-propia-y-receta-de-la-central.md` |
+| Ficha de cocina bajo bruta | **Resuelta por Pedernal y por el dueño.** Pedernal define la ficha con la cantidad **bruta** («la merma ya sumada»; «le da a la cocina las cantidades que realmente hay que sacar») calculada con la misma función del stock y el costo | `ficha-de-cocina.md` §1 y §2; `bruto-y-neto.md` §1 |
+
+### 15.1 Ficha de cocina: se imprime SIEMPRE el bruto (decisión del dueño, 2026-11-17)
+
+- **Pregunta y respuesta literal** (dueño, chat con el orquestador, 2026-11-17, `motor2-docs`, sección «Hoja de cocina: siempre el bruto»): «Ok:» a «¿Querés que la hoja de cocina muestre siempre lo que hay que sacar de la cámara (el bruto, como Pedernal), también para las recetas que ya tenés cargadas?» → **CONFIRMADA**.
+- **Regla:** versión neta → bruto = `cantidad × (1 + merma/100)` en decimal exacto, redondeado una sola vez a 4 decimales (mitad que se aleja del cero, como el resto de M3); versión bruta → la cantidad tal cual; merma 0 → el papel no cambia. El % de merma nunca se imprime.
+- **Antes y después** (datos de ejemplo de las pruebas; **no hay recetas reales en ninguna copia a mi alcance**, así que no hay capturas sobre datos de la empresa: pendiente para cuando haya un entorno con recetas reales):
+
+| Línea | Receta vieja (neta) ANTES | Receta vieja (neta) DESPUÉS | Receta bruta (cargada como bruto) |
+|---|---|---|---|
+| Carne 0,3333 kg, merma 12,5 % | 0,3333 kg | **0,375 kg** | 0,375 kg (se imprime tal cual) |
+| Tomate 2,5 kg, merma 33,33 % | 2,5 kg | **3,3333 kg** | 3,3333 kg |
+| Harina 0,5 kg, merma 10 % | 0,5 kg | **0,55 kg** | 0,55 kg |
+| Sal 0,005 kg, merma 0 % | 0,005 kg | 0,005 kg (sin cambio) | 0,005 kg |
+
+- **Interruptor reversible:** la constante `FICHA_IMPRIME_BRUTO` (`src/core/catalogo/ficha-de-cocina.ts`) en `true`; en `false` vuelve al impreso anterior (la cantidad escrita) cambiando esa línea y desplegando. Es la opción más barata; una perilla por empresa en tiempo de ejecución es del frente de planes/perillas y no se pidió.
+- **Pruebas:** tabla escrita a mano, oráculo con enteros (1000 casos al azar, semilla fija), equivalencia con merma 0, interruptor en los dos lados, marca ilegible cierra, el % nunca se imprime y el oráculo de combinaciones de la ficha actualizado (los datos de prueba traen 8 % de merma: ahora el papel lleva `neto × 1,08`).
+- **Aviso:** **cambia lo que imprime la cocina** (un impreso de uso diario) para todas las recetas ya cargadas que tengan merma distinta de cero.
+
+### 15.2 Etapas de M3 construidas (ramas apiladas sobre M2, sin PR hasta que entren)
+
+- **M3a parte 1** — la marca viaja con las copias (duplicar producto, receta propia desde la central y copia desde otra sucursal).
+- **M3a parte 2** — el descuento de stock y el costo leen la marca (`factorDeBruto`); la marca ilegible cierra (§7.2).
+- **M3c** — la ficha de cocina imprime siempre el bruto (esta sección).
+- **Faltan** (M3d, dependen de lo anterior): reportes de rendimiento («Usar este valor», `calcularCantidadTeoricaBruta` / `calcularCantidadEstimadaNeta`), calibración por sucursal (conversión al guardar una versión nueva, §7.3), historial de versiones y pantallas de carga (la versión nueva en bruto es M3b y exige la confirmación expresa del dueño, §11 texto X).

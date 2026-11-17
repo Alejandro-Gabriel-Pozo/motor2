@@ -1,13 +1,27 @@
+import { Decimal } from "decimal.js";
 import { formatearCantidad } from "../formato-de-numero";
 import { ZONA_ARGENTINA, formatearFechaHora } from "../tiempo/zona-horaria";
+import { factorDeMermaExacto, leerBaseDeCantidad } from "./merma";
 
 /**
  * «Ficha de cocina» imprimible (pedida por el dueño el 2026-11-08; `docs/diseno-ficha-de-cocina-2026-11-08.md`): lo que la cocina necesita en papel de UNA receta, armado
  * como datos puros a partir de la versión de receta que rige en la sucursal. Sin base de datos ni React: la pantalla (`components/catalogo/ficha-de-cocina`) solo lo dibuja.
  *
- * Qué NO entra, por construcción: la entrada declara SOLO los campos que la ficha usa. No hay costos, precios, merma % ni sustitutos en `RecetaParaFicha`, así que no hay manera de
+ * Qué NO entra, por construcción: la entrada declara SOLO los campos que la ficha usa. No hay costos, precios ni sustitutos en `RecetaParaFicha`, así que no hay manera de
  * que viajen al papel aunque la fila que llega de la base los traiga. Lo que falta no se inventa: una sección vacía se omite o dice «pendiente de completar» (`PENDIENTE`).
+ *
+ * LA CANTIDAD QUE SE IMPRIME ES SIEMPRE EL BRUTO (M3c, 2026-11-17; dueño, chat con el orquestador: «Ok:» a «¿Querés que la hoja de cocina muestre siempre lo que hay que sacar de la cámara (el bruto,
+ * como Pedernal), también para las recetas que ya tenés cargadas?»): lo que la cocina tiene que SACAR, no lo que lleva el plato. La merma entra como dato de CÁLCULO (nunca se imprime el %).
+ * - Versión NETA (todo lo cargado hasta M3b): bruto = cantidad × (1 + merma/100), en decimal exacto, redondeado UNA vez a 4 decimales (mitad que se aleja del cero).
+ * - Versión BRUTA: la cantidad YA es el bruto: se imprime tal cual.
+ * Con merma 0 el bruto es la cantidad: el papel no cambia. Interruptor reversible: `FICHA_IMPRIME_BRUTO` (vuelve al impreso anterior, la cantidad escrita, cambiando esa línea).
  */
+
+/**
+ * Interruptor del impreso (M3c): `true` = la ficha imprime el bruto (lo que decidió el dueño el 2026-11-17); `false` = el impreso de antes, la cantidad tal como está escrita en la versión. Una sola línea
+ * para volver atrás si la cocina lo pide; `armarFichaDeCocina` también acepta `imprimeBruto` para probar los dos lados.
+ */
+export const FICHA_IMPRIME_BRUTO = true;
 
 /** La unidad de una cantidad: su nombre y, si se conocen, sus decimales (`Unidad.decimales`: hasta cuántos admite la cantidad). */
 type UnidadDeFicha = { nombre: string; decimales?: number };
@@ -18,7 +32,10 @@ type DecimalLeido = { toString(): string } | number;
 /** La versión de receta que rige en la sucursal, con SOLO lo que la ficha dibuja (la fila de `INCLUDE_RECETA_COMPLETA` se le asigna tal cual). */
 export interface RecetaParaFicha {
   version: number;
-  ingredientes: readonly { cantidad: DecimalLeido; unidad: UnidadDeFicha; insumoProducto: { nombre: string } }[];
+  /** La base de las cantidades de la versión (M2): NETA o BRUTA, tal como viene de la base (se valida al armar: una marca ilegible CIERRA). */
+  baseDeCantidad: string;
+  /** `mermaPorcentaje` entra SOLO para calcular el bruto de una versión NETA; nunca se imprime. */
+  ingredientes: readonly { cantidad: DecimalLeido; mermaPorcentaje: DecimalLeido; unidad: UnidadDeFicha; insumoProducto: { nombre: string } }[];
   pasos: readonly {
     orden: number;
     nombre: string | null;
@@ -47,6 +64,8 @@ export interface EntradaDeFichaDeCocina {
   receta: RecetaParaFicha;
   /** El instante de impresión: lo da el borde (la página), nunca el núcleo. */
   ahora: Date;
+  /** Para probar los dos lados del interruptor; sin esto rige `FICHA_IMPRIME_BRUTO`. */
+  imprimeBruto?: boolean;
 }
 
 export interface FichaDeCocina {
@@ -79,6 +98,21 @@ function cantidadEnTexto(valor: DecimalLeido, unidad: { decimales?: number } | n
   return formatearCantidad(Number(valor), unidad?.decimales);
 }
 
+/** Los decimales con que se muestra un bruto: los de la unidad, pero nunca menos de 4 (el bruto de una versión NETA puede tener hasta 4 aunque la unidad admita menos). */
+const DECIMALES_DEL_BRUTO = 4;
+
+/**
+ * La cantidad que sale de la cámara, en texto. NETA: `cantidad × (1 + merma/100)` en decimal exacto, redondeado una sola vez a 4 decimales (mitad que se aleja del cero); BRUTA: la cantidad tal cual.
+ * Con `imprimeBruto` apagado, la cantidad escrita (el impreso de antes de M3c).
+ */
+function cantidadParaCocinar(i: RecetaParaFicha["ingredientes"][number], base: "NETA" | "BRUTA", imprimeBruto: boolean): string {
+  if (!imprimeBruto) return cantidadEnTexto(i.cantidad, i.unidad);
+  const cantidad = new Decimal(i.cantidad.toString());
+  const bruto = base === "BRUTA" ? cantidad : cantidad.times(factorDeMermaExacto(i.mermaPorcentaje.toString()));
+  const redondeado = bruto.toDecimalPlaces(DECIMALES_DEL_BRUTO, Decimal.ROUND_HALF_UP);
+  return formatearCantidad(redondeado.toNumber(), Math.max(i.unidad.decimales ?? 0, DECIMALES_DEL_BRUTO));
+}
+
 function renglones(texto: string | null): string[] {
   return (texto ?? "")
     .split(/\r?\n/)
@@ -93,6 +127,8 @@ function conUnidad(cantidad: DecimalLeido | null, unidad: UnidadDeFicha | null):
 
 export function armarFichaDeCocina(entrada: EntradaDeFichaDeCocina): FichaDeCocina {
   const { receta } = entrada;
+  const base = leerBaseDeCantidad(receta.baseDeCantidad);
+  const imprimeBruto = entrada.imprimeBruto ?? FICHA_IMPRIME_BRUTO;
   const datos: { rotulo: string; valor: string }[] = [];
   const rendimiento = conUnidad(receta.rendimientoCantidad, receta.rendimientoUnidad);
   if (rendimiento !== null) datos.push({ rotulo: "Rendimiento", valor: rendimiento });
@@ -119,7 +155,7 @@ export function armarFichaDeCocina(entrada: EntradaDeFichaDeCocina): FichaDeCoci
     impresaEn: formatearFechaHora(entrada.ahora, ZONA_ARGENTINA),
     datos,
     fichaTecnicaPendiente: datos.length === 0,
-    ingredientes: receta.ingredientes.map((i) => ({ nombre: i.insumoProducto.nombre, cantidad: cantidadEnTexto(i.cantidad, i.unidad), unidad: i.unidad.nombre })),
+    ingredientes: receta.ingredientes.map((i) => ({ nombre: i.insumoProducto.nombre, cantidad: cantidadParaCocinar(i, base, imprimeBruto), unidad: i.unidad.nombre })),
     ingredientesPendientes: receta.ingredientes.length === 0,
     pasos,
     pasosPendientes: pasos.length === 0,
