@@ -18,7 +18,7 @@ import {
   cargarSesionesDeLaJornada,
 } from "@/server/persistencia/caja/jornada-lecturas";
 import { horaDeCorteDeColumna } from "@/server/persistencia/caja/jornada";
-import { cargarCuentaParaCobrar } from "@/server/persistencia/caja/total-de-cuenta";
+import { cargarCuentaParaCobrar } from "@/server/lecturas/caja/total-de-cuenta";
 
 /**
  * Los controles de una jornada y su HUELLA (etapa C2, docs/diseno-caja-c2-jornada-y-cierre-del-dia-2026-11-16.md, niveles 5 y 9). Helper COMPARTIDO por los casos de uso del cierre y la futura consulta de la pantalla (vive en `casos-de-uso/` porque la capa de persistencia solo la usan los casos de uso del dominio); es la lectura que usan la pantalla del cierre que mostrará los controles y pedirá cerrar con su huella y `cerrarJornada` (que
