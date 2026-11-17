@@ -457,11 +457,14 @@ body:has(main[data-panel]) {
   color: transparent;
 }
 .carta-shell .portal-footer {
-  color: var(--portal-pagina-color, var(--carta-ink-soft));
+  color: var(--carta-ink-soft);
 }
-/* «Colores del portal» (pantalla simple): con un fondo de página elegido, el texto que cae directo sobre la página (el aviso de «todavía no hay cartas») sale blanco o negro derivado del fondo; sin él, el de siempre. */
-.carta-shell .portal .portal-vacio {
-  color: var(--portal-pagina-color, var(--carta-ink-soft));
+/* «Colores del portal» (pantalla simple, «Ve como un pedernal», dueño 2026-11-17): los colores elegidos son SOLO acentos (filo de arriba de la página y filo de abajo del encabezado; el borde de las tarjetas ya lo toma `--portal-card-border`). Ningún texto ni ícono depende de ellos. */
+.carta-shell .portal {
+  border-top: 6px solid var(--portal-acento-pagina, transparent);
+}
+.carta-shell .portal-header {
+  border-bottom: 4px solid var(--portal-acento-encabezado, transparent);
 }
 
 .carta-shell .carta-slider {

@@ -31,7 +31,7 @@ test("apagado: la pestaña Portal es la de siempre (el editor completo, sin pant
 });
 
 for (const ancho of [375, 1366]) {
-  test(`encendido (${ancho} px): elegir fondos (uno se ajusta), guardar, la carta pública no queda vacía, recargar y ver lo guardado, con axe 0`, async ({ paginaAutenticada: page, sucursalId, baseURL }) => {
+  test(`encendido (${ancho} px): elegir los tres colores (también uno de peor caso), guardar, la carta pública no queda vacía, recargar y ver lo guardado, con axe 0`, async ({ paginaAutenticada: page, sucursalId, baseURL }) => {
     const marca = `${Date.now()}-${ancho}`;
     await limpiar(sucursalId);
     await prisma.sucursalPublica.create({ data: { sucursalId, slug: `e2e-colores-${marca}`, publicada: true, etiqueta: `Colores ${marca}` } });
@@ -49,13 +49,10 @@ for (const ancho of [375, 1366]) {
       const azul = encabezado.getByLabel("Azul");
       await esperarHidratado(azul);
       await azul.check();
-      await expect(page.locator('[data-aviso-fondo-ajustado="encabezado"]')).toHaveCount(0); // el azul de Pedernal se lee con texto blanco
-      // Un gris medio no llega a 7:1 con ningún texto: la pantalla avisa cuál se usa en su lugar y que se guarda el elegido.
+      // «Ve como un pedernal»: un gris medio (peor caso) se acepta tal cual: sin aviso ni ajuste.
       await pagina.getByLabel("Otro color").check();
       await pagina.getByLabel("Color (por ejemplo #0e7490)").fill("#808080");
-      const aviso = page.locator('[data-aviso-fondo-ajustado="pagina"]');
-      await expect(aviso).toContainText("El texto no se lee bien sobre este color");
-      await expect(aviso).toContainText("Se guarda el que elegiste");
+      await expect(page.locator("[data-aviso-fondo-ajustado]")).toHaveCount(0);
       // Mal escrito: el campo lo marca.
       await pagina.getByLabel("Color (por ejemplo #0e7490)").fill("gris");
       await expect(page.getByText("Escribí el color como #0e7490")).toBeVisible();

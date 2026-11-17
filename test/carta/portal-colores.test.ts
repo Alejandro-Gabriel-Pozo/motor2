@@ -14,13 +14,13 @@ describe("interruptor", () => {
   });
 });
 
-describe("colorDelPortal", () => {
-  it("falla cerrado: lo que no es #rrggbb da null (mayúsculas sí se aceptan)", () => {
+describe("colorDelPortal: se guarda tal cual, sin ajuste", () => {
+  it("falla cerrado: lo que no es #rrggbb da null (mayúsculas sí se aceptan, en minúsculas)", () => {
     for (const malo of [null, undefined, 12, "azul", "#fff", "#12345", "#1234567", "rgb(0,0,0)", "#gggggg", ""]) expect(colorDelPortal(malo), String(malo)).toBeNull();
-    expect(colorDelPortal("#1F4E79")?.hex).toBe("#1f4e79");
+    expect(colorDelPortal("#1F4E79")).toBe("#1f4e79");
   });
-  it("las seis paletas de Pedernal se leen tal cual (no se ajustan) y su texto es blanco", () => {
-    for (const p of PALETAS_DEL_PORTAL) expect(colorDelPortal(p.hex), p.nombre).toMatchObject({ hex: p.hex, ajustado: false, texto: "#ffffff" });
+  it("un color que no se lee con ningún texto (gris medio) NO se ajusta ni se rechaza", () => {
+    expect(colorDelPortal("#808080")).toBe("#808080");
   });
   it("la elección de la pantalla ida y vuelta: paleta, otro color, sin color y basura", () => {
     expect(fondoDeLaEleccion(PALETAS_DEL_PORTAL[0].hex, "")).toBe("#1f4e79");
@@ -46,16 +46,12 @@ describe("estiloDelPortalSimple: crear la fila no cambia lo que se ve (lo cargad
   it("sin Json y sin fondos: el estilo por defecto", () => {
     expect(estiloDelPortalSimple(null, NUEVO).variablesCss).toEqual(estiloDelPortalSimple({}, NUEVO).variablesCss);
   });
-  it("un fondo de la fila pisa el del Json y deriva sus textos; los otros dos grupos siguen como el Json", () => {
+  it("un color de la fila pinta SOLO su acento: el fondo y los textos siguen siendo los del Json", () => {
     const e = estiloDelPortalSimple(json, { ...NUEVO, colorEncabezado: "#ffffff" });
-    expect(e.valores.portal_header_bg).toBe("#ffffff");
-    expect(e.valores.portal_titulo_color).toBe("#000000");
+    expect(e.valores.portal_header_bg).toBe("#112233");
+    expect(e.variablesCss["--portal-acento-encabezado"]).toBe("#ffffff");
     expect(e.valores.portal_fondo_color).toBe("#fafafa");
     expect(e.valores.portal_card_bg).toBe("#223344");
-  });
-  it("el fondo de la página fija la variable del texto que cae directo sobre ella", () => {
-    expect(estiloDelPortalSimple({}, { ...NUEVO, colorPagina: "#ffffff" }).variablesCss["--portal-pagina-color"]).toBe("#000000");
-    expect(estiloDelPortalSimple({}, NUEVO).variablesCss["--portal-pagina-color"]).toBeUndefined();
   });
 });
 

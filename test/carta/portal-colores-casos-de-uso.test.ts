@@ -58,7 +58,7 @@ describe("guardar los colores del portal", () => {
     const empresa = { id: EMPRESA_POR_DEFECTO_ID } as Parameters<typeof resolverPortalCartaDual>[0];
     const sucursales = await resolverPortalCartaDual(empresa, actor().db);
     const estilo = await resolverConfigPortalDual(empresa, actor().db);
-    return { sucursales: sucursales.map((s) => [s.slug, s.etiqueta, s.subtitulo]), colores: { cabecera: estilo.valores.portal_header_bg, pagina: estilo.valores.portal_fondo_color, titulo: estilo.valores.portal_titulo, linea: estilo.valores.portal_etiqueta } };
+    return { sucursales: sucursales.map((s) => [s.slug, s.etiqueta, s.subtitulo]), colores: { cabecera: estilo.valores.portal_header_bg, pagina: estilo.valores.portal_fondo_color, acentoPagina: estilo.variablesCss["--portal-acento-pagina"], titulo: estilo.valores.portal_titulo, linea: estilo.valores.portal_etiqueta } };
   };
 
   describe("el alta no deja el portal vacío ni cambia lo que se ve (el riesgo)", () => {
@@ -230,14 +230,16 @@ describe("guardar los colores del portal", () => {
   });
 
   describe("la lectura pública con el interruptor APAGADO no cambia (la de PR-A)", () => {
-    it("un portal con color de página elegido sale SIN ajustar ni derivar nada cuando el interruptor está apagado", async () => {
+    it("un color de página elegido NO pinta nada con el interruptor apagado y solo pinta el filo (acento) con él encendido", async () => {
       await guardar({ colorPagina: "#808080" });
       const encendido = await loQueSeVe();
       delete process.env.MOTOR2_PORTAL_SIMPLE_PRUEBA;
       try {
         const apagado = await loQueSeVe();
-        expect(apagado.colores.pagina).toBe("#808080");
-        expect(encendido.colores.pagina).not.toBe("#808080"); // encendido: se muestra ajustado a 7:1
+        expect(apagado.colores.acentoPagina).toBeUndefined();
+        expect(apagado.colores.pagina).toBe("#808080"); // la de PR-A: el color elegido de la fila es el FONDO de la página (como hasta hoy)
+        expect(encendido.colores.acentoPagina).toBe("#808080"); // encendido: solo el filo, tal cual (sin ajustar)
+        expect(encendido.colores.pagina).toBe(""); // el fondo ya no es ese color (sigue el del sistema)
       } finally {
         process.env.MOTOR2_PORTAL_SIMPLE_PRUEBA = "1";
       }

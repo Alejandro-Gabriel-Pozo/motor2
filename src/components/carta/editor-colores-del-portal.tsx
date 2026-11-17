@@ -5,11 +5,9 @@ import { PortalVista } from "@/components/carta-publica/portal-vista";
 import { clasesFuentesCarta } from "@/components/carta-publica/fuente-carta";
 import { FormConResultado } from "@/components/form-con-resultado";
 import {
-  CONTRASTE_MINIMO_DEL_PORTAL,
   MENSAJE_FORMATO_DEL_COLOR_DEL_PORTAL,
   PALETAS_DEL_PORTAL,
   ROTULO_DE_OTRO_COLOR_DEL_PORTAL,
-  colorDelPortal,
   eleccionDeFondo,
   estiloDelPortalSimple,
   fondoDeLaEleccion,
@@ -17,14 +15,13 @@ import {
   type EntradaVistaPreviaPortal,
 } from "@/core/carta/public";
 import type { ResultadoAccion } from "@/server/actions/tipos";
-import { Aviso } from "@/ui/primitivas/aviso";
 import { Boton } from "@/ui/primitivas/boton";
 import { Campo } from "@/ui/primitivas/campo";
 import { Casilla } from "@/ui/primitivas/casilla";
 import { OpcionesExcluyentes } from "@/ui/primitivas/opciones-excluyentes";
 
 /**
- * La pantalla SIMPLE de «Colores del portal» (pestaña Portal de «Apariencia y publicación», como Pedernal; solo con el interruptor `portalSimpleVisible` encendido): los TRES FONDOS (encabezado, página y detrás de la imagen), la línea sobre el título, el título, el logo y la imagen, con un
+ * La pantalla SIMPLE de «Colores del portal» (pestaña Portal de «Apariencia y publicación», como Pedernal; solo con el interruptor `portalSimpleVisible` encendido): los TRES COLORES (encabezado, página y detrás de la imagen), la línea sobre el título, el título, el logo y la imagen, con un
  * solo «Guardar». Cada fondo se elige entre las seis paletas de Pedernal o se escribe en «Otro color» (`#rrggbb`); los textos NO se eligen: se derivan (blanco o negro) y el fondo llega a 7:1 AL MOSTRAR. Si un color no llega, la pantalla avisa cuál se usa en su lugar (lo que se guarda es
  * siempre el elegido). La vista previa es el MISMO portal público (`PortalVista` con `estiloDelPortalSimple`, la misma función que usa el servidor). Formulario NO controlado (`FormConResultado`): un `onInput` vuelve a leer el `FormData` para la vista previa; el cuerpo se vuelve a montar
  * con `key={version}` al guardar. El servidor revalida todo (guard) y cambia SOLO estos campos.
@@ -67,9 +64,9 @@ export function EditorColoresDelPortal(props: {
 }
 
 const FONDOS = [
-  { clave: "encabezado", rotulo: "Encabezado", ayuda: "Detrás del logo y del título." },
-  { clave: "pagina", rotulo: "Página", ayuda: "El fondo de toda la página." },
-  { clave: "detras", rotulo: "Detrás de la imagen", ayuda: "La tarjeta que va detrás de la imagen o del listado." },
+  { clave: "encabezado", rotulo: "Encabezado", ayuda: "El filo de abajo del encabezado." },
+  { clave: "pagina", rotulo: "Página", ayuda: "El filo de arriba de la página." },
+  { clave: "detras", rotulo: "Detrás de la imagen", ayuda: "El borde de las tarjetas." },
 ] as const;
 type ClaveDeFondo = (typeof FONDOS)[number]["clave"];
 
@@ -154,7 +151,7 @@ function Cuerpo({ iniciales, json, variante, sucursales, empresaNombre, soloLect
             <PortalVista sucursales={sucursales} empresaNombre={empresaNombre} estilo={estilo} hrefDe={() => "#"} modo="vista-previa" />
           </div>
         </div>
-        <p className="text-xs text-tinta-suave">Es el portal real con las sucursales de la empresa. Los textos y las flechas se calculan solos: blanco o negro, el que mejor se lee.</p>
+        <p className="text-xs text-tinta-suave">Es el portal real con las sucursales de la empresa. El color elegido pinta solo los acentos (filos y bordes); los textos son los del sistema.</p>
       </section>
     </div>
   );
@@ -165,8 +162,6 @@ function SeccionDeFondo({ fondo, inicial, actual }: { fondo: (typeof FONDOS)[num
   const rotuloId = `titulo-fondo-${fondo.clave}`;
   const valido = COLOR_PEDIDO.test(actual);
   const errorDeOtro = eleccion === "otro" && actual !== "" && !valido ? MENSAJE_FORMATO_DEL_COLOR_DEL_PORTAL : undefined;
-  const usado = valido ? colorDelPortal(actual) : null;
-  const ajustado = usado !== null && usado.ajustado;
   return (
     <section aria-labelledby={rotuloId} className="flex flex-col gap-3 rounded border p-3" data-fondo-portal={fondo.clave}>
       <div>
@@ -196,11 +191,6 @@ function SeccionDeFondo({ fondo, inicial, actual }: { fondo: (typeof FONDOS)[num
         ]}
       />
       {eleccion === "otro" && <Campo etiqueta={ROTULO_DE_OTRO_COLOR_DEL_PORTAL} name={`otro_${fondo.clave}`} type="text" maxLength={7} inputMode="text" autoComplete="off" defaultValue={inicial.otro} error={errorDeOtro} />}
-      {ajustado && usado !== null && (
-        <Aviso variante="advertencia" forma="en-linea" data-aviso-fondo-ajustado={fondo.clave}>
-          El texto no se lee bien sobre este color. Se usa {usado.hex}, del mismo tono, ajustado para que llegue a {CONTRASTE_MINIMO_DEL_PORTAL} a 1. Se guarda el que elegiste.
-        </Aviso>
-      )}
     </section>
   );
 }

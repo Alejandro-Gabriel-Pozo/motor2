@@ -110,7 +110,7 @@ export default async function PortalSucursalesPage() {
             Colores del portal
           </h2>
           <p className="text-sm text-tinta-tenue">
-            Los tres fondos del portal, la línea sobre el título, el título, el logo y la imagen. Los textos se calculan solos para que se lean. Sin elegir un color, el portal usa el que ya tenía. El portal toma los cambios al recargarlo.
+            Los tres colores del portal (acentos: filos y bordes), la línea sobre el título, el título, el logo y la imagen. Los textos son los del sistema y no cambian con el color. Sin elegir un color, el portal usa el que ya tenía. El portal toma los cambios al recargarlo.
           </p>
           <EditorColoresDelPortal
             iniciales={{

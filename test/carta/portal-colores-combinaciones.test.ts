@@ -1,76 +1,73 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { CLAVES_PORTAL_V1, colorDelPortal, conFondosDelPortal, resolverEstiloPortal, type FondosDelPortal } from "../../src/core/carta/public";
-import { CLAVES_DE_COLOR_DEL_PORTAL_DECLARADAS, DEPENDEN_DE, FONDOS_ELEGIDOS, TEXTOS_CARGADOS, contrasteWcag } from "./portal-colores.oraculo";
+import { CLAVES_PORTAL_V1, conFondosDelPortal, estiloDelPortalSimple, resolverEstiloPortal, type FondosDelPortal } from "../../src/core/carta/public";
+import { ACENTO_DE, CLAVES_DE_COLOR_DEL_PORTAL_DECLARADAS, MARCAS, PARES_DE_TEXTO, TOKENS_DEL_SISTEMA, contrasteWcag } from "./portal-colores.oraculo";
 
 /**
- * Combinaciones de «Colores del portal» contra el ORÁCULO escrito aparte (`portal-colores.oraculo.ts`): cada uno de los tres fondos × cada fondo elegido × cada texto que la empresa ya tenía cargado, EXHAUSTIVO (3 × 7 × 5 = 105 casos). Más el guardián: una clave de color nueva del catálogo
- * del portal sin declarar hace fallar el test (hay que decidir si un fondo la afecta).
+ * «Ve como un pedernal» (dueño, 2026-11-17): una marca NO puede bajar la legibilidad. Cada color × cada marca (peores casos incluidos) contra el ORÁCULO escrito aparte: el color elegido llega SOLO a su acento y a nada más (ni a un texto, ni a un ícono, ni a un fondo), se guarda tal cual,
+ * y todo texto del portal llega a 7:1 sobre su fondo del sistema. Más los guardianes de dimensiones y de tokens.
  */
-const CLAVE_DEL_FONDO = { encabezado: "encabezado", pagina: "pagina", detras: "detras" } as const;
 const VACIO: FondosDelPortal = { encabezado: null, pagina: null, detras: null };
+const GRUPOS = ["encabezado", "pagina", "detras"] as const;
+const css = readFileSync("src/app/globals.css", "utf8");
 
-describe("guardián de dimensiones", () => {
-  it("toda clave de color del catálogo del portal está declarada en el oráculo (una nueva obliga a decidir si un fondo la afecta)", () => {
+describe("guardianes", () => {
+  it("toda clave de color del catálogo del portal está declarada en el oráculo (una nueva obliga a decidir)", () => {
     const delCatalogo = CLAVES_PORTAL_V1.filter((d) => d.tipo === "color" || d.clave === "portal_marca_derivada").map((d) => d.clave as string);
     expect([...CLAVES_DE_COLOR_DEL_PORTAL_DECLARADAS].sort()).toEqual([...delCatalogo].sort());
   });
-
-  it("las claves que dependen de un fondo existen en el catálogo", () => {
-    const claves = new Set(CLAVES_PORTAL_V1.map((d) => d.clave as string));
-    for (const d of Object.values(DEPENDEN_DE)) for (const c of [d.fondo, ...d.textos]) expect(claves.has(c), c).toBe(true);
+  it("los tokens del sistema del oráculo son los del CSS (si cambian, el oráculo se revisa)", () => {
+    for (const [token, valor] of Object.entries(TOKENS_DEL_SISTEMA)) expect(css, token).toMatch(new RegExp(`${token}:\\s*${valor};`));
   });
 });
 
-describe("cada fondo × cada elegido × cada texto cargado, contra el oráculo", () => {
-  for (const [grupo, dep] of Object.entries(DEPENDEN_DE) as [keyof typeof DEPENDEN_DE, (typeof DEPENDEN_DE)[keyof typeof DEPENDEN_DE]][]) {
-    for (const fondo of FONDOS_ELEGIDOS) {
-      for (const texto of TEXTOS_CARGADOS) {
-        it(`${grupo} · ${fondo.nombre} · ${texto.nombre}`, () => {
-          const cargado = Object.fromEntries(dep.textos.map((c) => [c, texto.cargado]));
-          const base = resolverEstiloPortal(cargado);
-          const estilo = conFondosDelPortal(base, { ...VACIO, [CLAVE_DEL_FONDO[grupo]]: fondo.elegido });
-          // Sin fondo (o mal escrito) NADA cambia: el portal sale como hoy (lo cargado manda).
-          if (fondo.esperado.mostrado === null) {
-            expect(estilo.valores).toEqual(base.valores);
-            expect(estilo.variablesCss).toEqual(base.variablesCss);
-            return;
-          }
-          const mostrado = estilo.valores[dep.fondo as keyof typeof estilo.valores] as string;
-          if (fondo.esperado.mostrado === "ajustado-oscuro") {
-            // Mismo tono (un gris sigue siendo gris), más oscuro que el elegido, a 7:1 con el texto derivado.
-            const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(mostrado.slice(i, i + 2), 16));
-            expect(r === g && g === b, "sigue siendo gris").toBe(true);
-            expect(r!).toBeLessThan(0x80);
-            expect(contrasteWcag(mostrado, "#ffffff")).toBeGreaterThanOrEqual(7);
-          } else {
-            expect(mostrado).toBe(fondo.esperado.mostrado);
-          }
-          expect(contrasteWcag(mostrado, fondo.esperado.texto!)).toBeGreaterThanOrEqual(7);
-          // Los textos: el cargado manda SOLO si se lee (7:1) sobre el fondo que se muestra; si no, el derivado (blanco o negro).
-          for (const clave of dep.textos) {
-            const usado = estilo.valores[clave as keyof typeof estilo.valores] as string;
-            const seLee = /^#[0-9a-f]{6}$/.test(texto.cargado) && contrasteWcag(texto.cargado, mostrado) >= 7;
-            expect(usado, clave).toBe(seLee ? texto.cargado : fondo.esperado.texto);
-            expect(contrasteWcag(usado, mostrado), `${clave} se lee`).toBeGreaterThanOrEqual(7);
-          }
-          // Lo que NINGÚN fondo de otro grupo toca: las claves de los otros dos grupos quedan como estaban.
-          for (const [otro, d] of Object.entries(DEPENDEN_DE)) {
-            if (otro === grupo) continue;
-            for (const c of [d.fondo, ...d.textos]) expect(estilo.valores[c as keyof typeof estilo.valores], c).toBe(base.valores[c as keyof typeof base.valores]);
-          }
-        });
-      }
+describe("el texto del portal NO depende de la marca: llega a 7:1 sobre su fondo del sistema", () => {
+  for (const [texto, fondo] of PARES_DE_TEXTO) {
+    it(`${texto} sobre ${fondo}`, () => {
+      expect(contrasteWcag(TOKENS_DEL_SISTEMA[texto], TOKENS_DEL_SISTEMA[fondo])).toBeGreaterThanOrEqual(7);
+    });
+  }
+  it("el CSS de la pantalla simple no pinta ningún texto con una variable de acento", () => {
+    for (const linea of css.split("\n").filter((l) => /--portal-acento-|--portal-card-border/.test(l))) expect(linea, linea).not.toMatch(/^\s*color:/);
+  });
+});
+
+describe("cada color × cada marca, contra el oráculo", () => {
+  for (const grupo of GRUPOS) {
+    for (const marca of MARCAS) {
+      it(`${grupo} · ${marca.nombre}`, () => {
+        const base = resolverEstiloPortal({});
+        const estilo = conFondosDelPortal(base, { ...VACIO, [grupo]: marca.elegida });
+        const permitidas = new Set<string>(ACENTO_DE[grupo]);
+        // Solo cambian las variables de SU acento, y con el color tal cual (en minúsculas); nada más cambia.
+        for (const variable of new Set([...Object.keys(base.variablesCss), ...Object.keys(estilo.variablesCss)])) {
+          if (permitidas.has(variable)) expect(estilo.variablesCss[variable], variable).toBe(marca.guardada ?? base.variablesCss[variable]);
+          else expect(estilo.variablesCss[variable], variable).toBe(base.variablesCss[variable]);
+        }
+        // Los valores (fondos, textos, íconos) quedan idénticos: la marca no los toca.
+        expect(estilo.valores).toEqual(base.valores);
+      });
     }
   }
-});
-
-describe("el ajuste siempre termina y llega a 7:1 (de a 5 niveles de gris, de #000000 a #ffffff)", () => {
-  it("el resultado llega a 7:1 con su texto, y «ajustado» es verdad exactamente cuando el color cambió", () => {
-    for (let v = 0; v <= 255; v += 5) {
-      const hex = `#${v.toString(16).padStart(2, "0").repeat(3)}`;
-      const r = colorDelPortal(hex)!;
-      expect(contrasteWcag(r.hex, r.texto), hex).toBeGreaterThanOrEqual(7);
-      expect(r.ajustado === (r.hex !== hex), hex).toBe(true);
+  it("los tres a la vez, con cada marca de peor caso: ningún valor de texto, ícono o fondo cambia", () => {
+    for (const marca of MARCAS) {
+      const base = resolverEstiloPortal({});
+      const estilo = conFondosDelPortal(base, { encabezado: marca.elegida, pagina: marca.elegida, detras: marca.elegida });
+      expect(estilo.valores, marca.nombre).toEqual(base.valores);
     }
   });
+});
+
+describe("lo que la empresa ya tenía cargado manda: un color elegido no pisa fondos ni textos del Json", () => {
+  const json = { portal_header_bg: "#112233", portal_header_color: "#eeeeee", portal_fondo_color: "#fafafa", portal_card_bg: "#223344", portal_card_color: "#ffffff" };
+  const nuevo = { variante: "A", lineaSuperior: null, titulo: null, colorEncabezado: null, colorPagina: null, colorDetras: null, imagen: null, logoVisible: true } as const;
+  for (const marca of MARCAS) {
+    it(`con la marca ${marca.nombre}`, () => {
+      const sin = estiloDelPortalSimple(json, nuevo);
+      const con = estiloDelPortalSimple(json, { ...nuevo, colorEncabezado: marca.elegida, colorPagina: marca.elegida, colorDetras: marca.elegida });
+      expect(con.valores).toEqual(sin.valores);
+      expect(sin.valores.portal_header_bg).toBe("#112233");
+      expect(sin.valores.portal_card_color).toBe("#ffffff");
+    });
+  }
 });
