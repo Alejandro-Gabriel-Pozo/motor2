@@ -44,7 +44,7 @@ export async function sembrarFacturaDeUnaParte(p: {
   await prisma.movimientoStock.create({
     data: { operacionId: operacion.id, productoId: p.productoId, seccionId: p.seccionId, proceso: "COMPRA", cantidad, precioTotal, precioPorUnidadStock: precioTotal / cantidad, detalle: "Compra", facturaProveedorRenglonId: renglon.id },
   });
-  await prisma.facturaProveedorSucursal.create({ data: { facturaProveedorId: factura.id, sucursalId: p.sucursalId, porcentajeDeclaradoBp: 10000, operacionId: operacion.id, estadoRecepcion: "RECIBIDA", recibidaEn: fecha, recibidaPorId: p.usuarioId } as never });
+  await prisma.facturaProveedorSucursal.create({ data: { facturaProveedorId: factura.id, sucursalId: p.sucursalId, porcentajeDeclaradoBp: 10000, operacionId: operacion.id, estadoRecepcion: "RECIBIDA", recibidaEn: fecha, recibidaPorId: p.usuarioId } });
   return { facturaId: factura.id, operacionId: operacion.id, renglonId: renglon.id };
 }
 
