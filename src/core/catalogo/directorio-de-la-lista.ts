@@ -31,7 +31,7 @@ export function hayBusquedaDelDirectorio(b: BusquedaDelDirectorio): boolean {
 }
 
 /** Sin mayúsculas ni acentos ni espacios de más: «José  PÉREZ» y «jose perez» son lo mismo. */
-export function normalizarParaBuscarEnElDirectorio(texto: string): string {
+function normalizarParaBuscarEnElDirectorio(texto: string): string {
   return texto.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
