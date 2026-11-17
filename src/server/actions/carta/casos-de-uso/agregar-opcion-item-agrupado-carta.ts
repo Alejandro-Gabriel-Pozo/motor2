@@ -2,15 +2,20 @@ import "server-only";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { precioDeCarta, whereCartaDeSucursal } from "@/core/carta/public";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
+import { esRestriccionDeLaBase } from "@/core/datos/errores-de-base";
 import type { ComandoAgregarOpcionItemAgrupadoCarta, ResultadoAgregarOpcionItemAgrupadoCarta } from "@/core/features/carta/items-agrupados.schema";
 import { esBaseConfigurable } from "@/core/opciones/public";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { descuentosConfiguradosEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
+import { leerMiembroVigenteDeProducto } from "@/server/persistencia/carta/familias";
 import { crearOpcionDeItemAgrupado } from "@/server/persistencia/carta/items-agrupados";
 import { formatearMonto } from "@/core/formato-de-numero";
 
 const pesos = formatearMonto;
+
+/** F1 (invariante TRANSITORIO «familia o ítem agrupado», docs/diseno-carta-familias-niveles-6-a-10-2026-11-17.md §6.4): el producto es miembro vigente de una familia, así que no puede ir en un ítem agrupado. Mensaje genérico: no revela cuál. */
+const mensajeYaEnFamilia = (productoNombre: string) => `«${productoNombre}» ya está en una familia: quitalo de ahí primero para agruparlo en un ítem.`;
 
 /** El mensaje cuando el producto ya está en un ítem agrupado (el mismo u otro) de la sucursal: un producto va en a lo sumo uno (D2). `null` si no está en ninguno. */
 async function mensajeYaAgrupado(db: ContextoUsuario["db"], sucursalId: string, productoId: string, productoNombre: string, itemAgrupadoCartaId: string): Promise<string | null> {
@@ -33,6 +38,9 @@ async function mensajeYaAgrupado(db: ContextoUsuario["db"], sucursalId: string, 
  * Bloquea (D5) si el precio del producto en la sucursal activa (con su precio local, `precioDeCarta`, calculado igual que la carta) no coincide con el de TODAS las
  * opciones ya cargadas; el primer producto de un ítem sin opciones entra siempre. La categoría del producto no importa: la opción sale (y sus ventas se cuentan) en
  * la sección del ítem agrupado.
+ *
+ * F1 (cruce con las familias, invariante TRANSITORIO): justo después del 5, si el producto es miembro vigente de una familia, `YA_EN_FAMILIA` y no se escribe nada; la base lo repite con un disparador (si se lo saltea algún camino, el alta
+ * rechaza igual y acá se traduce al mismo resultado).
  *
  * Orden, igual que antes: 1. el ítem (`No se encontró el ítem agrupado.`); 2. que se haya elegido producto; 3. el producto (existe y es PV); 4. que no tenga descuento
  * en esta sucursal (P2.1: antes, en ninguna) y que no se venda por opción (Fase 4, `ES_BASE_CONFIGURABLE`, justo después del 3); 5. que no esté ya en un ítem (el mismo u otro); 6. el orden (`null` = la cantidad de opciones del ítem); 7. el precio contra las opciones
@@ -77,6 +85,7 @@ export async function agregarOpcionItemAgrupadoCartaCasoDeUso(
 
   const yaAgrupado = await mensajeYaAgrupado(db, sucursalId, producto.id, producto.nombre, item.id);
   if (yaAgrupado) return fracaso("YA_AGRUPADO", yaAgrupado);
+  if (await leerMiembroVigenteDeProducto(db, producto.id)) return fracaso("YA_EN_FAMILIA", mensajeYaEnFamilia(producto.nombre));
 
   // S-52: el orden lo decidió `guardComandoAgregarOpcionItemAgrupadoCarta` (la acción lo calculó con lo que mandó el cliente); su rechazo se aplica ACÁ, después de las lecturas anteriores.
   // `null` = al final: la cantidad de opciones que ya tiene el ítem (siempre válida).
@@ -105,6 +114,7 @@ export async function agregarOpcionItemAgrupadoCartaCasoDeUso(
   } catch (e) {
     // Carrera: otro admin lo agregó a un grupo entre la verificación y el alta (`productoId` es único).
     if (esErrorDeUnicidad(e)) return fracaso("YA_AGRUPADO", (await mensajeYaAgrupado(db, sucursalId, producto.id, producto.nombre, item.id)) ?? `«${producto.nombre}» ya está en un ítem agrupado.`);
+    if (esRestriccionDeLaBase(e, "producto_ya_miembro_de_familia")) return fracaso("YA_EN_FAMILIA", mensajeYaEnFamilia(producto.nombre));
     throw e;
   }
   return exito(`«${producto.nombre}» agregado a «${item.nombre}».`, null);

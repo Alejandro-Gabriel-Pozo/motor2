@@ -69,6 +69,7 @@ describe("cumplimiento del cableado del guardián (repo real)", () => {
 
 const SHA = "a".repeat(40);
 const APAGADA = "github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CI_EN_MAIN != 'si'";
+const CONDICION_DE_BUILD_Y_E2E = `\${{ !cancelled() && !(${APAGADA}) && needs.alcance.outputs.alcance != 'solo-docs' }}`;
 const CI_VALIDO = [
   "name: CI",
   "on:",
@@ -77,6 +78,11 @@ const CI_VALIDO = [
   "  pull_request:",
   "    branches: [main]",
   "jobs:",
+  "  alcance:",
+  `    if: \${{ !(${APAGADA}) }}`,
+  "    runs-on: ubuntu-latest",
+  "    steps:",
+  "      - run: echo alcance",
   "  estatico:",
   `    if: \${{ !(${APAGADA}) }}`,
   "    name: Estático",
@@ -95,7 +101,8 @@ const CI_VALIDO = [
   "          if-no-files-found: error",
   "          retention-days: 7",
   "  build:",
-  `    if: \${{ !(${APAGADA}) }}`,
+  "    needs: [alcance]",
+  `    if: ${CONDICION_DE_BUILD_Y_E2E}`,
   "    runs-on: ubuntu-latest",
   "    steps:",
   "      - run: npm run build",
@@ -113,14 +120,15 @@ const CI_VALIDO = [
   "          echo '# no es un comentario de YAML, es el script'",
   "          echo continue-on-error: true",
   "  e2e:",
-  `    if: \${{ !(${APAGADA}) }}`,
+  "    needs: [alcance]",
+  `    if: ${CONDICION_DE_BUILD_Y_E2E}`,
   "    runs-on: ubuntu-latest",
   "    steps:",
   "      - run: npm run test:e2e",
   "  gate:",
   "    name: Gate (requerido)",
   `    if: \${{ always() && !(${APAGADA}) }}`,
-  "    needs: [estatico, build, integracion, e2e]",
+  "    needs: [alcance, estatico, build, integracion, e2e]",
   "    runs-on: ubuntu-latest",
   "    steps:",
   "      - name: Todos los jobs terminaron en verde",
@@ -138,7 +146,7 @@ describe("evaluarWorkflow (ci.yml)", () => {
   });
 
   const casos: { titulo: string; de: string; a: string; tipo: TipoDeCumplimiento; donde: string }[] = [
-    { titulo: "un job del gate desaparece (se renombra)", de: `  build:\n    if: \${{ !(${APAGADA}) }}\n`, a: "  construir:\n", tipo: "ci-job-ausente", donde: "jobs:" },
+    { titulo: "un job del gate desaparece (se renombra)", de: `  build:\n    needs: [alcance]\n    if: ${CONDICION_DE_BUILD_Y_E2E}\n`, a: "  construir:\n", tipo: "ci-job-ausente", donde: "jobs:" },
     { titulo: "el paso de `npm test` se reemplaza por un echo", de: "run: npm test -- --shard=1/4", a: "run: echo omitido -- --shard=1/4", tipo: "ci-sin-paso", donde: "  integracion:" },
     { titulo: "el paso de `npm run arquitectura` se reemplaza", de: "- run: npm run arquitectura", a: "- run: echo omitido", tipo: "ci-sin-paso", donde: "  estatico:" },
     { titulo: "`continue-on-error: true` en el paso de `npm test`", de: "      - name: npm test\n", a: "      - name: npm test\n        continue-on-error: true\n", tipo: "ci-continue-on-error", donde: "continue-on-error: true" },
@@ -150,7 +158,7 @@ describe("evaluarWorkflow (ci.yml)", () => {
     { titulo: "un `if` permitido pero con otra condición", de: "        if: failure()\n", a: "        if: success()\n", tipo: "ci-condicion-no-permitida", donde: "if: success()" },
     { titulo: "el paso de `npm test` cambia de carpeta", de: "        run: npm test -- --shard=1/4\n", a: "        working-directory: otra\n        run: npm test -- --shard=1/4\n", tipo: "ci-paso-alterado", donde: "working-directory: otra" },
     { titulo: "el paso de `npm test` cambia de intérprete", de: "        run: npm test -- --shard=1/4\n", a: "        shell: bash {0}\n        run: npm test -- --shard=1/4\n", tipo: "ci-paso-alterado", donde: "shell: bash" },
-    { titulo: "el gate deja de esperar a `e2e`", de: "needs: [estatico, build, integracion, e2e]", a: "needs: [estatico, build, integracion]", tipo: "ci-gate-sin-needs", donde: "needs: [estatico, build, integracion]" },
+    { titulo: "el gate deja de esperar a `e2e`", de: "needs: [alcance, estatico, build, integracion, e2e]", a: "needs: [alcance, estatico, build, integracion]", tipo: "ci-gate-sin-needs", donde: "needs: [alcance, estatico, build, integracion]" },
     { titulo: "la expresión del gate deja de nombrar a `e2e`", de: ' -a "${{ needs.e2e.result }}" = "success"', a: "", tipo: "ci-gate-expresion", donde: "- name: Todos los jobs" },
     { titulo: "un `if` del conteo del gate con otra condición", de: "        if: ${{ needs.integracion.result == 'success' && needs.e2e.result == 'success' }}", a: "        if: always()", tipo: "ci-condicion-no-permitida", donde: "if: always()\n        run: echo conteo" },
     { titulo: "el gate cambia de nombre", de: "name: Gate (requerido)", a: "name: Gate", tipo: "ci-gate-renombrado", donde: "name: Gate" },
@@ -161,7 +169,7 @@ describe("evaluarWorkflow (ci.yml)", () => {
     { titulo: "una variable que regenera un golden", de: "          X: y\n", a: "          X: y\n          REGENERAR_HUELLA_DE_LOGIN: '1'\n", tipo: "ci-variable-prohibida", donde: "REGENERAR_HUELLA" },
     { titulo: "otra variable `CONTRATOS_*` (solo `CONTRATOS_EVIDENCIA` está permitida)", de: "          CONTRATOS_EVIDENCIA: resultado-contratos.json\n", a: "          CONTRATOS_EVIDENCIA: resultado-contratos.json\n          CONTRATOS_REGENERAR: '1'\n", tipo: "ci-variable-prohibida", donde: "CONTRATOS_REGENERAR" },
     { titulo: "una variable que empieza como la permitida (`CONTRATOS_EVIDENCIAS`) no está permitida", de: "          CONTRATOS_EVIDENCIA: resultado-contratos.json\n", a: "          CONTRATOS_EVIDENCIA: resultado-contratos.json\n          CONTRATOS_EVIDENCIAS: '1'\n", tipo: "ci-variable-prohibida", donde: "CONTRATOS_EVIDENCIAS" },
-    { titulo: "el gate deja de esperar a `estatico` (el job que corre la evidencia)", de: "needs: [estatico, build, integracion, e2e]", a: "needs: [build, integracion, e2e]", tipo: "ci-gate-sin-needs", donde: "needs: [build, integracion, e2e]" },
+    { titulo: "el gate deja de esperar a `estatico` (el job que corre la evidencia)", de: "needs: [alcance, estatico, build, integracion, e2e]", a: "needs: [alcance, build, integracion, e2e]", tipo: "ci-gate-sin-needs", donde: "needs: [alcance, build, integracion, e2e]" },
     { titulo: "la expresión del gate deja de nombrar a `estatico`", de: '"${{ needs.estatico.result }}" = "success" -a ', a: "", tipo: "ci-gate-expresion", donde: "- name: Todos los jobs" },
     { titulo: "evidencia: el paso de `npm run arquitectura` pierde `CONTRATOS_EVIDENCIA` (el ejecutor no deja su JSON)", de: "        env:\n          CONTRATOS_EVIDENCIA: resultado-contratos.json\n", a: "", tipo: "ci-sin-evidencia", donde: "- run: npm run arquitectura" },
     { titulo: "evidencia: `CONTRATOS_EVIDENCIA` apunta a otro archivo que el que se sube", de: "CONTRATOS_EVIDENCIA: resultado-contratos.json", a: "CONTRATOS_EVIDENCIA: otro.json", tipo: "ci-sin-evidencia", donde: "CONTRATOS_EVIDENCIA: otro.json" },
@@ -610,7 +618,7 @@ describe("mutaciones sobre una copia exacta del repo (el repo real no se toca)",
     expect(r.map((h) => h.tipo)).toEqual(["ci-sin-evidencia"]);
     expect(r[0].archivo).toBe(".github/workflows/ci.yml");
     expect(r[0].que).toContain("resultado-contratos.json");
-    const g = mutar(".github/workflows/ci.yml", "needs: [estatico, build, integracion, e2e]", "needs: [build, integracion, e2e]", "el gate sin estatico en needs");
+    const g = mutar(".github/workflows/ci.yml", "needs: [alcance, estatico, build, integracion, e2e]", "needs: [alcance, build, integracion, e2e]", "el gate sin estatico en needs");
     expect(g.map((h) => h.tipo)).toEqual(["ci-gate-sin-needs"]);
   });
 

@@ -11,7 +11,7 @@ import type { AccionDeSucursal } from "../../src/core/permisos/acciones";
  * de su piso), devuelve las claves que se ven, y lo hace con la lectura única (sin una tanda de consultas por clave).
  */
 
-// Cuatro claves de sucursal de módulos y pisos distintos: ajuste es de piso administrador (un operador no llega aunque la matriz diga «Ver»), consumo y transferencia son de
+// Cuatro claves de sucursal de módulos y pisos distintos: ajuste es de las 65 (piso operario y de fábrica solo `admin`, PISOS-65: un operador llega solo si la matriz le da la fila), consumo y transferencia son de
 // `stock`, producción es de `produccion`.
 const CLAVES: readonly [AccionDeSucursal, ...AccionDeSucursal[]] = ["proceso_ajuste", "proceso_consumo", "proceso_produccion", "proceso_transferencia"];
 
@@ -60,7 +60,7 @@ describe("requierePermisoVerDeAlguna: pasa si y solo si pasa requierePermisoVer 
     await limpiarBaseDeTest();
   });
 
-  it("equivalencia sobre TODAS las matrices posibles de las cuatro claves para un rol de operador (el piso de ajuste lo deja afuera aunque la matriz diga Ver)", async () => {
+  it("equivalencia sobre TODAS las matrices posibles de las cuatro claves para un rol de operador (PISOS-65: con la fila de ajuste el operador también la ve; la equivalencia con el gate vale igual)", async () => {
     const { base, operador, sucursalId } = await montar();
     let probadas = 0;
     for (const conVer of subconjuntos(CLAVES)) {

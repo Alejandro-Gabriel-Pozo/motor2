@@ -98,3 +98,18 @@ export function esFalloDeSerializacionEnSqlCrudo(e: unknown): boolean {
   const causa = (conocido.meta?.driverAdapterError as { cause?: { originalCode?: unknown } } | undefined)?.cause;
   return causa?.originalCode === "40001" || causa?.originalCode === "40P01";
 }
+
+/**
+ * Una violación de una RESTRICCIÓN NOMBRADA de la base (SQLSTATE 23514, `check_violation`, la que levanta un disparador con `RAISE EXCEPTION … USING CONSTRAINT = '<nombre>'`): `true` si `e` es ese error y la
+ * restricción es `nombre`. Sirve para traducir a un resultado de negocio el rechazo de una regla que la base repite como red (el invariante transitorio «familia o ítem agrupado»). Cualquier otro error, o la
+ * misma violación con otro nombre, sigue de largo: no se confunde un `check_violation` ajeno con este.
+ */
+export function esRestriccionDeLaBase(e: unknown, nombre: string): boolean {
+  const conocido = errorConocidoDeBase(e);
+  const causa = (conocido?.meta?.driverAdapterError as { cause?: { originalCode?: unknown; constraint?: unknown; originalMessage?: unknown } } | undefined)?.cause;
+  const delDriver = causaDeErrorDeDriver(e);
+  const restriccion = causa?.constraint ?? delDriver?.constraint;
+  const nombreDeLaRestriccion = typeof restriccion === "string" ? restriccion : restriccion && typeof restriccion === "object" && "index" in restriccion ? (restriccion as { index?: unknown }).index : undefined;
+  if (nombreDeLaRestriccion === nombre) return true;
+  return causa?.originalCode === "23514" && typeof causa.originalMessage === "string" && causa.originalMessage.includes(nombre);
+}

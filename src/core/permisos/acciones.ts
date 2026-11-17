@@ -22,8 +22,8 @@ export type ContextoDeAccion = "empresa" | "sucursal";
  * y «operador» son de rango operario; el rol de clave «admin» es el administrador de sistema (alcanza los pisos administrador y administrador de
  * sistema); «gerente» no es un rol de sucursal sino `UsuarioEmpresa.rolEmpresa` (uno por empresa): una acción de piso gerente la tiene SOLO quien
  * es gerente, sin pasar por la matriz, y por eso es de contexto empresa.
- * - «administrador»: la autoridad operativa (anular, corregir, catálogos, carta, reportes de dinero). Es el piso que alcanzará un rol propio de la empresa
- *   de rango 2 («encargado», F3 de ADR-027, cuando exista `Rol.nivel`); hoy no lo tiene nadie más que el rol «admin».
+ * - «administrador»: hoy ninguna acción lo usa (PISOS-65, decisión del dueño 2026-11-17); el escalón queda para `Rol.nivel` (F3 de ADR-027)
+ *   y para la regla de la matriz del admin.
  * - «administrador_sistema»: el gobierno de la empresa (las claves del módulo `administracion` que no son de gerente: usuarios, roles, matriz,
  *   sucursales, capacidades y la auditoría de la sucursal, D16). Un rango 2 nunca lo alcanza.
  */
@@ -55,39 +55,39 @@ export interface AccionSemilla {
 export const ACCIONES = [
   { clave: "alta_producto", modulo: "catalogo_basico", descripcion: "Dar de alta un producto", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "producto_editar", modulo: "catalogo_basico", descripcion: "Editar un producto existente", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
-  { clave: "guardar_receta", modulo: "recetas", descripcion: "Crear/editar una receta (Editor de Recetas)", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "grupos_familia", modulo: "catalogo_basico", descripcion: "Administrar los Grupos de insumos, asignar cada insumo a su Grupo y activar o desactivar insumos", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "secciones", modulo: "stock", descripcion: "Administrar el catálogo de Secciones", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "unidades", modulo: "catalogo_basico", descripcion: "Administrar el catálogo de Unidades de medida", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "proveedores", modulo: "proveedores_basico", descripcion: "Administrar el catálogo de Proveedores (activar/desactivar)", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "categorias", modulo: "catalogo_basico", descripcion: "Administrar el catálogo de Categorías", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "guardar_receta", modulo: "recetas", descripcion: "Crear/editar una receta (Editor de Recetas)", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "grupos_familia", modulo: "catalogo_basico", descripcion: "Administrar los Grupos de insumos, asignar cada insumo a su Grupo y activar o desactivar insumos", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "secciones", modulo: "stock", descripcion: "Administrar el catálogo de Secciones", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "unidades", modulo: "catalogo_basico", descripcion: "Administrar el catálogo de Unidades de medida", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "proveedores", modulo: "proveedores_basico", descripcion: "Administrar el catálogo de Proveedores (activar/desactivar)", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "categorias", modulo: "catalogo_basico", descripcion: "Administrar el catálogo de Categorías", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   // Food cost objetivo (2026-10-01): lo fija SOLO administración (decisión del dueño), el de la empresa y el de cada categoría.
-  { clave: "margen_objetivo_editar", modulo: "recetas", descripcion: "Fijar el food cost objetivo de la empresa y de cada categoría", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "margen_objetivo_editar", modulo: "recetas", descripcion: "Fijar el food cost objetivo de la empresa y de cada categoría", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   // Los motivos de Consumo/Merma ya no vienen hardcodeados en un enum fijo (hallazgo real, 2026-09-23). Una clave por catálogo (decisión
   // del dueño, 2026-09-30: una clave por acción); `motivos_movimiento` (una sola para los dos) se retiró.
-{ clave: "motivos_merma", modulo: "stock", descripcion: "Administrar el catálogo de Motivos de merma", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "motivos_destino_consumo", modulo: "stock", descripcion: "Administrar el catálogo de Destinos de consumo", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+{ clave: "motivos_merma", modulo: "stock", descripcion: "Administrar el catálogo de Motivos de merma", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "motivos_destino_consumo", modulo: "stock", descripcion: "Administrar el catálogo de Destinos de consumo", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   // Nueva (docs/plan-carta-catalogo-2026-09-24.md, M8): administrar lo que la carta pública (restaurant-menu-design) lee de acá —
   // las secciones de carta, qué categoría cae en cada una, el contenido de cara al cliente de cada PV y las promos de la sucursal.
   // Solo admin: es lo que ve el público.
   // Carta pública: una clave por bloque de administración (decisión del dueño, 2026-09-30); `carta` (una sola para todo) se retiró.
-  { clave: "carta_ver", modulo: "carta", descripcion: "Entrar a la pantalla Carta y ver sus secciones, géneros, contenido y promos", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "carta_secciones", modulo: "carta", descripcion: "Administrar las secciones de la carta pública", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "carta_ver", modulo: "carta", descripcion: "Entrar a la pantalla Carta y ver sus secciones, géneros, contenido y promos", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "carta_secciones", modulo: "carta", descripcion: "Administrar las secciones de la carta pública", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   // S-10 / D1 (decisión del dueño, 2026-10-08; fila O.59): `carta_generos`, `carta_contenido_producto` y `carta_items_agrupados` ESCRIBEN solo en la carta de la sucursal ACTIVA (la carta es propia
   // de cada sucursal, ADR-009 C3), así que son de contexto SUCURSAL: se evalúan contra la membresía de la sucursal donde se escribe, no contra «alguna membresía de la empresa». Declararlas de
   // empresa (2026-09-30) fue un error. Las que de verdad son de la empresa entera (`carta_secciones`, `carta_portal`, `carta_promo_definir`) no cambian.
-  { clave: "carta_generos", modulo: "carta", descripcion: "Administrar los géneros de la carta pública", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "carta_contenido_producto", modulo: "carta", descripcion: "Editar el contenido de carta de cada producto de venta", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "carta_generos", modulo: "carta", descripcion: "Administrar los géneros de la carta pública", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "carta_contenido_producto", modulo: "carta", descripcion: "Editar el contenido de carta de cada producto de venta", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   // Producto con descuento (2026-10-01): el % es por sucursal; no es una promoción.
-  { clave: "carta_producto_descuento", modulo: "carta", descripcion: "Fijar o sacar el descuento en porcentaje de un producto en la sucursal", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "carta_items_agrupados", modulo: "carta", descripcion: "Administrar los ítems agrupados de la carta pública", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "carta_portal", modulo: "carta", descripcion: "Administrar el portal de sucursales de la carta pública", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "carta_producto_descuento", modulo: "carta", descripcion: "Fijar o sacar el descuento en porcentaje de un producto en la sucursal", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "carta_items_agrupados", modulo: "carta", descripcion: "Administrar los ítems agrupados de la carta pública", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "carta_portal", modulo: "carta", descripcion: "Administrar el portal de sucursales de la carta pública", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   // Una promo es de la empresa (decisión del dueño, 2026-10-01): definirla es de empresa; prenderla/apagarla y ponerle precio son de la sucursal.
-  { clave: "carta_promo_definir", modulo: "promociones", descripcion: "Crear y editar las promos de la carta (de la empresa): datos, cupos y apagado general", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "carta_promo_activar", modulo: "promociones", descripcion: "Prender o apagar una promo de la empresa en la sucursal", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "carta_promo_precio_local", modulo: "promociones", descripcion: "Fijar el precio de una promo solo en la sucursal", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "carta_tema", modulo: "carta", descripcion: "Administrar el tema visual de la carta de la sucursal", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "stock_minimo", modulo: "stock", descripcion: "Fijar Stock Mínimo (global o por sección)", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "carta_promo_definir", modulo: "promociones", descripcion: "Crear y editar las promos de la carta (de la empresa): datos, cupos y apagado general", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "carta_promo_activar", modulo: "promociones", descripcion: "Prender o apagar una promo de la empresa en la sucursal", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "carta_promo_precio_local", modulo: "promociones", descripcion: "Fijar el precio de una promo solo en la sucursal", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "carta_tema", modulo: "carta", descripcion: "Administrar el tema visual de la carta de la sucursal", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "stock_minimo", modulo: "stock", descripcion: "Fijar Stock Mínimo (global o por sección)", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   // Nueva (no existía en Apps Script — ver plan, porción Stock):
   // calcularStockConsolidado_/calcularStockPorFamilia_/calcularAlertasStock_
   // no tenían NINGÚN gate propio ahí (solo se ocultaban a nivel de menú de
@@ -97,9 +97,9 @@ export const ACCIONES = [
   // operativa del día a día, distinto de FIJAR el mínimo, que sigue
   // admin-only en 'stock_minimo').
   { clave: "ver_stock", modulo: "stock", descripcion: "Ver Stock consolidado, por familia y alertas", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
-  { clave: "precio_local", modulo: "catalogo_basico", descripcion: "Fijar Precio Local por sucursal", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "comparar_precios", modulo: "compras", descripcion: "Comparar precios por proveedor", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "insumos_mezclados", modulo: "catalogo_basico", descripcion: "Revisar insumos con unidad mezclada", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "precio_local", modulo: "catalogo_basico", descripcion: "Fijar Precio Local por sucursal", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "comparar_precios", modulo: "compras", descripcion: "Comparar precios por proveedor", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "insumos_mezclados", modulo: "catalogo_basico", descripcion: "Revisar insumos con unidad mezclada", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   // 'reconstruir_productos' NO se migra (ver plan, porción Catálogo): era
   // el parche de Apps Script para resincronizar Productos ↔ Hoja listado
   // (dos hojas, sin FKs). Acá Producto es una sola tabla — no hay nada que
@@ -118,7 +118,7 @@ export const ACCIONES = [
   { clave: "proceso_compra", modulo: "compras", descripcion: "Registrar una Compra", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "proceso_produccion", modulo: "produccion", descripcion: "Registrar una Producción", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "proceso_consumo", modulo: "stock", descripcion: "Registrar un Consumo", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
-  { clave: "proceso_ajuste", modulo: "stock", descripcion: "Registrar un Ajuste (corrección de stock)", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "proceso_ajuste", modulo: "stock", descripcion: "Registrar un Ajuste (corrección de stock)", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   { clave: "proceso_control", modulo: "stock", descripcion: "Registrar un Conteo Físico", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "proceso_transferencia", modulo: "stock", descripcion: "Registrar una Transferencia entre secciones", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "proceso_merma", modulo: "stock", descripcion: "Registrar una Merma", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
@@ -136,12 +136,12 @@ export const ACCIONES = [
   { clave: "traspaso_aceptar", modulo: "traspasos", descripcion: "Aceptar un envío de traspaso que nos mandaron", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "traspaso_rechazar_envio", modulo: "traspasos", descripcion: "Rechazar un envío de traspaso que nos mandaron", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "traspaso_confirmar_reingreso", modulo: "traspasos", descripcion: "Confirmar el reingreso de un envío de traspaso que nos rechazaron", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
-  { clave: "cancelar_conteo", modulo: "stock", descripcion: "Cancelar un conteo físico ya aplicado", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "anular_venta", modulo: "salon", descripcion: "Anular una venta ya confirmada", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "cancelar_conteo", modulo: "stock", descripcion: "Cancelar un conteo físico ya aplicado", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "anular_venta", modulo: "salon", descripcion: "Anular una venta ya confirmada", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   // Más restrictivo que `proceso_compra` (cargarla), a propósito y con el mismo criterio que `anular_venta`: deshacer una compra confirmada mueve el stock y el gasto.
-  { clave: "anular_compra", modulo: "compras", descripcion: "Anular una compra ya confirmada", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "anular_compra", modulo: "compras", descripcion: "Anular una compra ya confirmada", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   // Corregir solo la CABECERA de una compra ya confirmada (proveedor, N.º de factura, detalle); nunca sus líneas. Mismo criterio restrictivo que `anular_compra`.
-  { clave: "corregir_compra", modulo: "compras", descripcion: "Corregir el proveedor, el N.º de factura o el detalle de una compra ya confirmada", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "corregir_compra", modulo: "compras", descripcion: "Corregir el proveedor, el N.º de factura o el detalle de una compra ya confirmada", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   { clave: "capacidades_sucursal", modulo: "administracion", descripcion: "Habilitar/deshabilitar qué puede gestionar cada sucursal", contexto: "empresa", nivelMinimo: "administrador_sistema", rolesEditarSemilla: ["admin"] },
   // Nueva (no existía en Apps Script — ver plan, "Bootstrap de admin"):
   // reemplaza el paso manual crear-contenedor.js por una acción real del
@@ -150,7 +150,7 @@ export const ACCIONES = [
   { clave: "alta_sucursal", modulo: "administracion", descripcion: "Dar de alta una sucursal nueva y asignar su primer admin", contexto: "empresa", nivelMinimo: "administrador_sistema", rolesEditarSemilla: ["admin"] },
   { clave: "activar_sucursal", modulo: "administracion", descripcion: "Activar o desactivar una sucursal", contexto: "empresa", nivelMinimo: "administrador_sistema", rolesEditarSemilla: ["admin"] },
   { clave: "renombrar_sucursal", modulo: "administracion", descripcion: "Renombrar una sucursal", contexto: "empresa", nivelMinimo: "administrador_sistema", rolesEditarSemilla: ["admin"] },
-  { clave: "pagar_consignante", modulo: "consignacion", descripcion: "Registrar un pago a un proveedor de consignación", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "pagar_consignante", modulo: "consignacion", descripcion: "Registrar un pago a un proveedor de consignación", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   { clave: "ver_auditoria", modulo: "administracion", descripcion: "Ver el registro de auditoría administrativa de la sucursal (precios y permisos)", contexto: "sucursal", nivelMinimo: "administrador_sistema", rolesEditarSemilla: ["admin"] },
   // Primera acción de piso gerente: la tiene solo el gerente de la empresa, sin pasar por la matriz (reemplaza el `esGerenteDeEmpresa` suelto de la
   // pantalla de Auditoría). No tiene padre: no existía como clave, así que la migración solo la da de alta y nadie la hereda.
@@ -158,36 +158,36 @@ export const ACCIONES = [
   // Segunda de piso gerente: reemplaza el `conGerenteDeEmpresa` suelto de la acción de traspaso. Sin padre, como la anterior.
   { clave: "traspasar_gerencia", modulo: "administracion", descripcion: "Traspasar la gerencia de la empresa a otro administrador", contexto: "empresa", nivelMinimo: "gerente", rolesEditarSemilla: [] },
   // Reportes: UNA clave por reporte (decisión del dueño, 2026-09-30; reemplaza la agrupación `ver_reportes_*` del 2026-09-19). Son claves de
-  // «Ver»: no hay nada que editar. Los reportes de dinero y de control tienen piso de administrador (un operario nunca los recibe); los
+  // «Ver»: no hay nada que editar. Los reportes de dinero y de control son de piso operario y semilla solo admin (PISOS-65, 2026-11-17: la empresa decide fila por fila; solo el gerente los da); los
   // operativos son de operario, así que un rol de depósito los puede recibir. Las pantallas de /reportes que además operan (consignación)
   // siguen con la clave de su acción, con sus dos niveles (Fase 2b, D3): «Ver» muestra el reporte y solo «Editar» registra un pago.
-  { clave: "reporte_resumen", modulo: "stock", descripcion: "Ver el reporte «Resumen operativo»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_consolidado", modulo: "stock", descripcion: "Ver el reporte «Consolidado (mis sucursales)»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_periodo", modulo: "stock", descripcion: "Ver el reporte «Período»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_categorias", modulo: "stock", descripcion: "Ver el reporte «Por categoría»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_ventas_por_seccion", modulo: "salon", descripcion: "Ver el reporte «Por sección de carta»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_costos", modulo: "recetas", descripcion: "Ver el reporte «Costos y márgenes»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_compras", modulo: "compras", descripcion: "Ver el reporte «Compras registradas»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_rendimiento_recetas", modulo: "recetas", descripcion: "Ver el reporte «Rendimiento real de recetas»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_rendimiento_sucursal", modulo: "recetas", descripcion: "Ver el reporte «Rendimiento por sucursal»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_valuacion", modulo: "stock", descripcion: "Ver el reporte «Valuación de inventario»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_tickets", modulo: "salon", descripcion: "Ver el reporte «Tickets emitidos»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_descuentos_clientes", modulo: "salon", descripcion: "Ver el reporte «Descuentos por cliente»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_descuentos_productos", modulo: "salon", descripcion: "Ver el reporte «Descuentos de productos»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_margen_promociones", modulo: "promociones", descripcion: "Ver el reporte «Margen de promociones»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_historial_importes", modulo: "stock", descripcion: "Ver los datos comerciales (precios de compra y de venta, proveedor y N.º de factura) dentro del reporte «Historial de un producto»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_perdidas", modulo: "stock", descripcion: "Ver el reporte «Pérdidas»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_devoluciones", modulo: "stock", descripcion: "Ver el reporte «Devoluciones»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_diferencias", modulo: "stock", descripcion: "Ver el reporte «Diferencias de ajuste»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_resumen", modulo: "stock", descripcion: "Ver el reporte «Resumen operativo»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_consolidado", modulo: "stock", descripcion: "Ver el reporte «Consolidado (mis sucursales)»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_periodo", modulo: "stock", descripcion: "Ver el reporte «Período»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_categorias", modulo: "stock", descripcion: "Ver el reporte «Por categoría»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_ventas_por_seccion", modulo: "salon", descripcion: "Ver el reporte «Por sección de carta»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_costos", modulo: "recetas", descripcion: "Ver el reporte «Costos y márgenes»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_compras", modulo: "compras", descripcion: "Ver el reporte «Compras registradas»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_rendimiento_recetas", modulo: "recetas", descripcion: "Ver el reporte «Rendimiento real de recetas»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_rendimiento_sucursal", modulo: "recetas", descripcion: "Ver el reporte «Rendimiento por sucursal»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_valuacion", modulo: "stock", descripcion: "Ver el reporte «Valuación de inventario»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_tickets", modulo: "salon", descripcion: "Ver el reporte «Tickets emitidos»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_descuentos_clientes", modulo: "salon", descripcion: "Ver el reporte «Descuentos por cliente»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_descuentos_productos", modulo: "salon", descripcion: "Ver el reporte «Descuentos de productos»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_margen_promociones", modulo: "promociones", descripcion: "Ver el reporte «Margen de promociones»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_historial_importes", modulo: "stock", descripcion: "Ver los datos comerciales (precios de compra y de venta, proveedor y N.º de factura) dentro del reporte «Historial de un producto»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_perdidas", modulo: "stock", descripcion: "Ver el reporte «Pérdidas»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_devoluciones", modulo: "stock", descripcion: "Ver el reporte «Devoluciones»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_diferencias", modulo: "stock", descripcion: "Ver el reporte «Diferencias de ajuste»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
   { clave: "reporte_vencimientos", modulo: "stock", descripcion: "Ver el reporte «Vencimientos»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
   { clave: "reporte_salud", modulo: "stock", descripcion: "Ver el reporte «Salud por producto»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
   { clave: "reporte_historial", modulo: "stock", descripcion: "Ver el reporte «Historial de un producto»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
   { clave: "reporte_trazabilidad", modulo: "stock", descripcion: "Ver el reporte «Trazabilidad por ID»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
   { clave: "reporte_rotacion_mesas", modulo: "salon", descripcion: "Ver el reporte «Rotación de mesas»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_sin_receta", modulo: "recetas", descripcion: "Ver el reporte «Ventas sin receta»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_insumos_sin_receta", modulo: "recetas", descripcion: "Ver el reporte «Insumos sin receta»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_sin_receta", modulo: "recetas", descripcion: "Ver el reporte «Ventas sin receta»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_insumos_sin_receta", modulo: "recetas", descripcion: "Ver el reporte «Insumos sin receta»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
   { clave: "reporte_conteos", modulo: "stock", descripcion: "Ver el reporte «Conteos físicos»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin", "operador"] },
-  { clave: "reporte_huecos_catalogo", modulo: "catalogo_basico", descripcion: "Ver el reporte «Huecos de catálogo»", contexto: "empresa", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_huecos_catalogo", modulo: "catalogo_basico", descripcion: "Ver el reporte «Huecos de catálogo»", contexto: "empresa", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
   // Módulo POS (docs/plan-mapa-de-mesas-2026-09-24.md): Ver = abrir el mapa de mesas y entrar a una mesa; dar de alta mesas tiene su clave
   // (`pos_alta_mesa`; la de fijar el límite de mesas abiertas, `pos_limite_mesas_abiertas`, se retiró el 2026-10-29: la base la conserva hasta una migración de retiro). El operador de fábrica queda sin asignar, igual que
   // `anular_compra`; el rol «mozo» NO se crea en código: se crea desde /administracion/roles y se le dan las acciones desde la matriz de permisos.
@@ -201,18 +201,18 @@ export const ACCIONES = [
   // Rendimiento por sucursal (docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, D5 — decisión del dueño, migración
   // de datos 20260926012600_permiso_calibrar_rendimiento_local): separada de `guardar_receta` a propósito — editar la
   // receta global es una decisión distinta de calibrar la sucursal propia.
-  { clave: "calibrar_rendimiento_local", modulo: "recetas", descripcion: "Calibrar el rendimiento de las recetas en esta sucursal (cantidad y merma propias de cada ingrediente)", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "calibrar_rendimiento_local", modulo: "recetas", descripcion: "Calibrar el rendimiento de las recetas en esta sucursal (cantidad y merma propias de cada ingrediente)", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   // Receta propia por sucursal (decisión del dueño, 2026-10-02; ADR-009, familia override; migración de datos 20261002140000_permisos_receta_sucursal):
-  // UNA clave por acción, todas de contexto sucursal (operan sobre la receta de la sucursal activa); `editar` es de nivel operario (el dueño decidió que un operador de la sucursal la pueda recibir tildándola), copiar y volver a la central son de administrador. Separadas de `guardar_receta`
+  // UNA clave por acción, todas de contexto sucursal (operan sobre la receta de la sucursal activa); `editar` es de nivel operario (el dueño decidió que un operador de la sucursal la pueda recibir tildándola), copiar y volver a la central, de piso operario y semilla solo admin (PISOS-65). Separadas de `guardar_receta`
   // (la receta central) y de `calibrar_rendimiento_local` a propósito: apagar la calibración no apaga la receta propia. Como toda acción de sucursal, la Central
   // puede deshabilitar cada una de las tres por sucursal desde la matriz de capacidades.
   { clave: "receta_sucursal_editar", modulo: "recetas", descripcion: "Crear o editar la receta propia de esta sucursal", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
-  { clave: "receta_sucursal_copiar", modulo: "recetas", descripcion: "Copiar a esta sucursal la receta propia de otra sucursal", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "receta_sucursal_volver_central", modulo: "recetas", descripcion: "Volver la receta de esta sucursal a la central", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "carta_copiar_de_sucursal", modulo: "carta", descripcion: "Copiar a esta sucursal la carta propia de otra sucursal (solo sobre una carta vacía)", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "receta_sucursal_copiar", modulo: "recetas", descripcion: "Copiar a esta sucursal la receta propia de otra sucursal", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "receta_sucursal_volver_central", modulo: "recetas", descripcion: "Volver la receta de esta sucursal a la central", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "carta_copiar_de_sucursal", modulo: "carta", descripcion: "Copiar a esta sucursal la carta propia de otra sucursal (solo sobre una carta vacía)", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   // Cliente con descuento (Task #14, docs/plan-clientes-descuento-2026-09-26.md, punto 9): 'clientes' administra el catálogo (alta,
   // edición del %, activar/desactivar), mismo criterio admin-only que el resto del catálogo (proveedores, categorías, ...).
-  { clave: "clientes", modulo: "clientes_basico", descripcion: "Administrar el catálogo de Clientes y su % de descuento", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "clientes", modulo: "clientes_basico", descripcion: "Administrar el catálogo de Clientes y su % de descuento", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   // 'pos_asignar_cliente' (D3): CUALQUIER MOZO puede asignar un cliente con descuento a la cuenta de una mesa, no solo admin — mismo
   // criterio de seed que 'pos_tomar_pedido' arriba (arranca solo en admin; el rol «mozo» se arma desde /administracion/roles y la
   // matriz de permisos, que es donde se le da esta acción). La migración de datos (20260926190200_permiso_pos_asignar_cliente) hace
@@ -222,9 +222,9 @@ export const ACCIONES = [
   // Partición de claves de stock, conteo, promociones, POS y catálogo (decisión del dueño, 2026-09-30: una clave por acción; migración de datos
   // 20261001130000_particion_permisos_stock_pos_catalogo). Cada una nace con lo que ya tenía en la clave de la que se separó (el mapa
   // padre → hija está en la migración); el padre sigue existiendo hasta la fase de contracción.
-  { clave: "stock_seccion_habitual", modulo: "stock", descripcion: "Fijar la Sección habitual de cada producto", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "stock_seccion_habitual", modulo: "stock", descripcion: "Fijar la Sección habitual de cada producto", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   { clave: "pos_emitir_ticket_corregido", modulo: "salon", descripcion: "Emitir el ticket corregido de una cuenta ya cerrada (POS)", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
-  { clave: "insumo_renombrar_fusionar", modulo: "catalogo_basico", descripcion: "Renombrar un insumo o fusionarlo con otro", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "insumo_renombrar_fusionar", modulo: "catalogo_basico", descripcion: "Renombrar un insumo o fusionarlo con otro", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   { clave: "conteo_resolver_pendiente", modulo: "stock", descripcion: "Resolver un conteo físico pendiente de revisión", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "stock_reclasificar", modulo: "stock", descripcion: "Reclasificar stock: repartir el saldo de un producto entre otras secciones y lotes", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "conteo_frecuencia", modulo: "stock", descripcion: "Fijar cada cuántos días se cuenta cada producto (Frecuencia de conteo)", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
@@ -233,19 +233,19 @@ export const ACCIONES = [
   { clave: "insumo_alta", modulo: "catalogo_basico", descripcion: "Dar de alta un insumo", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "categoria_alta", modulo: "catalogo_basico", descripcion: "Dar de alta una categoría de producto", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "proveedor_alta", modulo: "proveedores_basico", descripcion: "Dar de alta un proveedor", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
-  // Parte (ficha única de personas y empresas, P1; decisión del dueño D10, 2026-11-12: «Lo mismo que Pedernal»): el piso es el de Pedernal (el operario puede buscar, dar de alta y editar fichas; solo el administrador o el gerente las desactiva), pero NADA se habilita de fábrica a
+  // Parte (ficha única de personas y empresas, P1; decisión del dueño D10, 2026-11-12: «Lo mismo que Pedernal»): el piso es el de Pedernal (el operario puede buscar, dar de alta y editar fichas; solo quien tenga la fila que da el gerente, o el admin, las desactiva), pero NADA se habilita de fábrica a
   // otros roles (todo nace cerrado, 2026-11-11): la semilla es solo `admin` y el gerente delega ver y editar a quien quiera en la matriz, sin migración. De EMPRESA (la ficha es de la empresa, no de la sucursal).
   { clave: "partes_ver", modulo: "proveedores_basico", descripcion: "Ver y buscar las fichas de personas y empresas", contexto: "empresa", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin", "operador"] },
   { clave: "partes_editar", modulo: "proveedores_basico", descripcion: "Dar de alta y editar fichas de personas y empresas", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
-  { clave: "partes_desactivar", modulo: "proveedores_basico", descripcion: "Desactivar y reactivar fichas de personas y empresas", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "partes_desactivar", modulo: "proveedores_basico", descripcion: "Desactivar y reactivar fichas de personas y empresas", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   // Caja y cobro, etapa C1, PR-B (docs/diseno-caja-c1-pr-b-permisos-acciones-y-consultas-2026-11-16.md): seis claves de SUCURSAL (la caja es de la sucursal), todas con la semilla en solo `admin` («todo nace cerrado», 2026-11-11): el gerente las
-  // delega en la matriz. El piso es el que decidió el orquestador (criterio, no decisión del dueño: PROPUESTA): ver, abrir la sesión y cobrar llegan hasta el operario; cerrar la caja, mover efectivo y anular lo ajeno solo desde el administrador. MÓDULO PROVISORIO
+  // delega en la matriz. El piso es el que decidió el orquestador (criterio, no decisión del dueño: PROPUESTA): ver, abrir la sesión y cobrar llegan hasta el operario; cerrar la caja, mover efectivo y anular lo ajeno: piso operario y semilla solo admin (PISOS-65, 2026-11-17). MÓDULO PROVISORIO
   // `salon` (el cobro es de las cuentas del salón): el catálogo de módulos es del Frente 4 y todavía no tiene `caja`; cuando exista se cambia solo el campo `modulo` de estas seis (más la migración de datos no cambia: las claves son las mismas).
   { clave: "caja_ver", modulo: "salon", descripcion: "Ver el estado de la caja, la sesión, los movimientos y las cuentas sin cobrar", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
   { clave: "caja_abrir_sesion", modulo: "salon", descripcion: "Abrir la caja de la sucursal con su fondo inicial", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
-  { clave: "caja_cerrar_sesion", modulo: "salon", descripcion: "Cerrar la caja de la sucursal con el arqueo", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "caja_mover_efectivo", modulo: "salon", descripcion: "Registrar un ingreso o un egreso manual de efectivo y anular los propios", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "caja_anular_movimiento_ajeno", modulo: "salon", descripcion: "Anular un movimiento de efectivo hecho por otra persona", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "caja_cerrar_sesion", modulo: "salon", descripcion: "Cerrar la caja de la sucursal con el arqueo", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "caja_mover_efectivo", modulo: "salon", descripcion: "Registrar un ingreso o un egreso manual de efectivo y anular los propios", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "caja_anular_movimiento_ajeno", modulo: "salon", descripcion: "Anular un movimiento de efectivo hecho por otra persona", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   { clave: "cobrar_cuenta", modulo: "salon", descripcion: "Cobrar una cuenta cerrada con los medios de pago", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   // Caja y cobro, cierre del día (etapa A; docs/diseno-caja-cierre-del-dia-acciones-y-permisos-2026-11-17.md §4, tabla CONFIRMADA por el dueño el 2026-11-17, «ok pedernal»): siete claves de SUCURSAL, semilla solo `admin` (todo nace cerrado; el gerente delega en la matriz).
   // Equivalentes en Pedernal: `jornadas.ver`, `jornadas.iniciar_auditoria`, `jornadas.cancelar_auditoria`, `jornadas.cerrar`, `cobros.corregir_medio`, `declaraciones_de_total.registrar` (el conforme general COMPARTE esta clave, como Pedernal) y `movimientos_caja.ajustar` (único de piso administrador).
@@ -256,7 +256,7 @@ export const ACCIONES = [
   { clave: "caja_jornada_cerrar", modulo: "salon", descripcion: "Cerrar el día de la caja", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   { clave: "caja_corregir_medio_de_cobro", modulo: "salon", descripcion: "Corregir el medio de pago de un cobro durante el cierre del día", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   { clave: "caja_declarar_total", modulo: "salon", descripcion: "Declarar el total de un medio de pago y dar el conforme general del día", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
-  { clave: "caja_registrar_ajuste", modulo: "salon", descripcion: "Registrar un ajuste sobre un día ya cerrado", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "caja_registrar_ajuste", modulo: "salon", descripcion: "Registrar un ajuste sobre un día ya cerrado", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   { clave: "producto_asignar_insumo", modulo: "catalogo_basico", descripcion: "Asignar un insumo a una materia prima ya existente (asistente de hermanar)", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "producto_sincronizar_precio_carta", modulo: "carta", descripcion: "Aplicar el mismo precio de venta a los productos de un ítem agrupado de la carta", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   { clave: "producto_disponibilidad", modulo: "catalogo_basico", descripcion: "Marcar un producto como disponible o no disponible", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
@@ -269,7 +269,7 @@ export const ACCIONES = [
   // por configuración). La migración 20261013120000 se la copia a todo rol que hoy edita una de las dos claves, así que el día del deploy nadie pierde lo que ya podía hacer.
   { clave: "producto_campos_sensibles", modulo: "catalogo_basico", descripcion: "Cambiar el precio de venta, el factor de conversión y las unidades de un producto, y definir el factor de sus presentaciones de compra", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   // Paquete 3, M3a (D3 del dueño, 2026-10-12): repartir una factura de proveedor entre sucursales (FR2.2/FR2.3) y atender las facturas «pendientes de reparto» (P7=b). La factura repartida es un documento de
-  // la EMPRESA (quien paga es la empresa, ADR-029): por eso el contexto es empresa, y cada sucursal destino además exige `proceso_compra` en ella. Piso administrador y semilla solo admin (clase A, como `anular_compra`):
+  // la EMPRESA (quien paga es la empresa, ADR-029): por eso el contexto es empresa, y cada sucursal destino además exige `proceso_compra` en ella. Semilla solo admin (clase A, como `anular_compra`; desde PISOS-65 de piso operario, la da solo el gerente):
   // la migración 20261016100000 se la da al rol `admin` de cada empresa. E3a (decisión del dueño, 2026-10-27: «repartir todo a nivel operador, con auditoría y correcciones de administrador»): el piso baja a OPERARIO
   // (clase O: semilla solo admin; el gerente se la asigna en la matriz al rol de quien reparte, sin migración de datos). La pide «cargar factura» cuando alguna parte es de OTRA sucursal (la propone; la acepta la destino).
   { clave: "compra_repartir", modulo: "compras", descripcion: "Repartir una factura de proveedor entre sucursales y atender las facturas pendientes de reparto", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
@@ -279,17 +279,17 @@ export const ACCIONES = [
   // Paquete 3, M3a (cambio del dueño, 2026-10-12): confirmar la RECEPCIÓN de la mercadería de la parte de UNA sucursal en una factura de proveedor ya repartida. El stock de una factura entra recién cuando la factura está
   // REPARTIDA (cabecera CONFIRMADA) Y la parte de esa sucursal está RECIBIDA. Es de la SUCURSAL (quien recibe es la sucursal), clase O (piso operario, semilla solo admin, delegable al encargado de la sucursal por configuración).
   // La migración 20261016100000 se la da al rol `admin` de cada empresa. ACTIVA desde Compras N3-a (2026-11-16, «recepción separada»): la usa «Confirmar recepción» (la lista «Por recibir» de la Compra). Es del módulo
-  // `recepcion_de_compras` (apagado por defecto: sin él la acción se rechaza en el servidor) y su piso pasa a ADMINISTRADOR: confirman el gerente y el administrador, no el operador (dueño: «un gerente o administrador la confirma»).
-  { clave: "compra_recibir", modulo: "recepcion_de_compras", descripcion: "Confirmar la recepción de la mercadería de una factura de proveedor en la sucursal", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  // `recepcion_de_compras` (apagado por defecto: sin él la acción se rechaza en el servidor) y su semilla es solo admin (dueño 2026-11-16: «un gerente o administrador la confirma»); por la decisión del 2026-11-17 (PISOS-65) su piso es operario y solo el gerente la da a otro rol.
+  { clave: "compra_recibir", modulo: "recepcion_de_compras", descripcion: "Confirmar la recepción de la mercadería de una factura de proveedor en la sucursal", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   // Compras N3-b (2026-11-16, dueño vía el orquestador general: «Como Pedernal: también el operador»): REGISTRAR EL CONTROL de cada línea de una compra pendiente (conforme, con observaciones o rechazada) lo hace «quien recibe», incluido el
   // operador; confirmar la recepción sigue siendo `compra_recibir` (gerente y administrador). Del módulo `recepcion_de_compras` (apagado por defecto), de la sucursal, piso operario, semilla `admin` y `operador` (como `proceso_compra`).
   { clave: "compra_controlar_recepcion", modulo: "recepcion_de_compras", descripcion: "Registrar el control de la mercadería de una compra pendiente de recibir en la sucursal", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   // GO-2a (ADR-030 §10): los grupos de opciones de venta (el «elemento configurable»). La base las tiene desde la migración de datos GO-1a (20261020100000), que se las dio al rol `admin` de cada
-  // empresa; entran a ACCIONES con su guarda y su caso de uso, con la descripción IDÉNTICA a la de la base. Definir el catálogo y elegir qué admite cada producto son de la EMPRESA, piso administrador
+  // empresa; entran a ACCIONES con su guarda y su caso de uso, con la descripción IDÉNTICA a la de la base. Definir el catálogo y elegir qué admite cada producto son de la EMPRESA, piso operario y semilla solo admin (PISOS-65)
   // (clase A, como `categorias` o `unidades`); apagar una opción en la sucursal es de la SUCURSAL, piso operario y semilla solo admin (clase O: el gerente la delega al encargado del turno). La grilla
   // de precios de una opción por sucursal no tiene clave propia: va con `precio_local`.
-  { clave: "opciones_definir", modulo: "catalogo_basico", descripcion: "Definir los grupos de opciones de venta y sus opciones", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "producto_opciones_admitidas", modulo: "catalogo_basico", descripcion: "Elegir qué grupos y opciones de venta admite cada producto", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "opciones_definir", modulo: "catalogo_basico", descripcion: "Definir los grupos de opciones de venta y sus opciones", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "producto_opciones_admitidas", modulo: "catalogo_basico", descripcion: "Elegir qué grupos y opciones de venta admite cada producto", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   { clave: "opcion_apagar_en_sucursal", modulo: "catalogo_basico", descripcion: "Apagar o prender una opción de venta en la sucursal", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   // GO-3b (ADR-032): la clave que da de alta la migración de esquema `20261021100000_go3d_combos_y_menu_del_dia` (que se la dio al rol `admin` de cada empresa) entra a ACCIONES con su guarda y su
   // caso de uso, con la descripción IDÉNTICA a la de la base. Cargar el plato del día de los menús es de la SUCURSAL, piso operario y semilla solo admin (clase O: el gerente la delega al encargado,
@@ -352,3 +352,26 @@ export const ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE: readonly AccionClave[] = [
   "notas_usuario_sucursal",
   "apagar_cuenta_empresa",
 ];
+
+/**
+ * Las acciones que bajaron del piso «administrador» al de operario (PISOS-65, decisión del dueño 2026-11-17): la empresa decide fila por fila,
+ * pero darle una de estas a un rol de nivel operario es SOLO del gerente de la empresa; quitarla, no (DEC-0025, confirmada por el dueño 2026-11-17).
+ * Nacen cerradas: de fábrica solo la tiene el rol `admin`.
+ */
+export const ACCIONES_QUE_DA_SOLO_EL_GERENTE: readonly AccionClave[] = [
+  "guardar_receta", "grupos_familia", "secciones", "unidades", "proveedores", "categorias", "margen_objetivo_editar", "motivos_merma",
+  "motivos_destino_consumo", "carta_ver", "carta_secciones", "carta_generos", "carta_contenido_producto", "carta_producto_descuento",
+  "carta_items_agrupados", "carta_portal", "carta_promo_definir", "carta_promo_activar", "carta_promo_precio_local", "carta_tema", "stock_minimo",
+  "precio_local", "comparar_precios", "insumos_mezclados", "proceso_ajuste", "cancelar_conteo", "anular_venta", "anular_compra", "corregir_compra",
+  "pagar_consignante", "reporte_resumen", "reporte_consolidado", "reporte_periodo", "reporte_categorias", "reporte_ventas_por_seccion",
+  "reporte_costos", "reporte_compras", "reporte_rendimiento_recetas", "reporte_rendimiento_sucursal", "reporte_valuacion", "reporte_tickets",
+  "reporte_descuentos_clientes", "reporte_descuentos_productos", "reporte_margen_promociones", "reporte_historial_importes", "reporte_perdidas",
+  "reporte_devoluciones", "reporte_diferencias", "reporte_sin_receta", "reporte_insumos_sin_receta", "reporte_huecos_catalogo",
+  "calibrar_rendimiento_local", "receta_sucursal_copiar", "receta_sucursal_volver_central", "carta_copiar_de_sucursal", "clientes",
+  "stock_seccion_habitual", "insumo_renombrar_fusionar", "partes_desactivar", "caja_cerrar_sesion", "caja_mover_efectivo",
+  "caja_anular_movimiento_ajeno", "compra_recibir", "opciones_definir", "producto_opciones_admitidas",
+];
+
+export function esAccionQueDaSoloElGerente(clave: string): boolean {
+  return (ACCIONES_QUE_DA_SOLO_EL_GERENTE as readonly string[]).includes(clave);
+}

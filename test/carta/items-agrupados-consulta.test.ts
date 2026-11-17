@@ -3,6 +3,7 @@ import { limpiarBaseDeTest, prisma, sembrarProductoDisponible } from "../setup/t
 import { resolverMenuCarta, resolverMenuCartaConDiagnostico } from "../../src/server/lecturas/carta/menu";
 import type { CartaV1 } from "../../src/core/carta/armar-menu";
 
+import { crearCategoriaDeTest } from "../setup/categoria-de-prueba";
 /**
  * Ítems agrupados en `resolverMenuCarta`, contra Postgres real (docs/plan-agrupacion-items-carta-2026-09-24.md, M3): qué
  * opciones entran (disponibles en la sucursal, solo PV), que un producto agrupado nunca sale suelto (D3) y el precio por
@@ -21,8 +22,8 @@ describe("resolverMenuCarta — ítems agrupados", () => {
     central = (await prisma.sucursal.create({ data: { nombre: "Central" } })).id;
     otra = (await prisma.sucursal.create({ data: { nombre: "Otra" } })).id;
 
-    const cGas = (await prisma.categoriaProducto.create({ data: { nombre: "Gaseosa 500 CC" } })).id;
-    const cBife = (await prisma.categoriaProducto.create({ data: { nombre: "Bife" } })).id;
+    const cGas = (await crearCategoriaDeTest(prisma, { nombre: "Gaseosa 500 CC" })).id;
+    const cBife = (await crearCategoriaDeTest(prisma, { nombre: "Bife" })).id;
     const bebidas = await prisma.seccionCarta.create({ data: { nombre: "Bebidas sin alcohol", orden: 1 } });
     const platos = await prisma.seccionCarta.create({ data: { nombre: "Platos Principales", orden: 2 } });
     bebidasId = bebidas.id;

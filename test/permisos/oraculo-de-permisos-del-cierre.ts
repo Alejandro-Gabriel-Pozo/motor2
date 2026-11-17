@@ -6,7 +6,7 @@ import type { NivelDeAccion } from "../../src/core/permisos/acciones";
  * `decidirEnSucursal`) la deja pasar. NO se calcula con las funciones del código: se escribe a mano.
  *
  * Dimensiones que cambian quién puede (y por qué):
- *  - CLAVE (siete): fija el piso. Seis de piso operario; `caja_registrar_ajuste` de piso administrador.
+ *  - CLAVE (siete): fija el piso. Las siete de piso operario (PISOS-65, 2026-11-17: ya no hay claves de piso administrador; `caja_registrar_ajuste` nace de piso operario, semilla solo `admin`).
  *  - ROL: «admin» (administrador de sistema: alcanza el piso administrador), «operador» y un rol propio (los dos, nivel operario).
  *  - FILA de la matriz (`PermisoRol`): con Ver y Editar prendidos, o sin fila (todo nace cerrado).
  *  - MEMBRESÍA en la sucursal: sin ella, ningún actor pasa.
@@ -25,7 +25,7 @@ export const CLAVES_DEL_CIERRE: Readonly<Record<string, ClaveDelCierre>> = {
   caja_jornada_cerrar: { piso: "operario", soloVer: false },
   caja_corregir_medio_de_cobro: { piso: "operario", soloVer: false },
   caja_declarar_total: { piso: "operario", soloVer: false },
-  caja_registrar_ajuste: { piso: "administrador", soloVer: false },
+  caja_registrar_ajuste: { piso: "operario", soloVer: false },
 };
 
 /** Las seis claves de la caja de PR-B (`caja_ver`…`cobrar_cuenta`): tienen su propia cobertura (`test/caja/*`, `denegacion-por-defecto`); el guardián las reconoce como declaradas en otro lado. */
@@ -41,22 +41,13 @@ export type ActorDelCierre =
   | "sin membresía";
 
 /** Lo que la puerta responde (ver y editar) a cada actor, por piso de la clave. Escrito a mano. */
-export const PUERTA_ESPERADA: Readonly<Record<NivelDeAccion & ("operario" | "administrador"), Readonly<Record<ActorDelCierre, boolean>>>> = {
+export const PUERTA_ESPERADA: Readonly<Record<"operario", Readonly<Record<ActorDelCierre, boolean>>>> = {
   operario: {
     "gerente (rol admin, fila semilla)": true,
     "administrador (rol admin, fila semilla)": true,
     "operador con la fila prendida a mano": true,
     "operador sin fila": false,
     "rol propio con la fila prendida": true,
-    "rol propio sin fila": false,
-    "sin membresía": false,
-  },
-  administrador: {
-    "gerente (rol admin, fila semilla)": true,
-    "administrador (rol admin, fila semilla)": true,
-    "operador con la fila prendida a mano": false, // el piso lo anula
-    "operador sin fila": false,
-    "rol propio con la fila prendida": false, // el piso lo anula
     "rol propio sin fila": false,
     "sin membresía": false,
   },

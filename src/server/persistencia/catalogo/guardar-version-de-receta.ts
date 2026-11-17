@@ -105,6 +105,8 @@ export async function habilitarRecetaPropia(tx: Prisma.TransactionClient, sucurs
 /** La versión recién creada, con lo que necesita el arrastre de calibraciones y la auditoría. */
 export interface VersionDeRecetaEscrita {
   id: string;
+  /** M3d: la marca de base con que quedó escrita la versión (el DEFAULT, NETA, si quien llamó no mandó una). */
+  baseDeCantidad: string;
   ingredientes: { id: string; insumoProductoId: string; unidadId: string; unidad: { nombre: string } }[];
 }
 

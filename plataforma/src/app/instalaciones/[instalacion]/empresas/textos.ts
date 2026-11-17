@@ -39,6 +39,7 @@ export const ACCION_DE_AUDITORIA: Record<string, string> = {
   "aviso-de-activacion": "Aviso de activación",
   "modulo-activado": "Módulo activado",
   "modulo-desactivado": "Módulo desactivado",
+  "modulo-desactivar-rechazado": "Apagado de módulo rechazado",
   // S-33: lo escribe `scripts/politica-empresa.ts` (no la consola); el historial lo muestra junto a lo demás.
   "politica-cambiada": "Política de la empresa cambiada",
   // Planes versionados (M1): los escribe `scripts/plan-de-plataforma.ts`.
