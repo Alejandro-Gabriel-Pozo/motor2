@@ -2,12 +2,14 @@ import { ACCIONES } from "./acciones";
 import { CLAVE_ROL_ADMIN, CLAVE_ROL_OPERADOR } from "./jerarquia";
 
 /**
+ * `nombre` es el identificador de CÓDIGO del rol de fábrica (clave de objeto en `matrizDeFabrica`, en la siembra y en `rolesEditarSemilla`); `nombreInicial` es el nombre VISIBLE con el que se crea el rol
+ * (`Rol.nombre`, que la empresa puede cambiar). La identidad estable en la base es `Rol.clave`, que no cambia.
  * Los roles con los que nace toda empresa (el admin y el operador) y su matriz de permisos de fábrica: el dato PURO que usa la siembra (`plataforma/src/servidor/sembrar-empresa.ts`).
  * Vive en `core/permisos` porque nombra las claves de rol de sistema (`CLAVE_ROL_*`), que fuera de esta carpeta no se comparan ni se nombran (regla 4 de `acceso-solo-por-el-guard`).
  */
 export const ROLES_DE_FABRICA = [
-  { nombre: "admin", clave: CLAVE_ROL_ADMIN },
-  { nombre: "operador", clave: CLAVE_ROL_OPERADOR },
+  { nombre: "admin", nombreInicial: "administrador", clave: CLAVE_ROL_ADMIN },
+  { nombre: "operador", nombreInicial: "empleado", clave: CLAVE_ROL_OPERADOR },
 ] as const;
 
 export type NombreDeRolDeFabrica = (typeof ROLES_DE_FABRICA)[number]["nombre"];

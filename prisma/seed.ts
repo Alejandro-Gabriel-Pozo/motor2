@@ -9,6 +9,7 @@ import { enlaceDeInvitacion, urlPublicaDeLaApp } from "../src/core/features/empr
 import { configuracionDelCanal } from "../src/core/correo/configuracion";
 import { incorporarPrimerGerente } from "../src/server/actions/auth/casos-de-uso/incorporar-primer-gerente-en-tx";
 import { ACCIONES } from "../src/core/permisos/acciones";
+import { ROLES_DE_FABRICA } from "../src/core/permisos/roles-de-fabrica";
 import { azarDelProceso } from "../src/lib/azar";
 import { confirmarDestinoRemoto, resolverDestinoDelSeedBase } from "../scripts/demo-seed/guardas-destino";
 import { decidirEntregaDelEnlace, entregarEnlaceDelSeed } from "../scripts/entrega-del-enlace-del-seed";
@@ -46,8 +47,8 @@ async function main() {
   // "Roles/permisos" — decisión confirmada con el dueño tras investigar
   // ERPNext/Dolibarr).
   const [admin, operador] = await Promise.all([
-    db.rol.upsert({ where: { empresaId_clave: { empresaId, clave: "admin" } }, update: {}, create: { nombre: "admin", clave: "admin" } }),
-    db.rol.upsert({ where: { empresaId_clave: { empresaId, clave: "operador" } }, update: {}, create: { nombre: "operador", clave: "operador" } }),
+    db.rol.upsert({ where: { empresaId_clave: { empresaId, clave: "admin" } }, update: {}, create: { nombre: ROLES_DE_FABRICA[0].nombreInicial, clave: "admin" } }),
+    db.rol.upsert({ where: { empresaId_clave: { empresaId, clave: "operador" } }, update: {}, create: { nombre: ROLES_DE_FABRICA[1].nombreInicial, clave: "operador" } }),
   ]);
   const rolesPorNombre = { admin, operador } as const;
 
