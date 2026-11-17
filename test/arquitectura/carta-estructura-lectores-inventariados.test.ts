@@ -53,6 +53,8 @@ const ARCHIVOS_PERMITIDOS = [
   // Hito 4, H4C-2 y H4C-3: las secciones de las promos (la de la promo y las de sus cupos) las leen sus casos de uso (antes, server/actions/carta/promos.ts).
   "server/actions/carta/casos-de-uso/guardar-promo-carta.ts",
   "server/actions/carta/casos-de-uso/guardar-cupos-promo-carta.ts",
+  // E2a: llevar UNA parte de una promo al estado pedido lee la sección de la parte (su nombre es el de la lista «Solo estos platos»).
+  "server/actions/carta/casos-de-uso/guardar-parte-de-promo.ts",
   // Hito 5, bloque D: copiar la carta de otra sucursal la lee su caso de uso (antes, server/actions/carta/copiar-carta.ts).
   "server/actions/carta/casos-de-uso/copiar-carta-de-sucursal.ts",
   // GO-3b (ADR-032, D-2): las alícuotas de los componentes posibles de un combo miran los productos de las secciones de sus cupos, en la carta de cada sucursal pedida (con su filtro).

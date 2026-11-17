@@ -13,7 +13,7 @@ import {
   guardarSoloSalonPromoCarta,
 } from "@/server/actions/carta/promos";
 import { actualizarActivaEntradaDeCupo, agregarEntradaDeCupo } from "@/server/actions/carta/combos";
-import { precioMinimoPromo } from "@/core/pos/public";
+import { guardarParteDePromo } from "@/server/actions/carta/promos";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
@@ -25,7 +25,8 @@ import { ARMADO_DE_PROMO_COMO_PEDERNAL, PESTANAS_DE_PROMOCIONES, cantidadesDelFo
 import { EncabezadoDeCarta } from "../../encabezado-de-carta";
 import estilos from "../../carta-mant.module.css";
 import { CamposCupos, CamposLugares, CamposPromo, esFijo } from "../formularios";
-import { CamposQueLleva } from "./campos-que-lleva";
+import { AvisoDelPeorCaso } from "./aviso-del-peor-caso";
+import { PartesDeLaPromo } from "./partes-de-la-promo";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { CampoNumero } from "@/components/campo-numero";
@@ -64,7 +65,6 @@ export default async function PromocionesDeCartaPage() {
   // GO-3b (U1): los combos de cada promo (lugares de entradas y sus entradas), aparte de `cargarAdminCarta` (que no cambia).
   const combos = await cargarCombosDeLaCarta(ctx.db, ctx.sucursalId);
   const seccionesActivas = datos.secciones.filter((x) => x.activa);
-
   return (
     <div className={estilos.raiz}>
       <EncabezadoDeCarta entrada="Promociones" pestana="Combos y cupos" sucursal={ctx.sucursalNombre}>
@@ -202,7 +202,25 @@ export default async function PromocionesDeCartaPage() {
                     </p>
                   )}
                   <h3 className="mt-3 text-sm font-medium">{ARMADO_DE_PROMO_COMO_PEDERNAL ? "Qué lleva" : "Cupos"}</h3>
-                  {puedeDefinirPromos ? (
+                  {puedeDefinirPromos && ARMADO_DE_PROMO_COMO_PEDERNAL ? (
+                    <div className="mt-1 flex flex-col gap-2">
+                      <p className="text-sm text-tinta-tenue">
+                        Cada componente es una sección de la carta (o «No está en la carta»): entra toda la sección o solo los platos que tildes, y lleva una cantidad exacta. Cada uno se guarda con su propio botón. Los que se cargaron con un rango «de mín. a máx.» se siguen leyendo así hasta que les pongas una cantidad exacta.
+                      </p>
+                      <AvisoDelPeorCaso titulo={pr.titulo} precio={pr.precio} cupos={pr.cupos} />
+                      <PartesDeLaPromo
+                        secciones={datos.secciones}
+                        cuposDeSeccion={pr.cupos}
+                        lugares={lugares}
+                        productos={combos.productos}
+                        puedeEditar={puedeDefinirPromos}
+                        guardar={async (comando) => {
+                          "use server";
+                          return refrescarSiOk(await guardarParteDePromo({ promoCartaId: id, ...comando }));
+                        }}
+                      />
+                    </div>
+                  ) : puedeDefinirPromos ? (
                     <FormConResultado
                       accion={async (fd: FormData) => {
                         "use server";
@@ -217,30 +235,14 @@ export default async function PromocionesDeCartaPage() {
                       className="mt-1 flex flex-col gap-2"
                     >
                       <p className="text-sm text-tinta-tenue">
-                        {ARMADO_DE_PROMO_COMO_PEDERNAL
-                          ? "Cada componente es una sección de la carta (o un lugar con su propia lista de productos) y lleva una cantidad exacta: el mozo elige justo esa cantidad de productos de cada una. Los que se cargaron con un rango «de mín. a máx.» se siguen leyendo así hasta que les pongas una cantidad exacta."
-                          : "Las partes de la promo se arman tildando secciones de la carta: de cada sección tildada el mozo elige entre «mín.» y «máx.» productos (para que elija más, subí el «máx.»). Para un grupo propio, como «Bebida», creá la sección en Carta › Secciones y géneros y tildala acá, o sumá abajo un lugar con su propia lista de productos."}
+                        Las partes de la promo se arman tildando secciones de la carta: de cada sección tildada el mozo elige entre «mín.» y «máx.» productos (para que elija más, subí el «máx.»). Para un grupo propio, como «Bebida», creá la sección en Carta › Secciones y géneros y tildala acá, o sumá abajo un lugar con su propia lista de productos.
                       </p>
-                      {/* Paso 13 (opcional, no bloqueante): con los cupos YA guardados, cuánta holgura hay hoy antes de tocar el piso de
-                          $0,01 por unidad en el peor caso (D3) — guardarCuposPromoCarta rechaza de una si un cambio lo cruza; esto avisa
-                          ANTES de intentarlo, con lo que hay guardado ahora mismo (no recalcula en vivo lo que se está tipeando). */}
-                      {pr.cupos.length > 0 &&
-                        (() => {
-                          const unidadesEnElPeorCaso = pr.cupos.reduce((suma, c) => suma + c.cantidadMaxima, 0);
-                          const minimo = precioMinimoPromo([{ cantidad: unidadesEnElPeorCaso }]);
-                          const holgura = pr.precio - minimo;
-                          return (
-                            <p className="text-xs text-tinta-tenue" data-aviso-peor-caso={pr.titulo}>
-                              Con los cupos de hoy, el peor caso son {unidadesEnElPeorCaso} unidad{unidadesEnElPeorCaso === 1 ? "" : "es"} y el precio mínimo permitido es {formatearMonto(minimo)}
-                              {holgura > 0 ? ` — hay ${formatearMonto(holgura)} de margen antes de ese piso si subís algún máximo.` : "."}
-                            </p>
-                          );
-                        })()}
-                      {ARMADO_DE_PROMO_COMO_PEDERNAL ? <CamposQueLleva secciones={datos.secciones} guardados={pr.cupos} /> : <CamposCupos secciones={datos.secciones} guardados={pr.cupos} />}
+                      <AvisoDelPeorCaso titulo={pr.titulo} precio={pr.precio} cupos={pr.cupos} />
+                      <CamposCupos secciones={datos.secciones} guardados={pr.cupos} />
                       <CamposLugares lugares={lugares} />
                       <div>
                         <BotonDeServidor type="submit" tamano="compacto">
-                          {ARMADO_DE_PROMO_COMO_PEDERNAL ? "Guardar lo que lleva" : "Guardar cupos"}
+                          Guardar cupos
                         </BotonDeServidor>
                       </div>
                     </FormConResultado>
@@ -262,7 +264,7 @@ export default async function PromocionesDeCartaPage() {
                   )}
 
                   {/* GO-3b (U1): las entradas de cada lugar LISTA (con una sola y mínimo = máximo, viene FIJO). */}
-                  {lugares.map((l) => {
+                  {!(ARMADO_DE_PROMO_COMO_PEDERNAL && puedeDefinirPromos) && lugares.map((l) => {
                     // Los closures "use server" capturan solo el id del lugar (texto): lo que capturan viaja al cliente.
                     const cupoId = l.id;
                     return (

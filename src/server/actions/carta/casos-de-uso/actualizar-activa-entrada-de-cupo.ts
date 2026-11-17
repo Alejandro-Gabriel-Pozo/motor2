@@ -1,4 +1,5 @@
 import "server-only";
+import type { Prisma } from "@prisma/client";
 import type { ComandoActivarEntradaDeCupo, ResultadoActivarEntradaDeCupo } from "@/core/features/carta/combos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
@@ -25,47 +26,57 @@ export async function actualizarActivaEntradaDeCupoCasoDeUso(
   comando: ComandoActivarEntradaDeCupo,
 ): Promise<ResultadoActivarEntradaDeCupo> {
   const verificacion = await lecturaDeVerificacionEnLaEmpresa(actor);
-  return conTransaccionSerializable(verificacion.transaccion, async (tx): Promise<ResultadoActivarEntradaDeCupo> => {
-    const entrada = await tx.entradaDeCupo.findFirst({
-      where: { id: comando.entradaId },
-      select: {
-        id: true,
-        activa: true,
-        productoId: true,
-        modoDeOpciones: true,
-        producto: { select: { nombre: true } },
-        opciones: { orderBy: [{ opcionId: "asc" }], select: { opcionId: true, cantidad: true } },
-        cupo: { select: { tipo: true, activo: true, nombre: true, promoCartaId: true, promoCarta: { select: { titulo: true } } } },
-      },
-    });
-    if (!entrada) return fracaso("ENTRADA_NO_ENCONTRADA", "No se encontró esa opción del lugar.");
-    const nombre = await nombreDeLaEntrada(tx, entrada.producto.nombre, entrada.opciones.map((o) => o.opcionId));
-    const lugar = entrada.cupo.nombre ?? "";
-    const estado = comando.activa ? "activa" : "dada de baja";
-    if (entrada.activa === comando.activa) return exito(`${nombre} ya estaba ${estado} en «${lugar}».`, { huboCambio: false });
+  return conTransaccionSerializable(verificacion.transaccion, (tx) => actualizarActivaEntradaDeCupoEnTx(tx, actor, comando));
+}
 
-    if (comando.activa) {
-      if (entrada.cupo.tipo !== "LISTA" || !entrada.cupo.activo) return fracaso("CUPO_INVALIDO", `«${lugar}» está dado de baja en la promo: volvé a agregarlo en sus cupos.`);
-      const validado = await validarComponenteEnTx(tx, { sucursalId: actor.sucursalId, productoId: entrada.productoId, opciones: entrada.opciones, etiqueta: "con esa configuración", modoDeOpciones: entrada.modoDeOpciones === "A_ELEGIR" ? "A_ELEGIR" : "FIJAS" });
-      if (!validado.ok) return validado;
-      const alicuotas = await revisarAlicuotasEnTx(tx, {
-        lugares: await cargarLugaresActivosDePromo(tx, entrada.cupo.promoCartaId),
-        sucursalIds: await sucursalesDeLaEmpresa(tx, actor.empresaId),
-        producto: validado.componente.producto,
-      });
-      if (!alicuotas.ok) return alicuotas;
-    }
-
-    await fijarActivaDeEntradaDeCupo(tx, { id: entrada.id, activa: comando.activa });
-    await registrarCambioAuditado(tx, {
-      entidad: "EntradaDeCupo",
-      entidadId: entrada.id,
-      campo: "activa",
-      descripcion: `Promo "${entrada.cupo.promoCarta.titulo}", lugar «${lugar}»: ${nombre}`,
-      valorAnterior: entrada.activa,
-      valorNuevo: comando.activa,
-      actorId: actor.usuarioId,
-    });
-    return exito(`${nombre} quedó ${estado} en «${lugar}».`, { huboCambio: true });
+/**
+ * El cuerpo de `actualizarActivaEntradaDeCupoCasoDeUso` DENTRO de una transacción que ya abrió quien llama (SERIALIZABLE, con la lectura de verificación de toda la empresa): lo reutiliza `guardarParteDePromo` (E2a). Mismas reglas, mismos textos y
+ * misma auditoría; no abre transacción ni reintenta. Un `fracaso` NO deshace lo ya escrito por quien llama: si necesita todo o nada, lo lanza.
+ */
+export async function actualizarActivaEntradaDeCupoEnTx(
+  tx: Prisma.TransactionClient,
+  actor: Pick<ContextoDeAccion, "usuarioId" | "empresaId" | "sucursalId">,
+  comando: ComandoActivarEntradaDeCupo,
+): Promise<ResultadoActivarEntradaDeCupo> {
+  const entrada = await tx.entradaDeCupo.findFirst({
+    where: { id: comando.entradaId },
+    select: {
+      id: true,
+      activa: true,
+      productoId: true,
+      modoDeOpciones: true,
+      producto: { select: { nombre: true } },
+      opciones: { orderBy: [{ opcionId: "asc" }], select: { opcionId: true, cantidad: true } },
+      cupo: { select: { tipo: true, activo: true, nombre: true, promoCartaId: true, promoCarta: { select: { titulo: true } } } },
+    },
   });
+  if (!entrada) return fracaso("ENTRADA_NO_ENCONTRADA", "No se encontró esa opción del lugar.");
+  const nombre = await nombreDeLaEntrada(tx, entrada.producto.nombre, entrada.opciones.map((o) => o.opcionId));
+  const lugar = entrada.cupo.nombre ?? "";
+  const estado = comando.activa ? "activa" : "dada de baja";
+  if (entrada.activa === comando.activa) return exito(`${nombre} ya estaba ${estado} en «${lugar}».`, { huboCambio: false });
+
+  if (comando.activa) {
+    if (entrada.cupo.tipo !== "LISTA" || !entrada.cupo.activo) return fracaso("CUPO_INVALIDO", `«${lugar}» está dado de baja en la promo: volvé a agregarlo en sus cupos.`);
+    const validado = await validarComponenteEnTx(tx, { sucursalId: actor.sucursalId, productoId: entrada.productoId, opciones: entrada.opciones, etiqueta: "con esa configuración", modoDeOpciones: entrada.modoDeOpciones === "A_ELEGIR" ? "A_ELEGIR" : "FIJAS" });
+    if (!validado.ok) return validado;
+    const alicuotas = await revisarAlicuotasEnTx(tx, {
+      lugares: await cargarLugaresActivosDePromo(tx, entrada.cupo.promoCartaId),
+      sucursalIds: await sucursalesDeLaEmpresa(tx, actor.empresaId),
+      producto: validado.componente.producto,
+    });
+    if (!alicuotas.ok) return alicuotas;
+  }
+
+  await fijarActivaDeEntradaDeCupo(tx, { id: entrada.id, activa: comando.activa });
+  await registrarCambioAuditado(tx, {
+    entidad: "EntradaDeCupo",
+    entidadId: entrada.id,
+    campo: "activa",
+    descripcion: `Promo "${entrada.cupo.promoCarta.titulo}", lugar «${lugar}»: ${nombre}`,
+    valorAnterior: entrada.activa,
+    valorNuevo: comando.activa,
+    actorId: actor.usuarioId,
+  });
+  return exito(`${nombre} quedó ${estado} en «${lugar}».`, { huboCambio: true });
 }

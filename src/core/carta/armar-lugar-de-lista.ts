@@ -64,6 +64,15 @@ export function borradorInicial(p: ProductoParaEntrada): BorradorDeProducto {
   return { modo: hayObligatorio ? "A_ELEGIR" : "FIJAS", fijas: {}, permitidas };
 }
 
+/**
+ * El borrador de un producto recién tildado en una parte «Solo estos platos» (E2b, «todo nace cerrado», dueño 2026-11-11): como `borradorInicial` pero SIN ninguna opción tildada. Un producto con un grupo obligatorio abre en «el mozo elige» (hay
+ * que decidir cuáles se ofrecen: hasta entonces no se puede guardar); el resto abre fijo y sin opciones. Nada entra sin que se haya elegido adrede.
+ */
+export function borradorCerrado(p: ProductoParaEntrada): BorradorDeProducto {
+  const hayObligatorio = gruposTildables(p).some((g) => g.cantidadMinima > 0);
+  return { modo: hayObligatorio ? "A_ELEGIR" : "FIJAS", fijas: {}, permitidas: {} };
+}
+
 type ComandoDeProductoTildado = { ok: true; modoDeOpciones: "FIJAS" | "A_ELEGIR"; opciones: { opcionId: string; cantidad: number }[] } | { ok: false; motivo: string };
 
 /**
