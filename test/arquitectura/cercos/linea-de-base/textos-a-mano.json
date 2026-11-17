@@ -1,17 +1,17 @@
 {
   "regla": "textos-a-mano",
   "meta": "bajar hacia 0: cada texto que una persona lee sale del catálogo `src/core/textos/` (`textoDe`), con su fuente y sus usos; el texto nuevo no entra a mano",
-  "total": 3452,
-  "entradas": 426,
+  "total": 3539,
+  "entradas": 439,
   "porTipo": {
     "atributo-aria-label": 167,
     "atributo-label": 4,
-    "atributo-placeholder": 79,
+    "atributo-placeholder": 80,
     "atributo-title": 52,
-    "jsx-texto": 2424,
+    "jsx-texto": 2427,
     "mensaje-error": 25,
-    "mensaje-exito": 272,
-    "mensaje-fracaso": 426,
+    "mensaje-exito": 303,
+    "mensaje-fracaso": 478,
     "mensaje-ok": 3
   },
   "cuentas": {
@@ -119,8 +119,8 @@
       "jsx-texto": 1
     },
     "src/app/(app)/carta/parametrizacion/formularios.tsx": {
-      "atributo-placeholder": 6,
-      "jsx-texto": 19
+      "atributo-placeholder": 7,
+      "jsx-texto": 20
     },
     "src/app/(app)/carta/parametrizacion/generos/page.tsx": {
       "jsx-texto": 12
@@ -347,7 +347,7 @@
     "src/app/(app)/movimientos/opciones-agotadas/opciones-agotadas.tsx": {
       "atributo-placeholder": 1,
       "atributo-title": 1,
-      "jsx-texto": 11
+      "jsx-texto": 13
     },
     "src/app/(app)/movimientos/opciones-agotadas/page.tsx": {
       "jsx-texto": 7
@@ -952,20 +952,17 @@
       "jsx-texto": 3
     },
     "src/server/actions/auth/casos-de-uso/actualizar-activo-membresia.ts": {
-      "mensaje-exito": 3,
-      "mensaje-fracaso": 1
+      "mensaje-exito": 3
     },
     "src/server/actions/auth/casos-de-uso/actualizar-activo-sucursal.ts": {
       "mensaje-exito": 3,
-      "mensaje-fracaso": 4
+      "mensaje-fracaso": 3
     },
     "src/server/actions/auth/casos-de-uso/actualizar-activo-usuario-en-empresa.ts": {
-      "mensaje-exito": 3,
-      "mensaje-fracaso": 1
+      "mensaje-exito": 3
     },
     "src/server/actions/auth/casos-de-uso/actualizar-notas-membresia.ts": {
-      "mensaje-exito": 1,
-      "mensaje-fracaso": 1
+      "mensaje-exito": 1
     },
     "src/server/actions/auth/casos-de-uso/agregar-o-actualizar-usuario.ts": {
       "mensaje-exito": 4,
@@ -977,7 +974,7 @@
     },
     "src/server/actions/auth/casos-de-uso/invitar-a-vincular.ts": {
       "mensaje-exito": 1,
-      "mensaje-fracaso": 3
+      "mensaje-fracaso": 2
     },
     "src/server/actions/auth/casos-de-uso/reenviar-invitacion.ts": {
       "mensaje-exito": 1,
@@ -985,11 +982,10 @@
     },
     "src/server/actions/auth/casos-de-uso/renombrar-sucursal.ts": {
       "mensaje-exito": 1,
-      "mensaje-fracaso": 2
+      "mensaje-fracaso": 1
     },
     "src/server/actions/auth/casos-de-uso/revocar-invitacion.ts": {
-      "mensaje-exito": 1,
-      "mensaje-fracaso": 1
+      "mensaje-exito": 1
     },
     "src/server/actions/auth/casos-de-uso/transferir-gerencia.ts": {
       "mensaje-fracaso": 2
@@ -1002,11 +998,27 @@
     },
     "src/server/actions/caja/casos-de-uso/abrir-sesion.ts": {
       "mensaje-exito": 2,
-      "mensaje-fracaso": 4
+      "mensaje-fracaso": 7
     },
     "src/server/actions/caja/casos-de-uso/anular-movimiento.ts": {
       "mensaje-exito": 2,
       "mensaje-fracaso": 7
+    },
+    "src/server/actions/caja/casos-de-uso/cambiar-estado-de-cuenta-de-cobro.ts": {
+      "mensaje-exito": 4,
+      "mensaje-fracaso": 5
+    },
+    "src/server/actions/caja/casos-de-uso/cambiar-estado-de-medio-de-pago.ts": {
+      "mensaje-exito": 4,
+      "mensaje-fracaso": 3
+    },
+    "src/server/actions/caja/casos-de-uso/cancelar-auditoria.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 3
+    },
+    "src/server/actions/caja/casos-de-uso/cerrar-jornada.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 10
     },
     "src/server/actions/caja/casos-de-uso/cerrar-sesion.ts": {
       "mensaje-exito": 2,
@@ -1014,7 +1026,43 @@
     },
     "src/server/actions/caja/casos-de-uso/cobrar-cuenta.ts": {
       "mensaje-exito": 2,
-      "mensaje-fracaso": 12
+      "mensaje-fracaso": 16
+    },
+    "src/server/actions/caja/casos-de-uso/corregir-medio-de-cobro.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 10
+    },
+    "src/server/actions/caja/casos-de-uso/crear-cuenta-de-cobro.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 8
+    },
+    "src/server/actions/caja/casos-de-uso/crear-medio-de-pago.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 3
+    },
+    "src/server/actions/caja/casos-de-uso/dar-conforme-general.ts": {
+      "mensaje-exito": 3,
+      "mensaje-fracaso": 5
+    },
+    "src/server/actions/caja/casos-de-uso/declarar-total.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 8
+    },
+    "src/server/actions/caja/casos-de-uso/editar-cuenta-de-cobro.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 10
+    },
+    "src/server/actions/caja/casos-de-uso/editar-medio-de-pago.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 6
+    },
+    "src/server/actions/caja/casos-de-uso/iniciar-auditoria.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 4
+    },
+    "src/server/actions/caja/casos-de-uso/registrar-ajuste.ts": {
+      "mensaje-exito": 2,
+      "mensaje-fracaso": 7
     },
     "src/server/actions/caja/casos-de-uso/registrar-movimiento-manual.ts": {
       "mensaje-exito": 2,
@@ -1320,16 +1368,13 @@
       "mensaje-ok": 1
     },
     "src/server/actions/clientes/casos-de-uso/actualizar-activo-cliente.ts": {
-      "mensaje-exito": 3,
-      "mensaje-fracaso": 2
+      "mensaje-exito": 3
     },
     "src/server/actions/clientes/casos-de-uso/actualizar-cliente.ts": {
-      "mensaje-exito": 1,
-      "mensaje-fracaso": 3
+      "mensaje-exito": 1
     },
     "src/server/actions/clientes/casos-de-uso/alta-cliente.ts": {
-      "mensaje-exito": 1,
-      "mensaje-fracaso": 2
+      "mensaje-exito": 1
     },
     "src/server/actions/con-permiso.ts": {
       "mensaje-error": 1
@@ -1338,20 +1383,16 @@
       "mensaje-fracaso": 5
     },
     "src/server/actions/movimientos/casos-de-uso/actualizar-activa-seccion.ts": {
-      "mensaje-exito": 3,
-      "mensaje-fracaso": 2
+      "mensaje-exito": 3
     },
     "src/server/actions/movimientos/casos-de-uso/actualizar-activo-destino-consumo.ts": {
-      "mensaje-exito": 3,
-      "mensaje-fracaso": 2
+      "mensaje-exito": 3
     },
     "src/server/actions/movimientos/casos-de-uso/actualizar-activo-motivo-merma.ts": {
-      "mensaje-exito": 3,
-      "mensaje-fracaso": 2
+      "mensaje-exito": 3
     },
     "src/server/actions/movimientos/casos-de-uso/actualizar-respaldo-seccion.ts": {
-      "mensaje-exito": 3,
-      "mensaje-fracaso": 1
+      "mensaje-exito": 3
     },
     "src/server/actions/movimientos/casos-de-uso/anular-factura-proveedor.ts": {
       "mensaje-fracaso": 4
@@ -1364,7 +1405,7 @@
     },
     "src/server/actions/movimientos/casos-de-uso/cancelar-conteo-fisico.ts": {
       "mensaje-exito": 2,
-      "mensaje-fracaso": 3
+      "mensaje-fracaso": 2
     },
     "src/server/actions/movimientos/casos-de-uso/corregir-factura-proveedor.ts": {
       "mensaje-exito": 1,
@@ -1389,21 +1430,21 @@
       "mensaje-fracaso": 1
     },
     "src/server/actions/movimientos/casos-de-uso/registrar-conteo-fisico.ts": {
-      "mensaje-fracaso": 4
+      "mensaje-fracaso": 3
     },
     "src/server/actions/movimientos/casos-de-uso/registrar-factura-proveedor.ts": {
       "mensaje-fracaso": 5
     },
     "src/server/actions/movimientos/casos-de-uso/registrar-movimiento.ts": {
-      "mensaje-fracaso": 9
+      "mensaje-fracaso": 7
     },
     "src/server/actions/movimientos/casos-de-uso/renombrar-seccion.ts": {
       "mensaje-exito": 1,
-      "mensaje-fracaso": 2
+      "mensaje-fracaso": 1
     },
     "src/server/actions/movimientos/casos-de-uso/resolver-conteo-pendiente.ts": {
       "mensaje-exito": 3,
-      "mensaje-fracaso": 3
+      "mensaje-fracaso": 2
     },
     "src/server/actions/movimientos/conteo-fisico.ts": {
       "mensaje-error": 3
@@ -1508,38 +1549,33 @@
       "mensaje-fracaso": 4
     },
     "src/server/actions/reportes/casos-de-uso/guardar-margen-objetivo.ts": {
-      "mensaje-exito": 4,
-      "mensaje-fracaso": 1
+      "mensaje-exito": 4
     },
     "src/server/actions/reportes/casos-de-uso/registrar-pago-consignante.ts": {
       "mensaje-fracaso": 2
     },
     "src/server/actions/stock/casos-de-uso/eliminar-frecuencia-conteo.ts": {
-      "mensaje-exito": 1,
-      "mensaje-fracaso": 1
+      "mensaje-exito": 1
     },
     "src/server/actions/stock/casos-de-uso/eliminar-seccion-habitual.ts": {
-      "mensaje-exito": 1,
-      "mensaje-fracaso": 1
+      "mensaje-exito": 1
     },
     "src/server/actions/stock/casos-de-uso/eliminar-stock-minimo.ts": {
-      "mensaje-exito": 1,
-      "mensaje-fracaso": 1
+      "mensaje-exito": 1
     },
     "src/server/actions/stock/casos-de-uso/reclasificar-stock.ts": {
-      "mensaje-fracaso": 7
+      "mensaje-fracaso": 6
     },
     "src/server/actions/stock/casos-de-uso/set-frecuencia-conteo.ts": {
-      "mensaje-exito": 2,
-      "mensaje-fracaso": 1
+      "mensaje-exito": 2
     },
     "src/server/actions/stock/casos-de-uso/set-seccion-habitual.ts": {
       "mensaje-exito": 1,
-      "mensaje-fracaso": 4
+      "mensaje-fracaso": 2
     },
     "src/server/actions/stock/casos-de-uso/set-stock-minimo-producto.ts": {
       "mensaje-exito": 3,
-      "mensaje-fracaso": 3
+      "mensaje-fracaso": 1
     },
     "src/server/actions/traspasos/casos-de-uso/aprobar-y-enviar-traspaso.ts": {
       "mensaje-exito": 1,
