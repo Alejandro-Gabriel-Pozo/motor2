@@ -33,6 +33,7 @@ const DECLARADAS: Record<string, Record<string, { envoltorio: Envoltorio; clave:
     crearSucursalConAdmin: { envoltorio: "conPermisoDeEmpresa", clave: "alta_sucursal" },
     actualizarActivoSucursal: { envoltorio: "conPermisoDeEmpresa", clave: "activar_sucursal" },
     renombrarSucursal: { envoltorio: "conPermisoDeEmpresa", clave: "renombrar_sucursal" },
+    cambiarHoraDeCorteDeSucursal: { envoltorio: "conPermisoDeEmpresa", clave: "renombrar_sucursal" },
   },
   "auth/usuarios.ts": {
     agregarOActualizarUsuario: { envoltorio: "conPermiso", clave: "gestion_usuarios" },
@@ -83,8 +84,8 @@ describe("gobierno: cada Server Action entra por su envoltorio y su clave", () =
     ).toEqual(esperadas);
   });
 
-  it("son las 16 mutaciones de auth y permisos", () => {
-    expect(Object.values(DECLARADAS).reduce((n, fs) => n + Object.keys(fs).length, 0)).toBe(16);
+  it("son las 17 mutaciones de auth y permisos", () => {
+    expect(Object.values(DECLARADAS).reduce((n, fs) => n + Object.keys(fs).length, 0)).toBe(17);
   });
 
   it("el detector distingue envoltorio, clave y posición", () => {

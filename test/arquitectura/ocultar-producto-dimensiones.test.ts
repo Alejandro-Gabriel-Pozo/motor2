@@ -96,6 +96,7 @@ const LECTORES: Record<string, Declaracion> = {
   "src/server/consultas/carta/mantenimiento.ts": { afecta: "a_decidir", motivo: "«Sin stock hoy» sigue con Desactivar (O-12); decidir en E4 si debe mostrar los ocultos." },
   "src/server/consultas/catalogo/opciones-por-sucursal.ts": { afecta: "a_decidir", motivo: "opciones por sucursal; §8.5 no lo lista: decidir en E4." },
   "src/server/lecturas/catalogo/filtros-de-productos.ts": { afecta: "a_decidir", motivo: "estado de la lista (Activo / Desactivado); el filtro de ocultos no se pidió (nivel 9): confirmar en E3." },
+  "src/server/consultas/carta/reparto-de-las-promos.ts": { afecta: true, motivo: "«Reparto del precio» de la administración de promos (Frente 6): elige el primer producto DISPONIBLE de cada parte con la regla del POS (`cargarSelectorCartaPos`: `whereDisponibleEn` + `whereNoOcultoEn`, y `cargarEntradasDePromoParaVender`), así que un producto oculto en la sucursal no es el ejemplo del reparto." },
   "src/server/lecturas/pos/entradas-de-promo-para-vender.ts": { afecta: "a_decidir", motivo: "entradas de promo en el POS: probable E4 (línea nueva); §8.5 no lo lista." },
   "src/core/reportes/comun.ts": { afecta: false, motivo: "§8.5 «No cambian»: reportes (filtro «disponible en la sucursal»)." },
   "src/server/lecturas/reportes/comun.ts": { afecta: false, motivo: "§8.5 «No cambian»: reportes." },
