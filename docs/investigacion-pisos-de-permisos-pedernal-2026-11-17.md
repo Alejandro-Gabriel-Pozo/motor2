@@ -113,6 +113,10 @@ Cuenta leída con `tsx` sobre `ACCIONES` de `main` (611db08c): **140 acciones = 
 | `carta_copiar_de_sucursal` | administrador | sin equivalente | — | — |
 | `carta_promo_definir`, `carta_promo_activar`, `carta_promo_precio_local` (3) | administrador | sin equivalente (Pedernal no tiene promociones en su catálogo de acciones) | — | — |
 | `reporte_margen_promociones` | administrador | ≈ `costos.ver` | sin piso (G+A) | No |
+| *(referencia, piso operario)* `producto_disponibilidad` | **operario** (`acciones.ts:252`, semilla `admin` y `operador`) | `vidrieras.marcar_disponibilidad` | sin piso (G+A+O, `empresa.ts:66`) | Sí |
+| *(referencia, piso operario)* `opcion_apagar_en_sucursal` | **operario** (`acciones.ts:283`) | ≈ `vidrieras.marcar_disponibilidad` (NO VERIFICADA) | sin piso (G+A+O) | Sí |
+
+En Pedernal, **ver** la carta y **marcar disponibilidad** son de los tres roles por defecto (`empresa.ts:64`, `:66`) y ninguna acción de vidriera tiene piso: todas las de editar, publicar y retirar son de la plantilla G+A, y un rol propio puede recibirlas. Ninguna está entre las 20 `SOLO_GERENTE`.
 
 ### 2.4 Reportes de solo ver (20; el 21.º, `reporte_margen_promociones`, está en 2.3)
 
@@ -188,6 +192,32 @@ Suma de 2.1 a 2.4: 12 + 20 + 13 + 20 = **65 de nivel administrador**, ninguna de
 > **B:** el gerente y también el administrador (como funciona hoy la matriz de los roles de nivel operario).
 
 Motivo de la recomendación A: en Pedernal editar roles es `SOLO_GERENTE` (S6, `h4b…md:282`) y quien asigna roles ya pasa a ser solo el gerente en Motor2 (EB-5). B es lo que existe hoy y no quita nada a nadie; A le quita al administrador la posibilidad de **dar** esas acciones (no de usarlas), y necesita una regla chica en `guardarPermisos` para esas celdas.
+
+### 3.5 Caso real del dueño: el operario no podía marcar «no está» en la Carta
+
+Cita (2026-11-17, chat, relatada por el orquestador general): «lo que pasó en Motor 2 te lo explico de manera corta. El operario normal no podía cambiar la disponibilidad de un producto en carta. Y necesitaba el encargado para eso, para decir que no estaba en carta.»
+
+**Qué lo causa (CONFIRMADA en el código de `main`):**
+
+- Marcar disponibilidad **no** es el problema: `producto_disponibilidad` ya es de piso operario y el rol `operador` («Empleado») ya la trae en la semilla (`acciones.ts:252`).
+- El problema es la **puerta**: la pantalla Carta (`src/app/(app)/carta/page.tsx:58-64`) exige el «Ver» de `carta_ver` (o el de `opcion_apagar_en_sucursal` / `carta_items_agrupados`, que solo redirigen a otra pestaña). `carta_ver` tiene piso **administrador** (`acciones.ts:74`): un rol de nivel operario no puede tenerla aunque la empresa tilde la fila (`matriz.ts:38-40` rechaza el tilde; `decision-de-acceso.ts:47-49` la ignora). Resultado: Empleado nunca llega al botón «Hoy».
+- **La pantalla ya separa ver de editar**, no hay que tocarla (`page.tsx:38-40` y `:65-71`): entrar pide «Ver» de `carta_ver`; cada control se habilita con el «Editar» de su propia clave: «Hoy» (agotado del día) con `producto_disponibilidad`; el Sí/No de un producto en la carta y «Agregar/Quitar» con `carta_contenido_producto`; el de una sección con `carta_secciones`; copiar la carta con `carta_copiar_de_sucursal`. Sin ninguno de esos «Editar» muestra el aviso de solo lectura (`:109`). Las acciones del servidor lo vuelven a exigir (`fijarDisponibilidadDeHoy` pide `producto_disponibilidad`, `src/server/actions/carta/mantenimiento.ts:46-47`).
+- Nadie comprueba el «Editar» de `carta_ver`: es de hecho una clave de solo ver (la prueba `test/arquitectura/claves-de-solo-ver.test.ts:23` la tiene «A DECIDIR … Candidata a `soloVer`»).
+
+**El cambio más chico (PROPUESTA):** bajar **solo `carta_ver`** a piso operario, sin tocar su semilla (sigue solo en `admin`). Una línea del catálogo. Con eso:
+
+| La empresa quiere que Empleado… | Qué tilda en la matriz | ¿Hace falta otro cambio de piso? |
+|---|---|---|
+| (a) entre a Carta | «Ver» de `carta_ver` en el rol | No |
+| (b) marque «no hay hoy» un producto | Nada más: Empleado ya trae «Editar» de `producto_disponibilidad` | No |
+| saque o ponga un producto en la carta pública (pestaña «Visibilidad») | «Editar» de `carta_contenido_producto` | **Sí**: piso administrador; queda dentro de la opción A de 3.2 |
+| tema, portal, secciones, promos | Sus claves (`carta_tema`, `carta_portal`, `carta_secciones`, `carta_promo_*`) | Sí, dentro de A; con A, la empresa decide fila por fila; sin A, siguen cerradas |
+
+**Lo que abre «Ver» de `carta_ver` además de la pestaña Hoy (para que la empresa lo sepa):** las páginas de Carta en modo lectura que usan la misma clave para entrar: Secciones, Géneros, Promociones, «En la carta» de un producto y el filtro de carta en Catálogo (`src/core/carta/ui-config.ts:42-100`; `carta/parametrizacion/*/page.tsx`; `catalogo/productos/[id]/en-la-carta/page.tsx:36`). En todas, editar sigue pidiendo su propia clave; Tema y Portal piden su propia clave para entrar (`carta/tema/page.tsx:55`). La página de promociones muestra montos de la promo (por ejemplo la holgura de precio, `promociones/page.tsx:211`), no costos. Si eso no se quiere mostrar a Empleado, la alternativa es una clave nueva solo para la pestaña Hoy: más cara (clave, migración de datos, pantalla), y no la recomiendo antes de que el dueño lo pida.
+
+**Cómo se ve con Pedernal:** igual en resultado: en Pedernal `vidrieras.ver` y `vidrieras.marcar_disponibilidad` son de los tres roles (`empresa.ts:64`, `:66`). Diferencia que queda, con motivo: en Motor2 la semilla de `carta_ver` sigue cerrada (regla «todo nace cerrado», 2026-11-11) y la empresa la tilda; en Pedernal el operador la trae de fábrica.
+
+**Riesgos y requisito previo:** el mismo que 3.3: antes de bajar el piso, consulta de solo lectura en producción de filas de `PermisoRol` con «Ver» de `carta_ver` en roles que no son `admin` (hoy dormidas; despertarían). Marcha atrás: volver el piso a administrador. Este cambio se puede hacer **solo**, antes y aparte de la opción A: resuelve el caso real con una línea y no abre dinero ni gobierno.
 
 ## 4. Lo que no se baja nunca (pregunta 4)
 
