@@ -779,6 +779,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Nombre de cocina (ADITIVO; migración 20261115170000_nombre_de_cocina): la fila PRODUCTO de la lectura del estado de la receta propia suma `nombreDeCocina: null` (nadie tiene nombre de cocina en este mundo). Una sola línea agregada, a mano sobre el golden anterior: ningún otro campo ni conteo de consultas cambia.",
       },
+      {
+        blob: "6b32b67ab08eb771c7abea723f89898a39962679",
+        // El commit PADRE de este es 4db6539a (U1 integrada con main 7a8e9809, justo antes de regenerar este golden con la columna nueva).
+        commit: "4db6539a",
+        motivo:
+          "U1 de las unidades como Pedernal (migración 20261117130000_unidad_codigo_fijo; ADITIVA; regenerado con REGENERAR_CARACTERIZACION_TRAMO_A=1): la lectura `catalogo.obtenerEstadoDeRecetaPropia` devuelve el modelo Unidad entero (Prisma) y el objeto `unidad` suma `codigoFijo: null` (toda unidad existente queda «pendiente de completar»). Ninguna otra lectura ni conteo de consultas cambia. Ninguna pantalla usa el campo; lo devuelve la lectura porque Prisma trae la fila completa.",
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {
