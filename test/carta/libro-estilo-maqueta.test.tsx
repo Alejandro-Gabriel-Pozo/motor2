@@ -163,3 +163,40 @@ describe("respuestas del dueño, 2026-11-17: rótulo editable, letra, precio, te
     expect(vacio).not.toContain("✦");
   });
 });
+
+describe("los vínculos (Instagram, WhatsApp, Maps, Facebook) NO son parte del estilo del libro (dueño, 2026-11-17: «no son lo que Motor 2 tenía visualmente y no son lo que yo quería»)", () => {
+  const redes = [
+    { id: "instagram", label: "Instagram", href: "https://instagram.com/huinganco" },
+    { id: "whatsapp", label: "WhatsApp", href: "https://wa.me/5492991234567" },
+    { id: "maps", label: "Google Maps", href: "https://maps.app.goo.gl/huinganco" },
+    { id: "facebook", label: "Facebook", href: "https://facebook.com/huinganco" },
+  ] as const;
+  const dibujar = async (precioFuerte: boolean, paginas: { id: string; tipo: "portada" | "indice" | "seccion" }[]) => {
+    const { NavegacionCarta } = await import("../../src/components/carta-publica/navegacion-carta");
+    const estilo = resolverEstiloCarta({});
+    return renderToStaticMarkup(
+      <NavegacionCarta paginas={paginas} volver={estilo.volver} colorIconos={null} redesSociales={redes} variablesCss={{}} precioFuerte={precioFuerte}>
+        <div />
+      </NavegacionCarta>,
+    );
+  };
+  const soloLosVinculos = (html: string) => (html.match(/<a [^>]*href="https:\/\/(?:instagram\.com|wa\.me|maps\.app\.goo\.gl|facebook\.com)[^>]*>/g) ?? []).join("|");
+
+  it("la portada del libro NO dibuja pastillas de texto con los vínculos", () => {
+    const html = renderToStaticMarkup(<Portada estilo={resolverEstiloCarta(conDefaultsDeLaMaqueta({}, true))} restauranteNombre="Huinganco" estiloLibro />);
+    expect(html).not.toContain("data-portada-redes");
+  });
+  it("con el estilo prendido y apagado, los vínculos se dibujan idénticos (mismos íconos, mismo orden, mismos enlaces) en la portada y en una sección", async () => {
+    // La barra de navegación se dibuja con más de una página; la página actual de entrada es la primera (portada) — la franja de las demás páginas se prueba con la sección primero.
+    for (const paginas of [[{ id: "p", tipo: "portada" as const }, { id: "s", tipo: "seccion" as const }], [{ id: "s", tipo: "seccion" as const }, { id: "p", tipo: "portada" as const }]]) {
+      const encendido = soloLosVinculos(await dibujar(true, paginas));
+      const apagado = soloLosVinculos(await dibujar(false, paginas));
+      expect(encendido).not.toBe("");
+      expect(encendido).toBe(apagado);
+      // El orden de Motor 2: Instagram, WhatsApp, Maps, Facebook.
+      expect(encendido.indexOf("instagram.com")).toBeLessThan(encendido.indexOf("wa.me"));
+      expect(encendido.indexOf("wa.me")).toBeLessThan(encendido.indexOf("maps.app.goo.gl"));
+      expect(encendido.indexOf("maps.app.goo.gl")).toBeLessThan(encendido.indexOf("facebook.com"));
+    }
+  });
+});

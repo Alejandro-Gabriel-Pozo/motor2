@@ -48,8 +48,6 @@ interface Props {
   /** `color_nav_iconos`: si está cargado, los íconos de redes salen de ESE color, sin la opacidad decorativa. */
   colorIconos: string | null;
   redesSociales: readonly RedSocial[];
-  /** Estilo de la maqueta: las redes se dibujan en la portada (`Portada`), no como íconos en la barra de abajo de la portada. */
-  redesEnLaPortada?: boolean;
   /** Libro al estilo de la maqueta (dueño, 2026-11-17: precio «blanco y negrita»): pone `data-precio-fuerte` en la raíz y el CSS de `globals.css` sube el peso del precio. */
   precioFuerte?: boolean;
   /** `EstiloCarta.variablesCss` (`src/core/carta/estilo.ts`): pisa los defaults de `.carta-shell` para ESTA sucursal. */
@@ -61,7 +59,7 @@ interface Props {
   embebida?: boolean;
 }
 
-export function NavegacionCarta({ children, paginas, hrefVolver, volver, colorIconos, redesSociales, variablesCss, embebida = false, redesEnLaPortada = false, precioFuerte = false }: Props) {
+export function NavegacionCarta({ children, paginas, hrefVolver, volver, colorIconos, redesSociales, variablesCss, embebida = false, precioFuerte = false }: Props) {
   const raizRef = useRef<HTMLDivElement>(null);
   const sliderRef = useRef<HTMLElement>(null);
   const navRef = useRef<HTMLElement>(null);
@@ -189,7 +187,7 @@ export function NavegacionCarta({ children, paginas, hrefVolver, volver, colorIc
 
             <div className="flex flex-col items-center gap-1">
               {esPortada ? (
-                hayRedes && !redesEnLaPortada && (
+                hayRedes && (
                   <div className="flex items-center gap-4">
                     {redesSociales.map((r) => {
                       const Icono = ICONO_POR_RED[r.id];
