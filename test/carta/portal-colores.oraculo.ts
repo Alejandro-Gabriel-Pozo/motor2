@@ -62,3 +62,13 @@ export function contrasteWcag(a: string, b: string): number {
   const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
   return (x! + 0.05) / (y! + 0.05);
 }
+
+/**
+ * El portal como la maqueta de Pedernal (`portal-de-la-empresa.html:285-307`, variante A): QUÉ TEXTO CAE SOBRE QUÉ FONDO. Escrito aparte del código. Una fila nueva (un texto nuevo en el portal) obliga a declarar sobre qué fondo se pinta y con qué color.
+ * El tercer fondo («detrás de la imagen») es la tarjeta contenedora: NO lleva texto encima (el texto va en las tarjetas blancas de adentro), por eso no depende de él ningún color de texto.
+ */
+export const TEXTOS_DE_LA_MAQUETA = [
+  { elemento: "nombre de la sucursal", fondo: "#ffffff", color: "--carta-ink" },
+  { elemento: "teléfono y subtítulo", fondo: "#ffffff", color: "--carta-ink-soft" },
+  { elemento: "«Ver carta» (sin marca legible)", fondo: "#ffffff", color: "--carta-primary" },
+] as const;

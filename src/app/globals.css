@@ -463,6 +463,53 @@ body:has(main[data-panel]) {
 .carta-shell .portal .portal-vacio {
   color: var(--portal-pagina-color, var(--carta-ink-soft));
 }
+/* Portal como la maqueta de Pedernal (`data-maqueta`, solo con la pantalla simple de «Colores del portal»; `portal-de-la-empresa.html:285-307`, variante A): encabezado con logo, línea chica y título; el tercer fondo («detrás de la imagen») es la tarjeta
+   contenedora redondeada y adentro cada sucursal es una tarjeta BLANCA con barra lateral de color. Los textos van sobre BLANCO con tokens fijos del sistema (tinta 17:1, tinta suave 7,6:1, «Ver carta» con la marca si llega a 7:1 o `--carta-primary` 7,1:1: lo fija
+   `test/carta/portal-colores-maqueta.test.ts`); sobre el tercer fondo no cae ningún texto. La tipografía es la de siempre (decisión del dueño: la del sistema). */
+.carta-shell .portal[data-maqueta] .portal-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+}
+.carta-shell .portal[data-maqueta] .portal-logo {
+  display: block;
+  width: 3.5rem;
+  height: 3.5rem;
+  object-fit: contain;
+  filter: drop-shadow(0 0 1.5px currentColor);
+}
+.carta-shell .portal[data-maqueta] .portal-detras {
+  padding: 0.75rem;
+  border-radius: 1rem;
+  background: var(--portal-detras-bg, transparent);
+}
+.carta-shell .portal[data-maqueta] .portal-tarjeta-maqueta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 3.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 2px solid #6b7585;
+  border-left: 8px solid var(--portal-barra-color, var(--carta-primary));
+  border-radius: 0.625rem;
+  background: #ffffff;
+  color: var(--carta-ink);
+  text-align: left;
+}
+.carta-shell .portal[data-maqueta] .portal-tarjeta-maqueta:focus-visible {
+  outline: 2px solid var(--carta-ink);
+  outline-offset: 2px;
+}
+.carta-shell .portal[data-maqueta] .portal-tarjeta-detalle {
+  font-size: 0.875rem;
+  color: var(--carta-ink-soft);
+}
+.carta-shell .portal[data-maqueta] .portal-ver-carta {
+  color: var(--portal-ver-carta-color, var(--carta-primary));
+}
 
 .carta-shell .carta-slider {
   display: flex;

@@ -57,8 +57,10 @@ export async function resolverConfigPortal(empresa: EmpresaCarta, db: Db): Promi
  * cómo se ordena es pura (`entradasDelPortalNuevo`, `core/carta/portal-de-empresa-lectura.ts`); acá solo se lee, con el `empresaId` explícito además del RLS.
  */
 async function resolverPortalNuevo(empresa: EmpresaCarta, db: Db, portal: { id: string; variante: "A" | "B" }): Promise<EntradaPortalCarta[]> {
+  // El teléfono de la tarjeta solo se lee con la pantalla simple encendida (la maqueta de Pedernal lo dibuja); apagada, la consulta y la respuesta son las de siempre.
+  const conTelefono = portalSimpleVisible();
   const [tarjetas, zonas, publicas] = await Promise.all([
-    portal.variante === "A" ? db.portalTarjeta.findMany({ where: { empresaId: empresa.id, portalId: portal.id, visible: true }, select: { sucursalId: true, orden: true, visible: true, nombre: true } }) : Promise.resolve([]),
+    portal.variante === "A" ? db.portalTarjeta.findMany({ where: { empresaId: empresa.id, portalId: portal.id, visible: true }, select: { sucursalId: true, orden: true, visible: true, nombre: true, ...(conTelefono ? { telefono: true } : {}) } }) : Promise.resolve([]),
     portal.variante === "B" ? db.portalZona.findMany({ where: { empresaId: empresa.id, portalId: portal.id, visible: true }, select: { sucursalId: true, x: true, y: true, ancho: true, alto: true, visible: true } }) : Promise.resolve([]),
     db.sucursalPublica.findMany({
       where: { empresaId: empresa.id, publicada: true, sucursal: { activo: true } },
@@ -73,6 +75,7 @@ async function resolverPortalNuevo(empresa: EmpresaCarta, db: Db, portal: { id: 
     tarjetas,
     zonas: zonas.map((z) => ({ sucursalId: z.sucursalId, x: z.x.toNumber(), y: z.y.toNumber(), ancho: z.ancho.toNumber(), alto: z.alto.toNumber(), visible: z.visible })),
     sucursales,
+    conTelefono,
   });
 }
 

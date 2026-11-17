@@ -60,7 +60,47 @@ function Tarjeta({ s, href, modo, className }: { s: EntradaPortalCarta; href: st
   );
 }
 
-function Grilla({ sucursales, hrefDe, modo }: { sucursales: readonly EntradaPortalCarta[]; hrefDe: Props["hrefDe"]; modo: ModoPortal }) {
+/** Tarjeta blanca de la maqueta de Pedernal (barra lateral de color, nombre, teléfono y «Ver carta»); los colores salen de tokens fijos del sistema (`globals.css`, `.portal[data-maqueta]`). */
+function TarjetaMaqueta({ s, href, modo }: { s: EntradaPortalCarta; href: string; modo: ModoPortal }) {
+  const contenido = (
+    <>
+      <span className="min-w-0">
+        <span className="portal-card-nombre block carta-titulo font-medium">{s.etiqueta}</span>
+        {s.subtitulo && <span className="portal-tarjeta-detalle block">{s.subtitulo}</span>}
+        {s.telefono && <span className="portal-tarjeta-detalle block">{s.telefono}</span>}
+      </span>
+      <span className="portal-ver-carta shrink-0 font-semibold">Ver carta</span>
+    </>
+  );
+  if (modo === "vista-previa") {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" draggable={false} className="portal-tarjeta-maqueta">
+        {contenido}
+        <span className="sr-only"> (se abre en una pestaña nueva)</span>
+      </a>
+    );
+  }
+  return (
+    <Link href={href} className="portal-tarjeta-maqueta">
+      {contenido}
+    </Link>
+  );
+}
+
+function Grilla({ sucursales, hrefDe, modo, maqueta }: { sucursales: readonly EntradaPortalCarta[]; hrefDe: Props["hrefDe"]; modo: ModoPortal; maqueta: boolean }) {
+  if (maqueta) {
+    return (
+      <div className="portal-detras">
+        <ul className="grid grid-cols-[minmax(0,1fr)] gap-2" role="list">
+          {sucursales.map((s) => (
+            <li key={s.slug}>
+              <TarjetaMaqueta s={s} href={hrefDe(s.slug)} modo={modo} />
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
   return (
     <ul className="grid grid-cols-[minmax(0,1fr)] gap-3" role="list">
       {sucursales.map((s) => (
@@ -72,7 +112,7 @@ function Grilla({ sucursales, hrefDe, modo }: { sucursales: readonly EntradaPort
   );
 }
 
-function Encabezado({ estilo, empresaNombre, publico }: { estilo: EstiloPortal; empresaNombre: string; publico: boolean }): ReactNode {
+function Encabezado({ estilo, empresaNombre, publico, maqueta }: { estilo: EstiloPortal; empresaNombre: string; publico: boolean; maqueta: boolean }): ReactNode {
   const { empresa_logo_url: logo, portal_etiqueta: etiqueta, portal_titulo: titulo } = estilo.valores;
   if (!logo && !etiqueta && !titulo) return null;
   // Incrustado en el admin (vista previa) el título no puede ser un h1: la página ya tiene el suyo y la vista previa cuelga de un h2.
@@ -81,7 +121,7 @@ function Encabezado({ estilo, empresaNombre, publico }: { estilo: EstiloPortal; 
     <header className="portal-header px-6 py-6 text-center">
       {logo && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={logo} alt={empresaNombre} className="mx-auto mb-3 max-h-16 w-auto" />
+        <img src={logo} alt={empresaNombre} className={maqueta ? "portal-logo" : "mx-auto mb-3 max-h-16 w-auto"} />
       )}
       {etiqueta && <p className="portal-etiqueta carta-rol-etiqueta uppercase tracking-widest">{etiqueta}</p>}
       {titulo && <Titulo className="portal-titulo carta-rol-titulo carta-titulo">{titulo}</Titulo>}
@@ -94,13 +134,14 @@ export function PortalVista({ sucursales, empresaNombre, estilo, hrefDe, modo }:
   const derechos = estilo.valores.footer_texto_derechos;
   const hayTitulo = Boolean(estilo.valores.portal_titulo);
   const publico = modo === "publico";
+  const maqueta = estilo.conMaqueta === true;
   const Cuerpo = publico ? "main" : "div";
 
   return (
     // Fase 5 (DEC-35): la escala de letra única de la carta (sin tema: el portal no tiene tamaños de ítem), y encima lo del portal.
-    <div className={`portal ${publico ? "min-h-screen" : ""}`} data-modo-marca={estilo.modoMarca ? "" : undefined} style={{ ...variablesDeLaEscala(), ...estilo.variablesCss } as CSSProperties}>
-      <Encabezado estilo={estilo} empresaNombre={empresaNombre} publico={publico} />
-      <Cuerpo className="mx-auto px-6 pb-10 pt-4" style={{ maxWidth: layout.modo === "mapa" ? 648 : 576 }}>
+    <div className={`portal ${publico ? "min-h-screen" : ""}`} data-modo-marca={estilo.modoMarca ? "" : undefined} data-maqueta={maqueta ? "" : undefined} style={{ ...variablesDeLaEscala(), ...estilo.variablesCss } as CSSProperties}>
+      <Encabezado estilo={estilo} empresaNombre={empresaNombre} publico={publico} maqueta={maqueta} />
+      <Cuerpo className={maqueta ? "mx-auto px-4 pb-6 pt-4" : "mx-auto px-6 pb-10 pt-4"} style={{ maxWidth: layout.modo === "mapa" ? 648 : 576 }}>
         {publico && !hayTitulo && <h1 className="sr-only">Sucursales</h1>}
         {sucursales.length === 0 ? (
           <p className="portal-vacio carta-rol-aclaracion text-center">Todavía no hay cartas publicadas.</p>
@@ -131,7 +172,7 @@ export function PortalVista({ sucursales, empresaNombre, estilo, hrefDe, modo }:
             )}
             {layout.enGrilla.length > 0 && (
               <div className={layout.modo === "mapa" ? "mt-6" : undefined}>
-                <Grilla sucursales={layout.enGrilla} hrefDe={hrefDe} modo={modo} />
+                <Grilla sucursales={layout.enGrilla} hrefDe={hrefDe} modo={modo} maqueta={maqueta} />
               </div>
             )}
           </>

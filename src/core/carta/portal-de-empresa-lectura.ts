@@ -60,6 +60,7 @@ export interface TarjetaLeida {
   orden: number;
   visible: boolean;
   nombre: string | null;
+  telefono?: string | null;
 }
 
 /** Una zona en porcentaje de la imagen (esquina superior izquierda y tamaño). */
@@ -79,7 +80,7 @@ const redondear = (n: number): number => Math.round(n * 1000) / 1000;
  * muestra). Solo sucursales con registro público `publicada` y `activa` (sin eso no hay a dónde llevar, y una sucursal inactiva no se muestra): el resto no aparece, como hoy. Ninguna otra sucursal de la empresa aparece: solo las que tienen tarjeta o zona visible.
  * La zona se guarda por su esquina; el portal dibuja el CENTRO (`posicion`, como `SucursalPublica.posX/posY/posW/posH`).
  */
-export function entradasDelPortalNuevo(args: { variante: VarianteDePortal; tarjetas: readonly TarjetaLeida[]; zonas: readonly ZonaLeida[]; sucursales: ReadonlyMap<string, SucursalDelPortal> }): EntradaPortalCarta[] {
+export function entradasDelPortalNuevo(args: { variante: VarianteDePortal; tarjetas: readonly TarjetaLeida[]; zonas: readonly ZonaLeida[]; sucursales: ReadonlyMap<string, SucursalDelPortal>; conTelefono?: boolean }): EntradaPortalCarta[] {
   const { sucursales } = args;
   const mostrable = (id: string) => {
     const s = sucursales.get(id);
@@ -90,7 +91,7 @@ export function entradasDelPortalNuevo(args: { variante: VarianteDePortal; tarje
     for (const t of args.tarjetas) {
       const s = mostrable(t.sucursalId);
       if (!t.visible || s === null) continue;
-      resultado.push({ orden: t.orden, entrada: { slug: s.slug, etiqueta: t.nombre ?? s.etiqueta ?? s.nombreDeLaSucursal, subtitulo: s.subtitulo, posicion: null } });
+      resultado.push({ orden: t.orden, entrada: { slug: s.slug, etiqueta: t.nombre ?? s.etiqueta ?? s.nombreDeLaSucursal, subtitulo: s.subtitulo, posicion: null, ...(args.conTelefono && t.telefono ? { telefono: t.telefono } : {}) } });
     }
   } else {
     for (const z of args.zonas) {

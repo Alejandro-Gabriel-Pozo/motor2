@@ -188,6 +188,8 @@ export interface EstiloPortal {
   altoTarjetaPct: number;
   /** Solo presente (`true`) con el marcador `portal_marca_derivada = «si»`: la vista lo pone como `data-modo-marca` (las tarjetas del mapa siguen transparentes). Ausente = portal de siempre. */
   modoMarca?: true;
+  /** Solo presente (`true`) con la pantalla simple de «Colores del portal» (`estiloDelPortalSimple`): la vista dibuja el portal como la maqueta de Pedernal (tarjeta contenedora «detrás de la imagen» con tarjetas blancas adentro). Ausente = portal de siempre. */
+  conMaqueta?: true;
 }
 
 /** `portal_card_bg` → `--portal-card-bg`. Solo las que empiezan con `portal_`; el resto (logo, derechos) no es CSS. */
@@ -322,4 +324,6 @@ export interface EntradaPortalCarta {
   subtitulo: string | null;
   /** Lugar de la tarjeta sobre el mapa del portal; `null` si `posX`/`posY`/`posW` no están los tres. */
   posicion: PosicionPortal | null;
+  /** Teléfono de la tarjeta (`PortalTarjeta.telefono`, solo dígitos). Presente solo con la pantalla simple y si la tarjeta lo tiene; ausente = como hoy. */
+  telefono?: string;
 }

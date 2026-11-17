@@ -194,5 +194,29 @@ export function estiloDelPortalSimple(valoresJson: unknown, nuevo: PortalNuevoPa
     lineaSuperior: nuevo.lineaSuperior ?? deJson("portal_etiqueta"),
     titulo: nuevo.titulo ?? deJson("portal_titulo"),
   });
-  return conFondosDelPortal(resolverEstiloPortal(valores), { encabezado: nuevo.colorEncabezado, pagina: nuevo.colorPagina, detras: nuevo.colorDetras });
+  return conMaquetaDelPortal(conFondosDelPortal(resolverEstiloPortal(valores), { encabezado: nuevo.colorEncabezado, pagina: nuevo.colorPagina, detras: nuevo.colorDetras }), nuevo.colorDetras);
+}
+
+/** Variables CSS propias de la maqueta (las lee `globals.css`, `.portal[data-maqueta]`). */
+const VARIABLE_DETRAS_DE_LA_MAQUETA = "--portal-detras-bg";
+const VARIABLE_BARRA_DE_LA_MAQUETA = "--portal-barra-color";
+const VARIABLE_VER_CARTA_DE_LA_MAQUETA = "--portal-ver-carta-color";
+
+/**
+ * El portal como la maqueta de Pedernal (`portal-de-la-empresa.html:285-307`, variante A, «Vista previa»): el tercer fondo («detrás de la imagen») es la TARJETA CONTENEDORA redondeada que envuelve el listado, y adentro cada sucursal es una tarjeta BLANCA con barra lateral de color,
+ * nombre, teléfono y «Ver carta». Por eso los textos de esas tarjetas se pintan sobre BLANCO (no sobre el tercer fondo) con tokens fijos del sistema: la tinta (`--carta-ink`), la tinta suave (`--carta-ink-soft`) y «Ver carta» con el color de marca si llega a 7:1 sobre blanco, y si no `--carta-primary`
+ * (los tres ya llegan a 7:1: lo fija `test/carta/portal-colores-maqueta.test.ts`). Sobre el tercer fondo no cae ningún texto. La barra lateral es decorativa: el color de marca del portal si lo hay, si no `--carta-primary`. Sin tercer fondo elegido la tarjeta contenedora no se pinta (transparente).
+ * Solo agrega variables y la marca `conMaqueta`: `valores` queda como estaba.
+ */
+export function conMaquetaDelPortal(estilo: EstiloPortal, detrasElegido: string | null): EstiloPortal {
+  const variablesCss = { ...estilo.variablesCss };
+  const detras = colorDelPortal(detrasElegido);
+  if (detras) variablesCss[VARIABLE_DETRAS_DE_LA_MAQUETA] = detras.hex;
+  const marca = estilo.valores.portal_color_marca;
+  const canalesMarca = canalesDeMarcaHex(marca);
+  if (canalesMarca !== null) {
+    variablesCss[VARIABLE_BARRA_DE_LA_MAQUETA] = marca;
+    if (razonDeContraste([...canalesMarca], canales(BLANCO)) >= CONTRASTE_MINIMO_DEL_PORTAL) variablesCss[VARIABLE_VER_CARTA_DE_LA_MAQUETA] = marca;
+  }
+  return { ...estilo, variablesCss, conMaqueta: true };
 }
