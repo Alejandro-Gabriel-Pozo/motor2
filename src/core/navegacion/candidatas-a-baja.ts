@@ -31,3 +31,15 @@ export const RUTAS_CANDIDATAS_A_BAJA: readonly string[] = [
 export function rutaOfrecida(href: string, visibles: boolean = CANDIDATAS_A_BAJA_VISIBLES): boolean {
   return visibles || !RUTAS_CANDIDATAS_A_BAJA.includes(href);
 }
+
+/**
+ * Las pestañas que se ofrecen: cada una con sus pantallas ofrecidas (`rutaOfrecida`) y sin las que se quedan sin ninguna. Con el interruptor encendido devuelve las mismas pestañas. Es la fuente única de «qué pestañas
+ * de Carta se ofrecen»: la usan la fila de pestañas y el lugar a donde se redirige a quien no ve la principal (`primeraPantallaVisible`), para que ninguna lleve a una pantalla oculta.
+ */
+export function pestanasOfrecidas<P extends { readonly pantallas: readonly { readonly href: string }[] }>(pestanas: readonly P[], visibles: boolean = CANDIDATAS_A_BAJA_VISIBLES): P[] {
+  if (visibles) return [...pestanas];
+  return pestanas.flatMap((p) => {
+    const pantallas = p.pantallas.filter((x) => rutaOfrecida(x.href, false));
+    return pantallas.length > 0 ? [{ ...p, pantallas } as P] : [];
+  });
+}

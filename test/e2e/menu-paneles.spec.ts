@@ -83,7 +83,7 @@ test("una pantalla de ambos paneles (Productos) conserva el último panel elegid
 });
 
 test("un rol sin pantallas de Empresa no ve el selector y conserva el menú único de siempre", async ({ browser, baseURL, sucursalId }) => {
-  const rol = await abrirComoRol(browser, baseURL, sucursalId, { ver_stock: "ver", proceso_venta: "editar" });
+  const rol = await abrirComoRol(browser, baseURL, sucursalId, { ver_stock: "ver", proceso_merma: "editar" });
   try {
     await rol.page.goto("/stock/consolidado");
     // Solo el menú (`aside`): la fila de pestañas de Existencias (DEC-27, otra `nav` dentro de la pantalla) también marca su pestaña actual.

@@ -25,15 +25,29 @@ test("«Motor2» del menú vuelve a /inicio desde cualquier pantalla", async ({ 
 });
 
 test("un rol con varios módulos ve solo las tarjetas de esos módulos (sin Administración ni Salón)", async ({ browser, baseURL, sucursalId }) => {
-  const rol = await abrirComoRol(browser, baseURL, sucursalId, { ver_stock: "ver", proceso_venta: "editar" });
+  const rol = await abrirComoRol(browser, baseURL, sucursalId, { ver_stock: "ver", proceso_merma: "editar" });
   try {
     await rol.page.goto("/");
     await rol.page.waitForURL(/\/inicio$/);
     await expect(rol.page.locator(TARJETAS)).toHaveCount(2);
-    await expect(rol.page.locator(TARJETAS).filter({ hasText: "Movimientos" })).toHaveAttribute("href", "/movimientos/venta");
+    await expect(rol.page.locator(TARJETAS).filter({ hasText: "Movimientos" })).toHaveAttribute("href", "/movimientos/merma");
     await expect(rol.page.locator(TARJETAS).filter({ hasText: "Stock" })).toHaveAttribute("href", "/stock/consolidado");
     await expect(rol.page.locator(TARJETAS).filter({ hasText: "Administración" })).toHaveCount(0);
     await expect(rol.page.locator(TARJETAS).filter({ hasText: "Salón" })).toHaveCount(0);
+  } finally {
+    await rol.limpiar();
+  }
+});
+
+test("CAMBIO DECLARADO (Frente 6, paso 4): un rol cuya única acción de Movimientos es la carga de ventas sin ticket ya no ve ese grupo ni su tarjeta (la pantalla está oculta), pero la dirección sigue abriendo", async ({ browser, baseURL, sucursalId }) => {
+  const rol = await abrirComoRol(browser, baseURL, sucursalId, { ver_stock: "ver", proceso_venta: "editar" });
+  try {
+    await rol.page.goto("/");
+    await rol.page.waitForURL(/\/inicio$/);
+    await expect(rol.page.locator(TARJETAS).filter({ hasText: "Movimientos" })).toHaveCount(0);
+    await expect(rol.page.locator(TARJETAS).filter({ hasText: "Stock" })).toHaveCount(1);
+    await rol.page.goto("/movimientos/venta");
+    await expect(rol.page.getByRole("heading", { level: 1, name: "Carga de ventas sin ticket" })).toBeVisible();
   } finally {
     await rol.limpiar();
   }

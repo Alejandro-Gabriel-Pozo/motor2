@@ -97,7 +97,6 @@
         "movimientos|/movimientos/merma",
         "movimientos|/movimientos/compra",
         "movimientos|/movimientos",
-        "movimientos|/movimientos/venta",
         "movimientos|/movimientos/conteo-fisico",
         "stock|/stock/consolidado",
         "stock|/stock/configuracion",
@@ -160,7 +159,6 @@
         "movimientos|/movimientos/merma",
         "movimientos|/movimientos/compra",
         "movimientos|/movimientos",
-        "movimientos|/movimientos/venta",
         "movimientos|/movimientos/conteo-fisico",
         "stock|/stock/consolidado",
         "stock|/stock/configuracion",
@@ -242,7 +240,6 @@
         "movimientos|/movimientos/merma",
         "movimientos|/movimientos/compra",
         "movimientos|/movimientos",
-        "movimientos|/movimientos/venta",
         "movimientos|/movimientos/conteo-fisico",
         "stock|/stock/consolidado",
         "stock|/stock/configuracion",
@@ -261,7 +258,6 @@
         "movimientos|/movimientos/merma",
         "movimientos|/movimientos/compra",
         "movimientos|/movimientos",
-        "movimientos|/movimientos/venta",
         "movimientos|/movimientos/conteo-fisico",
         "stock|/stock/consolidado",
         "stock|/stock/configuracion",
@@ -308,7 +304,6 @@
     "/movimientos/merma",
     "/movimientos/compra",
     "/movimientos",
-    "/movimientos/venta",
     "/movimientos/conteo-fisico",
     "/stock/consolidado",
     "/stock/configuracion",
@@ -347,7 +342,8 @@
   "rutasFueraDelMenu": [
     "/catalogo/proveedores/comparativa",
     "/catalogo/productos/nuevo",
-    "/reportes/descuentos-productos"
+    "/reportes/descuentos-productos",
+    "/movimientos/venta"
   ],
   "rutasDeUnaEntrada": [
     "/movimientos|/movimientos/produccion",
