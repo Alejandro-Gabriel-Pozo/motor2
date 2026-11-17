@@ -37,7 +37,7 @@ export function sentenciasDeLaSemilla(acciones: readonly AccionParaSemilla[] = A
     `INSERT INTO "PisoDePlataforma" ("id", "accionClave", "tipo", "autor") VALUES\n${s.pisos.map((p) => `  (gen_random_uuid(), ${literal(p.accionClave)}, ${literal(p.tipo)}, ${literal(AUTOR_DE_LA_SEMILLA)})`).join(",\n")}\nON CONFLICT ("accionClave") DO NOTHING`,
   );
   for (const plantilla of ["ADMINISTRADOR", "OPERADOR"] as const) {
-    const v = s.versiones[plantilla];
+    const v = s.listas[plantilla];
     // Sin ON CONFLICT: el trigger de alta corre ANTES del chequeo de unicidad. La guarda es el NOT EXISTS.
     sentencias.push(
       `INSERT INTO "VersionDePlantilla" ("id", "plantillaClave", "numero", "accionesVer", "accionesEditar", "autor", "claveIdempotencia", "payloadHash")\nSELECT ${literal(ID_VERSION[plantilla].id)}, ${literal(plantilla)}, 1,\n  ${arreglo(v.ver)},\n  ${arreglo(v.editar)},\n  ${literal(AUTOR_DE_LA_SEMILLA)}, ${literal(ID_VERSION[plantilla].clave)}, 'semilla-eb1'\nWHERE NOT EXISTS (SELECT 1 FROM "VersionDePlantilla" WHERE "plantillaClave" = ${literal(plantilla)})`,

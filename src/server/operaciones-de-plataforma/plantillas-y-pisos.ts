@@ -39,7 +39,7 @@ const ordenadas = (claves: readonly string[]): string[] => [...new Set(claves)].
 async function enTransaccion<T>(db: Db, caso: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
   try {
     return await db.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended('plantillas-y-pisos', 0))`;
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended('plantillas-y-pisos', 0))::text`;
       return caso(tx);
     });
   } catch (e) {

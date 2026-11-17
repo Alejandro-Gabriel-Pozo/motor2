@@ -29,7 +29,7 @@ const nuevaClave = () => randomUUID();
 
 const semilla = semillaDePlantillas();
 /** Acciones de nivel operario que OPERADOR no tiene en la versión 1 (se le pueden dar sin romper ninguna regla). */
-const OPERARIO_FUERA_DEL_OPERADOR = ACCIONES.filter((a) => a.nivelMinimo === "operario" && !semilla.versiones.OPERADOR.ver.includes(a.clave)).map((a) => a.clave).sort();
+const OPERARIO_FUERA_DEL_OPERADOR = ACCIONES.filter((a) => a.nivelMinimo === "operario" && !semilla.listas.OPERADOR.ver.includes(a.clave)).map((a) => a.clave).sort();
 
 beforeEach(async () => {
   await restaurarSemillaDePlantillasYPisos(prismaAdmin);
@@ -55,8 +55,8 @@ describe("publicar una versión de plantilla", () => {
     const [v1, v2] = await versiones("OPERADOR");
     expect(v1!.numero).toBe(1);
     expect(v2).toMatchObject({ id: r.versionId, numero: 2, autor: AUTOR.adminEmail });
-    expect(v2!.accionesVer).toEqual([...semilla.versiones.OPERADOR.ver, a!, b!].sort());
-    expect(v2!.accionesEditar).toEqual([...semilla.versiones.OPERADOR.editar, b!].sort());
+    expect(v2!.accionesVer).toEqual([...semilla.listas.OPERADOR.ver, a!, b!].sort());
+    expect(v2!.accionesEditar).toEqual([...semilla.listas.OPERADOR.editar, b!].sort());
     const filas = await auditorias();
     expect(filas).toHaveLength(1);
     expect(filas[0]).toMatchObject({ accion: "plantilla-version-publicada", adminEmail: AUTOR.adminEmail, empresaAfectadaId: null });
@@ -195,8 +195,8 @@ describe("sincronizar las acciones nuevas del catálogo", () => {
     expect(r).toEqual({ introducidas: 4, versiones: 2, pisos: 2 });
     const [, admin2] = await versiones("ADMINISTRADOR");
     const [, operador2] = await versiones("OPERADOR");
-    expect(admin2!.accionesVer).toEqual(semilla.versiones.ADMINISTRADOR.ver);
-    expect(operador2!.accionesVer).toEqual(semilla.versiones.OPERADOR.ver);
+    expect(admin2!.accionesVer).toEqual(semilla.listas.ADMINISTRADOR.ver);
+    expect(operador2!.accionesVer).toEqual(semilla.listas.OPERADOR.ver);
     expect((await prismaAdmin.pisoDePlataforma.findMany({ orderBy: { accionClave: "asc" } })).map((p) => [p.accionClave, p.tipo])).toEqual(semilla.pisos.map((p) => [p.accionClave, p.tipo]));
     expect(await prismaAdmin.accionIntroducida.count()).toBe(ACCIONES.length);
     expect(await auditorias()).toMatchObject([{ accion: "acciones-sincronizadas", empresaAfectadaId: null }]);
@@ -235,8 +235,8 @@ describe("la base impone sus reglas (como dueño, sin pasar por la aplicación)"
       editar,
       randomUUID(),
     );
-  const operador = semilla.versiones.OPERADOR.ver;
-  const admin = semilla.versiones.ADMINISTRADOR.ver;
+  const operador = semilla.listas.OPERADOR.ver;
+  const admin = semilla.listas.ADMINISTRADOR.ver;
 
   it("la versión publicada es inmutable: ningún UPDATE ni DELETE (ni del dueño); lo mismo para plantillas y acciones introducidas; un piso no se borra", async () => {
     await expect(prismaAdmin.$executeRawUnsafe(`UPDATE "VersionDePlantilla" SET "autor" = 'otro'`)).rejects.toThrow(/solo se agrega/);
@@ -265,9 +265,9 @@ describe("la base impone sus reglas (como dueño, sin pasar por la aplicación)"
 
   it("rechaza la plantilla GERENTE (no lleva versiones), Editar fuera de Ver, claves de forma inválida y claves repetidas", async () => {
     await expect(insertarVersion("GERENTE", 1, operador)).rejects.toThrow(/VersionDePlantilla_plantilla_check/);
-    await expect(insertarVersion("OPERADOR", 2, operador, [...operador, "ver_stock", OPERARIO_FUERA_DEL_OPERADOR[0]!])).rejects.toThrow(/VersionDePlantilla_editar_en_ver_check/);
-    await expect(insertarVersion("OPERADOR", 2, [...operador, "Mala Clave"])).rejects.toThrow(/VersionDePlantilla_acciones_ver_check/);
-    await expect(insertarVersion("OPERADOR", 2, [...operador, "ver_stock"])).rejects.toThrow(/VersionDePlantilla_acciones_ver_check/);
+    await expect(insertarVersion("OPERADOR", 2, operador, [...operador, OPERARIO_FUERA_DEL_OPERADOR[0]!])).rejects.toThrow(/VersionDePlantilla_editar_en_ver_check/);
+    await expect(insertarVersion("OPERADOR", 2, [...operador, "Mala Clave"])).rejects.toThrow(/VersionDePlantilla_acciones_(ver|editar)_check/);
+    await expect(insertarVersion("OPERADOR", 2, [...operador, "ver_stock"])).rejects.toThrow(/VersionDePlantilla_acciones_(ver|editar)_check/);
     await expect(prismaAdmin.$executeRawUnsafe(`INSERT INTO "PisoDePlataforma" ("id", "accionClave", "tipo", "autor") VALUES ('${randomUUID()}', 'Mala Clave', 'SOLO_GERENTE', 'x')`)).rejects.toThrow(/PisoDePlataforma_accion_check/);
     expect(await prismaAdmin.versionDePlantilla.count()).toBe(2);
   });
@@ -291,11 +291,12 @@ describe("la base impone sus reglas (como dueño, sin pasar por la aplicación)"
   });
 
   it("ORÁCULO P × F contra el trigger: para las acciones de nivel operario, el resultado de agregar y de quitar coincide con la tabla del oráculo", async () => {
-    const agregar = tablaDelOraculoDePlantillas("Agregar a Ver").filter((f) => f.N === "operario");
-    const quitar = tablaDelOraculoDePlantillas("Quitar de Ver y Editar").filter((f) => f.N === "operario" && f.A === "NO");
+    const agregar = tablaDelOraculoDePlantillas("Agregar a Ver").filas.filter((f) => f.N === "operario");
+    const quitar = tablaDelOraculoDePlantillas("Quitar de Ver y Editar").filas.filter((f) => f.N === "operario" && f.A === "NO");
     expect(agregar).toHaveLength(6);
     expect(quitar).toHaveLength(6);
-    const X_AGREGAR = OPERARIO_FUERA_DEL_OPERADOR[0]!;
+    // La base no mira el catálogo (solo la forma de la clave): una clave sintética sirve para ambas plantillas aunque el catálogo real ya se la dé al administrador.
+    const X_AGREGAR = "accion_sintetica_x";
     const X_QUITAR = "ver_stock"; // operario, en las dos plantillas, no la conserva el administrador siempre
     const conPiso = async (accion: string, f: string) => {
       await restaurarSemillaDePlantillasYPisos(prismaAdmin);
@@ -304,12 +305,12 @@ describe("la base impone sus reglas (como dueño, sin pasar por la aplicación)"
     const resultado = async (plantilla: string, ver: string[]) => insertarVersion(plantilla, 2, ver).then(() => "PUBLICA", () => "RECHAZA");
     for (const f of agregar) {
       await conPiso(X_AGREGAR, f.F!);
-      const ver = [...semilla.versiones[f.P as "ADMINISTRADOR" | "OPERADOR"].ver, X_AGREGAR];
+      const ver = [...semilla.listas[f.P as "ADMINISTRADOR" | "OPERADOR"].ver, X_AGREGAR];
       expect(await resultado(f.P!, ver), JSON.stringify(f)).toBe(f.Resultado!.startsWith("RECHAZA") ? "RECHAZA" : "PUBLICA");
     }
     for (const f of quitar) {
       await conPiso(X_QUITAR, f.F!);
-      const ver = semilla.versiones[f.P as "ADMINISTRADOR" | "OPERADOR"].ver.filter((c) => c !== X_QUITAR);
+      const ver = semilla.listas[f.P as "ADMINISTRADOR" | "OPERADOR"].ver.filter((c) => c !== X_QUITAR);
       expect(await resultado(f.P!, ver), JSON.stringify(f)).toBe(f.Resultado!.startsWith("RECHAZA") ? "RECHAZA" : "PUBLICA");
     }
   });

@@ -16,8 +16,8 @@ export interface EscrituraHeredada {
   motivo: string;
 }
 
-/** Cuántas entradas tiene la lista. Solo baja: agregar una exige tocar este número y se ve en la revisión. (Subió de 14 a 15 con `operaciones-de-plataforma/planes.ts`, planes versionados M1, decisión del dueño 2026-11-16: «Planes con versiones desde el inicio, como Pedernal»; escritor único de Plan, VersionDePlan y PlanDeEmpresa.) */
-export const TOPE_DE_ENTRADAS = 15;
+/** Cuántas entradas tiene la lista. Solo baja: agregar una exige tocar este número y se ve en la revisión. (Subió de 14 a 15 con `operaciones-de-plataforma/planes.ts`, planes versionados M1, decisión del dueño 2026-11-16: «Planes con versiones desde el inicio, como Pedernal»; escritor único de Plan, VersionDePlan y PlanDeEmpresa. Subió de 15 a 16 con `operaciones-de-plataforma/plantillas-y-pisos.ts`, plantillas y pisos de plataforma (roles propios, EB-1), decisión del dueño 2026-11-17: «Sí, como Pedernal, etapa posterior (Recomendada)»; escritor único de VersionDePlantilla, PisoDePlataforma y AccionIntroducida.) */
+export const TOPE_DE_ENTRADAS = 16;
 
 export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, EscrituraHeredada>> = {
   "plataforma/src/servidor/auditoria.ts": {
@@ -69,6 +69,11 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     escrituras: ["$executeRaw", "plan.create", "planDeEmpresa.create", "versionDePlan.create", "versionDePlan.create", "versionDePlan.update", "versionDePlan.update"],
     fase: "Permanente",
     motivo: "Operación de plataforma que corre por script (nunca desde la app): crea planes, guarda su borrador, publica versiones y asigna un plan a una empresa (planes versionados, M1); escritor único de Plan, VersionDePlan y PlanDeEmpresa, con su auditoría.",
+  },
+  "src/server/operaciones-de-plataforma/plantillas-y-pisos.ts": {
+    escrituras: ["accionIntroducida.createMany", "pisoDePlataforma.create", "pisoDePlataforma.createMany", "pisoDePlataforma.update", "versionDePlantilla.create", "versionDePlantilla.create"],
+    fase: "Permanente",
+    motivo: "Operación de plataforma que corre por script (nunca desde la app): publica versiones de plantilla de rol, fija el piso de una acción y sincroniza las acciones nuevas del catálogo (roles propios, EB-1); escritor único de VersionDePlantilla, PisoDePlataforma y AccionIntroducida, con su auditoría.",
   },
   "src/server/operaciones-de-plataforma/cambiar-politica-de-empresa.ts": {
     escrituras: ["$executeRaw", "empresa.update"],

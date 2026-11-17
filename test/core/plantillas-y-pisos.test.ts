@@ -41,8 +41,8 @@ describe("paridad de la semilla con el catálogo", () => {
     const filas = matrizDeFabrica("empresa-x", { admin: "rol-admin", operador: "rol-operador" });
     for (const accion of ACCIONES) {
       for (const [plantilla, rol] of [["ADMINISTRADOR", "admin"], ["OPERADOR", "operador"]] as const) {
-        const enVer = semilla.versiones[plantilla].ver.includes(accion.clave);
-        const enEditar = semilla.versiones[plantilla].editar.includes(accion.clave);
+        const enVer = semilla.listas[plantilla].ver.includes(accion.clave);
+        const enEditar = semilla.listas[plantilla].editar.includes(accion.clave);
         const esperada = (MATRIZ_ESPERADA[accion.clave].roles as readonly string[]).includes(rol);
         const fila = filas.find((f) => f.accionClave === accion.clave && f.rolId === `rol-${rol}`)!;
         expect({ accion: accion.clave, plantilla, enVer, enEditar }).toEqual({ accion: accion.clave, plantilla, enVer: esperada, enEditar: esperada });
@@ -61,15 +61,15 @@ describe("paridad de la semilla con el catálogo", () => {
 
   it("introducidas = todas las claves del catálogo; las cuentas salen del catálogo (nada de 133 a mano)", () => {
     expect(semilla.introducidas).toEqual(ACCIONES.map((a) => a.clave).sort());
-    expect(semilla.versiones.ADMINISTRADOR.ver).toHaveLength(ACCIONES.filter((a) => (a.rolesEditarSemilla as readonly string[]).includes("admin")).length);
-    expect(semilla.versiones.OPERADOR.ver).toHaveLength(ACCIONES.filter((a) => (a.rolesEditarSemilla as readonly string[]).includes("operador")).length);
-    expect(semilla.versiones.ADMINISTRADOR.editar).toEqual(semilla.versiones.ADMINISTRADOR.ver);
-    expect(semilla.versiones.OPERADOR.editar).toEqual(semilla.versiones.OPERADOR.ver);
+    expect(semilla.listas.ADMINISTRADOR.ver).toHaveLength(ACCIONES.filter((a) => (a.rolesEditarSemilla as readonly string[]).includes("admin")).length);
+    expect(semilla.listas.OPERADOR.ver).toHaveLength(ACCIONES.filter((a) => (a.rolesEditarSemilla as readonly string[]).includes("operador")).length);
+    expect(semilla.listas.ADMINISTRADOR.editar).toEqual(semilla.listas.ADMINISTRADOR.ver);
+    expect(semilla.listas.OPERADOR.editar).toEqual(semilla.listas.OPERADOR.ver);
   });
 
   it("las listas están ordenadas y ninguna versión de la semilla viola las reglas de plantilla", () => {
     for (const plantilla of ["ADMINISTRADOR", "OPERADOR"] as const) {
-      const { ver, editar } = semilla.versiones[plantilla];
+      const { ver, editar } = semilla.listas[plantilla];
       expect(ver).toEqual([...ver].sort());
       expect(incumplimientosDeLaPlantilla(plantilla, ver, editar, PISOS), plantilla).toEqual([]);
     }
@@ -110,8 +110,8 @@ describe("aplicarCambiosALaPlantilla", () => {
 
 describe("incumplimientosDeLaPlantilla: una regla por vez, en orden", () => {
   const reglas = (plantilla: string, ver: string[], editar: string[], pisos = PISOS) => incumplimientosDeLaPlantilla(plantilla, ver, editar, pisos).map((i) => i.regla);
-  const admin = semilla.versiones.ADMINISTRADOR;
-  const operador = semilla.versiones.OPERADOR;
+  const admin = semilla.listas.ADMINISTRADOR;
+  const operador = semilla.listas.OPERADOR;
 
   it("GERENTE no lleva versiones", () => {
     expect(reglas("GERENTE", [], [])).toEqual(["SIN_LISTA"]);

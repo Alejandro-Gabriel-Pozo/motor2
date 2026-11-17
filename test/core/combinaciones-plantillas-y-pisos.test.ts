@@ -43,7 +43,7 @@ describe("combinaciones de plantillas y pisos contra el oráculo", () => {
     for (const c of combinaciones) {
       const fila = tabla.filas.filter((f) => f.P === c.P && f.N === c.N && f.F === c.F);
       expect(fila, JSON.stringify(c)).toHaveLength(1);
-      const semilla = semillaDePlantillas().versiones[c.P as PlantillaConLista];
+      const semilla = semillaDePlantillas().listas[c.P as PlantillaConLista];
       const ver = [...semilla.ver, X];
       expect(primera(incumplimientosDeLaPlantilla(c.P!, ver, ver, pisosCon(c.F!), catalogoCon(c.N!, "NO"))), JSON.stringify(c)).toBe(fila[0]!.Resultado);
     }
@@ -56,7 +56,7 @@ describe("combinaciones de plantillas y pisos contra el oráculo", () => {
     for (const c of combinaciones) {
       const fila = tabla.filas.filter((f) => f.P === c.P && f.N === c.N && f.F === c.F && f.A === c.A);
       expect(fila, JSON.stringify(c)).toHaveLength(1);
-      const semilla = semillaDePlantillas().versiones[c.P as PlantillaConLista];
+      const semilla = semillaDePlantillas().listas[c.P as PlantillaConLista];
       // El administrador que «conserva» la acción sintética la tendría en su lista de partida: al quitarla queda la lista de la semilla SIN ella.
       expect(primera(incumplimientosDeLaPlantilla(c.P!, semilla.ver, semilla.editar, pisosCon(c.F!), catalogoCon(c.N!, c.A!))), JSON.stringify(c)).toBe(fila[0]!.Resultado);
     }

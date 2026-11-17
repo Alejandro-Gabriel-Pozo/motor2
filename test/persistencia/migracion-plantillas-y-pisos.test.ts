@@ -67,7 +67,7 @@ describe("migración de plantillas y pisos: semilla, candados y reversa", () => 
       const esperadas = ordenadas(Object.entries(MATRIZ_ESPERADA).filter(([, f]) => (f.roles as readonly string[]).includes(rol)).map(([clave]) => clave));
       expect(ordenadas(fila.accionesVer), plantilla).toEqual(esperadas);
       expect(ordenadas(fila.accionesEditar), plantilla).toEqual(esperadas);
-      expect(ordenadas(fila.accionesVer)).toEqual(semilla.versiones[plantilla].ver);
+      expect(ordenadas(fila.accionesVer)).toEqual(semilla.listas[plantilla].ver);
       for (const c of [...fila.accionesVer, ...fila.accionesEditar]) expect(catalogo.has(c), c).toBe(true);
     }
     const pisos = (await q(`SELECT "accionClave", "tipo", "version" FROM "PisoDePlataforma" ORDER BY 1`)).rows;
@@ -106,7 +106,7 @@ describe("migración de plantillas y pisos: semilla, candados y reversa", () => 
   });
 
   it("down.sql ABORTA, sin tocar nada, si hay una versión 2 o un piso cambiado a mano", async () => {
-    const operador = semillaDePlantillas().versiones.OPERADOR.ver;
+    const operador = semillaDePlantillas().listas.OPERADOR.ver;
     const nueva = ACCIONES.find((a) => a.nivelMinimo === "operario" && !operador.includes(a.clave))!.clave;
     await q(
       `INSERT INTO "VersionDePlantilla" ("id", "plantillaClave", "numero", "accionesVer", "accionesEditar", "autor", "claveIdempotencia", "payloadHash") VALUES ('00000000-0000-4000-8000-0000000b0001', 'OPERADOR', 2, $1::text[], $1::text[], 'a-mano@plataforma.test', '00000000-0000-4000-8000-0000000b0002', 'h')`,

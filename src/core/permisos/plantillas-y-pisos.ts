@@ -74,7 +74,7 @@ type AccionParaSemilla = Pick<AccionSemilla, "clave" | "nivelMinimo" | "rolesEdi
 
 export interface SemillaDePlantillas {
   pisos: PisoDeAccion[];
-  versiones: Record<PlantillaConLista, { ver: string[]; editar: string[] }>;
+  listas: Record<PlantillaConLista, { ver: string[]; editar: string[] }>;
   introducidas: string[];
 }
 
@@ -94,7 +94,7 @@ export function semillaDePlantillas(acciones: readonly AccionParaSemilla[] = ACC
   const operador = lista(ROL_DE_FABRICA_DE_LA_PLANTILLA.OPERADOR);
   return {
     pisos,
-    versiones: { ADMINISTRADOR: { ver: admin, editar: [...admin] }, OPERADOR: { ver: operador, editar: [...operador] } },
+    listas: { ADMINISTRADOR: { ver: admin, editar: [...admin] }, OPERADOR: { ver: operador, editar: [...operador] } },
     introducidas: ordenadas(acciones.map((a) => a.clave)),
   };
 }
