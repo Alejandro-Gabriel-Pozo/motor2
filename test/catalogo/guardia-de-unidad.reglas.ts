@@ -56,6 +56,7 @@ export const COLUMNAS_DE_UNIDAD: Record<string, "afecta" | "no-afecta"> = {
   magnitud: "afecta", // define el umbral.
   activa: "no-afecta",
   decimales: "no-afecta",
+  codigoFijo: "no-afecta", // U1 (2026-11-17): solo anota cuál de las 14 unidades fijas de Pedernal es; hoy nada la lee (el umbral sigue saliendo de nombre y magnitud). Desde U2 se revisa.
 };
 
 export const COLUMNAS_DE_RECETA_INGREDIENTE: Record<string, "afecta" | "no-afecta"> = {

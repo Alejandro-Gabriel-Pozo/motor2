@@ -4,7 +4,7 @@ import { correrPuerta, prepararEntorno, soltarEntorno } from "./ejecutar";
 import { escenariosDe } from "./escenarios";
 import { EN_LA_SUCURSAL_VACIA, OK_SIN_EFECTO_POR_DISENO, PENDIENTES_DE_SUCURSAL, RECHAZOS_CRUDOS_DE_LA_BASE, RECHAZOS_DE_ESTADO_ADMITIDOS, SIN_CONTROL_POSITIVO, SIN_MARCA_PROPIA } from "./excepciones";
 import type { Familia } from "./familias";
-import { GENERADORES } from "./generadores";
+import { GENERADORES, PREPARACION_DEL_CONTROL } from "./generadores";
 import { inventariarPuertas, type PuertaInventariada } from "./inventario-de-puertas";
 import { limpiarMundo, sembrarMundo, type Mundo } from "./mundo";
 
@@ -71,6 +71,7 @@ export function definirMatriz({ nombre, filtro }: Familia): void {
               enLaSucursalVacia: Object.hasOwn(EN_LA_SUCURSAL_VACIA, puerta.clave),
               okSinEfectoPorDiseno: Object.hasOwn(OK_SIN_EFECTO_POR_DISENO, clavePendiente),
               rechazoAdmitido: Object.hasOwn(RECHAZOS_DE_ESTADO_ADMITIDOS, clavePendiente) ? RECHAZOS_DE_ESTADO_ADMITIDOS[clavePendiente].mensaje : undefined,
+              prepararControl: Object.hasOwn(PREPARACION_DEL_CONTROL, puerta.clave) ? PREPARACION_DEL_CONTROL[puerta.clave] : undefined,
               reponerMundo: async () => {
                 await limpiarMundo();
                 return sembrarMundo();

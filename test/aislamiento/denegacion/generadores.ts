@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
+import { Prisma } from "@prisma/client";
 import { intento, variantes, type ContextoDeArgumentos, type Generadores, type Kit, type Valor } from "./argumentos";
 import { ZONA_ARGENTINA, diaDeCalendario } from "../../../src/core/tiempo/zona-horaria";
+import { prismaAdmin } from "../../setup/test-db";
+import type { Mundo } from "./mundo";
 import { nroFacturaDePrueba } from "../../setup/comprobante-de-prueba";
 import { REFERENCIA_DE_PRUEBA } from "../../setup/referencia-de-prueba";
 
@@ -147,6 +150,9 @@ const completos: Record<string, Valor> = {
   "accion|actions/carta/secciones.ts|guardarSeccionCarta": (k) => [{ id: k.seccionCartaId, nombre: "Nombre nuevo" }],
   // CARTA-MANT F3: la empresa del mundo tiene UNA sección de carta (orden 0): el control positivo la deja en su lugar (éxito sin cambio); con la de otra empresa, «No se encontró…».
   "accion|actions/carta/secciones.ts|ordenarSeccionesCarta": (k) => [{ secciones: [{ seccionCartaId: k.seccionCartaId, ordenVisto: 0 }] }],
+  // O1 (orden de renglones): el modo y el orden son de UNA sucursal; con la sección y el producto del otro mundo, «No se encontró…». Con lo propio, el modo se fija (versión 0 = sin fila) y la lista pedida es TODA la de la sección (el ítem agrupado y los dos productos visibles; el PV oculto no entra): ninguna cosa del otro mundo se toca.
+  "accion|actions/carta/contenido-producto.ts|fijarModoDeOrdenDeSeccion": (k) => [{ seccionCartaId: k.seccionCartaId, modo: "ALFABETICO", versionVista: 0 }],
+  "accion|actions/carta/contenido-producto.ts|reordenarRenglonesDeSeccion": (k) => [{ seccionCartaId: k.seccionCartaId, renglones: [{ tipo: "ITEM_AGRUPADO", id: k.itemAgrupadoCartaId, ordenVisto: 0 }, { tipo: "PRODUCTO", id: k.productoMp2Id, ordenVisto: 0 }, { tipo: "PRODUCTO", id: k.productoConOpcionesId, ordenVisto: 0 }] }],
 
   // --- catálogo ---
   "accion|actions/catalogo/productos.ts|actualizarProducto": (k, c) =>
@@ -245,6 +251,9 @@ const completos: Record<string, Valor> = {
     ),
   // La celda de la grilla: la sucursal es la de CONTEXTO (la activa); el producto y la opción, los del cliente.
   "lectura|lecturas/catalogo/precio-local-de-opciones.ts|filaDePrecioLocalDeOpcion": (k, c) => [c.db, { sucursalId: c.propio.sucursalId, productoId: k.productoConOpcionesId, opcionId: k.opcionMedidaId }],
+  // O1 (orden de renglones): la sucursal es la de CONTEXTO (la activa) y la sección, la del cliente: con la del otro mundo, `null` (no se ve) y ninguna lista; con la sucursal del otro mundo, la RLS por sucursal no deja ver nada.
+  "lectura|lecturas/carta/orden-de-renglones.ts|leerRenglonesDeSeccion": (k, c) => [c.db, { sucursalId: c.propio.sucursalId, seccionCartaId: k.seccionCartaId }],
+  "lectura|lecturas/carta/orden-de-renglones.ts|consultarOrdenDeSeccion": (k, c) => [c.db, { sucursalId: c.propio.sucursalId, seccionCartaId: k.seccionCartaId }],
 
   // --- movimientos, stock, traspasos ---
   // U1 de «una sola compra»: corregir los datos de la FACTURA (la única corrección de la compra); el id de la factura y el proveedor nuevo son los del cliente.
@@ -404,6 +413,27 @@ const completos: Record<string, Valor> = {
       intento(c, ["productoPvId"], [c.propio.sucursalId, [k.productoPvId], 1, false, { [k.productoPvId]: 1234 }]),
     ),
 
+  // --- caja (C1; GT-3b) ---
+  // Las claves de reintento son UUID fijos (v4) y distintos por puerta. Abrir: no lleva ids (la sucursal es la activa), así que solo se ejerce sin sesión, sin empresa y como control positivo; el control se ejerce parado en la sucursal
+  // vacía (`EN_LA_SUCURSAL_VACIA`: S1 ya tiene su caja abierta y rechazaría con «ya tiene una sesión abierta»).
+  "accion|actions/caja/caja.ts|abrirSesionDeCaja": () => [{ claveIdempotencia: "00000000-0000-4000-8000-00000000ca01", fondo: "0" }],
+  "accion|actions/caja/caja.ts|registrarMovimientoDeCaja": (k, c) =>
+    conVariantes(intento(c, ["sesionDeCajaId"], [{ claveIdempotencia: "00000000-0000-4000-8000-00000000ca02", sesionId: k.sesionDeCajaId, sentido: "INGRESO", importe: "10", motivo: "Ingreso de prueba" }])),
+  "accion|actions/caja/caja.ts|anularMovimientoDeCaja": (k, c) =>
+    conVariantes(intento(c, ["movimientoManualId"], [{ claveIdempotencia: "00000000-0000-4000-8000-00000000ca03", movimientoId: k.movimientoManualId, motivo: "Anulación de prueba" }])),
+  // Cerrar con un conteo cualquiera: cerrar con diferencia se permite (el control positivo termina en `ok: true` aunque no cuadre con lo esperado).
+  // C1b: iniciar y cancelar el cierre llevan solo la sesión. El control positivo de iniciar parte de la sesión ABIERTA del mundo; el de cancelar y el de cerrar necesitan la sesión EN_CIERRE (ver `PREPARACION_DEL_CONTROL`).
+  "accion|actions/caja/caja.ts|iniciarCierreDeSesionDeCaja": (k, c) => conVariantes(intento(c, ["sesionDeCajaId"], [{ sesionId: k.sesionDeCajaId }])),
+  "accion|actions/caja/caja.ts|cancelarCierreDeSesionDeCaja": (k, c) => conVariantes(intento(c, ["sesionDeCajaId"], [{ sesionId: k.sesionDeCajaId }])),
+  "accion|actions/caja/caja.ts|cerrarSesionDeCaja": (k, c) =>
+    conVariantes(intento(c, ["sesionDeCajaId"], [{ sesionId: k.sesionDeCajaId, billetes: { "1000": 1 }, monedas: "0", conformeDeLosDemasMedios: false, observacion: null }])),
+  // Cobrar la cuenta cerrada con venta y sin cobrar del mundo (el ticket vigente suma 1000 + 500) en efectivo: la cuenta ajena se «no encuentra» (de otra empresa, o de otra sucursal de la misma).
+  "accion|actions/caja/caja.ts|cobrarCuenta": (k, c) =>
+    conVariantes(intento(c, ["cuentaCerradaId"], [{ claveIdempotencia: "00000000-0000-4000-8000-00000000ca04", cuentaId: k.cuentaCerradaId, totalVisto: "1500", renglones: [{ medioDePagoId: k.medioEfectivoId, importe: "1500" }] }])),
+
+  // Un ayudante PURO de la lectura de caja (un `Decimal` de una columna a centavos): no lee la base ni recibe ids, así que se ejerce con un importe cualquiera (no escribe nada y no devuelve filas de nadie).
+  "lectura|lecturas/caja/centavos-de-decimal.ts|centavosDeDecimal": () => [new Prisma.Decimal("12.34")],
+
   // --- POS ---
   // Mezclar una cuenta PROPIA con ítems de OTRA sucursal: el envío tiene que acotar los ítems por la cuenta, no solo mirar que la cuenta sea de la sucursal.
   "accion|actions/pos/cuenta-pedido.ts|enviarACocina": (k, c) =>
@@ -454,6 +484,10 @@ const parametros: Record<string, Record<string, Valor>> = {
   "accion|actions/catalogo/precio-local.ts|setPrecioLocalProducto": { esperado: () => ({ precio: 1234, habilitado: true }) },
   "accion|actions/catalogo/receta-sucursal.ts|copiarRecetaPropiaDeOtraSucursal": { sucursalOrigenId: (k, c) => (c.escenario === "controlMutacion" ? c.mundo.s4Id : k.sucursalId) },
   "accion|actions/carta/registro-publico.ts|agregarSucursalAlPortal": { sucursalId: (k, c) => (c.escenario === "controlMutacion" ? c.mundo.s4Id : k.sucursalId) },
+  // Caja (C1): la sesión cuyas cobranzas se leen; la lectura de `server/lecturas` recibe además la sucursal y la empresa (del contexto de quien la llama; en la matriz, la del escenario).
+  "accion|actions/caja/lecturas-de-caja.ts|leerCobranzasDeSesion": { sesionId: (k) => k.sesionDeCajaId },
+  "lectura|lecturas/caja/cobranzas-de-sesion.ts|listarCobranzasDeSesion": { args: (k) => ({ sucursalId: k.sucursalId, sesionId: k.sesionDeCajaId }) },
+  "lectura|lecturas/caja/cuentas-sin-cobrar.ts|listarCuentasSinCobrar": { args: (k) => ({ empresaId: k.empresaId, sucursalId: k.sucursalId, ahora: new Date() }) },
   "accion|actions/pos/cuenta-anulacion.ts|anularItemEnviado": { cuentaItemId: (k) => k.cuentaItemEnviadoId, restanteVisto: () => 2 },
   "accion|actions/pos/cuenta-anulacion.ts|anularPromoEnviada": { promoCuentaId: (k) => k.promoCuentaEnviadaId },
   "accion|actions/pos/cuenta-apertura.ts|liberarMesa": { cuentaId: (k) => k.cuentaVaciaId },
@@ -585,6 +619,18 @@ const CARTA_PUBLICA = "carta pública: anónima POR DISEÑO (lo que la empresa p
  * Las puertas que NO se pueden invocar en la matriz, con el motivo. Lista CERRADA que solo se achica (`MAXIMO_SIN_GENERADOR` en la cobertura): una puerta nueva que no se pueda derivar ni escribir
  * a mano obliga a declararse acá, con motivo y fecha (2026-10-09, T15).
  */
+/**
+ * Lo que hay que dejar armado en la base ANTES del control positivo de una mutación (escenario `controlMutacion`; después el mundo se vuelve a sembrar). C1b: cerrar y cancelar el cierre exigen la sesión de caja EN_CIERRE,
+ * y el mundo solo puede tener UNA sesión sin cerrar por caja (índice único) que además tiene que estar ABIERTA para el cobro y los movimientos: cada control arma lo suyo sobre la sesión propia de S1.
+ */
+const dejarLaSesionEnCierre = async (mundo: Mundo): Promise<void> => {
+  await prismaAdmin.sesionCaja.update({ where: { id: mundo.s1.sesionDeCajaId }, data: { estado: "EN_CIERRE", cierreIniciadoEn: new Date(), cierreIniciadoPorId: mundo.u1.id } });
+};
+export const PREPARACION_DEL_CONTROL: Readonly<Record<string, (mundo: Mundo) => Promise<void>>> = {
+  "accion|actions/caja/caja.ts|cancelarCierreDeSesionDeCaja": dejarLaSesionEnCierre,
+  "accion|actions/caja/caja.ts|cerrarSesionDeCaja": dejarLaSesionEnCierre,
+};
+
 export const SIN_GENERADOR: Readonly<Record<string, string>> = {
   "accion|actions/auth/invitacion.ts|abrirInvitacion": "puerta anónima POR DISEÑO (GT-10: la autoridad es el token de la invitación); su cupo y su postura están en `puertas-sin-permiso-anonimo-y-sin-empresa.test.ts`",
   "accion|actions/auth/invitacion.ts|aceptarMiInvitacion": "recibe un `FormData` con el token de la cookie de invitación (GT-10, cubierta en `puertas-sin-permiso-anonimo-y-sin-empresa.test.ts`)",

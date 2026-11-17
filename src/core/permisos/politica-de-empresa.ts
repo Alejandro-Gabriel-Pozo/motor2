@@ -3,27 +3,29 @@
  * `politicaDeEmpresa` en `server/acceso/politica-de-empresa.ts`, el único lugar que lee esos valores.
  *  - `permisosEditables`: si la empresa puede editar y otorgar permisos (`PermisoRol`) y crear/activar/desactivar roles; las acciones lo
  *    consultan a través de `conEdicionDePermisos`.
+ *  - `rolesPropiosMax`: cuántos roles PROPIOS (los de la empresa, sin clave de sistema) ACTIVOS puede tener; crear o reactivar uno exige `activos < rolesPropiosMax`. Nace en 0 (todo nace cerrado, P2): la sube la plataforma, empresa por empresa. Bajarlo no desactiva ni edita ningún rol que ya exista.
  *  - `dosPaneles`: si el menú lateral se parte en los paneles Empresa y Sucursal (ADR-010) para quien ve pantallas de empresa. En `false`
  *    el menú es uno solo, como antes de los paneles: es la marcha atrás y lo que tiene la versión «lite» de un cliente chico.
  *
- * Los valores viven en `Empresa.permisosEditables` y `Empresa.dosPaneles` (por defecto `true`: una empresa nueva es «completa»). Solo los
+ * Los valores viven en `Empresa.permisosEditables`, `Empresa.dosPaneles` y `Empresa.rolesPropiosMax` (por defecto `true` las dos primeras, que es lo que tienen las empresas existentes, y 0 la tercera: la perilla nace cerrada). Solo los
  * cambia la plataforma —por el script `npm run politica-empresa`—, nunca la propia empresa: ninguna pantalla ni acción de `src/` los escribe
  * (guardián `politica-de-empresa-solo-plataforma.test.ts`).
  */
 export interface PoliticaDeEmpresa {
   permisosEditables: boolean;
   dosPaneles: boolean;
+  rolesPropiosMax: number;
 }
 
 /**
- * Atajos de la plataforma: un «perfil de política» no se guarda, es solo un nombre para fijar las dos perillas de una vez. Lo que queda
+ * Atajos de la plataforma: un «perfil de política» no se guarda, es solo un nombre para fijar las dos perillas de interruptor de una vez (NO `rolesPropiosMax`: un perfil nunca baja ni sube el cupo de roles propios que la plataforma fijó para esa empresa). Lo que queda
  * guardado en la empresa son las perillas, así que se puede ajustar una sola sin inventar un perfil nuevo. No es un plan en el sentido de
  * ADR-013 (un dato que agrupa módulos): por eso no se llama «plan».
  */
 export const PERFILES_DE_POLITICA = {
   completo: { permisosEditables: true, dosPaneles: true },
   lite: { permisosEditables: false, dosPaneles: false },
-} as const satisfies Record<string, PoliticaDeEmpresa>;
+} as const satisfies Record<string, Omit<PoliticaDeEmpresa, "rolesPropiosMax">>;
 
 export type NombreDePerfilDePolitica = keyof typeof PERFILES_DE_POLITICA;
 

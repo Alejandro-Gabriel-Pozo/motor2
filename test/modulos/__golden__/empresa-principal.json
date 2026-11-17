@@ -1350,6 +1350,54 @@
       ]
     },
     {
+      "clave": "caja_ver",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "caja_abrir_sesion",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "caja_cerrar_sesion",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "caja_mover_efectivo",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "caja_anular_movimiento_ajeno",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "cobrar_cuenta",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
       "clave": "producto_asignar_insumo",
       "contexto": "empresa",
       "nivelMinimo": "operario",

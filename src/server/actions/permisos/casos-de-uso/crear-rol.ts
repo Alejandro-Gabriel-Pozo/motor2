@@ -3,9 +3,12 @@ import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
-import { insertarRol } from "@/server/persistencia/permisos/roles";
+import { hayCupoDeRolPropio } from "@/core/permisos/cupo-de-roles-propios";
+import { MENSAJE_PERMISOS_DE_PLATAFORMA } from "@/core/permisos/politica-de-empresa";
+import { politicaDeEmpresa } from "@/server/acceso/politica-de-empresa";
+import { contarRolesPropiosActivos, insertarRol, tomarCandadoDeRolesPropios } from "@/server/persistencia/permisos/roles";
 
-type ResultadoCrearRol = ResultadoCaso<{ rolId: string }, "NOMBRE_TOMADO">;
+type ResultadoCrearRol = ResultadoCaso<{ rolId: string }, "NOMBRE_TOMADO" | "CUPO_DE_ROLES_PROPIOS">;
 
 /**
  * Caso de uso «crear un rol» (equivalente de crearRolDesdePanel, Core.js:968-983; Hito 3, Fase I, I.2 de `docs/plan-hito-3-pureza.md`). Es el cuerpo que antes
@@ -16,23 +19,27 @@ type ResultadoCrearRol = ResultadoCaso<{ rolId: string }, "NOMBRE_TOMADO">;
  * ni el nombre (`guardComandoCrearRol`, `core/features/permisos/rol.guard.ts`): recibe el nombre ya normalizado y aceptado. Escribe `Rol` por
  * `server/persistencia/permisos/roles.ts`, y solo se lo llama dentro de `conEdicionDePermisos` (contrato C5, modo ii de `escrituras-de-permisos-por-politica`).
  *
- * Orden, igual que antes: (1) «Ya existe el rol» si otro rol ya usa ese nombre (con `actor.db`, fuera de la transacción); (2) en UNA transacción, el alta y
+ * Orden: (1) «Ya existe el rol» si otro rol ya usa ese nombre (con `actor.db`, fuera de la transacción: repetir un alta no gasta cupo); (2) en UNA transacción, el candado del cupo de la empresa, el CUPO de roles propios
+ * (P2: `Empresa.rolesPropiosMax`, que nace en 0 y sube la plataforma; sin cupo, rechazo con el texto ya existente de «lo administra la plataforma») y recién ahí el alta y
  * su auditoría; (3) si dos altas con el mismo nombre se cruzan, la unicidad de la base frena a la segunda y se devuelve el mismo «Ya existe el rol».
  *
  * @contract Da de alta un rol con el nombre pedido (sin clave: es un rol de la empresa, no de sistema) junto con su registro de auditoría.
  * @idempotency No aplica — repetir el pedido devuelve «Ya existe el rol» (el nombre es único: lo frena la lectura previa o, en una carrera, la unicidad de la base).
- * @transaction `actor.transaccion` (READ COMMITTED, la del contexto): alta y auditoría juntas. La búsqueda del nombre queda fuera, como antes.
+ * @transaction `actor.transaccion` (READ COMMITTED, la del contexto) con el candado del cupo de la empresa: cupo, alta y auditoría juntas. La búsqueda del nombre queda fuera, como antes.
  * @sideEffects registrarCambioAuditado (Rol.nombre: alta, de null al nombre). Sin efectos externos.
  * @ficha permiso=gestion_roles transaccion=SIMPLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
-export async function crearRolCasoDeUso(actor: Pick<ContextoUsuario, "usuarioId" | "db" | "transaccion">, comando: { nombre: string }): Promise<ResultadoCrearRol> {
+export async function crearRolCasoDeUso(actor: Pick<ContextoUsuario, "usuarioId" | "empresaId" | "db" | "transaccion">, comando: { nombre: string }): Promise<ResultadoCrearRol> {
   const n = comando.nombre;
   const existente = await actor.db.rol.findFirst({ where: { nombre: n } });
   if (existente) return fracaso("NOMBRE_TOMADO", `Ya existe el rol "${n}".`);
 
   let rolId: string;
   try {
-    rolId = await actor.transaccion(async (tx) => {
+    const resultado = await actor.transaccion(async (tx) => {
+      await tomarCandadoDeRolesPropios(tx, actor.empresaId);
+      const { rolesPropiosMax } = await politicaDeEmpresa(actor.empresaId, tx);
+      if (!hayCupoDeRolPropio(rolesPropiosMax, await contarRolesPropiosActivos(tx))) return null;
       const rol = await insertarRol(tx, { nombre: n });
       await registrarCambioAuditado(tx, {
         entidad: "Rol", entidadId: rol.id, campo: "nombre", descripcion: `Rol "${n}": alta`,
@@ -40,6 +47,8 @@ export async function crearRolCasoDeUso(actor: Pick<ContextoUsuario, "usuarioId"
       });
       return rol.id;
     });
+    if (resultado === null) return fracaso("CUPO_DE_ROLES_PROPIOS", MENSAJE_PERMISOS_DE_PLATAFORMA);
+    rolId = resultado;
   } catch (e) {
     if (esErrorDeUnicidad(e)) return fracaso("NOMBRE_TOMADO", `Ya existe el rol "${n}".`);
     throw e;

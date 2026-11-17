@@ -1,13 +1,17 @@
 "use server";
 
 import { guardComandoConfirmarNombreEnCarta, guardComandoGuardarContenidoCartaProducto } from "@/core/features/carta/contenido-producto.guard";
+import { guardComandoFijarModoDeOrdenDeSeccion, guardComandoReordenarRenglonesDeSeccion } from "@/core/features/carta/orden-de-renglones.guard";
 import { ESTA_BIEN_ASI_VISIBLE, MENSAJE_ESTA_BIEN_ASI_APAGADO } from "@/core/carta/public";
 import { aResultadoAccion } from "@/core/resultado-caso";
+import { azarDelProceso } from "@/lib/azar";
 import { conPermiso } from "../con-permiso";
 import { error, type ResultadoAccion } from "../tipos";
 import { actualizarVisibleEnCartaCasoDeUso } from "./casos-de-uso/actualizar-visible-en-carta";
 import { confirmarNombreEnCartaCasoDeUso } from "./casos-de-uso/confirmar-nombre-en-carta";
+import { fijarModoDeOrdenDeSeccionCasoDeUso } from "./casos-de-uso/fijar-modo-de-orden-de-seccion";
 import { guardarContenidoCartaProductoCasoDeUso } from "./casos-de-uso/guardar-contenido-carta-producto";
+import { reordenarRenglonesDeSeccionCasoDeUso } from "./casos-de-uso/reordenar-renglones-de-seccion";
 import { revalidarCartasPublicas } from "./revalidar";
 
 /**
@@ -76,6 +80,32 @@ export async function confirmarNombreEnCarta(productoId: string): Promise<Result
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await confirmarNombreEnCartaCasoDeUso(ctx, comando.valor);
     if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
+    return aResultadoAccion(resultado);
+  });
+}
+
+/**
+ * Orden de los renglones de una sección de carta (etapa O1, `docs/diseno-carta-orden-permiso-y-precio-de-familia-2026-11-17.md`). El modo (alfabético o a mano) y el orden son de UNA sucursal: escriben en la sucursal activa
+ * (`ctx.sucursalId`, la del contexto del servidor), nunca en una que mande el navegador. Misma clave que el resto del contenido de carta (`carta_contenido_producto`); si la sección tiene ítems agrupados el caso de uso pide además
+ * `carta_items_agrupados`. Adaptadores finos: permiso → formato (guard) → caso de uso → revalidar la carta pública si cambió algo → `aResultadoAccion`. El id de la fila del modo lo genera el servidor.
+ */
+export async function fijarModoDeOrdenDeSeccion(entrada: { seccionCartaId: unknown; modo: unknown; versionVista: unknown }): Promise<ResultadoAccion> {
+  return conPermiso("carta_contenido_producto", async (ctx) => {
+    const comando = guardComandoFijarModoDeOrdenDeSeccion(entrada);
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await fijarModoDeOrdenDeSeccionCasoDeUso(ctx, { ...comando.valor, modoId: azarDelProceso.uuid() });
+    if (resultado.ok && resultado.datos.cambio) revalidarCartasPublicas(ctx.empresaSlug);
+    return aResultadoAccion(resultado);
+  });
+}
+
+/** «Reordenar los renglones de una sección»: la lista COMPLETA en el orden nuevo, cada renglón con el `orden` que vio la pantalla. Todo o nada (SERIALIZABLE, idempotente por estado). */
+export async function reordenarRenglonesDeSeccion(entrada: { seccionCartaId: unknown; renglones: unknown }): Promise<ResultadoAccion> {
+  return conPermiso("carta_contenido_producto", async (ctx) => {
+    const comando = guardComandoReordenarRenglonesDeSeccion(entrada);
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await reordenarRenglonesDeSeccionCasoDeUso(ctx, comando.valor);
+    if (resultado.ok && resultado.datos.cambiados > 0) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }
