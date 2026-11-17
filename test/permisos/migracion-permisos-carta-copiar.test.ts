@@ -34,8 +34,8 @@ describe("migración de datos: acción de copiar la carta de otra sucursal", () 
     await limpiarBaseDeTest();
   });
 
-  it("es una acción de contexto sucursal y nivel administrador en el catálogo del código, semilla solo para admin", () => {
-    expect(ACCIONES.find((a) => a.clave === CLAVE)).toMatchObject({ contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] });
+  it("es una acción de contexto sucursal y piso operario (PISOS-65: bajó del piso administrador) en el catálogo del código, semilla solo para admin", () => {
+    expect(ACCIONES.find((a) => a.clave === CLAVE)).toMatchObject({ contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] });
   });
 
   it("da de alta la acción con la misma descripción que el catálogo del código, y es idempotente", async () => {

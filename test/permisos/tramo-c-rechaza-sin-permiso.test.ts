@@ -280,7 +280,6 @@ const MUTACIONES: Mutacion[] = [
 ];
 
 /** El piso de cada clave, del catálogo (`core/permisos/acciones.ts`). */
-const PISO = new Map<string, string>(ACCIONES.map((a) => [a.clave, a.nivelMinimo]));
 const CONTEXTO = new Map<string, string>(ACCIONES.map((a) => [a.clave, a.contexto]));
 const CLAVES = [...new Set(MUTACIONES.map((m) => m.clave))];
 

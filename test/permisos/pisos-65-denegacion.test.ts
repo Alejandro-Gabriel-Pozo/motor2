@@ -44,9 +44,11 @@ beforeEach(async () => {
   await activarTodosLosModulos(EMPRESA_POR_DEFECTO_ID);
   // De fábrica el operador no tiene ninguna de las cuatro: se asegura (la semilla exacta no importa para esta prueba).
   await prismaAdmin.permisoRol.deleteMany({ where: { rolId: s.operador.id, accionClave: { in: [...LAS_4] } } });
-  gerente = await crearUsuarioConMembresia({ email: "gerente@test.com", sucursalId: s.sucursalId, rolId: s.admin.id });
+  // `sembrarSalon` devuelve en `admin` al USUARIO administrador; el rol de clave «admin» se busca aparte.
+  const rolAdminId = (await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } })).id;
+  gerente = await crearUsuarioConMembresia({ email: "gerente@test.com", sucursalId: s.sucursalId, rolId: rolAdminId });
   await prismaAdmin.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId: gerente.id, empresaId: EMPRESA_POR_DEFECTO_ID } }, data: { rolEmpresa: "gerente" } });
-  administrador = await crearUsuarioConMembresia({ email: "administrador@test.com", sucursalId: s.sucursalId, rolId: s.admin.id });
+  administrador = await crearUsuarioConMembresia({ email: "administrador@test.com", sucursalId: s.sucursalId, rolId: rolAdminId });
   empleado = await crearUsuarioConMembresia({ email: "empleado@test.com", sucursalId: s.sucursalId, rolId: s.operador.id });
 });
 

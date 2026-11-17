@@ -102,7 +102,7 @@ describe("migración de datos GO-1a: las tres claves de los grupos de opciones d
       expect(clave in RESERVADAS_EN_BASE, `${clave} ya está en ACCIONES: no puede seguir reservada`).toBe(false);
     }
     expect([enAcciones("opciones_definir")!.contexto, enAcciones("producto_opciones_admitidas")!.contexto]).toEqual(["empresa", "empresa"]);
-    expect([enAcciones("opciones_definir")!.nivelMinimo, enAcciones("producto_opciones_admitidas")!.nivelMinimo]).toEqual(["administrador", "administrador"]);
+    expect([enAcciones("opciones_definir")!.nivelMinimo, enAcciones("producto_opciones_admitidas")!.nivelMinimo]).toEqual(["operario", "operario"]); // PISOS-65 (2026-11-17): bajaron de piso administrador a operario (semilla solo admin); la migración las sembró así
     expect({ contexto: enAcciones("opcion_apagar_en_sucursal")!.contexto, nivelMinimo: enAcciones("opcion_apagar_en_sucursal")!.nivelMinimo }).toEqual({ contexto: "sucursal", nivelMinimo: "operario" });
   });
 
