@@ -2,7 +2,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { ALCANCE_CENTRAL, alcanceDeSucursal } from "@/core/catalogo/public";
 import { cargarHistorialDeVersiones, cargarRecetaVigente } from "@/server/lecturas/catalogo/recetas-vigentes";
-import { type CabeceraRecetaInput, type IngredienteInput, type PasoInput } from "@/core/catalogo/public";
+import { type BaseDeCantidad, type CabeceraRecetaInput, type IngredienteInput, type PasoInput } from "@/core/catalogo/public";
 import { texto } from "@/core/texto";
 
 /**
@@ -114,15 +114,17 @@ export interface VersionDeRecetaEscrita {
  */
 export async function escribirVersionDeReceta(
   tx: Prisma.TransactionClient,
-  args: { productoId: string; version: number; items: IngredienteInput[]; pasos: PasoInput[]; cabecera: CabeceraRecetaInput; sucursalId: string | null; basadaEnVersionId: string | null }
+  args: { productoId: string; version: number; items: IngredienteInput[]; pasos: PasoInput[]; cabecera: CabeceraRecetaInput; sucursalId: string | null; basadaEnVersionId: string | null; baseDeCantidad?: BaseDeCantidad }
 ): Promise<VersionDeRecetaEscrita> {
-  const { productoId, version, items, pasos, cabecera, sucursalId, basadaEnVersionId } = args;
+  const { productoId, version, items, pasos, cabecera, sucursalId, basadaEnVersionId, baseDeCantidad } = args;
   const creada = await tx.recetaVersion.create({
     data: {
       productoId,
       version,
       sucursalId,
       basadaEnVersionId,
+      // M3a (la marca viaja con la copia): solo las copias (duplicar, receta propia desde la central o desde otra sucursal) la mandan; sin ella la versión nace con el DEFAULT de la base, NETA, como hasta hoy.
+      ...(baseDeCantidad !== undefined && { baseDeCantidad }),
       ...(cabecera.rendimientoCantidad !== undefined && { rendimientoCantidad: cabecera.rendimientoCantidad }),
       rendimientoUnidadId: cabecera.rendimientoUnidadId || null,
       ...(cabecera.racionesCantidad !== undefined && { racionesCantidad: cabecera.racionesCantidad }),

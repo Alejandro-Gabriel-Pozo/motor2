@@ -1,7 +1,7 @@
 import { Decimal } from "decimal.js";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { factorDeMerma, factorDeMermaExacto } from "@/core/catalogo/public";
+import { BASES_DE_CANTIDAD, factorDeMerma, factorDeMermaExacto, leerBaseDeCantidad } from "@/core/catalogo/public";
 
 /**
  * M0 del diseño de merma (`docs/diseno-merma-sobre-bruto-como-pedernal-2026-11-15.md`, DT-M2): la función única da EXACTAMENTE lo mismo, bit a bit, que la expresión que había escrita a mano en
@@ -80,3 +80,17 @@ describe("factorDeMermaExacto (decimal.js): idéntico a la expresión vieja", ()
     expect(factorDeMermaExacto(new Decimal("12.5")).toString()).toBe("1.125");
   });
 });
+
+// M3a (2026-11-17): la marca de la base de una versión se lee con una función que CIERRA, no abre (diseño de merma §7.2): lo que no es exactamente NETA o BRUTA lanza error; nunca se asume una base.
+describe("leerBaseDeCantidad", () => {
+  it("devuelve NETA y BRUTA tal cual, y son las dos bases que declara BASES_DE_CANTIDAD (espejo del CHECK de la base)", () => {
+    expect(leerBaseDeCantidad("NETA")).toBe("NETA");
+    expect(leerBaseDeCantidad("BRUTA")).toBe("BRUTA");
+    expect([...BASES_DE_CANTIDAD]).toEqual(["NETA", "BRUTA"]);
+  });
+
+  it.each([undefined, null, "", "neta", "bruta", "NETA ", " BRUTA", "MIXTA", 0, 1, true, {}, []])("lanza error explícito ante %j (no asume una base)", (malo) => {
+    expect(() => leerBaseDeCantidad(malo)).toThrow(/no es legible/);
+  });
+});
+
