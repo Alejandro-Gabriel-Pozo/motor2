@@ -27,5 +27,5 @@ test("crear categoría inline no pisa el nombre ya tipeado del producto", async 
   // recién creada queda seleccionada sola (onCreado corrió, el form
   // exterior no se reseteó).
   await expect(page.locator('input[name="nombre"]')).toHaveValue(nombreProducto);
-  await expect(page.locator("select").first().locator("option:checked")).toHaveText(nombreCategoria);
+  await expect(page.getByLabel("Categoría").locator("option:checked")).toHaveText(nombreCategoria);
 });
