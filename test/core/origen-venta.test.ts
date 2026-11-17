@@ -202,29 +202,38 @@ describe("elegirSeccionDeStockPropio (PV que se produce)", () => {
   });
 });
 
-// Etapa aparte de A1b (2026-11-16): `restante -= tomar` restaba en float y perdía restos de más de 4 decimales
-// (0,00015 − 0,0001 = 4,9999999999999996e-5, que el redondeo exacto lleva a 0 en vez de 0,0001).
-describe("asignarConsumo — resta exacta del resto (pedidos con más de 4 decimales)", () => {
-  const SIN_PERDIDA = (partes: { cantidad: number }[]) => redondearCantidadExacta(partes.reduce((suma, p) => suma + p.cantidad, 0), 8);
+// Etapa aparte de A1b (2026-11-16): el resto de un pedido se calculaba con `restante -= tomar` en float (en `tomarDeFamilia`, que usa `asignarConsumo`, y en
+// `elegirSeccionDeStockPropio`) y perdía restos de más de 4 decimales (0,00015 − 0,0001 = 4,9999999999999996e-5, que el redondeo lleva a 0 en vez de 0,0001).
+// Ahora es `redondearACantidadDeUnidad(restante − tomar, 8)`. Cada prueba marcada «reproduce el bug» FALLA contra el código anterior (verificado revirtiendo el `src`).
+describe("resta del resto del pedido (pedidos con más de 4 decimales)", () => {
+  const sumaDe = (partes: { cantidad: number }[]) => redondearCantidadExacta(partes.reduce((suma, p) => suma + p.cantidad, 0), 8);
+  const dia = (p: { loteVencimiento: Date | null }) => p.loteVencimiento?.toISOString().slice(0, 10) ?? null;
+  const TRES_LOTES = [saldo("A", COCINA, OCT, 0.0001), saldo("A", COCINA, NOV, 0.2), saldo("A", COCINA, DIC, 5)];
 
-  it("0,00015 con un lote de 0,0001 y otro de 1: el resto de 0,00005 sale del segundo lote (no se pierde)", () => {
+  it("asignarConsumo, reproduce el bug: 0,00015 con lotes de 0,0001 y 1 — el resto de 0,00005 sale del segundo lote", () => {
     const libro = crearLibroDeStock([saldo("A", COCINA, OCT, 0.0001), saldo("A", COCINA, NOV, 1)]);
     const partes = asignarConsumo(libro, { productoId: "A", familia: ["A"], cantidad: 0.00015, seccionHabitual: COCINA, respaldos: [], seccionParaFaltanteId: COCINA.id });
-    expect(SIN_PERDIDA(partes)).toBe(0.00015);
-    expect(partes.map((p) => p.loteVencimiento?.toISOString().slice(0, 10))).toEqual(["2026-10-01", "2026-11-01"]);
+    expect(sumaDe(partes)).toBe(0.00015);
+    expect(partes.map(dia)).toEqual(["2026-10-01", "2026-11-01"]);
   });
 
-  it("0,00005 con el único lote en 0: el pedido completo queda como faltante (no se pierde)", () => {
-    const libro = crearLibroDeStock([saldo("A", COCINA, OCT, 0)]);
-    const partes = asignarConsumo(libro, { productoId: "A", familia: ["A"], cantidad: 0.00005, seccionHabitual: COCINA, respaldos: [], seccionParaFaltanteId: COCINA.id });
-    expect(SIN_PERDIDA(partes)).toBe(0.00005);
+  it("asignarConsumo, reproduce el bug: 0,20015 con lotes de 0,0001, 0,2 y 5 — el resto de 0,00005 sale del tercer lote", () => {
+    const libro = crearLibroDeStock(TRES_LOTES);
+    const partes = asignarConsumo(libro, { productoId: "A", familia: ["A"], cantidad: 0.20015, seccionHabitual: COCINA, respaldos: [], seccionParaFaltanteId: COCINA.id });
+    expect(sumaDe(partes)).toBe(0.20015);
+    expect(partes.map(dia)).toEqual(["2026-10-01", "2026-11-01", "2026-12-01"]);
+    expect(partes[2]!.cantidad).toBe(0.00005);
   });
 
-  it("repetir el mismo reparto con un libro nuevo da el mismo resultado (idempotente)", () => {
-    const armar = () => {
-      const libro = crearLibroDeStock([saldo("A", COCINA, OCT, 0.0001), saldo("A", COCINA, NOV, 1)]);
-      return asignarConsumo(libro, { productoId: "A", familia: ["A"], cantidad: 0.00015, seccionHabitual: COCINA, respaldos: [], seccionParaFaltanteId: COCINA.id });
-    };
+  it("elegirSeccionDeStockPropio, reproduce el bug: 0,20015 de un PV que se produce, con lotes de 0,0001, 0,2 y 5 — no se pierde el resto de 0,00005", () => {
+    const libro = crearLibroDeStock(TRES_LOTES.map((l) => ({ ...l, productoId: "TORTA" })));
+    const partes = elegirSeccionDeStockPropio(libro, { productoId: "TORTA", cantidad: 0.20015, seccionHabitual: COCINA, respaldos: [], seccionSiNingunaAlcanzaId: COCINA.id });
+    expect(sumaDe(partes)).toBe(0.20015);
+    expect(partes.map(dia)).toEqual(["2026-10-01", "2026-11-01", "2026-12-01"]);
+  });
+
+  it("regresión (no reproduce el bug; también pasa con el código anterior): repetir el mismo reparto con un libro nuevo da el mismo resultado", () => {
+    const armar = () => asignarConsumo(crearLibroDeStock(TRES_LOTES), { productoId: "A", familia: ["A"], cantidad: 0.20015, seccionHabitual: COCINA, respaldos: [], seccionParaFaltanteId: COCINA.id });
     expect(armar()).toEqual(armar());
   });
 });
