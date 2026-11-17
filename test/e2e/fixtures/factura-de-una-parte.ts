@@ -4,7 +4,7 @@ import { prismaAdmin } from "../../setup/cliente-duenio";
 import { normalizarNumeroDeComprobante } from "../../../src/core/compras/public";
 
 /**
- * Siembra, directo en la base, una compra como la guarda el sistema desde U1 de «una sola compra»: una FACTURA (cabecera + un renglón de mercadería) con UNA parte (la compra de la sucursal y su línea de Kardex, que apunta al renglón), RECIBIDA como la escribe el sistema cuando el stock ya entró (una parte PENDIENTE no puede nacer con la recepción separada apagada: guarda de apagado, migración 20261117170000).
+ * Siembra, directo en la base, una compra como la guarda el sistema desde U1 de «una sola compra»: una FACTURA (cabecera + un renglón de mercadería) con UNA parte (la compra de la sucursal y su línea de Kardex, que apunta al renglón), RECIBIDA como la escribe el sistema cuando el stock ya entró (una parte PENDIENTE no puede nacer con la recepción separada apagada: guarda de apagado, migración 20261117125000_compras_guarda_de_apagado).
  * Los specs de «Compras registradas» (anular, corregir, estado de pago) parten de acá en vez de sembrar una compra suelta (la que ya no existe en el producto). `limpiar` borra TODO lo que sembró, en orden de claves foráneas.
  */
 export interface FacturaDeUnaParteSembrada {

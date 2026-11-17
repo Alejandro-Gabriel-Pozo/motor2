@@ -65,7 +65,7 @@ describe("la migración deja las columnas, las reglas, el disparador y los privi
     expect(fk[0]!.d).toMatch(/REFERENCES "User"\(id\).*ON DELETE RESTRICT/);
     const t = await prismaAdmin.$queryRaw<Array<{ nombre: string; habilitado: string; def: string }>>`
       SELECT tgname::text AS nombre, tgenabled::text AS habilitado, pg_get_triggerdef(oid) AS def FROM pg_trigger WHERE tgrelid = '"FacturaProveedorSucursal"'::regclass AND NOT tgisinternal ORDER BY tgname`;
-    // Desde la guarda de apagado de la recepción separada (20261117170000) hay un segundo disparador, de INSERT (se prueba en test/persistencia/guarda-de-apagado-recepcion.test.ts).
+    // Desde la guarda de apagado de la recepción separada (20261117125000_compras_guarda_de_apagado) hay un segundo disparador, de INSERT (se prueba en test/persistencia/guarda-de-apagado-recepcion.test.ts).
     expect(t.map((x) => [x.nombre, x.habilitado])).toEqual([["FacturaProveedorSucursal_modulo_recepcion_chk", "O"], ["FacturaProveedorSucursal_recepcion_transicion_chk", "O"]]);
     expect(t[1]!.def).toMatch(/BEFORE UPDATE OF "estadoRecepcion", "recibidaEn", "recibidaPorId" ON/);
   });

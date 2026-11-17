@@ -31,7 +31,7 @@ export async function fijarModulosActivos(empresaId: string, modulos: readonly s
 }
 
 /**
- * Enciende `recepcion_de_compras` en la empresa (fila ACTIVO, la crea si no está). Desde la guarda de apagado (20261117170000) la BASE no deja nacer una parte de compra PENDIENTE con el módulo apagado: un fixture que siembra
+ * Enciende `recepcion_de_compras` en la empresa (fila ACTIVO, la crea si no está). Desde la guarda de apagado (20261117125000_compras_guarda_de_apagado) la BASE no deja nacer una parte de compra PENDIENTE con el módulo apagado: un fixture que siembra
  * una parte pendiente a mano (el default de la columna) la tiene que pedir antes. No toca los demás módulos.
  */
 export async function encenderRecepcionDeCompras(empresaId: string): Promise<void> {

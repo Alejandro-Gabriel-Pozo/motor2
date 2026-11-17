@@ -7,7 +7,7 @@ import { encenderRecepcionDeCompras } from "./modulos";
 import { prisma, prismaAdmin } from "./test-db";
 
 /**
- * Apoyo de las pruebas de la guarda de apagado de la recepción separada (`docs/diseno-compras-guarda-de-apagado-2026-11-17.md`, migración 20261117170000): un mundo con dos empresas (la de pruebas, con dos sucursales, y la testigo), partes de compra
+ * Apoyo de las pruebas de la guarda de apagado de la recepción separada (`docs/diseno-compras-guarda-de-apagado-2026-11-17.md`, migración 20261117125000_compras_guarda_de_apagado): un mundo con dos empresas (la de pruebas, con dos sucursales, y la testigo), partes de compra
  * en cada estado, y conexiones `pg` crudas como el rol que apaga (`motor2_plataforma` si la base de test lo tiene, si no el dueño) y como `motor2_app` (el que carga las compras).
  */
 export const MODULO = "recepcion_de_compras";

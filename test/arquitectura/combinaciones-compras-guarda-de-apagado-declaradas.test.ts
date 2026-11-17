@@ -16,7 +16,7 @@ import { dimensionesDeLaGuarda, filasDeApagado, filasDeCarga, tablaDeLaGuarda } 
  *  (e) las tablas del oráculo no son el producto cartesiano de sus dimensiones (ya lo recorre el test de integración, acá se vigila que el lector las vea).
  */
 const RAIZ = join(__dirname, "../..");
-const MIGRACION = readFileSync(join(RAIZ, "prisma/migrations/20261117170000_guarda_de_apagado_recepcion_separada/migration.sql"), "utf8");
+const MIGRACION = readFileSync(join(RAIZ, "prisma/migrations/20261117125000_compras_guarda_de_apagado/migration.sql"), "utf8");
 const DIMENSIONES = dimensionesDeLaGuarda();
 
 /** Cada entrada de la regla y la columna (o el parámetro de la base) con la que la migración la lee. Agregar una columna a la migración sin declararla acá y en el oráculo da rojo. */

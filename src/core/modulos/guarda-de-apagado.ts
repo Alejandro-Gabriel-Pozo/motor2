@@ -1,7 +1,7 @@
 /**
  * La guarda de apagado de la recepción separada de compras (docs/diseno-compras-guarda-de-apagado-2026-11-17.md), del lado de la app: reconocer el rechazo que da la BASE y decir qué pasó. Puro: sin base ni imports.
  *
- * La regla la impone un disparador de la base (migración 20261117170000): apagar `recepcion_de_compras` con compras pendientes de recibir (de cualquier sucursal de la empresa) falla con SQLSTATE 23514, la restricción
+ * La regla la impone un disparador de la base (migración 20261117125000_compras_guarda_de_apagado): apagar `recepcion_de_compras` con compras pendientes de recibir (de cualquier sucursal de la empresa) falla con SQLSTATE 23514, la restricción
  * `ModuloEmpresa_recepcion_pendientes_chk` y un mensaje `GUARDA_APAGADO_RECEPCION|<cantidad>|<sucursales>`. Las dos vías que apagan módulos (la consola y el script de emergencia) lo traducen con estas funciones al mismo texto.
  * Se reconoce por esa marca del mensaje (la forma exacta de la excepción depende del adaptador de Prisma, así que se mira el mensaje y la causa del driver). Una marca que no se puede leer entera NO se toma por un rechazo: el error sigue de largo.
  */

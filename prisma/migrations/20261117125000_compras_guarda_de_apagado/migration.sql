@@ -17,7 +17,7 @@
 -- COSTO: un bloqueo compartido y una lectura por índice en cada carga de una parte pendiente (solo con la recepción separada encendida). Bajo carga: NO VERIFICADO.
 -- LÍMITE CONOCIDO: borrar la fila de `ModuloEmpresa` (DELETE) no pasa por acá: solo el dueño puede borrarla (la plataforma no tiene DELETE) y desactivar es siempre un UPDATE (ADR-012 §3).
 -- ADITIVA: el código anterior no lo nota (sin pendientes y con el módulo encendido no rechaza nada). Se puede aplicar por adelantado y el Instant Rollback de Vercel sigue siendo seguro.
--- Reversa: down.sql (a mano, como dueño, con `psql -1 -v ON_ERROR_STOP=1`; después `prisma migrate resolve --rolled-back 20261117170000_guarda_de_apagado_recepcion_separada`).
+-- Reversa: down.sql (a mano, como dueño, con `psql -1 -v ON_ERROR_STOP=1`; después `prisma migrate resolve --rolled-back 20261117125000_compras_guarda_de_apagado`).
 
 -- a) La cuenta de pendientes de una empresa.
 CREATE FUNCTION compras_pendientes_de_recepcion(p_empresa text, OUT cantidad integer, OUT sucursales text) RETURNS record

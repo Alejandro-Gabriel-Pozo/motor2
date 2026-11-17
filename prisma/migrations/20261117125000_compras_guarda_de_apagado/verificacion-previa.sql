@@ -1,4 +1,4 @@
--- Verificación previa de 20261117170000_guarda_de_apagado_recepcion_separada (SOLO LECTURA; correr como dueño ANTES de aplicarla en una base real y guardar la salida).
+-- Verificación previa de 20261117125000_compras_guarda_de_apagado (SOLO LECTURA; correr como dueño ANTES de aplicarla en una base real y guardar la salida).
 -- Resultado esperado: ni las funciones ni los disparadores existen todavía, y las tres tablas de las que cuelgan existen. Informativo y CLAVE: la migración no rechaza nada existente, pero esta consulta dice qué empresas tienen hoy el módulo APAGADO con compras
 -- pendientes (el estado que desde ahora la base impide crear): si da filas, esas pendientes quedaron sin forma de recibirse y hay que decidirlo con el dueño ANTES de apagar nada más.
 SELECT 'funciones_o_disparadores_ya_existen' AS control, count(*) AS cantidad FROM pg_proc WHERE proname IN ('compras_pendientes_de_recepcion', 'modulo_empresa_guarda_de_apagado_recepcion', 'factura_proveedor_sucursal_guarda_de_modulo_recepcion');

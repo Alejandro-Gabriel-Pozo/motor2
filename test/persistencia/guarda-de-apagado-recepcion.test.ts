@@ -15,7 +15,7 @@ import {
 } from "../setup/guarda-de-apagado";
 
 /**
- * Compras, guarda de apagado de la recepción separada (migración 20261117170000; docs/diseno-compras-guarda-de-apagado-2026-11-17.md): la BASE no deja apagar `recepcion_de_compras` mientras la empresa tenga compras pendientes de recibir (de
+ * Compras, guarda de apagado de la recepción separada (migración 20261117125000_compras_guarda_de_apagado; docs/diseno-compras-guarda-de-apagado-2026-11-17.md): la BASE no deja apagar `recepcion_de_compras` mientras la empresa tenga compras pendientes de recibir (de
  * cualquier sucursal, sin anular), ni deja nacer una parte pendiente con el módulo apagado. Acá, contra Postgres real: la estructura que deja la migración; el mensaje y la cuenta; las tres vías (UPDATE directo, el script y la consola con el
  * rol real `motor2_plataforma` si la base de test lo tiene); idempotencia; aislamiento entre empresas; CONCURRENCIA REAL con dos conexiones a la vez (apagar vs cargar una pendiente); y la reversa (`down.sql`). Todas las combinaciones de
  * estado × vía × ubicación × pedido las recorre `combinaciones-compras-guarda-de-apagado.test.ts` contra el oráculo.
@@ -31,7 +31,7 @@ afterAll(async () => {
 });
 
 const RAIZ = join(__dirname, "../..");
-const MIGRACION = "20261117170000_guarda_de_apagado_recepcion_separada";
+const MIGRACION = "20261117125000_compras_guarda_de_apagado";
 const AUTOR: AutorDeCambioDePlataforma = { adminId: "admin-guarda", adminEmail: "operador@plataforma.com", instalacionId: "principal", instalacionNombre: "principal" };
 const AUTOR_CONSOLA = { adminId: "admin-guarda", adminEmail: "operador@plataforma.com", instalacionId: "principal" };
 /** El cliente de la vía: el rol real de la consola si la base de test lo tiene, si no el dueño (el disparador rige para los dos). */
