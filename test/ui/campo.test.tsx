@@ -68,7 +68,7 @@ describe("EnvolturaDeCampo", () => {
   it("etiquetaOculta: la etiqueta existe y atada pero solo para lectores de pantalla (sr-only); sin ella, se ve", () => {
     expect(clasesDe(dibujar({ etiquetaOculta: true }), "label")).toEqual(["sr-only"]);
     expect(dibujar({ etiquetaOculta: true })).toContain(">Nombre</label>");
-    expect(clasesDe(dibujar(), "label")).toContain("font-medium");
+    expect(clasesDe(dibujar(), "label")).toContain("font-semibold");
     expect(clasesDe(dibujar(), "label")).not.toContain("sr-only");
   });
 

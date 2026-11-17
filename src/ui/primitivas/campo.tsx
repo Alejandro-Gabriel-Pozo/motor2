@@ -69,7 +69,7 @@ export function EnvolturaDeCampo({ id, etiqueta, etiquetaOculta = false, requeri
   return (
     <div className="flex flex-col gap-1">
       {etiqueta != null ? (
-        <label htmlFor={idControl} className={etiquetaOculta ? "sr-only" : "text-sm font-medium"}>
+        <label htmlFor={idControl} className={etiquetaOculta ? "sr-only" : "text-sm font-semibold"}>
           {etiqueta}
           {requerido ? <span aria-hidden="true"> *</span> : null}
         </label>
