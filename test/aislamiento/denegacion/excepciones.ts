@@ -199,7 +199,6 @@ export const SIN_MARCA_PROPIA: Readonly<Record<string, string>> = {
   "accion|actions/traspasos/lecturas.ts|listarSucursalesParaEnviar": "lista las OTRAS sucursales de la empresa (id y nombre) para elegir contraparte: por diseño no llevan el marcador de la sucursal propia",
   "accion|actions/traspasos/lecturas.ts|listarSucursalesParaSolicitar": "lista las OTRAS sucursales de la empresa (id y nombre) para elegir contraparte: por diseño no llevan el marcador de la sucursal propia",
   "consulta|consultas/movimientos/facturas-proveedor.ts|listarOtrasSucursalesParaReparto": "lista las OTRAS sucursales activas de la empresa (id y nombre) para repartir la factura: por diseño no llevan el marcador de la sucursal propia",
-  "accion|actions/caja/lecturas-de-cuentas-y-medios.ts|leerMarcasDeTarjeta": "devuelve la lista GLOBAL de marcas de tarjeta (`ValorDeLista`, sin empresa ni sucursal: la administra la plataforma y la ven todas las empresas): por diseño no lleva el marcador de ninguna empresa",
   // Consultas de las páginas.
   "consulta|consultas/catalogo/ocultar-producto.ts|cargarLoQueMuestraOcultar": "devuelve solo cuatro banderas (oculto en la sucursal, oculto en la empresa, y si se le ofrece cada botón), sin ninguna fila ni texto donde ponerle el marcador",
   "consulta|consultas/carta/admin.ts|cargarPortalEmpresaAdmin": "devuelve solo los valores de una lista cerrada de claves del portal (colores, tipografías…), sin texto libre donde ponerle el marcador",

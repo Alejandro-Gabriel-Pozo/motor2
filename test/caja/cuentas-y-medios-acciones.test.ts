@@ -3,7 +3,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { leerCuentasDeCobroDeAdministracion, leerMarcasDeTarjeta, leerMediosDeCobroDeAdministracion } from "../../src/server/actions/caja/lecturas-de-cuentas-y-medios";
+import { leerCuentasDeCobroDeAdministracion, leerMediosDeCobroDeAdministracion } from "../../src/server/actions/caja/lecturas-de-cuentas-y-medios";
 import {
   crearCuentaDeCobroDeCaja,
   crearMedioDePagoDeCaja,
@@ -20,10 +20,10 @@ import { crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID as EMPRESA, limpiarBas
 import { CLAVES_DE_CUENTAS_Y_MEDIOS } from "../permisos/oraculo-de-permisos-de-cuentas-y-medios";
 
 /**
- * Caja y cobro, etapa B — las ocho Server Actions de administración (cuentas de cobro y medios de pago) y las tres lecturas, contra Postgres real y la sesión simulada, con usuarios reales. Cubre: (a) el permiso EXACTO de cada acción (con todas las claves MENOS la que exige,
+ * Caja y cobro, etapa B — las ocho Server Actions de administración (cuentas de cobro y medios de pago) y las dos lecturas, contra Postgres real y la sesión simulada, con usuarios reales. Cubre: (a) el permiso EXACTO de cada acción (con todas las claves MENOS la que exige,
  * o con ninguna, rechaza SIN tocar la base; con solo esa, pasa); (b) el permiso se pide ANTES que el formato y un rechazo de formato del guard (lista de permitidos) no toca la base; (c) la sucursal fuera de alcance, la sucursal y las filas de OTRA empresa; (d) idempotencia (crear dos
  * veces, desactivar y reactivar dos veces, editar con la misma versión dos veces); (e) CONCURRENCIA real (`Promise.all` de las acciones: una alta gana y las demás reciben `SUCURSAL_YA_TIENE_CUENTA_ACTIVA`, nunca un error crudo; dos ediciones con la misma versión; dos reactivaciones en la misma
- * sucursal); (f) `EFECTIVO_NO_SE_DESACTIVA`; (g) las tres lecturas: permiso `caja_ver`, aislamiento entre empresas, alcance de sucursal, activos e inactivos, datos como texto.
+ * sucursal); (f) `EFECTIVO_NO_SE_DESACTIVA`; (g) las dos lecturas: permiso `caja_ver`, aislamiento entre empresas, alcance de sucursal, activos e inactivos, datos como texto.
  *
  * Mutaciones comprobadas a mano (rojo y revertido): (1) en `cuentas-y-medios.ts` cambiar `conPermiso("caja_cuenta_de_cobro_crear", …)` por `conPermiso("caja_cuenta_de_cobro_editar", …)` → rojo en «(a) con todas MENOS la que exige: crearCuentaDeCobroDeCaja» y en el oráculo
  * `oraculo-de-permisos-de-cuentas-y-medios.test.ts`; (2) sacar la llamada al guard de `editarMedioDePagoDeCaja` (pasar `entrada as never` al caso de uso) → rojo en «(b) formato…». Comprobado y NO detectado: sacar el `true` final (reintento) de `conTransaccionSerializable` en `crearCuentaDeCobroCasoDeUso` deja verde «(e)»: el choque del índice único «una activa por sucursal» se traduce igual a `SUCURSAL_YA_TIENE_CUENTA_ACTIVA` por el `.catch` del caso de uso, así que ese flag no cambia el resultado visible.
@@ -440,18 +440,16 @@ describe("(f) el efectivo no se desactiva", () => {
   });
 });
 
-describe("(g) las tres lecturas de administración (bajo caja_ver)", () => {
+describe("(g) las dos lecturas de administración (bajo caja_ver)", () => {
   it("piden `caja_ver`: sin ella (con las ocho de administración pero sin ver, o sin nada) rechazan; con solo `caja_ver` leen", async () => {
     for (const quien of ["ninguna", ...TODAS.map((c) => `solo-${c}`)]) {
       await como(actores[quien]!);
       await expect(leerCuentasDeCobroDeAdministracion(), quien).rejects.toThrow(/permiso|acceso|No tenés|no tiene/i);
       await expect(leerMediosDeCobroDeAdministracion(), quien).rejects.toThrow(/permiso|acceso|No tenés|no tiene/i);
-      await expect(leerMarcasDeTarjeta(), quien).rejects.toThrow(/permiso|acceso|No tenés|no tiene/i);
     }
     await como(actores.soloVer!);
     await expect(leerCuentasDeCobroDeAdministracion()).resolves.toEqual([]);
     await expect(leerMediosDeCobroDeAdministracion()).resolves.toEqual([]);
-    await expect(leerMarcasDeTarjeta()).resolves.toBeInstanceOf(Array);
   });
 
   it("devuelven activos e inactivos, con tipo, identificador, versión, sucursal y qué datos pide, como texto (nunca fechas ni objetos crudos)", async () => {
@@ -504,14 +502,5 @@ describe("(g) las tres lecturas de administración (bajo caja_ver)", () => {
     expect((await leerMediosDeCobroDeAdministracion()).map((m) => m.id)).toEqual([medio]);
     await como(actores.soloVer!);
     expect((await leerCuentasDeCobroDeAdministracion()).map((c) => c.id)).toEqual([central]);
-  });
-
-  it("las marcas de tarjeta: la lista global activa, con «Otra» (fija) al final", async () => {
-    await como(actores.soloVer!);
-    const marcas = await leerMarcasDeTarjeta();
-    expect(marcas.length).toBeGreaterThanOrEqual(6);
-    expect(marcas.map((m) => m.nombre)).toEqual(expect.arrayContaining(["Visa", "Mastercard", "American Express", "Cabal", "Naranja X", "Otra"]));
-    expect(marcas[marcas.length - 1]).toMatchObject({ nombre: "Otra", fija: true });
-    for (const m of marcas) expect(Object.keys(m).sort()).toEqual(["fija", "id", "nombre"]);
   });
 });
