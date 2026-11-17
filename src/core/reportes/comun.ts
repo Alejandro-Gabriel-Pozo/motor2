@@ -1,4 +1,4 @@
-import { rendimientoEfectivo } from "@/core/catalogo/public";
+import { leerBaseDeCantidad, rendimientoEfectivo, type BaseDeCantidad } from "@/core/catalogo/public";
 import { esBaseConfigurable } from "@/core/opciones/public";
 import type { ClasificacionNoComestibles } from "@/core/catalogo/public";
 import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
@@ -126,6 +126,8 @@ export interface IngredienteRecetaReporte {
   unidadNombre: string;
   /** EFECTIVO — ver `cantidad`. */
   mermaPorcentaje: number;
+  /** La base de la VERSIÓN de la receta (M3a): NETA (la cantidad es lo que llega al plato) o BRUTA (la cantidad ya es lo que sale del stock y se costea). */
+  baseDeCantidad: BaseDeCantidad;
   /** El valor del Catálogo Central, SIN calibrar — para mostrar "(calibrado acá; central: X)" en la UI. */
   cantidadCentral: number;
   mermaPorcentajeCentral: number;
@@ -145,6 +147,8 @@ export interface IndiceRecetas {
 /** La receta vigente de un producto con lo que el índice necesita (la forma del `findMany` con `insumoProducto`, `unidad` y `rendimientosLocales`). */
 export interface RecetaVigenteParaReporte {
   productoId: string;
+  /** `RecetaVersion.baseDeCantidad` tal como viene de la base (se valida al armar el índice: una marca ilegible CIERRA). */
+  baseDeCantidad: unknown;
   ingredientes: readonly {
     id: string;
     insumoProductoId: string;
@@ -163,6 +167,7 @@ export interface RecetaVigenteParaReporte {
 export function armarIndiceRecetas(vigentes: Iterable<RecetaVigenteParaReporte>, sucursalId?: string): IndiceRecetas {
   const recetaPorProducto = new Map<string, IngredienteRecetaReporte[]>();
   for (const v of vigentes) {
+    const baseDeCantidad = leerBaseDeCantidad(v.baseDeCantidad);
     recetaPorProducto.set(
       v.productoId,
       v.ingredientes.map((it) => {
@@ -186,6 +191,7 @@ export function armarIndiceRecetas(vigentes: Iterable<RecetaVigenteParaReporte>,
           cantidad: ef.cantidad,
           unidadNombre: it.unidad.nombre,
           mermaPorcentaje: ef.mermaPorcentaje,
+          baseDeCantidad,
           cantidadCentral,
           mermaPorcentajeCentral,
           calibradoLocal: ef.calibrado,

@@ -179,6 +179,7 @@ function consumosDeLaFoto(foto: FotoParaCerrar): ConsumoDeOpcionParaVender[] {
     cantidad: c.cantidad,
     unidadStockId: c.unidadId,
     mermaPorcentaje: c.mermaPorcentaje,
+    baseDeCantidad: c.baseDeCantidad,
     escalaConLaMedida: c.escalaConLaMedida,
   }));
 }

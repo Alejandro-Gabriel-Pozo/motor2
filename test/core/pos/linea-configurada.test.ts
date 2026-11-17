@@ -69,7 +69,7 @@ function cafe(opciones: { modoPrecio?: GrupoParaVender["modoPrecio"]; medida?: P
         opcion("vaca", "De vaca", 1),
         opcion("almendras", "Almendras", 2, {
           diferenciaDeLaVersion: monto(150),
-          consumos: [{ efecto: "REEMPLAZA", insumoProductoId: "mp-almendras", reemplazaAProductoId: "mp-leche", cantidad: 0.2, unidadStockId: "u", mermaPorcentaje: 0, escalaConLaMedida: true }],
+          consumos: [{ efecto: "REEMPLAZA", insumoProductoId: "mp-almendras", reemplazaAProductoId: "mp-leche", cantidad: 0.2, unidadStockId: "u", mermaPorcentaje: 0, baseDeCantidad: "NETA", escalaConLaMedida: true }],
         }),
         opcion("leche-ninguna", "Sin leche", 3, { esNinguna: true, diferenciaDeLaVersion: monto(30) }),
       ],
@@ -100,7 +100,7 @@ function cafe(opciones: { modoPrecio?: GrupoParaVender["modoPrecio"]; medida?: P
         opcion("shot", "Shot extra", 1, {
           productoAnclaId: "ancla-shot",
           diferenciaDeLaVersion: monto(200),
-          consumos: [{ efecto: "SUMA", insumoProductoId: "mp-cafe", reemplazaAProductoId: null, cantidad: 0.01, unidadStockId: "u", mermaPorcentaje: 0, escalaConLaMedida: false }],
+          consumos: [{ efecto: "SUMA", insumoProductoId: "mp-cafe", reemplazaAProductoId: null, cantidad: 0.01, unidadStockId: "u", mermaPorcentaje: 0, baseDeCantidad: "NETA", escalaConLaMedida: false }],
         }),
         opcion("extras-ninguna", "Sin extras", 2, { esNinguna: true }),
       ],
@@ -234,14 +234,14 @@ describe("armarLineaConfigurada (GO-2b)", () => {
     incompatibles[2] = {
       ...incompatibles[2]!,
       opciones: [
-        opcion("azucar", "Azúcar", 1, { consumos: [{ efecto: "REEMPLAZA", insumoProductoId: "mp-otra", reemplazaAProductoId: "mp-leche", cantidad: 0.1, unidadStockId: "u", mermaPorcentaje: 0, escalaConLaMedida: false }] }),
+        opcion("azucar", "Azúcar", 1, { consumos: [{ efecto: "REEMPLAZA", insumoProductoId: "mp-otra", reemplazaAProductoId: "mp-leche", cantidad: 0.1, unidadStockId: "u", mermaPorcentaje: 0, baseDeCantidad: "NETA", escalaConLaMedida: false }] }),
       ],
     };
     expect(armar([ver("grande"), ver("almendras"), ver("azucar")], { grupos: incompatibles })).toMatchObject({ ok: false, codigo: "OPCIONES_INCOMPATIBLES" });
     const malDefinido = cafe();
     malDefinido[3] = {
       ...malDefinido[3]!,
-      opciones: [opcion("shot", "Shot extra", 1, { productoAnclaId: "ancla", diferenciaDeLaVersion: monto(200), consumos: [{ efecto: "SUMA", insumoProductoId: "mp", reemplazaAProductoId: null, cantidad: 1, unidadStockId: "u", mermaPorcentaje: 0, escalaConLaMedida: true }] })],
+      opciones: [opcion("shot", "Shot extra", 1, { productoAnclaId: "ancla", diferenciaDeLaVersion: monto(200), consumos: [{ efecto: "SUMA", insumoProductoId: "mp", reemplazaAProductoId: null, cantidad: 1, unidadStockId: "u", mermaPorcentaje: 0, baseDeCantidad: "NETA", escalaConLaMedida: true }] })],
     };
     expect(armar([ver("grande"), ver("azucar"), ver("shot")], { grupos: malDefinido })).toMatchObject({ ok: false, codigo: "CONSUMO_INVALIDO" });
     const sinAncla = cafe();

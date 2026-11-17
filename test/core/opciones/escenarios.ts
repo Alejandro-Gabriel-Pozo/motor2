@@ -47,15 +47,15 @@ export interface Escenario {
 export const SUCURSAL = "suc-centro";
 
 function ingrediente(insumoProductoId: string, cantidad: number, unidadStockId: string, mermaPorcentaje = 0, insumoSustitutoIds: string[] = []): IngredienteDeBase {
-  return { ingrediente: { insumoProductoId, cantidad, mermaPorcentaje, rendimientosLocales: [], insumoSustitutoIds }, unidadStockId };
+  return { ingrediente: { insumoProductoId, cantidad, mermaPorcentaje, baseDeCantidad: "NETA", rendimientosLocales: [], insumoSustitutoIds }, unidadStockId };
 }
 
 function suma(insumoProductoId: string, cantidad: number, unidadStockId: string, escalaConLaMedida = false, mermaPorcentaje = 0): ConsumoDeOpcionParaVender {
-  return { efecto: "SUMA", insumoProductoId, reemplazaAProductoId: null, cantidad, unidadStockId, mermaPorcentaje, escalaConLaMedida };
+  return { efecto: "SUMA", insumoProductoId, reemplazaAProductoId: null, cantidad, unidadStockId, mermaPorcentaje, baseDeCantidad: "NETA", escalaConLaMedida };
 }
 
 function reemplaza(reemplazaAProductoId: string, insumoProductoId: string, cantidad: number, unidadStockId: string, escalaConLaMedida = false): ConsumoDeOpcionParaVender {
-  return { efecto: "REEMPLAZA", insumoProductoId, reemplazaAProductoId, cantidad, unidadStockId, mermaPorcentaje: 0, escalaConLaMedida };
+  return { efecto: "REEMPLAZA", insumoProductoId, reemplazaAProductoId, cantidad, unidadStockId, mermaPorcentaje: 0, baseDeCantidad: "NETA", escalaConLaMedida };
 }
 
 /**
