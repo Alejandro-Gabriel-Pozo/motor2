@@ -226,11 +226,20 @@ const CONDICIONES_PERMITIDAS: { job: string; paso: string | null; condicion: str
   { job: "e2e", paso: "Trazas de los specs que fallaron", condicion: "failure()", motivo: "sube las trazas solo si Playwright falló" },
 ];
 
-/** Los pasos del gate que arman y corren los dos conteos (Vitest y E2E): solo corren si integracion y e2e dieron success (si algo ya falló no aportan; el primer paso del gate ya falló por eso). */
+/**
+ * Los pasos del gate que arman y corren los conteos. El de VITEST (con el checkout, Node y `npm ci` que comparte con el de E2E) corre si `integracion` dio success: también en un pull request «solo docs», donde Build y E2E se
+ * saltan a propósito. El de PLAYWRIGHT corre solo si integracion y e2e dieron success (si e2e no corrió, no hay partes que contar; el primer paso del gate ya decidió si ese salto está justificado por el filtro de alcance).
+ */
+const CONDICION_DEL_CONTEO_DE_VITEST = "${{ needs.integracion.result == 'success' }}";
+const PASOS_DEL_CONTEO_DE_VITEST = ["Checkout", "Node", "npm ci", "Resultados de Vitest (todas las partes)", "Conteo de tests (todas las partes)"];
 const CONDICION_DE_LOS_CONTEOS = "${{ needs.integracion.result == 'success' && needs.e2e.result == 'success' }}";
-const PASOS_DE_LOS_CONTEOS = ["Checkout", "Node", "npm ci", "Resultados de Vitest (todas las partes)", "Conteo de tests (todas las partes)", "Resultados de Playwright (todas las partes)", "Lista de specs de la suite entera (sin correr nada)", "Conteo de E2E (todas las partes)"];
-for (const job of ["estatico", "build", "integracion", "e2e"]) CONDICIONES_PERMITIDAS.push({ job, paso: null, condicion: `\${{ !(${PERILLA_APAGADA}) }}`, motivo: "perilla CI_EN_MAIN: el job se omite solo en un push a main con la perilla apagada; nunca en pull_request, ci/** ni workflow_dispatch" });
-for (const paso of PASOS_DE_LOS_CONTEOS) CONDICIONES_PERMITIDAS.push({ job: "gate", paso, condicion: CONDICION_DE_LOS_CONTEOS, motivo: "paso del conteo del reparto de Vitest o de Playwright dentro del gate: corre solo si integracion y e2e dieron success" });
+const PASOS_DE_LOS_CONTEOS = ["Resultados de Playwright (todas las partes)", "Lista de specs de la suite entera (sin correr nada)", "Conteo de E2E (todas las partes)"];
+/** Build y E2E: se omiten con la perilla CI_EN_MAIN apagada Y cuando el filtro de alcance (`scripts/alcance-del-cambio.ts`) dijo exactamente «solo-docs»; `!cancelled()` los hace correr aunque el job del filtro falle (falla cerrado). */
+const CONDICION_DE_BUILD_Y_E2E = `\${{ !cancelled() && !(${PERILLA_APAGADA}) && needs.alcance.outputs.alcance != 'solo-docs' }}`;
+for (const job of ["alcance", "estatico", "integracion"]) CONDICIONES_PERMITIDAS.push({ job, paso: null, condicion: `\${{ !(${PERILLA_APAGADA}) }}`, motivo: "perilla CI_EN_MAIN: el job se omite solo en un push a main con la perilla apagada; nunca en pull_request, ci/** ni workflow_dispatch" });
+for (const job of ["build", "e2e"]) CONDICIONES_PERMITIDAS.push({ job, paso: null, condicion: CONDICION_DE_BUILD_Y_E2E, motivo: "perilla CI_EN_MAIN y filtro de alcance: el job se omite en un push a main con la perilla apagada o si el pull request toca SOLO docs (el gate exige ese salto justificado: `ci-alcance-del-cambio.test.ts`); si no hay respuesta del filtro, corre" });
+for (const paso of PASOS_DEL_CONTEO_DE_VITEST) CONDICIONES_PERMITIDAS.push({ job: "gate", paso, condicion: CONDICION_DEL_CONTEO_DE_VITEST, motivo: "paso del conteo del reparto de Vitest dentro del gate: corre solo si integracion dio success (también en un pull request solo de docs, donde E2E no corre)" });
+for (const paso of PASOS_DE_LOS_CONTEOS) CONDICIONES_PERMITIDAS.push({ job: "gate", paso, condicion: CONDICION_DE_LOS_CONTEOS, motivo: "paso del conteo del reparto de Playwright dentro del gate: corre solo si integracion y e2e dieron success" });
 
 /**
  * Variables que cambian lo que hacen los guardianes (regeneran una línea de base o un golden): jamás en el CI. De las `CONTRATOS_*` se permite UNA, `CONTRATOS_EVIDENCIA` (la ruta adonde el ejecutor de evidencia

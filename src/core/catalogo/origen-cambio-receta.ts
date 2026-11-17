@@ -1,4 +1,4 @@
-import { formatearCantidad } from "@/core/formato-de-numero";
+import { formatearCantidad, formatearCantidadConUnidad, formatearPorcentaje } from "@/core/formato-de-numero";
 /**
  * Funciones puras de auditoría de calibración por sucursal (docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, paso
  * 6, D6(a)/D6(c)) — sin Prisma, para poder testearlas sin base.
@@ -108,6 +108,30 @@ export function describirCalibracion(args: DescribirCalibracionArgs): string {
 /** D6(a): descripción del descarte de una calibración local, cuando `guardarReceta` arrastra los overrides a una versión nueva y esta línea cambió de unidad o salió de la receta (D3). */
 export function describirDescarteArrastre(args: { insumoNombre: string; sucursalNombre: string; version: number; motivo: string }): string {
   return `Calibración de «${args.sucursalNombre}» para "${args.insumoNombre}" — descartada al guardar la versión ${args.version} de la receta central: ${args.motivo}.`;
+}
+
+/**
+ * M3d (dueño, 2026-11-17: «no habria problema con removerlas o cualquier solución barata»): el motivo con que se descarta una calibración cuando la versión nueva está escrita en OTRA base que la vieja
+ * (la receta cambió de base): la cantidad calibrada estaba en la base de la línea anterior y ya no coincide. No se convierte; se descarta y queda el registro (auditoría, texto técnico).
+ */
+export function describirMotivoDeCambioDeBase(args: { baseVieja: "NETA" | "BRUTA"; baseNueva: "NETA" | "BRUTA" }): string {
+  const nombre = (b: "NETA" | "BRUTA") => (b === "BRUTA" ? "bruta" : "neta");
+  return `la receta pasó de ${nombre(args.baseVieja)} a ${nombre(args.baseNueva)}`;
+}
+
+/**
+ * M3d: una calibración descartada por el cambio de base, tal como la lista el aviso confirmado por el dueño (2026-11-17, «ok»): «Norte» para «Bife de chorizo» (0,32 kg). Muestra lo que valía la
+ * calibración: la cantidad con la unidad de la línea; si solo estaba calibrada la merma (cantidad `null`), la merma; si no había ninguno, nada entre paréntesis.
+ */
+export function describirCalibracionDescartadaPorBase(args: { sucursalNombre: string; insumoNombre: string; cantidad: number | null; mermaPorcentaje: number | null; unidadNombre: string }): string {
+  const valor = args.cantidad !== null ? formatearCantidadConUnidad(args.cantidad, args.unidadNombre) : args.mermaPorcentaje !== null ? `merma ${formatearPorcentaje(args.mermaPorcentaje)}` : null;
+  return `«${args.sucursalNombre}» para «${args.insumoNombre}»${valor !== null ? ` (${valor})` : ""}`;
+}
+
+/** «a», «a y b», «a, b y c»: une una lista de frases en castellano. */
+export function unirEnCastellano(items: readonly string[]): string {
+  if (items.length <= 1) return items.join("");
+  return `${items.slice(0, -1).join(", ")} y ${items[items.length - 1]}`;
 }
 
 /** D4: vuelve al valor central (los dos campos en null). */
