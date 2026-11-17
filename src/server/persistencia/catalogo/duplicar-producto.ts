@@ -30,6 +30,7 @@ const SELECT_DEL_ORIGEN = {
   pasoVenta: true,
   nombreDeCocina: true,
   seProduce: true,
+  claseDeUso: true,
   opcionQueRespalda: { select: { id: true } },
 } satisfies Prisma.ProductoSelect;
 
@@ -74,6 +75,7 @@ export interface ProductoDuplicadoNuevo {
   pasoVenta: Prisma.Decimal | number | null;
   nombreDeCocina: string | null;
   seProduce: boolean;
+  claseDeUso: string | null;
 }
 
 /**
@@ -99,6 +101,7 @@ export async function crearProductoDuplicado(tx: Prisma.TransactionClient, produ
       pasoVenta: producto.pasoVenta,
       nombreDeCocina: producto.nombreDeCocina,
       seProduce: producto.seProduce,
+      claseDeUso: producto.claseDeUso,
     },
   });
 }

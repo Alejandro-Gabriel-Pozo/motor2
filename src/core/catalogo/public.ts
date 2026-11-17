@@ -100,5 +100,5 @@ export { OPCIONES_AGOTADAS_AYUDAS_VISIBLES } from "./opciones-agotadas-ayudas-vi
 export { OPCIONES_AGOTADAS_PLEGADAS } from "./opciones-agotadas-plegadas";
 
 // «¿Qué es?» del alta como Pedernal (solo pantalla; diseño `docs/diseno-producto-nuevo-como-pedernal-2026-11-17.md`).
-export { ALTA_DE_PRODUCTO_COMO_PEDERNAL, CLASES_DE_ALTA, CLAVES_DE_CLASE_DE_ALTA, claseDeAltaDe } from "./clase-de-alta";
+export { ALTA_DE_PRODUCTO_COMO_PEDERNAL, CLASES_DE_ALTA, CLAVES_DE_CLASE_DE_ALTA, claseDeAltaDe, motivoDeClaseDeAltaInvalida } from "./clase-de-alta";
 export type { ClaveDeClaseDeAlta } from "./clase-de-alta";

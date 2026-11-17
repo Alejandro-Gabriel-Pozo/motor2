@@ -38,6 +38,7 @@ export const TRATAMIENTO_DE_AUSENTE = {
   precioConsignacion: "COMPLETA",
   codigo: "NO_SE_EDITA",
   activoEnTodasLasSucursales: "NO_SE_EDITA",
+  claseDeUso: "NO_SE_EDITA", // E2 de clases: se escribe una vez, en el alta; la edición la ignora venga o no (y el disparador de la base impediría cambiarla)
   precioVentaVisto: "CONTROL",
   alicuotaVista: "CONTROL",
   modoDeVenta: "LO_TRATA_EL_CASO_DE_USO",

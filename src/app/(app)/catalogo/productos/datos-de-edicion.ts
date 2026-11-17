@@ -53,6 +53,7 @@ export async function cargarEdicionDelProducto(
     precioVenta: Number(p.precioVenta),
     pasoVenta: p.pasoVenta !== null ? Number(p.pasoVenta) : null,
     seProduce: p.seProduce,
+    ...(p.claseDeUso ? { claseDeUso: p.claseDeUso } : {}),
     esConsignacion: p.esConsignacion,
     proveedorConsignacionId: p.proveedorConsignacionId,
     precioConsignacion: p.precioConsignacion ? Number(p.precioConsignacion) : 0,

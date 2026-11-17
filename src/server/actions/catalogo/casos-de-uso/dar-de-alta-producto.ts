@@ -4,6 +4,7 @@ import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/p
 import { guardAlicuotaIvaDelProducto, MENSAJE_SIN_PERMISO_ALICUOTA_IVA, MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES } from "@/core/features/catalogo/productos.guard";
 import { rechazoDeReferenciaDeProducto } from "@/core/features/catalogo/referencias-de-producto";
 import type { EntradaProducto, PuertaDeDatosDeProducto, ResultadoDarDeAltaProducto } from "@/core/features/catalogo/productos.schema";
+import { motivoDeClaseDeAltaInvalida } from "@/core/catalogo/public";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { FuenteDeAzar } from "@/core/seguridad/azar";
 import { conEscrituraEnLaEmpresa, lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
@@ -90,6 +91,11 @@ export async function darDeAltaProductoCasoDeUso(
   // Paso 13 (I1, I2): la alícuota de IVA, de la lista cerrada y del tipo del producto.
   const alicuotaValida = guardAlicuotaIvaDelProducto({ tipo: datos.tipo, alicuotaIvaVenta: datos.alicuotaIvaVenta, alicuotaIvaCompra: datos.alicuotaIvaCompra });
   if (!alicuotaValida.ok) return fracaso("DATOS_INVALIDOS", alicuotaValida.mensaje);
+  // E2 de clases: la clase que trae el alta (si la trae) es de las que se ofrecen y coincide con el tipo y «se produce» del mismo pedido (lista de permitidos; la base la vuelve a exigir con sus CHECK).
+  if (datos.claseDeUso !== undefined) {
+    const motivoDeClase = motivoDeClaseDeAltaInvalida({ claseDeUso: datos.claseDeUso, tipo: datos.tipo, seProduce: datos.seProduce });
+    if (motivoDeClase) return fracaso("DATOS_INVALIDOS", motivoDeClase);
+  }
   // M.2-A4: un PV sin la clave nace sin precio y apagado (ver arriba). Repetir el envío no crea otro: el índice único del nombre (sin distinguir mayúsculas) de la base lo rechaza aunque el primero no esté disponible.
   const naceApagado = datos.tipo === "PV" && !puedeEditarCamposSensibles;
 
@@ -106,6 +112,7 @@ export async function darDeAltaProductoCasoDeUso(
             ...datosParaGuardar(datos, validado.numeros, validado.nombre, validado.nombreDeCocina),
             ...(datos.tipo === "PV" && datos.alicuotaIvaVenta ? { alicuotaIvaVenta: datos.alicuotaIvaVenta } : {}),
             ...(datos.tipo === "MP" && datos.alicuotaIvaCompra ? { alicuotaIvaCompra: datos.alicuotaIvaCompra } : {}),
+            ...(datos.claseDeUso !== undefined ? { claseDeUso: datos.claseDeUso } : {}),
           },
         }),
       azar,

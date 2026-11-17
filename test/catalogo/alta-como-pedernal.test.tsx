@@ -42,7 +42,7 @@ describe("alta de producto como Pedernal (M3 de la pantalla «Producto nuevo»)"
     expect(ALTA_DE_PRODUCTO_COMO_PEDERNAL).toBe(true);
   });
 
-  it("pide «¿Qué es?» con las tres clases que hoy se guardan, en el orden de Pedernal, y la descripción literal de la elegida", () => {
+  it("pide «¿Qué es?» con las cuatro clases que hoy se guardan, en el orden de Pedernal, y la descripción literal de la elegida", () => {
     const html = alta();
     expect(html).toContain("¿Qué es?");
     expect(CLAVES_DE_CLASE_DE_ALTA).toEqual(CLASES_DE_ALTA_ESPERADAS.map((c) => c.clave));
@@ -59,9 +59,10 @@ describe("alta de producto como Pedernal (M3 de la pantalla «Producto nuevo»)"
     for (const viejo of ["Materia prima (MP)", "Producto de venta (PV)", "Se produce (tiene receta propia", "Activo en todas las sucursales", 'name="seProduce"', 'name="tipoRadio"']) expect(html, viejo).not.toContain(viejo);
   });
 
-  it("Insumo y Reventa NO se ofrecen (necesitan la columna de clase del modelo): no se inventan", () => {
+  it("Insumo se ofrece (E2); Reventa NO (el CHECK de la base no la admite hasta E4): no se inventa", () => {
     const html = alta();
-    for (const faltante of ["Insumo</option>", "Reventa</option>"]) expect(html, faltante).not.toContain(faltante);
+    expect(html).toContain(">Insumo</option>");
+    expect(html).not.toContain("Reventa</option>");
   });
 
   it("con el interruptor apagado vuelve la pantalla anterior", () => {
@@ -85,10 +86,15 @@ describe("alta de producto como Pedernal (M3 de la pantalla «Producto nuevo»)"
   it("ORÁCULO: cada clase se guarda con el tipo y «se produce» de siempre, y se reconoce al leerla", () => {
     for (const c of CLASES_DE_ALTA_ESPERADAS) {
       expect(CLASES_DE_ALTA[c.clave]).toMatchObject({ nombre: c.nombre, descripcion: c.descripcion, tipo: c.tipo, seProduce: c.seProduce });
-      expect(claseDeAltaDe({ tipo: c.tipo, seProduce: c.seProduce })).toBe(c.clave);
+      expect(claseDeAltaDe({ tipo: c.tipo, seProduce: c.seProduce, claseDeUso: c.clave })).toBe(c.clave);
     }
     // Un producto de venta es vendible aunque traiga «se produce» (una marca que en un PV no significa nada).
     expect(claseDeAltaDe({ tipo: "PV", seProduce: true })).toBe("VENDIBLE");
     expect(claseDeAltaDe({ tipo: "MP" })).toBe("MATERIA_PRIMA");
+    // La clase ESCRITA manda sobre lo deducido (un Insumo es una MP que no se produce: sin la clase escrita se leería como Materia prima).
+    expect(claseDeAltaDe({ tipo: "MP", seProduce: false, claseDeUso: "INSUMO" })).toBe("INSUMO");
+    // Una clase que no se ofrece (Reventa) o ilegible cae en lo deducido: nunca se muestra una clase inventada.
+    expect(claseDeAltaDe({ tipo: "MP", seProduce: false, claseDeUso: "REVENTA" })).toBe("MATERIA_PRIMA");
+    expect(claseDeAltaDe({ tipo: "PV", claseDeUso: "no-es-una-clase" })).toBe("VENDIBLE");
   });
 });

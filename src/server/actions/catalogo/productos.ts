@@ -309,6 +309,8 @@ export interface DatosProducto extends Pick<EntradaProducto, "alicuotaIvaVenta" 
    */
   pasoVenta?: number | null;
   seProduce?: boolean;
+  /** Qué es (E2 de clases): solo en el alta; se escribe una vez. Ver `EntradaProducto.claseDeUso`. */
+  claseDeUso?: string;
   esConsignacion?: boolean;
   proveedorConsignacionId?: string | null;
   precioConsignacion?: number;

@@ -26,6 +26,8 @@ interface CamposDeProducto {
   precioVenta?: number;
   pasoVenta?: number | null;
   seProduce?: boolean;
+  /** Qué es (E2 de clases; CHECK y disparador de la base): solo lo escribe el alta; el resto de los caminos la dejan en NULL. */
+  claseDeUso?: string;
   esConsignacion?: boolean;
   proveedorConsignacionId?: string | null;
   precioConsignacion?: number;

@@ -168,6 +168,7 @@ export function ProductoForm({
           insumoId: tipo === "MP" ? insumoId || null : null,
           // numeroDelCampo: vacío → undefined (sin paso, comportamiento actual), texto inválido → NaN (el servidor lo rechaza).
           pasoVenta: tipo === "PV" ? (numeroDelCampo(String(form.get("pasoVenta") ?? "")) ?? null) : null,
+          ...(altaComoPedernal && !editando ? { claseDeUso: clase } : {}),
           seProduce: !altaComoPedernal ? form.get("seProduce") === "on" : editando ? productoExistente!.seProduce === true : CLASES_DE_ALTA[clase].seProduce, // como Pedernal: sale de la clase; en la edición no se prende ni se apaga
           // Sin la clave el costo de consignación NO se manda (ver `puedeGestionarConsignacion`).
           ...(puedeGestionarConsignacion && {

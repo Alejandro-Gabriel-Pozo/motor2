@@ -31,6 +31,8 @@ export interface EntradaProducto {
   precioVenta?: number;
   pasoVenta?: number | null;
   seProduce?: boolean;
+  /** Qué es (E2 de clases de producto, `docs/diseno-clases-de-producto-como-pedernal-2026-11-15.md`): solo en el ALTA; se escribe una vez y no cambia. La edición lo ignora. Lo valida `motivoDeClaseDeAltaInvalida`. */
+  claseDeUso?: string;
   esConsignacion?: boolean;
   proveedorConsignacionId?: string | null;
   precioConsignacion?: number;

@@ -39,7 +39,7 @@ export const COLUMNAS_DEL_DUPLICADO: Readonly<Record<string, Readonly<Record<str
     alicuotaIvaCompra: "SE_COPIA",
     pasoVenta: "SE_COPIA",
     nombreDeCocina: "SE_COPIA", // cómo nombra la cocina al producto (2026-11-15): el duplicado lo hereda
-    claseDeUso: "NO_SE_COPIA", // E1 de clases (2026-11-17): hoy nada la escribe (todo NULL), así que no hay nada que heredar; con E2 (el alta con las 5 clases) pasa a SE_COPIA (la clase no cambia: el duplicado es de la misma clase)
+    claseDeUso: "SE_COPIA", // E2 de clases (2026-11-17): el duplicado es de la misma clase que el original (la clase no cambia; NULL se copia como NULL)
     seProduce: "SE_COPIA",
     esConsignacion: "NO_SE_COPIA", // fijar el costo de un consignante exige `pagar_consignante`: no se hereda
     proveedorConsignacionId: "NO_SE_COPIA",
