@@ -581,7 +581,7 @@ test.describe("carta pública: familia tipográfica (carta_fuente_familia)", () 
   test("un valor libre (Comic Sans MS) cae a Playfair: no se cuela como font-family", async ({ page, sucursalId }) => {
     const carta = await crearCarta(sucursalId, { secciones: 3, valores: { ...TEXTOS, carta_fuente_familia: "Comic Sans MS" } });
     try {
-      await verificar(page, carta, /Geist/); // sin `carta_fuente_familia` cargada, el libro toma la sans de la maqueta (`LIBRO_ESTILO_MAQUETA`)
+      await verificar(page, carta, /Playfair/); // un valor CARGADO e inválido no es «sin cargar»: cae al por defecto del catálogo, no al del libro
     } finally {
       await carta.limpiar();
     }
