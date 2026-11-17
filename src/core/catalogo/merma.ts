@@ -38,3 +38,18 @@ export function factorDeMerma(mermaPorcentaje: number): number {
 export function factorDeMermaExacto(mermaPorcentaje: Decimal.Value): Decimal {
   return new D(1).plus(new D(mermaPorcentaje).dividedBy(100));
 }
+
+/**
+ * M3a (diseño de merma §7.2): por cuánto hay que multiplicar la cantidad ESCRITA en una línea para saber lo que sale del stock y se costea (el BRUTO), según la base de la versión a la que pertenece.
+ * - NETA (todo lo ya cargado): la cantidad es lo que llega al plato, el bruto suma la merma: el factor de siempre, `factorDeMerma` (bit a bit lo mismo que antes de M3a).
+ * - BRUTA: la cantidad YA es el bruto: factor 1 (sin multiplicar por la merma).
+ * Una marca que no es NETA ni BRUTA CIERRA (lanza error): nunca se asume una base ni se omite la merma.
+ */
+export function factorDeBruto(base: BaseDeCantidad, mermaPorcentaje: number): number {
+  return leerBaseDeCantidad(base) === "BRUTA" ? 1 : factorDeMerma(mermaPorcentaje);
+}
+
+/** Lo mismo que `factorDeBruto` en decimal exacto (consumo de la línea configurada). */
+export function factorDeBrutoExacto(base: BaseDeCantidad, mermaPorcentaje: Decimal.Value): Decimal {
+  return leerBaseDeCantidad(base) === "BRUTA" ? new D(1) : factorDeMermaExacto(mermaPorcentaje);
+}

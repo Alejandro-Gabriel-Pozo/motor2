@@ -84,7 +84,7 @@ describe("la materia prima de una receta", () => {
 });
 
 describe("pedidoDeIngrediente (ejemplos; las propiedades están en linea-de-venta.propiedades.test.ts)", () => {
-  const ing = { insumoProductoId: "mp-1", cantidad: 0.5, mermaPorcentaje: 10, rendimientosLocales: [], insumoSustitutoIds: ["ins-1"] };
+  const ing = { insumoProductoId: "mp-1", cantidad: 0.5, mermaPorcentaje: 10, baseDeCantidad: "NETA" as const, rendimientosLocales: [], insumoSustitutoIds: ["ins-1"] };
 
   it("la cantidad vendida por el rendimiento central y su merma", () => {
     expect(pedidoDeIngrediente(2, ing, "u-1", "suc-a")).toEqual({ productoId: "mp-1", cantidad: 2 * 0.5 * (1 + 10 / 100), insumoSustitutoIds: ["ins-1"], unidadStockId: "u-1" });
