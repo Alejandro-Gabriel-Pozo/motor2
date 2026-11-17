@@ -58,6 +58,7 @@ const PENDIENTES_MAXIMOS = 0;
 const DECLARADAS: Readonly<Record<string, Declaracion>> = {
   "auth/sucursal-activa.ts|cambiarSucursalActiva": { ata: "MEMBRESIA_PROPIA", motivo: "elige entre las sucursales donde el usuario ya tiene membresía ACTIVA; sin ella no hace nada" },
   "auth/sucursales.ts|actualizarActivoSucursal": { ata: "EMPRESA_RLS", motivo: "`activar_sucursal` es una clave de empresa (alta y baja de sucursales); el caso de uso mide el id contra las de la empresa" },
+  "movimientos/ordenes-de-compra.ts|crearOrdenDeCompra": { ata: "EMPRESA_RLS", motivo: "`orden_de_compra_gestionar` es una clave de empresa; `sucursalId` es la sucursal destino, OPCIONAL e informativa, de la orden (un documento de la empresa): el caso de uso la mide contra las de la empresa y la RLS esconde las ajenas" },
   "auth/sucursales.ts|renombrarSucursal": { ata: "EMPRESA_RLS", motivo: "`renombrar_sucursal` es una clave de empresa; el id solo alcanza sucursales de la empresa" },
   // M-8 de la auditoría intermedia: ids que llegan DENTRO de un objeto.
   "auth/usuarios.ts|agregarOActualizarUsuario": {
