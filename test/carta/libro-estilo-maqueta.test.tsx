@@ -83,3 +83,32 @@ describe("la portada, los dos estados", () => {
     expect(html).not.toContain("radial-gradient(120% 70%");
   });
 });
+
+describe("contacto y compartir NO dependen del estilo del libro (orquestador, 2026-11-17: «nuestro libro tenía contacto de WhatsApp»)", () => {
+  const contacto = {
+    restaurante_instagram: "@huinganco",
+    restaurante_facebook: "huinganco",
+    restaurante_whatsapp: "+54 9 299 123-4567",
+    restaurante_footer_maps_url: "https://maps.app.goo.gl/huinganco",
+  };
+  it("las 4 claves de contacto pasan idénticas con el interruptor en true y en false", () => {
+    const base = { ...contacto, color_marca: "#123456" };
+    for (const clave of Object.keys(contacto)) {
+      expect(conDefaultsDeLaMaqueta(base, true)[clave]).toBe(conDefaultsDeLaMaqueta(base, false)[clave]);
+      expect(conDefaultsDeLaMaqueta(base, true)[clave]).toBe((contacto as Record<string, string>)[clave]);
+    }
+  });
+  it("los metadatos (título, descripción, canónica, Open Graph, Twitter, imagen) son idénticos con el interruptor en true y en false", async () => {
+    const datos = { origen: "https://carta.ejemplo.test", url: "https://carta.ejemplo.test/huinganco", titulo: "Huinganco", descripcion: "Carta de Huinganco", imagen: "https://ejemplo.test/logo.png", nombreSitio: "Huinganco" };
+    const salidas: unknown[] = [];
+    for (const valor of [true, false]) {
+      vi.resetModules();
+      vi.doMock("../../src/core/carta/libro-estilo-maqueta", async (original) => ({ ...(await original<typeof import("../../src/core/carta/libro-estilo-maqueta")>()), LIBRO_ESTILO_MAQUETA: valor }));
+      const { metadataDeCartaPublica } = await import("../../src/components/carta-publica/metadatos");
+      salidas.push(metadataDeCartaPublica(datos));
+      vi.doUnmock("../../src/core/carta/libro-estilo-maqueta");
+    }
+    expect(salidas[0]).toEqual(salidas[1]);
+    expect(salidas[0]).toMatchObject({ title: "Huinganco", openGraph: { images: ["https://ejemplo.test/logo.png"] } });
+  });
+});
