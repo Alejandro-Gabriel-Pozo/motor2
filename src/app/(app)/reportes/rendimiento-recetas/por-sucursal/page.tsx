@@ -38,6 +38,7 @@ export default async function RendimientoPorSucursalPage({
     productoId: f.productoId,
     productoNombre: f.productoNombre,
     recetaIngredienteId: f.recetaIngredienteId,
+    baseDeCantidad: f.baseDeCantidad,
     insumoNombre: f.insumoNombre,
     unidadNombre: f.unidadNombre,
     central: f.central,

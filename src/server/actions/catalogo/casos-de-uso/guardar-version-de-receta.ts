@@ -1,6 +1,6 @@
 import "server-only";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
-import { describirCambioVersionReceta, describirCopiaDeRecetaPropia, describirDescarteArrastre, describirRecetaPropiaGuardada } from "@/core/catalogo/public";
+import { describirCambioVersionReceta, describirCopiaDeRecetaPropia, describirDescarteArrastre, describirMotivoDeCambioDeBase, describirRecetaPropiaGuardada, leerBaseDeCantidad } from "@/core/catalogo/public";
 import { juzgarCantidadesDeIngredientes, validarCabecera, validarIngredientes, validarPasos, validarUnidadDeIngredientes } from "@/core/catalogo/public";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import type { BaseDeCantidad } from "@/core/catalogo/public";
@@ -43,8 +43,8 @@ import {
  *     b. dentro de esa misma transacción (desde D3, docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, paso 6: el arrastre
  *        lee/escribe `RendimientoLocalIngrediente`, que una calibración concurrente también puede estar tocando):
  *        - crea la versión con ingredientes, pasos, cabecera y la tabla puente paso↔ingrediente (persistencia);
- *        - D3, arrastre de calibraciones locales por `insumoProductoId`: se COPIAN si el ingrediente sigue y con la misma unidad; si cambió
- *          la unidad o salió de la receta se DESCARTAN (nunca se arrastran "resucitadas" con otra unidad) y cada descarte se audita
+ *        - D3, arrastre de calibraciones locales por `insumoProductoId`: se COPIAN si el ingrediente sigue, con la misma unidad y la versión nueva en la MISMA base (M3d); si cambió
+ *          la unidad, salió de la receta o la receta pasó de neta a bruta se DESCARTAN (nunca se arrastran "resucitadas" con otra unidad) y cada descarte se audita
  *          (cantidad y merma, en la sucursal de la calibración). Un cambio de cantidad/merma CENTRAL no descarta nada;
  *        - auditoría de la versión nueva (D6(b), paso 2): `RecetaVersion`/`version`, `sucursalId` siempre `null` (Catálogo Central);
  *     (si la serie ya va por una versión distinta de `comando.versionEsperada`, se corta acá con `VERSION_DESACTUALIZADA` y no se escribe nada);
@@ -208,6 +208,10 @@ export async function guardarVersionDeRecetaCasoDeUso(
         // (nunca se arrastra "resucitada" con otra unidad) y se audita. Un cambio de cantidad/merma CENTRAL no
         // descarta nada — la calibración es de la sucursal, no del valor central.
         if (ultima && sucursalId === null) {
+          // M3d: la calibración hereda la base de su línea (el valor calibrado está escrito en ella). Si la versión nueva está en OTRA base que la vieja (neta → bruta), la calibración se DESCARTA
+          // con registro —no se convierte (dueño, 2026-11-17)—. Una marca ilegible en cualquiera de las dos CIERRA (lanza): nunca se asume una base.
+          const baseVieja = leerBaseDeCantidad(ultima.baseDeCantidad);
+          const baseNueva = leerBaseDeCantidad(creada.baseDeCantidad);
           const sucursalIds = new Set<string>();
           for (const viejoIng of ultima.ingredientes) for (const r of viejoIng.rendimientosLocales) sucursalIds.add(r.sucursalId);
           const sucursales = await cargarNombresDeSucursales(tx, Array.from(sucursalIds));
@@ -217,12 +221,16 @@ export async function guardarVersionDeRecetaCasoDeUso(
             if (!viejoIng.rendimientosLocales.length) continue; // nada calibrado en ninguna sucursal: nada que arrastrar ni descartar.
             const nuevoIng = creada.ingredientes.find((i) => i.insumoProductoId === viejoIng.insumoProductoId);
 
-            if (nuevoIng && nuevoIng.unidadId === viejoIng.unidadId) {
+            if (nuevoIng && nuevoIng.unidadId === viejoIng.unidadId && baseVieja === baseNueva) {
               await copiarCalibracionesLocales(tx, nuevoIng.id, viejoIng.rendimientosLocales);
               continue;
             }
 
-            const motivo = !nuevoIng ? "se quitó de la receta" : `cambió la unidad de ${viejoIng.unidad.nombre} a ${nuevoIng.unidad.nombre}`;
+            const motivo = !nuevoIng
+              ? "se quitó de la receta"
+              : nuevoIng.unidadId !== viejoIng.unidadId
+                ? `cambió la unidad de ${viejoIng.unidad.nombre} a ${nuevoIng.unidad.nombre}`
+                : describirMotivoDeCambioDeBase({ baseVieja, baseNueva });
             for (const r of viejoIng.rendimientosLocales) {
               const sucNombre = nombreSucursal.get(r.sucursalId) ?? r.sucursalId;
               const entidadId = `${r.sucursalId}:${productoId}:${viejoIng.insumoProductoId}`;

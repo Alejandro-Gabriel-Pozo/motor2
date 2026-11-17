@@ -35,7 +35,7 @@ export type { PrecioLocalVigente } from "./precio-local";
 export { productosUniversales } from "./disponibilidad-producto";
 export type { FilaDisponibilidadEnSucursal } from "./disponibilidad-producto";
 export { describirCambioVersionReceta, describirCopiaDeRecetaPropia, describirRecetaPropiaGuardada, describirVueltaALaRecetaCentral } from "./describir-cambio-receta";
-export { describirCalibracion, describirDescarteArrastre, describirVueltaAlCentral, normalizarOrigen } from "./origen-cambio-receta";
+export { describirCalibracion, describirDescarteArrastre, describirMotivoDeCambioDeBase, describirVueltaAlCentral, normalizarOrigen } from "./origen-cambio-receta";
 // Hito 4, H4C-5: el comando de la calibración (`core/features/catalogo/rendimiento-local.schema.ts`) lleva el origen ya normalizado por su guard.
 export type { OrigenNormalizado } from "./origen-cambio-receta";
 export type { OrigenCalibracionInput } from "./origen-cambio-receta";

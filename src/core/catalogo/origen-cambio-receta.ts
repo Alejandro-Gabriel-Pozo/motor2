@@ -110,6 +110,16 @@ export function describirDescarteArrastre(args: { insumoNombre: string; sucursal
   return `Calibración de «${args.sucursalNombre}» para "${args.insumoNombre}" — descartada al guardar la versión ${args.version} de la receta central: ${args.motivo}.`;
 }
 
+/**
+ * M3d (dueño, 2026-11-17: «no habria problema con removerlas o cualquier solución barata»): el motivo con que se descarta una calibración cuando la versión nueva está escrita en OTRA base que la vieja
+ * (la receta pasó de neta a bruta): la cantidad calibrada era del valor neto y ya no coincide con la línea. No se convierte; se descarta y queda el registro.
+ * PENDIENTE de OK del dueño (texto que ve el cliente; el literal definitivo va al catálogo de textos recién cuando lo apruebe).
+ */
+export function describirMotivoDeCambioDeBase(args: { baseVieja: "NETA" | "BRUTA"; baseNueva: "NETA" | "BRUTA" }): string {
+  const nombre = (b: "NETA" | "BRUTA") => (b === "BRUTA" ? "bruta" : "neta");
+  return `la receta pasó de ${nombre(args.baseVieja)} a ${nombre(args.baseNueva)}`;
+}
+
 /** D4: vuelve al valor central (los dos campos en null). */
 export function describirVueltaAlCentral(args: { productoNombre: string; insumoNombre: string; sucursalNombre: string }): string {
   return `Rendimiento de "${args.insumoNombre}" en "${args.productoNombre}" en «${args.sucursalNombre}»: vuelta al valor central.`;

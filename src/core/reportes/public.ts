@@ -134,7 +134,7 @@ export type { ValorPorSucursal } from "./rendimiento-por-sucursal";
 export type { CostoMP } from "./comun";
 export { PROCESOS_QUE_FIJAN_EL_COSTO } from "./comun";
 export { bandaDeRuidoDeLote } from "./rendimiento-recetas-vistas";
-export { calcularCantidadEstimadaNeta } from "./rendimiento-recetas-vistas";
+export { calcularCantidadEstimadaEnBase, rotuloDeBase } from "./rendimiento-recetas-vistas";
 export { compararPorImpacto } from "./rendimiento-recetas-vistas";
 export { impactoDelDesvio } from "./rendimiento-recetas-vistas";
 export { motivoSinEstimacion } from "./rendimiento-recetas-vistas";

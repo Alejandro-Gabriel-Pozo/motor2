@@ -1,9 +1,9 @@
 import { Prisma } from "@prisma/client";
 import { cargarClasificacionNoComestibles, obtenerCostoActualPorMP } from "@/server/lecturas/reportes/comun";
-import { redondearCantidad, bandaDeRuidoDeLote, calcularCantidadEstimadaNeta, calcularCantidadTeoricaBruta, calcularDesviacionPorcentaje, compararPorImpacto, impactoDelDesvio, motivoSinEstimacion as calcularMotivoSinEstimacion, motivoSinEstimacionConteo as calcularMotivoSinEstimacionConteo, rotularLineaDeReceta, anclasValidasEnVentana, clavePar, consumoRealDelTramo, elegirAnclas, limitesDelTramo, type CostoMP, type Anclas, type CandidatoAncla, type MetodoRendimiento, type MovimientoParaConciliar } from "@/core/reportes/public";
+import { redondearCantidad, bandaDeRuidoDeLote, calcularCantidadEstimadaEnBase, calcularCantidadTeoricaBruta, calcularDesviacionPorcentaje, compararPorImpacto, impactoDelDesvio, motivoSinEstimacion as calcularMotivoSinEstimacion, motivoSinEstimacionConteo as calcularMotivoSinEstimacionConteo, rotularLineaDeReceta, anclasValidasEnVentana, clavePar, consumoRealDelTramo, elegirAnclas, limitesDelTramo, type CostoMP, type Anclas, type CandidatoAncla, type MetodoRendimiento, type MovimientoParaConciliar } from "@/core/reportes/public";
 import { ZONA_ARGENTINA, finDelDiaDe, inicioDelDiaDe, rangoDeDias } from "@/core/tiempo/zona-horaria";
 import type { Db } from "@/lib/db-tipos";
-import { rendimientoEfectivo } from "@/core/catalogo/public";
+import { leerBaseDeCantidad, rendimientoEfectivo } from "@/core/catalogo/public";
 import { whereDisponibleEn, alcanceDeSucursal } from "@/core/catalogo/public";
 import { cargarRecetasVigentes } from "@/server/lecturas/catalogo/recetas-vigentes";
 import { resolverMinimosCuadrados } from "@/core/estadistica/minimos-cuadrados";
@@ -436,6 +436,8 @@ async function construirPools(sucursalId: string, db: Db): Promise<Pool[]> {
       if (!usosPorClave.has(clave)) usosPorClave.set(clave, []);
       const cantidadCentral = Number(ing.cantidad);
       const mermaPorcentajeCentral = Number(ing.mermaPorcentaje);
+      // M3d: la base de la versión de la línea (la propia donde la sucursal la tiene habilitada, si no la central). Una marca ilegible CIERRA: nunca se asume NETA.
+      const baseDeCantidad = leerBaseDeCantidad(vigente.baseDeCantidad);
       const ef = rendimientoEfectivo(
         { cantidad: cantidadCentral, mermaPorcentaje: mermaPorcentajeCentral },
         ing.rendimientosLocales.map((r) => ({ sucursalId: r.sucursalId, cantidad: r.cantidad !== null ? Number(r.cantidad) : null, mermaPorcentaje: r.mermaPorcentaje !== null ? Number(r.mermaPorcentaje) : null })),
@@ -445,6 +447,7 @@ async function construirPools(sucursalId: string, db: Db): Promise<Pool[]> {
         pvProductoId: pv.id,
         pvNombre: pv.nombre,
         recetaIngredienteId: ing.id,
+        baseDeCantidad,
         insumoProductoId: ing.insumoProductoId,
         cantidad: ef.cantidad,
         unidadNombre: ing.unidad.nombre,
@@ -570,7 +573,7 @@ async function simplesDesde(sucursalId: string, pools: readonly Pool[], costos: 
     const totalVendido = redondearCantidad(ventas.reduce((acc, m) => acc + Math.abs(Number(m.cantidad)), 0));
     const semanasConDatos = contarSemanasConDatos([...entradas, ...ventas].map((m) => m.operacion.fecha));
 
-    const cantidadTeoricaBruta = calcularCantidadTeoricaBruta(uso.cantidad, uso.mermaPorcentaje);
+    const cantidadTeoricaBruta = calcularCantidadTeoricaBruta(uso.cantidad, uso.mermaPorcentaje, uso.baseDeCantidad);
 
     // Task #26 (Diseño B): con dos anclas de Conteo Físico que cubren el pool entero, el consumo se MIDE directo
     // por proceso entre ellas (metodo="CONTEO") — sin ellas (D4), se cae al método de siempre (metodo="COMPRAS",
@@ -614,13 +617,14 @@ async function simplesDesde(sucursalId: string, pools: readonly Pool[], costos: 
       motivoSinEstimacionFila = calcularMotivoSinEstimacion({ totalVendido, totalEntradas, cantidadTeoricaBruta });
     }
 
-    const cantidadEstimada = cantidadEstimadaBruta !== null ? calcularCantidadEstimadaNeta(cantidadEstimadaBruta, uso.mermaPorcentaje) : null;
+    const cantidadEstimada = cantidadEstimadaBruta !== null ? calcularCantidadEstimadaEnBase(cantidadEstimadaBruta, uso.mermaPorcentaje, uso.baseDeCantidad) : null;
     const desviacionPorcentaje = calcularDesviacionPorcentaje(cantidadEstimadaBruta, cantidadTeoricaBruta);
 
     filas.push({
       productoVentaId: uso.pvProductoId,
       productoVentaNombre: uso.pvNombre,
       recetaIngredienteId: uso.recetaIngredienteId,
+      baseDeCantidad: uso.baseDeCantidad,
       insumoProductoId: uso.insumoProductoId,
       insumoONombre: pool.nombre,
       unidadRecetaNombre: uso.unidadNombre,
@@ -807,8 +811,8 @@ async function compartidasDesde(sucursalId: string, pools: readonly Pool[], cost
     pool.usos.forEach((uso, i) => {
       // El coeficiente de la regresión sale en la misma unidad que `y` (consumo real o entradas crudas del pool, según el método) — es BRUTO, misma interpretación que cantidadEstimadaBruta de Fase 1.
       const cantidadEstimadaBruta = resoluble ? redondearCantidad(coeficientes![i]) : null;
-      const cantidadTeoricaBruta = calcularCantidadTeoricaBruta(uso.cantidad, uso.mermaPorcentaje);
-      const cantidadEstimada = cantidadEstimadaBruta !== null ? calcularCantidadEstimadaNeta(cantidadEstimadaBruta, uso.mermaPorcentaje) : null;
+      const cantidadTeoricaBruta = calcularCantidadTeoricaBruta(uso.cantidad, uso.mermaPorcentaje, uso.baseDeCantidad);
+      const cantidadEstimada = cantidadEstimadaBruta !== null ? calcularCantidadEstimadaEnBase(cantidadEstimadaBruta, uso.mermaPorcentaje, uso.baseDeCantidad) : null;
       const desviacionPorcentaje = calcularDesviacionPorcentaje(cantidadEstimadaBruta, cantidadTeoricaBruta);
       const totalVendidoUso = redondearCantidad(ventasPorPlato[i].reduce((acc, m) => acc + Math.abs(Number(m.cantidad)), 0));
       // La banda de ruido de lote es contexto de compras por lote (D4) — con Conteo Físico real de por medio (CONTEO) ya no aplica, mismo criterio que Fase 1.
@@ -828,6 +832,7 @@ async function compartidasDesde(sucursalId: string, pools: readonly Pool[], cost
         productoVentaId: uso.pvProductoId,
         productoVentaNombre: uso.pvNombre,
         recetaIngredienteId: uso.recetaIngredienteId,
+        baseDeCantidad: uso.baseDeCantidad,
         insumoProductoId: uso.insumoProductoId,
         unidadRecetaNombre: uso.unidadNombre,
         cantidadActual: uso.cantidad,
