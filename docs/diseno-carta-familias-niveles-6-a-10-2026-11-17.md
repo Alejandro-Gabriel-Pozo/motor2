@@ -2,7 +2,7 @@
 
 > **Estado:** Fase 1, Frente 7 (CARTA), 2026-11-17. Solo documento. Continúa `docs/diseno-carta-familias-orden-identidad-portal-2026-11-17.md` (niveles 1 a 5, §2) y `docs/diseno-carta-orden-permiso-y-precio-de-familia-2026-11-17.md` (§B, precio).
 > **Decisión del dueño que rige (2026-11-17, `AskUserQuestion`, literal):** «Familias nuevas como Pedernal (Recomendada)»: familias nuevas por empresa; el ítem agrupado queda y se migra después, en etapa aparte con ensayo en copia. Fuente: `motor2-docs/seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, sección «Carta como Pedernal: respuestas del Frente 7 (2026-11-17)».
-> **Respuestas del dueño a la pregunta única (2026-11-17, literales, registradas en `motor2-docs`):** ítem agrupado y familia: «No permitir las dos cosas a la vez» (D2, no era la recomendada); miembros: «Solo los que se venden» (D3). El tope de 50 miembros se quitó (decisión declarada, aceptada por el orquestador).
+> **Respuestas del dueño (2026-11-17, literales, registradas en `motor2-docs`):** ítem agrupado y familia: primero «No permitir las dos cosas a la vez» y después, corrigiendo, «Sobre item agrupado se va una vez que entra familia» (D2: la familia reemplaza al ítem agrupado; la convivencia es solo transitoria); miembros: «Solo los que se venden» (D3). El tope de 50 miembros se quitó (decisión declarada, aceptada por el orquestador).
 > **Alcance de F1:** tablas `FamiliaDeProducto` y `MiembroDeFamilia`; casos de uso crear, editar, agregar producto, quitar producto, desactivar/reactivar; consulta de gestión; función pura «forma de salir» con su oráculo. **Fuera de F1:** la acción de precio (F2), la carta pública con renglones de familia (F4, cambia el contrato público `CartaPublicaV1` y sus goldens: zona restringida), el POS (E4/E7) y las pantallas (Frente 6).
 > **Estados:** CONFIRMADA (dicha por el dueño) · PROPUESTA · PENDIENTE · NO VERIFICADO (†).
 
@@ -11,7 +11,7 @@
 | # | Decisión | Por qué | Costo de revertir |
 |---|---|---|---|
 | D1 | **Permiso: se reutiliza `carta_secciones`** (empresa, piso administrador; gerente y administrador). No hay permiso nuevo ni turno en `acciones.ts`. | Pedernal: «quien edita productos crea y edita familias, mismo permiso que las secciones; sin permiso nuevo» (DDD 122, punto 4). La familia es de la empresa, como la sección. `producto_editar` no sirve: lo tiene el operario. | Nulo (cambiar una clave en el guard) |
-| D2 | **CONFIRMADA (dueño, 2026-11-17, literal: «No permitir las dos cosas a la vez»; NO era la opción recomendada): un producto NO puede estar a la vez en una familia vigente y en un ítem agrupado.** El invariante lo impone la BASE (no solo la pantalla), en las dos direcciones, ver §6.4. | Respuesta del dueño a la pregunta única del Frente 7 (registrada en `motor2-docs`). Reemplaza la propuesta anterior (precedencia del ítem agrupado). | Medio (quitar los dos triggers y la lógica de las dos acciones) |
+| D2 | **CONFIRMADA (dueño, 2026-11-17, chat, literal, corrige su respuesta anterior): «Sobre item agrupado se va una vez que entra familia».** La familia REEMPLAZA al ítem agrupado; este no queda como funcionalidad. Mientras dura la transición, un producto no puede estar a la vez en una familia y en un ítem agrupado: ese invariante en la base es **TRANSITORIO** (un puente) y se retira junto con el ítem agrupado. Plan de reemplazo en §6.5. | Respuestas del dueño registradas por el orquestador general. | Medio |
 | D3 | **CONFIRMADA (dueño, 2026-11-17, literal: «Solo los que se venden»):** solo productos de venta (`Producto.tipo = 'PV'`) pueden ser miembros. † verificar el nombre exacto del valor del enum `TipoProducto`. | Respuesta del dueño. | Bajo |
 | D4 | **Sin tope de miembros por familia.** El «50» de Pedernal (S3) es un supuesto de su ingeniero ligado a la acción de precio (MIG §12.23.B13, relatada sin cita literal del dueño); **no entra** (regla «lo que el dueño no pidió no entra»). Única protección técnica: `posicion` entre 1 y 1000 (CHECK de la base, como Pedernal), que acota de hecho la cantidad; se declara como protección de la base, no como regla de negocio. El tope de la acción de precio (F2) queda **PENDIENTE** hasta tener fuente. | Nadie pidió el tope. | Nulo |
 | D5 | **Nombre:** 1 a 120 caracteres, único por empresa sin distinguir mayúsculas ni acentos (`nombreClave`), mismo criterio que productos y secciones. † reusar la primitiva de nombres que usa `guardarSeccionCarta` (no escribir otra). | Pedernal `familia_nombre_uk`. | Bajo |
@@ -33,7 +33,7 @@
 - **Migración:** aditiva, en el bloque `20261117161000` (o el siguiente libre dentro de 160000–169999 tras O1), con `down.sql` (DROP de las dos tablas; frena si hay filas, `verificacion-previa.sql` cuenta filas) y `verificacion-previa.sql` (comprobar que las tablas no existan y que `Producto`, `Empresa` existan). Entrada al final de la lista del `m1`. **No se aplica a ninguna base real.**
 - **Diferencias con Pedernal (declaradas):** ids `UUID` generados por la app (igual); tabla `familia` sin columnas `orden`/`destacada` (esas son de la etapa de orden por empresa, que el dueño dejó por sucursal); `creadoPorId` como texto de usuario de Motor2, no `persona`; `version` en lugar de `fijar_version_y_fecha()` (en Motor2 la sube la aplicación, patrón de `GrupoDePrecio`). †: si Motor2 ya tiene un trigger genérico equivalente a `sin_borrado()`.
 
-### 6.4 Invariante «un producto no está a la vez en una familia y en un ítem agrupado» (CONFIRMADA por el dueño, D2)
+### 6.4 Invariante TRANSITORIO «un producto no está a la vez en una familia y en un ítem agrupado» (puente hasta que el agrupado se oculte; D2)
 
 **Dónde vive:** en la BASE, en las dos tablas, para que ningún camino (pantalla, otro caso de uso, SQL a mano) pueda violarlo.
 - **Trigger en `MiembroDeFamilia`** (BEFORE INSERT): rechaza el alta de un miembro vigente si el producto tiene una fila en `OpcionItemAgrupadoCarta` (cualquier sucursal de la empresa, **esté el ítem activo o no**: conservador y de fallo cerrado; para liberarlo hay que sacarlo del ítem agrupado, que es un DELETE de una referencia, como hoy).
@@ -42,11 +42,41 @@
 - **Errores:** el trigger lanza `23514` con restricción nombrada (`producto_ya_agrupado`, `producto_ya_miembro_de_familia`); la aplicación los traduce a `PRODUCTO_YA_AGRUPADO` y `PRODUCTO_YA_EN_FAMILIA`. **Además** cada caso de uso lo chequea antes (mensaje claro, sin depender de la excepción): la base es la red, no el camino normal.
 - **Cambio en el ítem agrupado existente:** el caso de uso que agrega una opción a un ítem agrupado (`src/server/actions/carta/items-agrupados.ts` y su caso de uso) debe chequear lo mismo y traducir el error. Es un cambio mínimo en código existente, **dentro de la carta (carril del frente)**; se declara en el PR de F1. No se refactoriza nada más.
 
-**Inventario previo de conflictos (lo que el dueño pidió ver antes de migrar a ciegas):**
+**Inventario previo de conflictos (lo que el dueño pidió ver antes de migrar a ciegas; la lista completa de ítem → familia se genera en R2):**
 - Hoy `MiembroDeFamilia` **no existe**: no puede haber conflicto cargado. `verificacion-previa.sql` de la migración cuenta filas de `OpcionItemAgrupadoCarta` y de las dos tablas nuevas, y **frena** si encuentra una tabla nueva ya poblada.
 - Los trigger **no revalidan filas viejas**: solo controlan altas y cambios nuevos.
 - **Consulta de solo lectura lista para el dueño** (`scripts/` o doc): «productos que hoy están en un ítem agrupado (por sucursal)» — es la lista que se usará el día que haya que pasar los ítems agrupados a familias (etapa posterior, ya confirmada con ensayo en copia): ahí cada producto agrupado pasaría a ser miembro de una familia y **tendría que salir antes del ítem agrupado**, así que esa migración no es un backfill ciego: muestra la lista y espera al dueño.
 - **Fallo cerrado:** si en el futuro apareciera un conflicto cargado (por SQL a mano), nada lo arregla solo: la consulta de gestión lo lista y las altas nuevas de ese producto se rechazan.
+
+### 6.5 El ítem agrupado se va: plan de reemplazo por etapas (CONFIRMADA la dirección; el detalle es PROPUESTA)
+
+**Supuesto declarado (el dueño lo corrige):** oculto → borrado en etapas, no de golpe (propuesto por el orquestador general).
+
+| Etapa | Qué pasa | Datos reales | Condición para pasar a la siguiente |
+|---|---|---|---|
+| **R1** (F1) | Entran las familias (tablas nuevas, vacías). Convivencia transitoria con el invariante de §6.4. | No se toca ninguno | — |
+| **R2** | **Migración** del contenido de cada ítem agrupado a una familia, **aditiva** (el ítem agrupado NO se modifica ni se borra), ensayada en copia de solo lectura. **Antes de tocar nada real, el dueño recibe la lista** de cada ítem agrupado → familia que se crearía, qué no se puede migrar igual y por qué (ver §6.6), y confirma | Sí (solo agrega familias y miembros) | OK del dueño a la lista + prueba de equivalencia (R3) en verde |
+| **R3** | **Prueba de equivalencia con datos reales:** la carta pública y el portal de cada sucursal salen **idénticos antes y después** (golden con datos reales de la empresa, capturas a 375 px y escritorio); y el selector del POS y los reportes ofrecen lo mismo | Lectura | Cero diferencias, o diferencias listadas y aceptadas por el dueño |
+| **R4** | **Se OCULTA el ítem agrupado** con un interruptor **reversible** (la pantalla y la lectura dejan de usarlo; los datos quedan) | Reversible | Un período de uso sin reclamos |
+| **R5** | **Se borra** (tablas, acciones, pantallas), con **aviso expreso al dueño antes** y **autorización por base** (con respaldo): es destructivo. Se retira el trigger transitorio | Destructivo | Decisión explícita del dueño |
+
+**Qué toca el reemplazo (inventario real, 30 archivos que leen o escriben ítems agrupados, no solo la carta):** la lectura del menú público (`lecturas/carta/menu.ts`, `armar-menu.ts`), **el selector del POS** (`lecturas/pos/selector-carta.ts`, `modulos-del-pos.ts`, pantalla del puesto de mesas), copiar carta (`copiar-carta.ts`, `persistencia/carta/copiar-carta.ts`), géneros, choque de nombres (`choque-de-nombre.ts`), descuentos y precios locales, y reportes (`ventas-por-seccion`, `rendimiento-recetas`, `resumen-consolidado`). **R4 no puede ocurrir hasta que cada uno lea familias:** hoy el interruptor «Agrupar en el POS» de la familia **se guarda pero nadie lo lee** (el POS lo definen E4/E7), así que ocultar el agrupado antes dejaría al mozo sin la agrupación que usa hoy.
+
+### 6.6 Lo que no se migra igual (brechas reales, verificadas en el esquema)
+
+| # | Brecha | Por qué | Salida propuesta |
+|---|---|---|---|
+| B1 | **Alcance:** el ítem agrupado es **de una sucursal** (`ItemAgrupadoCarta.sucursalId`, único `(sucursalId, productoId)` en sus opciones); la familia es **de la empresa**, con nombre único y un producto en una sola familia | Dos sucursales pueden tener «Gaseosa 500cc» con productos distintos, o el mismo producto agrupado de dos maneras | La lista de R2 los muestra; cada conflicto lo decide el dueño (no se unifica solo) |
+| B2 | **Lo que lleva el ítem y la familia no tiene:** `descripcion`, `tags`, `especial` (★), `orden`, `generoCartaId` (por sucursal) | La familia de Pedernal solo tiene nombre e interruptores (orden y ★ por empresa en 0081, que el dueño dejó por sucursal) | **Pregunta al dueño (abajo)** |
+| B3 | **Cómo se ve:** el ítem agrupado muestra **un renglón con un precio** (el mayor si las opciones difieren); la familia, según la regla de §9, puede salir «sueltos» si los precios difieren sin medidas | La carta **no sale igual** en esos ítems | La lista de R2 los marca; son los «no equivalentes» que el dueño decide (precios a unificar, o aceptar la forma nueva) |
+| B4 | **Contenido de carta del miembro:** un producto agrupado puede no tener `ContenidoCartaProducto` visible (el ítem lleva su contenido) | La familia se arma sobre productos visibles en la sucursal | R2 crearía el contenido faltante: **escribe datos**; se lista y se aprueba |
+| B5 | **POS y reportes** leen agrupados | Ver el inventario de arriba | R3 y condición de R4 |
+
+### 6.7 Pregunta pendiente para el dueño (cambia el modelo de datos)
+El ítem agrupado de hoy lleva por sucursal: **descripción, etiquetas, ★, orden y género**. Para que la carta salga igual después de reemplazarlo:
+- **A (recomendada):** una tabla por sucursal para la familia (`ContenidoCartaFamilia`: descripción, etiquetas, ★, orden), igual a lo que ya tiene cada producto en `ContenidoCartaProducto`. Agrega campos que Pedernal no tiene en la familia; el motivo es «mostrar lo mismo» (lo que pidió el dueño).
+- **B:** la familia NO lleva descripción ni etiquetas (solo nombre); lo que hoy cargaron se pierde, y se lista antes de migrar.
+El género del ítem (carpeta del POS) lo define el POS (E4/E7).
 
 ## 7. Atomicidad y concurrencia
 
