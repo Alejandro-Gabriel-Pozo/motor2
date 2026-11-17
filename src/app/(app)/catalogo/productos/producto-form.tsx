@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { QuickCrear } from "@/components/catalogo/quick-crear";
 import { AsistenteHermanar } from "@/components/catalogo/asistente-hermanar";
 import { GestionPresentaciones } from "@/components/catalogo/gestion-presentaciones";
-import { CampoNumero } from "@/components/campo-numero";
+import { CampoNumero } from "@/components/campo-numero"; import { nombreDelCampo } from "./nombre-del-campo-del-alta";
 import { AyudaCampo } from "@/components/ayuda-campo";
 import { AyudaDeFicha } from "@/components/catalogo/ayuda-de-ficha";
 import { ALTA_DE_PRODUCTO_COMO_PEDERNAL, CLASES_DE_ALTA, claseDeAltaDe, OBSERVACIONES_VISIBLES, PRESENTACIONES_VISIBLES, type ClaveDeClaseDeAlta } from "@/core/catalogo/public";
@@ -134,7 +134,7 @@ export function ProductoForm({
   // M.2: en el alta la unidad de stock queda libre aun sin la clave (sin ella no hay producto); en la edición es de quien tiene `producto_campos_sensibles`.
   const unidadDeStockEditable = puedeEditarCamposSensibles || !editando;
   // M.2-A4: un producto de venta dado de alta SIN la clave nace con precio $0 y el servidor lo deja NO disponible en ninguna sucursal (no se puede vender a $0): el tilde se ve apagado y sin poder cambiarse.
-  const naceSinPoderVenderse = !editando && tipo === "PV" && !puedeEditarCamposSensibles;
+  const naceSinPoderVenderse = !editando && tipo === "PV" && !puedeEditarCamposSensibles; const rotulos = altaComoPedernal && !editando; // rótulo VISIBLE arriba de cada campo (dirección del dueño, 2026-11-17)
   const nombreDeUnidad = (id: string | null | undefined) => {
     const u = unidades.find((x) => x.id === id);
     return u ? etiquetaDeUnidad(u) : undefined;
@@ -229,12 +229,12 @@ export function ProductoForm({
         />
       )}
 
-      {!editando && <Campo name="codigo" placeholder="Código (opcional, se autogenera)" aria-label="Código (opcional, se autogenera)" />}
-      <Campo name="nombre" placeholder="Nombre" aria-label="Nombre" defaultValue={productoExistente?.nombre} required /><CampoNombreDeCocina tipo={tipo} valorInicial={productoExistente?.nombreDeCocina} />
+      {!editando && <Campo name="codigo" {...nombreDelCampo(rotulos, "Código (opcional, se autogenera)")} />}
+      <Campo name="nombre" {...nombreDelCampo(rotulos, "Nombre")} defaultValue={productoExistente?.nombre} required /><CampoNombreDeCocina rotuloVisible={rotulos} tipo={tipo} valorInicial={productoExistente?.nombreDeCocina} />
 
-      <div className="flex items-center gap-2">
+      <div className={`flex gap-2 ${rotulos ? "items-end" : "items-center"}`}>
         <div className="flex-1">
-          <Selector etiqueta="Categoría" etiquetaOculta value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)}>
+          <Selector etiqueta="Categoría" etiquetaOculta={!rotulos} value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)}>
             <option value="">Sin categoría</option>
             {categorias.map((c) => (
               <option key={c.id} value={c.id}>
@@ -259,9 +259,9 @@ export function ProductoForm({
 
       {tipo === "MP" && (
         <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
+          <div className={`flex gap-2 ${rotulos ? "items-end" : "items-center"}`}>
             <div className="flex-1">
-              <Selector etiqueta="Insumo" etiquetaOculta value={insumoId} onChange={(e) => setInsumoId(e.target.value)}>
+              <Selector etiqueta="Insumo" etiquetaOculta={!rotulos} value={insumoId} onChange={(e) => setInsumoId(e.target.value)}>
                 <option value="">Sin insumo</option>
                 {insumos.map((i) => (
                   <option key={i.id} value={i.id}>
@@ -301,8 +301,8 @@ export function ProductoForm({
         <div className="flex gap-2">
           {unidadDeStockEditable ? (
             <div className="flex-1">
-              <Selector etiqueta="Unidad de stock" etiquetaOculta value={unidadStockId} onChange={(e) => setUnidadStockId(e.target.value)} required>
-                <option value="">Unidad de stock</option>
+              <Selector etiqueta="Unidad de stock" etiquetaOculta={!rotulos} value={unidadStockId} onChange={(e) => setUnidadStockId(e.target.value)} required>
+                <option value="">{rotulos ? "Sin elegir" : "Unidad de stock"}</option>
                 {unidades.map((u) => (
                   <option key={u.id} value={u.id}>
                     {etiquetaDeUnidad(u)}
@@ -318,8 +318,8 @@ export function ProductoForm({
           {tipo === "MP" &&
             (puedeEditarCamposSensibles ? (
               <div className="flex-1">
-                <Selector etiqueta="Unidad de compra" etiquetaOculta name="unidadCompraId" defaultValue={productoExistente?.unidadCompraId ?? ""}>
-                  <option value="">Unidad de compra (default)</option>
+                <Selector etiqueta="Unidad de compra" etiquetaOculta={!rotulos} name="unidadCompraId" defaultValue={productoExistente?.unidadCompraId ?? ""}>
+                  <option value="">{rotulos ? "Sin elegir" : "Unidad de compra (default)"}</option>
                   {unidades.map((u) => (
                     <option key={u.id} value={u.id}>
                       {etiquetaDeUnidad(u)}
@@ -345,7 +345,7 @@ export function ProductoForm({
           <CampoNumero
             name="factorConversion"
             placeholder="Factor de conversión (unidades de stock por unidad de compra)"
-            ariaLabel="Factor de conversión (unidades de stock por unidad de compra)"
+            ariaLabel="Factor de conversión (unidades de stock por unidad de compra)" rotulo={rotulos ? "Factor de conversión (unidades de stock por unidad de compra)" : undefined}
             defaultValue={String(productoExistente?.factorConversion ?? 1)}
             tipo="cantidad"
             etiqueta="El factor de conversión"
@@ -418,7 +418,7 @@ export function ProductoForm({
             tipo="cantidad"
             name="pasoVenta"
             placeholder="Paso de venta (opcional)"
-            ariaLabel="Paso de venta"
+            ariaLabel="Paso de venta" rotulo={rotulos ? "Paso de venta (opcional)" : undefined}
             defaultValue={productoExistente?.pasoVenta != null ? String(productoExistente.pasoVenta) : ""}
           />
           <AyudaDeFicha>
@@ -466,8 +466,8 @@ export function ProductoForm({
         <>
           <div className="flex items-center gap-2">
             <div className="flex-1">
-              <Selector etiqueta="Proveedor de consignación" etiquetaOculta value={proveedorConsignacionId} onChange={(e) => setProveedorConsignacionId(e.target.value)}>
-                <option value="">Proveedor de consignación</option>
+              <Selector etiqueta="Proveedor de consignación" etiquetaOculta={!rotulos} value={proveedorConsignacionId} onChange={(e) => setProveedorConsignacionId(e.target.value)}>
+                <option value="">{rotulos ? "Sin elegir" : "Proveedor de consignación"}</option>
                 {proveedores.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.nombre}
@@ -493,7 +493,7 @@ export function ProductoForm({
               name="precioConsignacion"
               prefijo="$"
               placeholder="Precio de consignación"
-              ariaLabel="Precio de consignación"
+              ariaLabel="Precio de consignación" rotulo={rotulos ? "Precio de consignación" : undefined}
               defaultValue={String(productoExistente?.precioConsignacion ?? 0)}
               tipo="importe"
               etiqueta="El precio de consignación"

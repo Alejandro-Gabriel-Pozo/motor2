@@ -32,6 +32,8 @@ interface Props {
    * diferencia: los 4 decimales de su columna salvo que se diga otra cosa). El servidor vuelve a validar todo con las mismas funciones. Serializable (un Server Component puede pasarlo).
    */
   tipo: TipoDeCampoNumerico;
+  /** El rótulo VISIBLE arriba del campo (el alta «como Pedernal»); con él no hace falta `ariaLabel` ni `placeholder` (el nombre lo da el rótulo). */
+  rotulo?: ReactNode;
   /** Sujeto del mensaje de error ("El precio total" → "El precio total no es un número válido."). */
   etiqueta?: string;
   /** Solo `tipo="cantidad"` y `tipo="porcentaje"`: decimales que admite la unidad o la columna (sin ellos, los 4 de las columnas `Decimal(14,4)`). */
@@ -103,6 +105,7 @@ export function CampoNumero({
   required,
   placeholder,
   ariaLabel,
+  rotulo,
   prefijo,
   tamano = "normal",
   className,
@@ -180,14 +183,14 @@ export function CampoNumero({
           (la regla `campos-con-nombre` lo verifica en cada uso). `etiqueta` NO se le pasa: es el sujeto del mensaje de error, no un rótulo. Lo que se tecleó y no es un número en el
           contexto del campo se dice debajo (`error`, con `role="alert"`); el campo queda `invalido` (`aria-invalid` y borde) y `setCustomValidity` frena el envío. */}
       <Campo
-        {...(ariaLabel ? { "aria-label": ariaLabel } : { nombradoPorFuera: true as const })}
+        {...(rotulo != null ? { etiqueta: rotulo } : ariaLabel ? { "aria-label": ariaLabel } : { nombradoPorFuera: true as const })}
         ref={entrada}
         id={id}
         type="text"
         inputMode="decimal"
         autoComplete="off"
         value={texto}
-        placeholder={placeholder}
+        placeholder={rotulo != null ? undefined : placeholder}
         required={required}
         autoFocus={autoFocus}
         invalido={error !== null || Boolean(errorDeRegla)}
