@@ -1,5 +1,6 @@
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
+import { elegirClaseDelAlta } from "./fixtures/alta";
 
 /**
  * «Producto nuevo» como Pedernal (docs/diseno-producto-nuevo-como-pedernal-2026-11-17.md; pedido del dueño, 2026-11-17): «¿Qué es?» elige cómo se guarda cada producto, sin las casillas «Se produce…» ni «Activo
@@ -21,7 +22,7 @@ test("cada clase del alta se guarda con el tipo y «se produce» de siempre, y e
       await expect(page.getByLabel("Activo en todas las sucursales")).toHaveCount(0);
       await expect(page.getByLabel(/Se produce/)).toHaveCount(0);
       await expect(page.getByLabel("Producto de venta (PV)")).toHaveCount(0);
-      await page.getByLabel("¿Qué es?").selectOption({ label: c.clase });
+      await elegirClaseDelAlta(page, c.clase);
       await page.locator('input[name="nombre"]').fill(c.nombre);
       await page.getByLabel("Unidad de stock").selectOption({ label: "unidad" });
       await page.getByRole("button", { name: "Crear producto" }).click();

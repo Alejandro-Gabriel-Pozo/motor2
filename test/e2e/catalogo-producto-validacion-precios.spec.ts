@@ -1,5 +1,6 @@
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
+import { elegirClaseDelAlta } from "./fixtures/alta";
 
 /**
  * Validación de datos en Catálogo > Producto (Task #31, docs/plan-validacion-de-datos-2026-09-25.md): precioVenta/
@@ -14,7 +15,7 @@ test("un precio de venta con 3 decimales queda inválido en el campo y no se cre
 
   const nombreProducto = `E2E Precio Inválido ${Date.now()}`;
   await page.locator('input[name="nombre"]').fill(nombreProducto);
-  await page.getByLabel("¿Qué es?").selectOption({ label: "Producto vendible" });
+  await elegirClaseDelAlta(page, "Producto vendible");
   await page.getByLabel("Unidad de stock").selectOption({ label: "kg" });
 
   const precio = page.getByLabel("Precio de venta");
@@ -31,7 +32,7 @@ test("un precio de venta negativo queda inválido en el campo", async ({ paginaA
   await page.goto("/catalogo/productos/nuevo");
 
   await page.locator('input[name="nombre"]').fill(`E2E Precio Negativo ${Date.now()}`);
-  await page.getByLabel("¿Qué es?").selectOption({ label: "Producto vendible" });
+  await elegirClaseDelAlta(page, "Producto vendible");
   await page.getByLabel("Unidad de stock").selectOption({ label: "kg" });
 
   const precio = page.getByLabel("Precio de venta");
