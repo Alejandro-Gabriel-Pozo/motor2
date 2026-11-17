@@ -8,8 +8,8 @@
  * la única clase nueva: un producto de venta (`tipo PV`, no se produce) que además se compra y lleva stock propio. Una REVENTA incoherente (`tipo MP` o «se produce») y un `tipo` desconocido no pueden nada:
  * todo nace cerrado (AGENTS.md, 2026-11-11); las listas son de PERMITIDOS.
  *
- * Diferencia declarada con Pedernal (el diseño de clases §10.1 dice que una Reventa SÍ es ingrediente de receta y la consume una opción): acá NO lo es, porque el dueño no lo pidió (E4, regla R7, pregunta
- * abierta con recomendación «no ahora»). El día que lo pida, es una línea de acá y una fila del oráculo.
+ * E4-3b (regla R7, CONFIRMADA el 2026-11-17: el dueño delegó en Pedernal y Pedernal respondió con su código, `composiciones.ts:125-130` y `clases.ts:20-29`): una Reventa SÍ es ingrediente de la receta de otro
+ * producto y SÍ la consume una opción de venta, como una MP. Lo que NO cambia: el INSUMO (una familia de MP, no un producto) no es un producto; un PV común o un Elaborado no es ingrediente ni lo consume una opción.
  *
  * Pura: sin Prisma, sin reloj, sin azar. Repetirla no cambia nada y no hay carrera dentro de ella.
  */
@@ -54,7 +54,7 @@ export function capacidadesDelProducto(datos: DatosDeCapacidad): CapacidadesDelP
   // La Reventa: un producto de venta que no se produce, que además se compra y lleva stock propio. Cualquier otra forma de «REVENTA» (con tipo MP o que se produce) es incoherente: no puede nada.
   if (claseDeUso === "REVENTA") {
     if (tipo !== "PV" || seProduce) return NADA;
-    return { ...NADA, seCompra: true, seVende: true, tieneStockPropio: true };
+    return { ...NADA, seCompra: true, seVende: true, tieneStockPropio: true, esIngredienteDeReceta: true, loConsumeUnaOpcion: true };
   }
   if (tipo === "MP") {
     // `transiciones.ts` (COMPRA solo MP; stock real: toda MP), `receta-validacion.ts` (ingrediente solo MP), `guardar-version-de-receta.ts` (receta solo si se produce), `opciones-de-venta-en-tx.ts` (consumo solo MP).

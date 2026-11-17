@@ -22,7 +22,7 @@ export async function cargarDatosParaValidarReceta(db: Db, items: readonly Ingre
   const unidadIds = [...new Set([cabecera.rendimientoUnidadId, cabecera.racionUnidadId].filter(esTexto))];
 
   const [productos, disponibles, insumos, unidades] = await Promise.all([
-    productoIds.length ? db.producto.findMany({ where: { id: { in: productoIds } }, select: { id: true, nombre: true, tipo: true, insumoId: true, unidadStockId: true } }) : [],
+    productoIds.length ? db.producto.findMany({ where: { id: { in: productoIds } }, select: { id: true, nombre: true, tipo: true, seProduce: true, claseDeUso: true, insumoId: true, unidadStockId: true } }) : [],
     productoIds.length ? db.producto.findMany({ where: { id: { in: productoIds }, ...whereDisponibleEnAlguna() }, select: { id: true } }) : [],
     sustitutoIds.length ? db.insumo.findMany({ where: { id: { in: sustitutoIds } }, select: { id: true, nombre: true, activo: true } }) : [],
     unidadIds.length ? db.unidad.findMany({ where: { id: { in: unidadIds } }, select: { id: true, nombre: true, decimales: true } }) : [],

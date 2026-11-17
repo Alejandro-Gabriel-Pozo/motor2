@@ -1,4 +1,4 @@
-import { cumplePaso, factorDeBruto, mensajeCantidadNoCumplePaso, rendimientoEfectivo, type BaseDeCantidad } from "@/core/catalogo/public";
+import { capacidadesDelProducto, cumplePaso, factorDeBruto, mensajeCantidadNoCumplePaso, rendimientoEfectivo, type BaseDeCantidad } from "@/core/catalogo/public";
 
 /**
  * Las REGLAS PURAS de una línea de venta (Hito 5, pieza 5.1: mudadas TAL CUAL desde `armarLinea`, que vive en `server/actions/movimientos/casos-de-uso/registrar-venta-en-tx.ts`).
@@ -69,11 +69,13 @@ export interface IngredienteParaVender {
 }
 
 /**
- * ¿La materia prima de un ingrediente se puede vender? El ingrediente tiene que existir y estar marcado «MP»; si no, el rechazo nombra al PV (no al ingrediente). Devuelve la propia
+ * ¿La materia prima de un ingrediente (o del consumo de una opción: `uso`) se puede vender? El ingrediente tiene que existir y ser una MP o una Reventa (E4-3b); si no, el rechazo nombra al PV (no al ingrediente). Devuelve la propia
  * materia prima ya sin `null` cuando está bien, para que quien llama siga con ella sin volver a preguntar.
  */
-export function revisarMateriaPrima<T extends { tipo: string }>(mp: T | null | undefined, nombrePV: string): { ok: true; materiaPrima: T } | { ok: false; mensaje: string } {
-  if (!mp || mp.tipo !== "MP") {
+export function revisarMateriaPrima<T extends { tipo: string; seProduce: boolean; claseDeUso: string | null }>(mp: T | null | undefined, nombrePV: string, uso: "receta" | "opcion"): { ok: true; materiaPrima: T } | { ok: false; mensaje: string } {
+  // E4-3b: lo decide `capacidadesDelProducto` (una MP o una Reventa), según lo que se pregunta: ¿entra en una receta? ¿lo consume una opción?
+  const puede = mp ? capacidadesDelProducto(mp) : null;
+  if (!mp || !(uso === "receta" ? puede!.esIngredienteDeReceta : puede!.loConsumeUnaOpcion)) {
     return { ok: false, mensaje: `La materia prima de la receta de "${nombrePV}" no está marcada como MP.` };
   }
   return { ok: true, materiaPrima: mp };

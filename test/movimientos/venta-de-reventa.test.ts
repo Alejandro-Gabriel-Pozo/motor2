@@ -137,7 +137,7 @@ describe("VENTA de una Reventa por el registro de venta", () => {
     expect(await prisma.operacion.count({ where: { proceso: "VENTA" } })).toBe(0);
   });
 
-  it("con OPCIONES elegidas una Reventa todavía no se vende (E4-3b): se rechaza cerrado, sin tocar el stock", async () => {
+  it("la Reventa como BASE de una línea con opciones no se vende (R7 solo la hace ingrediente y consumo de opciones): se rechaza cerrado, sin tocar el stock", async () => {
     await compra(reventaId, 5);
     const r = await prisma.$transaction((tx) =>
       registrarVentaEnTx(

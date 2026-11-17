@@ -69,7 +69,7 @@ async function revisarInsumosDeOpciones(
   obtenerProducto: Obtener
 ): Promise<{ ok: false; mensaje: string } | null> {
   for (const c of consumos) {
-    const revisada = revisarMateriaPrima(await obtenerProducto(c.insumoProductoId), nombre);
+    const revisada = revisarMateriaPrima(await obtenerProducto(c.insumoProductoId), nombre, "opcion");
     if (!revisada.ok) return { ok: false, mensaje: revisada.mensaje };
     const mp = revisada.materiaPrima;
     if (!(await productoDisponibleEn(sucursalId, mp.id, tx))) return { ok: false, mensaje: mensajeMateriaPrimaNoDisponible(nombre, mp.nombre, sucursalNombre) };
@@ -158,7 +158,7 @@ async function armarLinea(
     }
     const base: IngredienteDeBase[] = [];
     for (const ing of ingredientes) {
-      const revisada = revisarMateriaPrima(await obtenerProducto(ing.insumoProductoId), producto.nombre);
+      const revisada = revisarMateriaPrima(await obtenerProducto(ing.insumoProductoId), producto.nombre, "receta");
       if (!revisada.ok) return { ok: false, mensaje: revisada.mensaje };
       const mp = revisada.materiaPrima;
       if (!(await productoDisponibleEn(sucursalId, mp.id, tx))) {

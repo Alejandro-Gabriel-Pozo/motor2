@@ -66,16 +66,16 @@ describe("rechazoDelProductoVendido", () => {
 
 describe("la materia prima de una receta", () => {
   it("una MP existente se devuelve tal cual", () => {
-    const harina = { tipo: "MP", nombre: "Harina" };
-    expect(revisarMateriaPrima(harina, "Pizza")).toEqual({ ok: true, materiaPrima: harina });
-    expect((revisarMateriaPrima(harina, "Pizza") as { materiaPrima: unknown }).materiaPrima).toBe(harina);
+    const harina = { tipo: "MP", seProduce: false, claseDeUso: null, nombre: "Harina" };
+    expect(revisarMateriaPrima(harina, "Pizza", "receta")).toEqual({ ok: true, materiaPrima: harina });
+    expect((revisarMateriaPrima(harina, "Pizza", "receta") as { materiaPrima: unknown }).materiaPrima).toBe(harina);
   });
 
   it("una que no existe o no es MP se rechaza con el texto que nombra al PV (no al ingrediente)", () => {
     const rechazo = { ok: false, mensaje: 'La materia prima de la receta de "Pizza" no está marcada como MP.' };
-    expect(revisarMateriaPrima(null, "Pizza")).toEqual(rechazo);
-    expect(revisarMateriaPrima(undefined, "Pizza")).toEqual(rechazo);
-    expect(revisarMateriaPrima({ tipo: "PV", nombre: "Salsa" }, "Pizza")).toEqual(rechazo);
+    expect(revisarMateriaPrima(null, "Pizza", "receta")).toEqual(rechazo);
+    expect(revisarMateriaPrima(undefined, "Pizza", "receta")).toEqual(rechazo);
+    expect(revisarMateriaPrima({ tipo: "PV", seProduce: false, claseDeUso: null, nombre: "Salsa" }, "Pizza", "receta")).toEqual(rechazo);
   });
 
   it("el texto de la MP no disponible en la sucursal", () => {

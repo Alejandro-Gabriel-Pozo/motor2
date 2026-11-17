@@ -109,3 +109,4 @@ export { OPCIONES_AGOTADAS_PLEGADAS } from "./opciones-agotadas-plegadas";
 // Qué puede hacer un producto (se compra, se vende, stock propio, receta…), decidido en un solo lugar: E4-0 de la Reventa (docs/diseno-reventa-e4-2026-11-17.md §3). Hoy lo usan `tieneStockReal` y la COMPRA (E4-2); los demás circuitos pasan en E4-3 y E4-4.
 export { capacidadesDelProducto } from "./capacidades-del-producto";
 export { whereSeCompra } from "./se-compra-consulta";
+export { whereEsIngredienteDeReceta, whereLoConsumeUnaOpcion } from "./ingrediente-consulta";

@@ -14,8 +14,8 @@ export const DONDE_SE_DECIDE_HOY: Readonly<Record<keyof CapacidadesDelProducto, 
   tieneStockPropio: "core/movimientos/transiciones.ts (`tieneStockReal`: MP, o PV que se produce)",
   sePuedeProducir: "core/movimientos/transiciones.ts (`PRODUCCION` ⇔ `seProduce`, sin mirar el tipo)",
   llevaReceta: "server/actions/catalogo/casos-de-uso/guardar-version-de-receta.ts (PV siempre; MP solo si se produce)",
-  esIngredienteDeReceta: "core/catalogo/receta-validacion.ts (el ingrediente tiene que ser MP)",
-  loConsumeUnaOpcion: "server/actions/catalogo/casos-de-uso/opciones-de-venta-en-tx.ts (el consumo de una opción exige MP)",
+  esIngredienteDeReceta: "core/catalogo/receta-validacion.ts (E4-3b: el ingrediente es MP o Reventa), core/movimientos/linea-de-venta.ts (`revisarMateriaPrima`), selectores y `whereEsIngredienteDeReceta`",
+  loConsumeUnaOpcion: "server/actions/catalogo/casos-de-uso/opciones-de-venta-en-tx.ts (E4-3b: el consumo de una opción es MP o Reventa), core/movimientos/linea-de-venta.ts, listas de opciones y `whereLoConsumeUnaOpcion`",
 };
 
 const NADA: CapacidadesDelProducto = { seCompra: false, seVende: false, tieneStockPropio: false, sePuedeProducir: false, llevaReceta: false, esIngredienteDeReceta: false, loConsumeUnaOpcion: false };
@@ -25,8 +25,8 @@ export const MP_QUE_NO_SE_PRODUCE: CapacidadesDelProducto = { seCompra: true, se
 export const MP_QUE_SE_PRODUCE: CapacidadesDelProducto = { seCompra: true, seVende: false, tieneStockPropio: true, sePuedeProducir: true, llevaReceta: true, esIngredienteDeReceta: true, loConsumeUnaOpcion: true };
 export const PV_QUE_NO_SE_PRODUCE: CapacidadesDelProducto = { seCompra: false, seVende: true, tieneStockPropio: false, sePuedeProducir: false, llevaReceta: true, esIngredienteDeReceta: false, loConsumeUnaOpcion: false };
 export const PV_QUE_SE_PRODUCE: CapacidadesDelProducto = { seCompra: false, seVende: true, tieneStockPropio: true, sePuedeProducir: true, llevaReceta: true, esIngredienteDeReceta: false, loConsumeUnaOpcion: false };
-/** REVENTA (E4, §3 y R1 a R3 y R7 del diseño): se compra, se vende, lleva stock propio; sin receta, no se produce, NO es ingrediente ni lo consume una opción (R7: pregunta abierta, recomendada «no ahora»). */
-export const REVENTA_COHERENTE: CapacidadesDelProducto = { seCompra: true, seVende: true, tieneStockPropio: true, sePuedeProducir: false, llevaReceta: false, esIngredienteDeReceta: false, loConsumeUnaOpcion: false };
+/** REVENTA (E4, §3 y R1 a R3 y R7 del diseño): se compra, se vende, lleva stock propio; sin receta, no se produce, y SÍ es ingrediente de receta y la consume una opción (R7 CONFIRMADA el 2026-11-17, E4-3b). */
+export const REVENTA_COHERENTE: CapacidadesDelProducto = { seCompra: true, seVende: true, tieneStockPropio: true, sePuedeProducir: false, llevaReceta: false, esIngredienteDeReceta: true, loConsumeUnaOpcion: true };
 export const NADA_PUEDE: CapacidadesDelProducto = NADA;
 
 /** Lo esperado para una combinación cualquiera (la tabla, no el código): lo desconocido no puede nada. */
