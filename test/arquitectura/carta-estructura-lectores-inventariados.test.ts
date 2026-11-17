@@ -63,6 +63,10 @@ const ARCHIVOS_PERMITIDOS = [
   "server/actions/carta/casos-de-uso/agregar-producto-a-la-carta.ts",
   // CARTA-MANT F3: «Ordenar» lee las secciones de la empresa (todas) para comparar la lista y el orden visto.
   "server/actions/carta/casos-de-uso/ordenar-secciones-carta.ts",
+  // O1 (orden de renglones): leer los renglones de UNA sección en la sucursal activa (productos visibles e ítems agrupados activos, con `whereCartaDeSucursal`) para reordenar, fijar el modo y mostrar la pantalla de gestión;
+  // y, en la persistencia, comprobar que un renglón pedido existe en esta sucursal y si la sección tiene ítems agrupados.
+  "server/lecturas/carta/orden-de-renglones.ts",
+  "server/persistencia/carta/orden-de-renglones.ts",
 ];
 const LECTURA = /\b(seccionCarta|generoCarta|itemAgrupadoCarta|contenidoCartaProducto|opcionItemAgrupadoCarta)\s*\.\s*(find|count|aggregate|groupBy)/;
 /** Los modelos PROPIOS de la sucursal: SeccionCarta queda afuera a propósito (es de la empresa). */
