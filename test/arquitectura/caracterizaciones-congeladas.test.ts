@@ -1009,6 +1009,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Nombre de cocina (ADITIVO; migración 20261115170000_nombre_de_cocina; regenerado con REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1): las filas PRODUCTO y las líneas ITEM suman `nombreDeCocina=null` (nadie tiene nombre de cocina en este mundo). Verificado por programa: sin esa columna el contenido es IDÉNTICO al blob anterior.",
       },
+      {
+        blob: "01910e816c3d2a2b4810aa6f2127135bc79ae217",
+        // El commit PADRE de este es 893f00e4 (U1 integrada con main 81771f7f, justo antes de regenerar la huella con la columna nueva).
+        commit: "893f00e4",
+        motivo:
+          "U1 de las unidades como Pedernal (migración 20261117130000_unidad_codigo_fijo; ADITIVA, nada la lee todavía; regenerado con REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1): las filas UNIDAD suman `codigoFijo=null` (toda unidad existente queda «pendiente de completar»). Ninguna otra línea cambia: precios, descuentos, promos y costos siguen idénticos.",
+      },
     ],
   },
   "test/caracterizacion-precio-y-carta/precios.golden.txt": {
