@@ -2,7 +2,7 @@ import "server-only";
 import { construirIndiceRecetas, construirMapaProductos } from "@/server/lecturas/reportes/comun";
 import { cargarProductosConProveedor } from "@/server/lecturas/catalogo/ofertas-de-proveedor";
 import type { Db } from "@/lib/db-tipos";
-import type { FilaInsumoSinReceta, InfoProductoReporte } from "@/core/reportes/public";
+import { capacidadesEnReportes, type FilaInsumoSinReceta, type InfoProductoReporte } from "@/core/reportes/public";
 
 /**
  * Port de generarReporteInsumosSinRecetaVinculada_ (Reportes.js:826-842).
@@ -23,7 +23,11 @@ export async function generarReporteInsumosSinRecetaVinculada(
   const conProveedor = await cargarProductosConProveedor(db); // del Kardex vigente: una compra anulada no cuenta
 
   return Array.from(productos.values())
-    .filter((info) => info.tipo === "MP" && info.disponible && !mpsEnRecetas.has(info.id))
+    // Se compra y NO se vende tal cual (E4-4): una Reventa se vende sola, así que no es un insumo «sin receta».
+    .filter((info) => {
+      const puede = capacidadesEnReportes(info);
+      return puede.seCompra && !puede.seVende && info.disponible && !mpsEnRecetas.has(info.id);
+    })
     .map((info) => ({ productoId: info.id, producto: info.nombre, codigo: info.codigo, insumoNombre: info.insumoNombre, tieneProveedor: conProveedor.has(info.id) }))
     .sort((a, b) => a.producto.localeCompare(b.producto));
 }

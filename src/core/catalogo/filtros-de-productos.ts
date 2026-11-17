@@ -1,5 +1,7 @@
 import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
 import { LARGO_MAXIMO_TEXTO_CATALOGO, textoDeBusqueda } from "@/core/texto";
+import { capacidadesDelProducto } from "./capacidades-del-producto";
+import { NOMBRE_DE_CLASE } from "./clases-de-producto";
 
 /**
  * Los FILTROS de la lista de Productos (Fase 6, bloque 3, 3b; `/catalogo/productos`): qué se puede pedir por la URL, cómo se valida y cómo se vuelve a escribir. Puro: no lee nada. Los valores son PALABRAS
@@ -10,7 +12,7 @@ import { LARGO_MAXIMO_TEXTO_CATALOGO, textoDeBusqueda } from "@/core/texto";
  */
 
 /** De qué clase es el producto, en palabras. «Producto de venta» no incluye al producto interno de un adicional (que se ve aparte como «respaldo»). */
-export const TIPOS_FILTRABLES = ["venta", "materia-prima", "se-produce", "respaldo"] as const;
+export const TIPOS_FILTRABLES = ["venta", "materia-prima", "se-produce", "reventa", "respaldo"] as const;
 export type TipoFiltrable = (typeof TIPOS_FILTRABLES)[number];
 
 /** Cómo se vende un producto de venta: con su precio, o por opción (el precio final está en cada opción). */
@@ -66,6 +68,8 @@ export const ETIQUETA_DEL_TIPO: Record<TipoFiltrable, string> = {
   venta: "Producto vendible",
   "materia-prima": "Materia prima",
   "se-produce": "Elaborado",
+  // E4-4: el nombre de la clase que ya existe (`NOMBRE_DE_CLASE`, literal de Pedernal): ningún texto nuevo.
+  reventa: NOMBRE_DE_CLASE.REVENTA,
   respaldo: "Respaldo de un adicional",
 };
 export const ETIQUETA_DEL_MODO: Record<ModoFiltrable, string> = { directo: "Directo (tiene su precio)", "por-opcion": "Por opción (el precio está en cada opción)" };
@@ -77,10 +81,15 @@ export const ETIQUETA_DE_LA_FALTA: Record<FaltaFiltrable, string> = {
 
 /**
  * La clase de UN producto, para decirla en su fila de la lista (la misma palabra de los chips). Sale de las mismas condiciones que usa cada filtro (`criteriosDeTabla`): el producto interno de un adicional es «respaldo»,
- * la materia prima que se produce es «se-produce» (aunque el filtro «Materia prima» también la incluya), la otra materia prima es «materia-prima» y el resto es «venta».
+ * la materia prima que se produce es «se-produce» (aunque el filtro «Materia prima» también la incluya), la otra materia prima es «materia-prima», la Reventa es «reventa» y el resto es «venta».
  */
-export function claseDelProducto(p: { tipo: TipoProducto; seProduce: boolean; respaldaUnaOpcion: boolean }): TipoFiltrable {
-  if (p.tipo === "PV") return p.respaldaUnaOpcion ? "respaldo" : "venta";
+export function claseDelProducto(p: { tipo: TipoProducto; seProduce: boolean; respaldaUnaOpcion: boolean; claseDeUso?: string | null }): TipoFiltrable {
+  if (p.tipo === "PV") {
+    if (p.respaldaUnaOpcion) return "respaldo";
+    // E4-4: una Reventa (PV que se compra y lleva stock propio) se dice «reventa»; todo producto de siempre (sin esa clase) sigue siendo «venta».
+    const puede = capacidadesDelProducto({ tipo: p.tipo, seProduce: p.seProduce, claseDeUso: p.claseDeUso });
+    return puede.seCompra && puede.seVende ? "reventa" : "venta";
+  }
   return p.seProduce ? "se-produce" : "materia-prima";
 }
 

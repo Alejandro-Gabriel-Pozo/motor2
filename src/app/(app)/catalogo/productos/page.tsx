@@ -106,7 +106,7 @@ export default async function ProductosPage({
                 {p.sucursalesDisponibles > 0 && faltaCompletar.has(p.id) && <Insignia tono="aviso">Falta completar</Insignia>}
               </div>
               <div className="flex items-start justify-between gap-3 text-sm text-tinta-suave">
-                <span>{ETIQUETA_DEL_TIPO[detalle.get(p.id)!.clase]}{secciones !== null && detalle.get(p.id)!.clase === "venta" && ` · ${secciones.get(p.id) ?? "—"}`}</span>
+                <span>{ETIQUETA_DEL_TIPO[detalle.get(p.id)!.clase]}{secciones !== null && (detalle.get(p.id)!.clase === "venta" || detalle.get(p.id)!.clase === "reventa") && ` · ${secciones.get(p.id) ?? "—"}`}</span>
                 {detalle.get(p.id)!.precio !== null && <span className="shrink-0 font-medium tabular-nums text-tinta">{detalle.get(p.id)!.precio}</span>}
               </div>
             </li>

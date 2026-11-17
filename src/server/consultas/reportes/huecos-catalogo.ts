@@ -2,7 +2,7 @@ import "server-only";
 import { construirIndiceRecetas, construirMapaProductos } from "@/server/lecturas/reportes/comun";
 import { cargarProductosConProveedor } from "@/server/lecturas/catalogo/ofertas-de-proveedor";
 import type { Db } from "@/lib/db-tipos";
-import type { ProblemaUnidadMezclada, ReporteHuecosCatalogo } from "@/core/reportes/public";
+import { capacidadesEnReportes, type ProblemaUnidadMezclada, type ReporteHuecosCatalogo } from "@/core/reportes/public";
 
 /**
  * Port de las primeras dos secciones de generarReporteHuecosCatalogo_
@@ -41,12 +41,16 @@ export async function generarReporteHuecosCatalogo(sucursalId: string, db: Db): 
   const conProveedor = await cargarProductosConProveedor(db);
 
   const pvSinVentaNunca = Array.from(productos.values())
-    .filter((info) => info.tipo === "PV" && info.disponible && !vendidosAlgunaVez.has(info.id))
+    .filter((info) => capacidadesEnReportes(info).seVende && info.disponible && !vendidosAlgunaVez.has(info.id))
     .map((info) => ({ productoId: info.id, producto: info.nombre, codigo: info.codigo }))
     .sort((a, b) => a.producto.localeCompare(b.producto));
 
   const insumosConRecetaSinProveedor = Array.from(productos.values())
-    .filter((info) => info.tipo === "MP" && info.disponible && !info.seProduce && mpsEnRecetas.has(info.id) && !conProveedor.has(info.id))
+    // Se compra y no se produce (E4-4): una MP que no se produce o una Reventa (que también entra en recetas y se compra a un proveedor).
+    .filter((info) => {
+      const puede = capacidadesEnReportes(info);
+      return puede.seCompra && !puede.sePuedeProducir && info.disponible && mpsEnRecetas.has(info.id) && !conProveedor.has(info.id);
+    })
     .map((info) => ({ productoId: info.id, producto: info.nombre, codigo: info.codigo, insumoNombre: info.insumoNombre }))
     .sort((a, b) => a.producto.localeCompare(b.producto));
 

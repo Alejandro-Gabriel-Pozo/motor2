@@ -1,6 +1,6 @@
 import "server-only";
 import { rechazoSinOrigenDeStock } from "@/core/movimientos/public";
-import type { HechosDelProducto } from "@/core/catalogo/public";
+import { capacidadesDelProducto, type HechosDelProducto } from "@/core/catalogo/public";
 import type { Db } from "@/lib/db-tipos";
 import { estadoDelProductoEnLaCarta } from "@/server/consultas/carta/admin";
 import { cargarOpcionesDelProducto, type OpcionesDelProductoDelPanel } from "@/server/consultas/catalogo/opciones-de-venta";
@@ -98,7 +98,8 @@ export async function hechosDelProducto(
   precargado: { opciones?: OpcionesDelProductoDelPanel | null } = {}
 ): Promise<HechosDelProducto> {
   const esDeVenta = producto.tipo === "PV" && !producto.esAnclaDeAdicional;
-  const conReceta = permitidas.receta && !producto.esAnclaDeAdicional && (producto.tipo === "PV" || producto.seProduce);
+  // Lleva receta: un PV o una MP que se produce; una Reventa no (E4-4).
+  const conReceta = permitidas.receta && !producto.esAnclaDeAdicional && capacidadesDelProducto({ tipo: producto.tipo, seProduce: producto.seProduce, claseDeUso: producto.claseDeUso }).llevaReceta;
   const [opciones, rechazo, carta] = await Promise.all([
     esDeVenta && permitidas.opciones ? (precargado.opciones !== undefined ? Promise.resolve(precargado.opciones) : cargarOpcionesDelProducto(db, producto.id, sucursalId)) : Promise.resolve(undefined),
     conReceta ? rechazoDeLaReceta(db, producto, sucursalId) : Promise.resolve(undefined),
@@ -107,6 +108,7 @@ export async function hechosDelProducto(
   return {
     tipo: producto.tipo,
     seProduce: producto.seProduce,
+    claseDeUso: producto.claseDeUso,
     esAnclaDeAdicional: producto.esAnclaDeAdicional,
     modoDeVenta: producto.modoDeVenta,
     precioDeVenta: producto.precioVenta,

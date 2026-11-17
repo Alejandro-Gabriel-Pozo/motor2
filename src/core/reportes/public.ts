@@ -167,5 +167,5 @@ export type { DatosOperacion } from "./trazabilidad";
 export type { ReporteValuacionInventario } from "./valuacion";
 export type { FilaLoteProximoAVencer } from "./vencimientos";
 export type { FilaConciliacionVencimiento } from "./vencimientos";
-export { armarIndiceRecetas, armarMapaProductos, asegurarIndiceRecetasDeLaSucursal } from "./comun";
+export { armarIndiceRecetas, armarMapaProductos, asegurarIndiceRecetasDeLaSucursal, capacidadesEnReportes } from "./comun";
 export { calcularCostosYMargenesDesde, calcularImpactoInsumosDesde, calcularImpactoRecetasPorPeriodoDesde, costoUnitarioDeInsumoDesde, resolverCostoRecetaCompleta } from "./costos";

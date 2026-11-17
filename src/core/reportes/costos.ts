@@ -1,6 +1,6 @@
 import { factorDeBruto } from "@/core/catalogo/public";
 import { redondearMoneda } from "@/core/moneda";
-import type { CostoMP, IngredienteRecetaReporte, InfoProductoReporte } from "./comun";
+import { esReventaEnReportes, type CostoMP, type IngredienteRecetaReporte, type InfoProductoReporte } from "./comun";
 import { precioParaObjetivo, resolverObjetivoFoodCost, superaFoodCostObjetivo, type ObjetivosDeMargen } from "./margen-objetivo";
 
 /**
@@ -117,6 +117,18 @@ const ORDEN_ESTADO: Record<EstadoCosto, number> = {
 };
 
 /**
+ * Los ingredientes con los que se COSTEA un producto. Una REVENTA (E4-4, R9) no tiene receta: se compra y se vende tal cual, así que su costo es el de su compra vigente. Se costea como el par MP+PV de siempre,
+ * una receta de UN ingrediente (ella misma, 1 por unidad, sin merma): mismo resolutor, mismo costo congelado de la venta y mismo reconstruido por día, y un costo que falta queda «incompleto» (pendiente de completar:
+ * ni se inventa ni cuenta como cero). Todo lo demás (PV con receta, MP, un tipo desconocido) usa su receta, como siempre.
+ */
+function ingredientesParaCostear(info: InfoProductoReporte | undefined, productoId: string, recetaPorProducto: Map<string, IngredienteRecetaReporte[]>): IngredienteRecetaReporte[] {
+  if (info && esReventaEnReportes(info)) {
+    return [{ recetaIngredienteId: `reventa:${info.id}`, insumoProductoId: info.id, insumoNombre: info.nombre, cantidad: 1, unidadNombre: info.unidadStockNombre, mermaPorcentaje: 0, baseDeCantidad: "NETA", cantidadCentral: 1, mermaPorcentajeCentral: 0, calibradoLocal: false }];
+  }
+  return recetaPorProducto.get(productoId) ?? [];
+}
+
+/**
  * Port de calcularCostosYMargenes_ (Reportes.js:1710-1787). Sesión
  * "eliminar COMPRA+VENTA": lo único vendible es un PV — un producto que
  * "compra y revende tal cual" tiene una receta 1:1 hacia la MP que
@@ -144,7 +156,7 @@ export function calcularCostosYMargenesDesde(
   for (const info of productos.values()) {
     if (info.tipo !== "PV") continue;
 
-    const items = recetaPorProducto.get(info.id) ?? [];
+    const items = ingredientesParaCostear(info, info.id, recetaPorProducto);
     const tieneReceta = items.length > 0;
 
     const componentes: ComponenteCosto[] = [];
@@ -299,7 +311,7 @@ export function resolverCostoRecetaCompleta(
    */
   soloComida = false
 ): number | null {
-  const items = recetaPorProducto.get(productoId) ?? [];
+  const items = ingredientesParaCostear(productos.get(productoId), productoId, recetaPorProducto);
   if (!items.length) return null;
 
   const cache = new Map<string, CostoResuelto | null>();

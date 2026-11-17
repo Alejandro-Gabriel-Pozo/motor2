@@ -60,7 +60,7 @@ export interface FormaDelProducto {
   seProduce: boolean;
   /** El producto interno que respalda el stock de un adicional (ADR-030): se vende solo como adicional y no se maneja con los pasos de venta. */
   esAnclaDeAdicional: boolean;
-  /** La clase de uso guardada: solo `REVENTA` cambia si el producto se compra (E4-2). */
+  /** La clase de uso guardada: solo `REVENTA` cambia si el producto se compra (E4-2) y que no lleve receta (E4-4). */
   claseDeUso?: string | null;
 }
 
@@ -92,9 +92,11 @@ const SIN_DATO: EstadoDelPaso = { tipo: "sin-dato" };
 function pasoCorrespondeAlProducto(forma: FormaDelProducto, paso: PasoDelEspacio): boolean {
   if (paso === "datos") return true;
   if (forma.esAnclaDeAdicional) return false;
-  if (paso === "compra") return capacidadesDelProducto({ tipo: forma.tipo, seProduce: forma.seProduce, claseDeUso: forma.claseDeUso }).seCompra && PRESENTACIONES_VISIBLES;
-  if (forma.tipo === "MP") return paso === "receta" && forma.seProduce;
-  return true; // PV
+  const puede = capacidadesDelProducto({ tipo: forma.tipo, seProduce: forma.seProduce, claseDeUso: forma.claseDeUso });
+  if (paso === "compra") return puede.seCompra && PRESENTACIONES_VISIBLES;
+  // La receta (E4-4): solo la lleva una MP que se produce o un PV; una Reventa se vende de su stock propio y no tiene receta.
+  if (paso === "receta") return puede.llevaReceta;
+  return forma.tipo !== "MP"; // PV: precios, opciones y carta
 }
 
 function estadoDeDatos(h: HechosDelProducto): EstadoDelPaso {

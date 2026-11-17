@@ -8,6 +8,9 @@ import { buscarProductosPorPalabras } from "@/server/lecturas/catalogo/busqueda-
 import { cargarOrigenDeStockDelCatalogo } from "@/server/lecturas/movimientos/origen-de-stock-del-catalogo";
 import { MODO_DE_VENTA } from "@/core/opciones/public";
 
+/** La clase de uso de una Reventa, tal como se guarda (`Producto.claseDeUso`). */
+const CLASE_REVENTA = "REVENTA";
+
 /**
  * Los filtros de la lista de Productos como `where` de Prisma (Fase 6, bloque 3, 3b). Todo se decide acá, en el servidor, sobre las tablas de la empresa del usuario (la RLS por empresa no se toca) y de
  * su sucursal activa: lo único que viene de afuera son PALABRAS de listas cerradas (`core/catalogo/filtros-de-productos.ts`), nunca un id ni un trozo de consulta. Cada criterio repite, como filtro, el
@@ -89,7 +92,11 @@ function criteriosDeTabla(ctx: ContextoDeLosFiltros, f: FiltrosDeProductos, falt
   const y: Prisma.ProductoWhereInput[] = [];
   switch (f.tipo) {
     case "venta":
-      y.push({ tipo: "PV", opcionQueRespalda: { is: null } });
+      // E4-4: una Reventa tiene su propio chip («reventa»): las filas se reparten sin repetirse (los productos sin clase de uso, que son todos los de antes, siguen entrando).
+      y.push({ tipo: "PV", opcionQueRespalda: { is: null }, OR: [{ claseDeUso: null }, { claseDeUso: { not: CLASE_REVENTA } }] });
+      break;
+    case "reventa":
+      y.push({ tipo: "PV", seProduce: false, claseDeUso: CLASE_REVENTA, opcionQueRespalda: { is: null } });
       break;
     case "respaldo":
       y.push({ tipo: "PV", opcionQueRespalda: { isNot: null } });
@@ -132,7 +139,8 @@ function criteriosDeTabla(ctx: ContextoDeLosFiltros, f: FiltrosDeProductos, falt
  */
 async function idsSinReceta(db: PrismaClient, sucursalId: string, y: Prisma.ProductoWhereInput[]): Promise<string[]> {
   const candidatos = await db.producto.findMany({
-    where: { AND: [...y, { OR: [{ tipo: "PV", seProduce: false, opcionQueRespalda: { is: null } }, { tipo: "MP", seProduce: true }] }] },
+    // Una Reventa no lleva receta (se vende de su stock propio): no es candidata a «sin receta» (E4-4).
+    where: { AND: [...y, { OR: [{ tipo: "PV", seProduce: false, opcionQueRespalda: { is: null }, OR: [{ claseDeUso: null }, { claseDeUso: { not: CLASE_REVENTA } }] }, { tipo: "MP", seProduce: true }] }] },
     select: { id: true },
   });
   const origen = await cargarOrigenDeStockDelCatalogo(db, { sucursalId, productoIds: candidatos.map((c) => c.id) });
