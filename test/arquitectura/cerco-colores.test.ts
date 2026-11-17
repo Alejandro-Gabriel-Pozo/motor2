@@ -116,6 +116,10 @@ const CERCO_COLORES: Cerco = {
       motivo: "Los dos colores por defecto del libro al estilo de la maqueta de Pedernal (fondo `#19191a`, marca `#6f7d52`; dueño, 2026-11-16: «Sí, igualar al de la maqueta»): son VALORES DEL TEMA (se guardan como los carga una empresa), no colores de una pantalla; solo rigen donde la sucursal no cargó el suyo.",
     },
     {
+      ruta: "src/core/carta/portal-colores.ts",
+      motivo: "Colores del portal como Pedernal (dueño, 2026-11-17: «Sí, los tres fondos elegibles.»): las seis paletas de la maqueta `portal-de-la-empresa.html` son los valores que se GUARDAN como color de un fondo (como los carga una empresa), no colores de una pantalla; el blanco y el negro son los dos textos derivados que se eligen por contraste; y el `#0e7490` es el ejemplo del texto que nombra el formato.",
+    },
+    {
       ruta: "src/components/carta-publica/portada.tsx",
       motivo: "Tema de la carta del cliente: el velo sobre la foto se deriva con `color-mix` de `--carta-bg`, y el blanco es el color de texto sobre el fondo `--carta-primary` sólido cuando el cliente no cargó `hero_ink` (el contraste 3:1 lo exige).",
     },

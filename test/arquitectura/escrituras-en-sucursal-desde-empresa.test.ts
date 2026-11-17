@@ -101,7 +101,7 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
   "carta/casos-de-uso/guardar-portal-de-empresa.ts": {
     ata: "EMPRESA_ENTERA",
     ensanches: [],
-    puertas: ["carta/portal-empresa.ts|guardarPortalDeEmpresa"],
+    puertas: ["carta/portal-empresa.ts|guardarPortalDeEmpresa", "carta/portal-empresa.ts|guardarColoresDelPortal"],
     motivo: "el portal es de la empresa entera (`carta_portal`, piso administrador: gerente y administrador, decisión del dueño del 2026-11-17 «Gerente y administrador, como Pedernal (Recomendada)»): una tarjeta o zona por sucursal se administra desde una sola pantalla, sin depender de la activa; el caso de uso verifica que cada sucursal sea de la empresa (otra empresa = «no encontrada»)",
   },
   // ── Gobierno de las sucursales (claves `administrador_sistema` de empresa) ──────────────────────────────────────────────────────────────────────────────────────────────────────────────

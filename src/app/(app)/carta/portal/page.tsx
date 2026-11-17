@@ -4,10 +4,14 @@ import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { AvisoSoloLectura } from "@/components/carta/datos-solo-lectura";
-import { CLAVES_PORTAL_V1, PESTANAS_DE_APARIENCIA, urlCartaPublicaConEmpresaUnica, type SucursalPortalAdmin } from "@/core/carta/public";
+import { CLAVES_PORTAL_V1, PESTANAS_DE_APARIENCIA, fondoDeLaEleccion, urlCartaPublicaConEmpresaUnica, type SucursalPortalAdmin } from "@/core/carta/public";
 import { cargarAdminPortal, cargarPortalEmpresaAdmin } from "@/server/consultas/carta/admin";
 import { entradasVistaPreviaPortal } from "@/core/carta/public";
-import { guardarPortalEmpresa } from "@/server/actions/carta/portal-empresa";
+import { guardarColoresDelPortal, guardarPortalEmpresa } from "@/server/actions/carta/portal-empresa";
+import { cargarPortalSimpleAdmin } from "@/server/consultas/carta/portal-simple";
+import { COOKIE_PORTAL_SIMPLE_PRUEBA, portalSimpleVisible } from "@/lib/portal-simple-visible";
+import { cookies } from "next/headers";
+import { EditorColoresDelPortal } from "@/components/carta/editor-colores-del-portal";
 import { agregarSucursalAlPortal, guardarSucursalPublica, moverSucursalEnMapa } from "@/server/actions/carta/registro-publico";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
@@ -52,6 +56,21 @@ function valoresDelFormulario(fd: FormData): Record<string, string> {
 /** El enlace a la carta pública (otro sitio, en otra pestaña): el aspecto de `Enlace` (`ui/primitivas/enlace.tsx`), que no se usa acá porque el destino es una URL absoluta y no una pantalla de la aplicación. */
 const CLASE_ENLACE_EXTERNO = "text-tinta-suave underline hover:text-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foco";
 
+/** Pantalla simple («Colores del portal»): lo que el formulario manda, como lo lee el guard. Sin intención ni mapa: tres fondos (paleta o «Otro color»), dos textos, el logo y la imagen. */
+function valoresSimplesDelFormulario(fd: FormData, versionEsperada: number | undefined): Record<string, unknown> {
+  const fondo = (c: string) => fondoDeLaEleccion(fd.get(`paleta_${c}`), fd.get(`otro_${c}`));
+  return {
+    colorEncabezado: fondo("encabezado"),
+    colorPagina: fondo("pagina"),
+    colorDetras: fondo("detras"),
+    lineaSuperior: campo(fd, "lineaSuperior"),
+    titulo: campo(fd, "titulo"),
+    logoVisible: fd.get("logoVisible") === "on",
+    imagen: campo(fd, "imagen"),
+    versionEsperada,
+  };
+}
+
 export default async function PortalSucursalesPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
@@ -64,6 +83,9 @@ export default async function PortalSucursalesPage() {
   // DEC-33 (ver ≠ escribir): con «Ver» y sin «Editar» de `carta_portal`, el editor sale deshabilitado y cada sucursal como texto, sin agregar ni editar; las acciones igual lo exigen.
   const [sucursales, apariencia, nivel] = await Promise.all([cargarAdminPortal(ctx.db), cargarPortalEmpresaAdmin(ctx.db), obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_portal", ctx.db)]);
   const puedeEditar = nivel.editar;
+  const simple = portalSimpleVisible((await cookies()).get(COOKIE_PORTAL_SIMPLE_PRUEBA)?.value);
+  const portalSimple = simple ? await cargarPortalSimpleAdmin(ctx.db, ctx.empresaId) : null;
+  const versionDelPortal = portalSimple?.version ?? undefined;
 
   return (
     <div className="flex flex-col gap-6">
@@ -82,6 +104,37 @@ export default async function PortalSucursalesPage() {
         {!puedeEditar && <AvisoSoloLectura />}
       </div>
 
+      {portalSimple !== null ? (
+        <section aria-labelledby="titulo-apariencia-portal" className="flex flex-col gap-2">
+          <h2 id="titulo-apariencia-portal" className="text-lg font-medium">
+            Colores del portal
+          </h2>
+          <p className="text-sm text-tinta-tenue">
+            Los tres fondos del portal, la línea sobre el título, el título, el logo y la imagen. Los textos se calculan solos para que se lean. Sin elegir un color, el portal usa el que ya tenía. El portal toma los cambios al recargarlo.
+          </p>
+          <EditorColoresDelPortal
+            iniciales={{
+              colorEncabezado: portalSimple.colorEncabezado,
+              colorPagina: portalSimple.colorPagina,
+              colorDetras: portalSimple.colorDetras,
+              lineaSuperior: portalSimple.lineaSuperior,
+              titulo: portalSimple.titulo,
+              logoVisible: portalSimple.logoVisible,
+              imagen: portalSimple.imagen,
+            }}
+            json={portalSimple.json}
+            variante={portalSimple.variante}
+            sucursales={entradasVistaPreviaPortal(sucursales)}
+            empresaNombre={ctx.empresaNombre}
+            version={String(versionDelPortal ?? "sin-portal")}
+            soloLectura={!puedeEditar}
+            accion={async (fd: FormData) => {
+              "use server";
+              return refrescarSiOk(await guardarColoresDelPortal(valoresSimplesDelFormulario(fd, versionDelPortal)));
+            }}
+          />
+        </section>
+      ) : (
       <section aria-labelledby="titulo-apariencia-portal" className="flex flex-col gap-2">
         <h2 id="titulo-apariencia-portal" className="text-lg font-medium">
           Apariencia del portal
@@ -107,6 +160,7 @@ export default async function PortalSucursalesPage() {
           }}
         />
       </section>
+      )}
 
       <ul className="flex flex-col gap-3">
         {sucursales.map((s) => (

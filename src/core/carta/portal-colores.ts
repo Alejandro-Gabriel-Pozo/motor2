@@ -24,11 +24,31 @@ export const PALETAS_DEL_PORTAL = [
   { nombre: "Violeta", hex: "#4b2e83" },
 ] as const;
 
+/** Rótulo y mensaje del «Otro color» (los textos de Pedernal, `carta.html` 09/11/2026: un `#` y seis caracteres). */
+export const ROTULO_DE_OTRO_COLOR_DEL_PORTAL = "Color (por ejemplo #0e7490)";
+export const MENSAJE_FORMATO_DEL_COLOR_DEL_PORTAL = "Escribí el color como #0e7490";
+
 const FORMA_DEL_COLOR = /^#[0-9a-f]{6}$/;
 const BLANCO = "#ffffff";
 const NEGRO = "#000000";
 /** Hasta dónde se baja la luminosidad (puntos de HSL, de a uno): cerca del negro, donde ya no hay tono que cuidar (Pedernal `:35`). */
 const LUMINOSIDAD_MINIMA = 4;
+
+export type EleccionDeFondo = "ninguna" | "otro" | (typeof PALETAS_DEL_PORTAL)[number]["hex"];
+
+/** El color que sale de lo elegido en la pantalla: el de la paleta (el valor del radio ES el hex), lo escrito en «Otro color» o vacío («sin color»: el del portal de siempre). Toda elección que no sea de la lista da vacío (todo nace cerrado). */
+export function fondoDeLaEleccion(eleccion: unknown, otro: unknown): string {
+  if (eleccion === "otro") return typeof otro === "string" ? otro.trim() : "";
+  return PALETAS_DEL_PORTAL.find((p) => p.hex === eleccion)?.hex ?? "";
+}
+
+/** Al revés: qué opción de la pantalla corresponde a un color ya guardado (vacío = «ninguna»; el de una paleta, esa; otro texto, «Otro color» con ese texto a la vista, para corregirlo y no perderlo). */
+export function eleccionDeFondo(guardado: string | null): { eleccion: EleccionDeFondo; otro: string } {
+  const texto = (guardado ?? "").trim();
+  if (texto === "") return { eleccion: "ninguna", otro: "" };
+  const paleta = PALETAS_DEL_PORTAL.find((p) => p.hex === texto.toLowerCase());
+  return paleta ? { eleccion: paleta.hex, otro: "" } : { eleccion: "otro", otro: texto };
+}
 
 export interface ColorDelPortal {
   /** El color a usar: el elegido si ya llega a 7:1 con su texto, o el elegido oscurecido con el mismo tono. `#rrggbb` en minúsculas. */
