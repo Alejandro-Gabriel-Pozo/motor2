@@ -1,4 +1,5 @@
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { OPCIONES_AGOTADAS_AYUDAS_VISIBLES } from "@/core/catalogo/public";
 import { PESTANAS_DE_CARTA } from "@/core/carta/public";
 import { FilaDeCarta } from "@/components/fila-de-carta";
 import { EnlaceInterno } from "@/components/enlace-interno";
@@ -36,13 +37,13 @@ export default async function OpcionesAgotadasPage() {
       <FilaDeCarta ctx={ctx} etiqueta="Carta" pestanas={PESTANAS_DE_CARTA} ruta="/movimientos/opciones-agotadas" />
       <div className="flex flex-col gap-1">
         <h1 className="text-xl font-semibold">Opciones agotadas en «{ctx.sucursalNombre}»</h1>
-        <p className="text-sm text-tinta-suave">
+        {OPCIONES_AGOTADAS_AYUDAS_VISIBLES && (<p className="text-sm text-tinta-suave">
           Lo que se acabó hoy: tocá una opción para marcarla agotada. No se ofrece en el salón ni en la carta de esta sucursal hasta que la vuelvas a prender (no se prende sola). Un plato entero se agota en{" "}
           <EnlaceInterno href="/carta" className="underline">
             Carta › Hoy
           </EnlaceInterno>
           .
-        </p>
+        </p>)}
         <Aviso variante="informacion" forma="en-linea" data-agotadas-ahora>
           <span className="font-medium text-tinta">Agotadas ahora: {datos.agotadasAhora}</span>
         </Aviso>

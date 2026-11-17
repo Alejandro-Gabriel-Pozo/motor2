@@ -1,9 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { MATRICES_AYUDAS_VISIBLES } from "@/core/permisos/matrices-ayudas-visibles";
 import { Fragment, useEffect, useMemo, useState, useTransition } from "react";
 import { guardarPermisos } from "@/server/actions/permisos/permisos";
 import { nivelMinimoDeAccion, claveEnCatalogo, esAccionSoloVer } from "@/core/permisos/acciones";
+import { agruparAccionesPorModulo } from "@/core/permisos/agrupar-acciones-por-modulo";
+import { PERMISOS_PLEGADOS } from "@/core/permisos/matrices-plegadas";
 import { etiquetaDelPiso } from "@/core/permisos/jerarquia";
 import {
   esCeldaFija,
@@ -49,6 +52,11 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [editando, setEditando] = useState(false);
+  // Frente 6 (`PERMISOS_PLEGADOS`): las acciones agrupadas por módulo, plegadas en la lectura; en la edición se muestran todas. Con el interruptor apagado, la tabla de siempre.
+  const [abiertos, setAbiertos] = useState<Set<string>>(new Set());
+  const alternar = (id: string) => setAbiertos((prev) => { const s = new Set(prev); if (s.has(id)) s.delete(id); else s.add(id); return s; });
+  // Apagado: un solo grupo con todas las acciones en el orden de siempre (el DOM de antes, sin renglones de módulo).
+  const grupos = useMemo(() => (PERMISOS_PLEGADOS ? agruparAccionesPorModulo(acciones) : [{ id: "todas", nombre: "", acciones }]), [acciones]);
   const [revisando, setRevisando] = useState(false);
   // `conflicto`: otra persona cambió lo que se editaba → hay que RECARGAR. `reintentable`: el guardado chocó con otro en curso y no se guardó nada,
   // los cambios siguen marcados → hay que REINTENTAR. Son estados distintos con la acción correctiva opuesta, por eso no se mezclan.
@@ -215,7 +223,26 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
             </tr>
           </thead>
           <tbody>
-            {acciones.map((a) => (
+            {grupos.map((g) => (
+              <Fragment key={g.id}>
+                {PERMISOS_PLEGADOS && (
+                  <tr className="border-b bg-superficie-suave" data-modulo-de-permisos={g.id}>
+                    <td colSpan={1 + 2 * roles.length} className="py-1">
+                      {editando ? (
+                        // En la edición se ven todas las acciones: el módulo es solo un título, sin control que no haga nada.
+                        <div className="px-3 py-2 font-medium">
+                          {g.nombre} · {g.acciones.length}
+                        </div>
+                      ) : (
+                        <Boton variante="secundario" tamano="tactil" aria-expanded={abiertos.has(g.id)} className="w-full" onClick={() => alternar(g.id)}>
+                          {abiertos.has(g.id) ? "▾" : "▸"} {g.nombre} · {g.acciones.length}
+                        </Boton>
+                      )}
+                    </td>
+                  </tr>
+                )}
+                {(!PERMISOS_PLEGADOS || editando || abiertos.has(g.id)) &&
+                  g.acciones.map((a) => (
               <tr key={a.clave} className="border-b">
                 <td className="py-2 pr-4">
                   <div className="font-medium">{a.clave}</div>
@@ -266,15 +293,17 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
                   );
                 })}
               </tr>
+                  ))}
+              </Fragment>
             ))}
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-tinta-tenue">
+      {(editando || MATRICES_AYUDAS_VISIBLES) && (<p className="text-xs text-tinta-tenue">
         Tocar «Editar» también prende «Ver», y sacar «Ver» saca «Editar» (Ver ⊇ Editar). «gestion_permisos», «gestion_roles», «gestion_usuarios», «activar_usuario_sucursal», «notas_usuario_sucursal» y «apagar_cuenta_empresa» siempre conservan Editar para el rol administrador (🔒). Las acciones con «Piso» no se le pueden dar a un rol de un nivel más bajo (🚫): las de piso «administrador» y «administrador de sistema» (el gobierno de la empresa: usuarios, roles, permisos, sucursales y auditoría) no se le dan a un rol de nivel operario, y las de piso «gerente» las tiene solo el gerente.
         {" Las claves de solo ver (los reportes) no tienen «Editar»: se muestran con un guion."}
         {editando && " Lo marcado en amarillo es lo que cambiaste."}
-      </p>
+      </p>)}
     </div>
   );
 }
