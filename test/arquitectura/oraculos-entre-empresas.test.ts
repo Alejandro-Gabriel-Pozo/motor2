@@ -52,7 +52,7 @@ const LECTURAS: Readonly<Record<string, { lecturas: number; clase: Clase; motivo
     lecturas: 1, clase: "PUBLICA_ACOTADA",
     motivo: "la carta pública por el slug de la URL: solo empresas ACTIVE y con una lista cerrada de campos (GT-13, tanda T9: 404 igual que una inexistente cuando no hay nada publicado, S-24)",
   },
-  "server/operaciones-de-plataforma/cambiar-modulos-de-empresa.ts|cambiarModulosDeEmpresa|empresa": { lecturas: 1, clase: "PLATAFORMA", motivo: "el operador de la consola elige la empresa por su slug; no es un usuario de empresa" },
+  "server/operaciones-de-plataforma/cambiar-modulos-de-empresa.ts|aplicarCambioDeModulos|empresa": { lecturas: 1, clase: "PLATAFORMA", motivo: "el operador de la consola elige la empresa por su slug; no es un usuario de empresa" },
   "server/operaciones-de-plataforma/planes.ts|asignarPlanAEmpresa|empresa": { lecturas: 1, clase: "PLATAFORMA", motivo: "el operador de la consola elige la empresa por su slug; no es un usuario de empresa" },
   "server/operaciones-de-plataforma/cambiar-politica-de-empresa.ts|cambiarPoliticaDeEmpresa|empresa": { lecturas: 1, clase: "PLATAFORMA", motivo: "el operador de la consola elige la empresa por su slug; no es un usuario de empresa" },
   "server/sesion/acceso.ts|emailPuedeIniciarSesion|user": { lecturas: 1, clase: "PREVIA_AL_CONTEXTO", motivo: "el gate de login: el kill-switch de la cuenta de quien llega con ese email de Google; contesta solo sí/no a su dueño" },

@@ -20,7 +20,8 @@ export type AccionSobreEmpresa =
   | "empresa-reactivada"
   | "aviso-de-activacion"
   | "modulo-activado"
-  | "modulo-desactivado";
+  | "modulo-desactivado"
+  | "modulo-desactivar-rechazado";
 
 export type AccionDePlataforma = AccionDeIdentidad | AccionSobreEmpresa;
 

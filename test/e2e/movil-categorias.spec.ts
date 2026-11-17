@@ -2,6 +2,7 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { capturar, expectObjetivosTactiles, expectSinDesborde, fijarCelular } from "./fixtures/movil";
 
+import { crearCategoriaDeTest, limpiarCategoriasDeTest } from "../setup/categoria-de-prueba";
 /**
  * MOVIL: Catálogo › Maestros › Categorías a 375 × 812. Defecto de las capturas del 2026-11-15: el nombre largo de una categoría se pisaba con la columna «Activa». En celular cada categoría es una
  * tarjeta (el nombre se parte en varias líneas y «Activa» queda debajo, sin superponerse); desde 640 px, la tabla de siempre.
@@ -15,10 +16,10 @@ const seSuperponen = (a: { x: number; y: number; width: number; height: number }
   a.x < b.x + b.width - 0.5 && b.x < a.x + a.width - 0.5 && a.y < b.y + b.height - 0.5 && b.y < a.y + a.height - 0.5;
 
 test.beforeEach(async () => {
-  await prisma.categoriaProducto.create({ data: { nombre: NOMBRE_LARGO } });
+  await crearCategoriaDeTest(prisma, { nombre: NOMBRE_LARGO });
 });
 test.afterEach(async () => {
-  await prisma.categoriaProducto.deleteMany({ where: { nombre: NOMBRE_LARGO } });
+  await limpiarCategoriasDeTest(prisma, { nombre: NOMBRE_LARGO });
 });
 
 test("categorías en celular (375 px): el nombre largo se parte y no se pisa con «Activa»", async ({ paginaAutenticada: page }) => {

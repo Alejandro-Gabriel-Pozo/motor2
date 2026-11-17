@@ -90,7 +90,7 @@ describe("migración de datos Parte P1: el operador recibe partes_ver y partes_e
       expect(f.some((x) => x.clave === clave && x.rol === "a-admin"), `${clave} admin`).toBe(semilla.includes("admin"));
       expect(f.some((x) => x.clave === clave && x.rol === "a-operador"), `${clave} operador`).toBe(semilla.includes("operador"));
     }
-    expect(ACCIONES.find((a) => a.clave === "partes_desactivar")).toMatchObject({ nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] });
+    expect(ACCIONES.find((a) => a.clave === "partes_desactivar")).toMatchObject({ nivelMinimo: "operario", rolesEditarSemilla: ["admin"] });
   });
 
   it("down.sql: ABORTA sin tocar nada si el estado ya no es el de la subida; con solo lo de la subida borra lo del operador, no toca al admin, se repite y vuelve a subir", async () => {

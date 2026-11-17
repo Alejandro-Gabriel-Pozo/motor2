@@ -4,6 +4,7 @@ import AxeBuilder from "@axe-core/playwright";
 import type { Page, Route } from "@playwright/test";
 import { prisma } from "./fixtures/db";
 
+import { limpiarCategoriasDeTest } from "../setup/categoria-de-prueba";
 /**
  * Pendiente #44 (feedback al hacer click): mientras una acción de servidor está en curso, el formulario lo dice (`aria-busy`, «Guardando…» con
  * role="status"), no se puede enviar dos veces y, al terminar, el resultado queda a la vista. Se retiene a mano la respuesta del POST de la acción
@@ -58,7 +59,7 @@ test("formulario: mientras guarda muestra «Guardando…», no se envía dos vec
     expect(accion.envios()).toBe(1);
     expect(await prisma.categoriaProducto.count({ where: { nombre } })).toBe(1);
   } finally {
-    await prisma.categoriaProducto.deleteMany({ where: { nombre } });
+    await limpiarCategoriasDeTest(prisma, { nombre });
   }
 });
 
@@ -86,7 +87,7 @@ test("formulario: el resultado se trae a la vista aunque el botón esté al bord
     await expect(mensaje).toHaveText(`Categoría "${nombre}" creada.`);
     await expect(mensaje, "el mensaje tiene que verse entero, no asomar un píxel").toBeInViewport({ ratio: 1 });
   } finally {
-    await prisma.categoriaProducto.deleteMany({ where: { nombre } });
+    await limpiarCategoriasDeTest(prisma, { nombre });
   }
 });
 

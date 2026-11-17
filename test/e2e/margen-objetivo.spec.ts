@@ -3,6 +3,7 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { crearMembresia } from "../setup/membresia";
 
+import { crearCategoriaDeTest, limpiarCategoriasDeTest } from "../setup/categoria-de-prueba";
 /**
  * Margen objetivo (food cost) configurable: administración lo fija para la empresa y por categoría (`/catalogo/margen-objetivo`) y el reporte de
  * Costos lo usa para «Food cost alto» y el precio mínimo. Rige el de la categoría; si no, el de la empresa; si no, el 40 % por defecto.
@@ -12,7 +13,7 @@ import { crearMembresia } from "../setup/membresia";
 test("el admin fija el objetivo de la empresa y el de una categoría, y Costos cambia el estado y el precio para el objetivo", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
   const marca = Date.now();
   const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
-  const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E Cat Objetivo ${marca}` } });
+  const categoria = await crearCategoriaDeTest(prisma, { nombre: `E2E Cat Objetivo ${marca}` });
   const mp = await prisma.producto.create({ data: { codigo: `E2E-MO-MP-${marca}`, nombre: `E2E Insumo MO ${marca}`, tipo: "MP", unidadStockId: kg.id } });
   const plato = await prisma.producto.create({
     data: { codigo: `E2E-MO-PV-${marca}`, nombre: `E2E Plato MO ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 10000, categoriaId: categoria.id },
@@ -64,7 +65,7 @@ test("el admin fija el objetivo de la empresa y el de una categoría, y Costos c
     await prisma.operacion.deleteMany({ where: { id: operacion.id } });
     await prisma.recetaVersion.deleteMany({ where: { productoId: plato.id } });
     await prisma.producto.deleteMany({ where: { id: { in: [mp.id, plato.id] } } });
-    await prisma.categoriaProducto.deleteMany({ where: { id: categoria.id } });
+    await limpiarCategoriasDeTest(prisma, { id: categoria.id });
   }
 });
 

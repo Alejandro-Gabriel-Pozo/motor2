@@ -8,6 +8,7 @@ import { Aviso } from "@/ui/primitivas/aviso";
 import { Boton } from "@/ui/primitivas/boton";
 import { Campo } from "@/ui/primitivas/campo";
 import { Casilla } from "@/ui/primitivas/casilla";
+import { DIRECTORIO_AL_ESTILO_DE_PEDERNAL } from "@/core/catalogo/public";
 
 export interface ProveedorExistente extends DatosProveedor {
   id: string;
@@ -57,18 +58,42 @@ export function ProveedorForm({ proveedorExistente }: { proveedorExistente?: Pro
       <Campo aria-label="Nombre" name="nombre" placeholder="Nombre" defaultValue={proveedorExistente?.nombre ?? ""} required />
       {editando && <p className="text-xs text-tinta-tenue">Código {proveedorExistente!.codigo}: no cambia. Las compras y facturas del proveedor siguen siendo las mismas aunque corrijas el nombre.</p>}
 
-      <fieldset className="flex flex-col gap-1">
-        <legend className="text-sm font-medium">¿Qué le comprás?</legend>
-        <Casilla name="ofreceProductos" etiqueta="Productos" defaultChecked={proveedorExistente?.ofreceProductos ?? true} />
-        <Casilla name="ofreceServicios" etiqueta="Servicios (luz, gas, alquiler…)" defaultChecked={proveedorExistente?.ofreceServicios ?? false} />
-      </fieldset>
+      {/* Paso 8 del plan de pantallas (dueño, 2026-11-17: «4a»; interruptor `DIRECTORIO_AL_ESTILO_DE_PEDERNAL`): el ALTA pide solo el nombre y el resto queda plegado, como la alta rápida de Pedernal. Los campos
+          siguen dentro del formulario (un `<details>` cerrado también los envía): lo que se deja sin tocar se guarda como siempre (compra de productos, sin los demás datos). En la edición, todo a la vista. */}
+      {DIRECTORIO_AL_ESTILO_DE_PEDERNAL && !editando ? (
+        <details className="text-sm">
+          <summary className="inline-flex min-h-11 cursor-pointer items-center text-tinta-suave underline md:min-h-0">Más datos, si los tenés</summary>
+          <div className="mt-3 flex flex-col gap-2">
+            <fieldset className="flex flex-col gap-1">
+              <legend className="text-sm font-medium">¿Qué le comprás?</legend>
+              <Casilla name="ofreceProductos" etiqueta="Productos" defaultChecked={proveedorExistente?.ofreceProductos ?? true} />
+              <Casilla name="ofreceServicios" etiqueta="Servicios (luz, gas, alquiler…)" defaultChecked={proveedorExistente?.ofreceServicios ?? false} />
+            </fieldset>
 
-      <Campo aria-label="Contacto" name="contacto" placeholder="Contacto" defaultValue={proveedorExistente?.contacto ?? ""} />
-      <Campo aria-label="Teléfono" name="telefono" placeholder="Teléfono" defaultValue={proveedorExistente?.telefono ?? ""} />
-      <Campo aria-label="Email" name="email" type="email" placeholder="Email" defaultValue={proveedorExistente?.email ?? ""} />
-      <Campo aria-label="CUIT" name="cuit" placeholder="CUIT" defaultValue={proveedorExistente?.cuit ?? ""} />
-      <Campo aria-label="Condiciones de pago" name="condicionesPago" placeholder="Condiciones de pago" defaultValue={proveedorExistente?.condicionesPago ?? ""} />
-      <AreaDeTexto etiqueta="Notas" etiquetaOculta name="notas" placeholder="Notas" defaultValue={proveedorExistente?.notas ?? ""} />
+            <Campo aria-label="Contacto" name="contacto" placeholder="Contacto" defaultValue={proveedorExistente?.contacto ?? ""} />
+            <Campo aria-label="Teléfono" name="telefono" placeholder="Teléfono" defaultValue={proveedorExistente?.telefono ?? ""} />
+            <Campo aria-label="Email" name="email" type="email" placeholder="Email" defaultValue={proveedorExistente?.email ?? ""} />
+            <Campo aria-label="CUIT" name="cuit" placeholder="CUIT" defaultValue={proveedorExistente?.cuit ?? ""} />
+            <Campo aria-label="Condiciones de pago" name="condicionesPago" placeholder="Condiciones de pago" defaultValue={proveedorExistente?.condicionesPago ?? ""} />
+            <AreaDeTexto etiqueta="Notas" etiquetaOculta name="notas" placeholder="Notas" defaultValue={proveedorExistente?.notas ?? ""} />
+          </div>
+        </details>
+      ) : (
+        <>
+          <fieldset className="flex flex-col gap-1">
+            <legend className="text-sm font-medium">¿Qué le comprás?</legend>
+            <Casilla name="ofreceProductos" etiqueta="Productos" defaultChecked={proveedorExistente?.ofreceProductos ?? true} />
+            <Casilla name="ofreceServicios" etiqueta="Servicios (luz, gas, alquiler…)" defaultChecked={proveedorExistente?.ofreceServicios ?? false} />
+          </fieldset>
+
+          <Campo aria-label="Contacto" name="contacto" placeholder="Contacto" defaultValue={proveedorExistente?.contacto ?? ""} />
+          <Campo aria-label="Teléfono" name="telefono" placeholder="Teléfono" defaultValue={proveedorExistente?.telefono ?? ""} />
+          <Campo aria-label="Email" name="email" type="email" placeholder="Email" defaultValue={proveedorExistente?.email ?? ""} />
+          <Campo aria-label="CUIT" name="cuit" placeholder="CUIT" defaultValue={proveedorExistente?.cuit ?? ""} />
+          <Campo aria-label="Condiciones de pago" name="condicionesPago" placeholder="Condiciones de pago" defaultValue={proveedorExistente?.condicionesPago ?? ""} />
+          <AreaDeTexto etiqueta="Notas" etiquetaOculta name="notas" placeholder="Notas" defaultValue={proveedorExistente?.notas ?? ""} />
+        </>
+      )}
 
       {mensaje && (
         <Aviso variante={mensaje.startsWith("Proveedor") ? "exito" : "error"} forma="en-linea">
