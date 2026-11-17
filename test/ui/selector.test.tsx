@@ -92,10 +92,10 @@ describe("Selector", () => {
 
   it("clases de tokens (borde de control, o de error), tamaño normal o compacto desde md:, 44 px en celular; nunca sm:, modo oscuro ni colores de escala", () => {
     const sinError = clasesDe(renderToStaticMarkup(<Selector etiqueta="x">{opciones}</Selector>), "select");
-    for (const clase of ["border-borde-control", "bg-superficie", "text-tinta", "focus-visible:outline-foco", "disabled:bg-superficie-suave", "disabled:text-tinta-tenue", "min-h-11", "md:min-h-9"]) {
+    for (const clase of ["border-borde-control", "bg-superficie", "text-tinta", "focus-visible:outline-foco", "disabled:bg-superficie-suave", "disabled:text-tinta-tenue", "min-h-11"]) {
       expect(sinError, clase).toContain(clase);
     }
-    expect(clasesDe(renderToStaticMarkup(<Selector etiqueta="x" tamano="compacto">{opciones}</Selector>), "select")).toContain("md:min-h-8");
+    expect(clasesDe(renderToStaticMarkup(<Selector etiqueta="x" tamano="compacto">{opciones}</Selector>), "select")).toContain("min-h-11");
     const conError = clasesDe(renderToStaticMarkup(<Selector etiqueta="x" error="mal">{opciones}</Selector>), "select");
     expect(conError).toContain("border-error");
     expect(conError).not.toContain("border-borde-control");

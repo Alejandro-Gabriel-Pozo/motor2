@@ -23,7 +23,7 @@ export type VarianteDeBoton = "primario" | "acento" | "secundario" | "peligro" |
 export type TamanoDeBoton = "normal" | "compacto" | "chico" | "tactil" | "en-fila";
 
 const BASE =
-  "inline-flex items-center justify-center gap-2 font-medium focus-visible:outline-2 focus-visible:outline-offset-2 aria-busy:cursor-progress aria-busy:opacity-70";
+  "inline-flex items-center justify-center gap-2 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 aria-busy:cursor-progress aria-busy:opacity-70";
 
 /** El color del contorno del foco va POR VARIANTE: `foco` (la tinta) no se ve sobre un fondo oscuro; `sobre-tinta` usa `foco-sobre-tinta` (blanco). */
 const FOCO_DE_LA_VARIANTE: Record<VarianteDeBoton, string> = {
@@ -81,9 +81,9 @@ const DESHABILITADO: Record<VarianteDeBoton, string> = {
 };
 
 const TAMANOS: Record<TamanoDeBoton, string> = {
-  normal: "min-h-11 px-4 text-sm md:min-h-9 md:px-3",
-  compacto: "min-h-11 px-3 text-sm md:min-h-8",
-  chico: "min-h-11 px-2 text-xs md:min-h-7",
+  normal: "min-h-11 px-6 text-sm",
+  compacto: "min-h-11 px-3 text-sm",
+  chico: "min-h-11 px-2 text-xs",
   // 44 px SIEMPRE, también en escritorio: para lo que debe cumplir la zona táctil en cualquier ancho (el aviso flotante con «Deshacer»).
   tactil: "min-h-11 px-3 text-sm",
   // La acción de texto de una fila: 44 px en celular y, desde `md:`, la altura del texto (`md:min-h-0`), sin relleno horizontal (el espacio entre acciones lo da el contenedor).

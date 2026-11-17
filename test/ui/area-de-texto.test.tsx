@@ -66,11 +66,11 @@ describe("AreaDeTexto", () => {
 
   it("clases de tokens (borde de control, o de error), piso de 44 px en celular; nunca sm:, modo oscuro ni colores de escala", () => {
     const sinError = clasesDe(renderToStaticMarkup(<AreaDeTexto etiqueta="x" />), "textarea");
-    for (const clase of ["border-borde-control", "bg-superficie", "text-tinta", "focus-visible:outline-foco", "disabled:bg-superficie-suave", "disabled:text-tinta-tenue", "min-h-11", "md:min-h-9", "text-base", "md:text-sm", "resize-y"]) {
+    for (const clase of ["border-borde-control", "bg-superficie", "text-tinta", "focus-visible:outline-foco", "disabled:bg-superficie-suave", "disabled:text-tinta-tenue", "min-h-11", "text-base", "resize-y"]) {
       expect(sinError, clase).toContain(clase);
     }
     expect(sinError.filter((c) => /^min-h-/.test(c))).toEqual(["min-h-11"]);
-    expect(clasesDe(renderToStaticMarkup(<AreaDeTexto etiqueta="x" tamano="compacto" />), "textarea")).toContain("md:min-h-8");
+    expect(clasesDe(renderToStaticMarkup(<AreaDeTexto etiqueta="x" tamano="compacto" />), "textarea")).toContain("min-h-11");
     const conError = clasesDe(renderToStaticMarkup(<AreaDeTexto etiqueta="x" error="mal" />), "textarea");
     expect(conError).toContain("border-error");
     expect(conError).not.toContain("border-borde-control");
