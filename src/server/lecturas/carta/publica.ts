@@ -1,4 +1,19 @@
-import { esSlugPublicoValido, estiloCartaPorDefecto, posicionCompleta, resolverEstiloCarta, resolverEstiloPortal, type CartaV1, type EntradaPortalCarta, type EstiloCarta, type EstiloPortal } from "@/core/carta/public";
+import {
+  entradasDelPortalNuevo,
+  esSlugPublicoValido,
+  esVarianteDePortal,
+  estiloCartaPorDefecto,
+  posicionCompleta,
+  resolverEstiloCarta,
+  resolverEstiloPortal,
+  sonPartesDeImagenValidas,
+  valoresDelPortalDual,
+  type CartaV1,
+  type EntradaPortalCarta,
+  type EstiloCarta,
+  type EstiloPortal,
+  type SucursalDelPortal,
+} from "@/core/carta/public";
 import type { EmpresaCarta } from "@/server/lecturas/carta/empresa";
 import { resolverMenuCarta } from "@/server/lecturas/carta/menu";
 import type { Db } from "@/lib/db-tipos";
@@ -43,6 +58,72 @@ export async function resolverPortalCarta(empresa: EmpresaCarta, db: Db): Promis
 export async function resolverConfigPortal(empresa: EmpresaCarta, db: Db): Promise<EstiloPortal> {
   const fila = await db.portalCartaEmpresa.findFirst({ where: { empresaId: empresa.id }, select: { valores: true } });
   return resolverEstiloPortal(fila?.valores);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------
+// LECTURA DUAL del portal de la empresa (PR-A; docs/diseno-carta-portal-e-identidad-niveles-6-a-10-2026-11-17.md §8)
+// ---------------------------------------------------------------------------------------------------------------------------
+// Si la empresa tiene su fila de `PortalDeEmpresa`, el portal sale de las tablas nuevas; si no, de `resolverPortalCarta` y `resolverConfigPortal` EXACTAMENTE como hasta hoy (esas dos funciones NO se tocan: el golden de caracterización de las lecturas —`lecturas-tramo-a`— cuenta las
+// consultas que hacen, y la sin-fila sigue siendo la misma lectura de siempre). El despacho vive en estas dos funciones, que es lo único que llama `server/carta-publica/sin-sesion.ts`. `portalNuevoDeLaEmpresa` es la consulta que decide (una por llamada).
+
+/**
+ * Las tarjetas del portal NUEVO (`PortalDeEmpresa`): variante A = tarjetas visibles, variante B = zonas visibles; solo de sucursales con registro público `publicada` y `activo` (el slug sale de `SucursalPublica`). Lo cargado en la otra variante no se lee. La regla de qué se muestra y
+ * cómo se ordena es pura (`entradasDelPortalNuevo`, `core/carta/portal-de-empresa-lectura.ts`); acá solo se lee, con el `empresaId` explícito además del RLS.
+ */
+async function resolverPortalNuevo(empresa: EmpresaCarta, db: Db, portal: { id: string; variante: "A" | "B" }): Promise<EntradaPortalCarta[]> {
+  const [tarjetas, zonas, publicas] = await Promise.all([
+    portal.variante === "A" ? db.portalTarjeta.findMany({ where: { empresaId: empresa.id, portalId: portal.id, visible: true }, select: { sucursalId: true, orden: true, visible: true, nombre: true } }) : Promise.resolve([]),
+    portal.variante === "B" ? db.portalZona.findMany({ where: { empresaId: empresa.id, portalId: portal.id, visible: true }, select: { sucursalId: true, x: true, y: true, ancho: true, alto: true, visible: true } }) : Promise.resolve([]),
+    db.sucursalPublica.findMany({
+      where: { empresaId: empresa.id, publicada: true, sucursal: { activo: true } },
+      select: { sucursalId: true, slug: true, etiqueta: true, subtituloPortal: true, orden: true, sucursal: { select: { nombre: true } } },
+    }),
+  ]);
+  const sucursales = new Map<string, SucursalDelPortal>(
+    publicas.map((p) => [p.sucursalId, { slug: p.slug, etiqueta: p.etiqueta, subtitulo: p.subtituloPortal, orden: p.orden, nombreDeLaSucursal: p.sucursal.nombre, publicada: true, activa: true }]),
+  );
+  return entradasDelPortalNuevo({
+    variante: portal.variante,
+    tarjetas,
+    zonas: zonas.map((z) => ({ sucursalId: z.sucursalId, x: z.x.toNumber(), y: z.y.toNumber(), ancho: z.ancho.toNumber(), alto: z.alto.toNumber(), visible: z.visible })),
+    sucursales,
+  });
+}
+
+/** La fila del portal nuevo de la empresa (con lo que el estilo y el listado necesitan), o `null` si la empresa todavía no tiene (se lee lo de siempre). Con el `empresaId` explícito además del RLS. */
+async function portalNuevoDeLaEmpresa(empresa: EmpresaCarta, db: Db) {
+  const portal = await db.portalDeEmpresa.findFirst({
+    where: { empresaId: empresa.id },
+    select: { id: true, variante: true, lineaSuperior: true, titulo: true, colorEncabezado: true, colorPagina: true, logoVisible: true, imagenProveedor: true, imagenCuenta: true, imagenIdPublico: true, imagenVersion: true, imagenExtension: true },
+  });
+  return portal && esVarianteDePortal(portal.variante) ? { ...portal, variante: portal.variante } : null;
+}
+
+/** El portal que ve el comensal: el nuevo si la empresa lo tiene; si no, `resolverPortalCarta` (sin cambios). */
+export async function resolverPortalCartaDual(empresa: EmpresaCarta, db: Db): Promise<EntradaPortalCarta[]> {
+  const portal = await portalNuevoDeLaEmpresa(empresa, db);
+  return portal ? resolverPortalNuevo(empresa, db, portal) : resolverPortalCarta(empresa, db);
+}
+
+/**
+ * La apariencia del portal: con el portal nuevo, las claves que él modela salen de él y el resto, del Json (`valoresDelPortalDual`); sin él, `resolverConfigPortal` (sin cambios).
+ */
+export async function resolverConfigPortalDual(empresa: EmpresaCarta, db: Db): Promise<EstiloPortal> {
+  const portal = await portalNuevoDeLaEmpresa(empresa, db);
+  if (!portal) return resolverConfigPortal(empresa, db);
+  const fila = await db.portalCartaEmpresa.findFirst({ where: { empresaId: empresa.id }, select: { valores: true } });
+  const partes = { proveedor: portal.imagenProveedor, cuenta: portal.imagenCuenta, idPublico: portal.imagenIdPublico, version: portal.imagenVersion, extension: portal.imagenExtension };
+  return resolverEstiloPortal(
+    valoresDelPortalDual(fila?.valores, {
+      variante: portal.variante,
+      lineaSuperior: portal.lineaSuperior,
+      titulo: portal.titulo,
+      colorEncabezado: portal.colorEncabezado,
+      colorPagina: portal.colorPagina,
+      imagen: sonPartesDeImagenValidas(partes) ? partes : null,
+      logoVisible: portal.logoVisible,
+    }),
+  );
 }
 
 export interface CartaPublicaResuelta {

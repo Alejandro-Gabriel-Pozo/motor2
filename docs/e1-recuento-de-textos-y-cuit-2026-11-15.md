@@ -198,6 +198,7 @@ Inventario verificado en el código de Motor2 (2026-11-15). Antes de E1 todos va
 | `src/core/features/clientes/clientes.guard.ts` | RAZON_SOCIAL | alta y edición de cliente |
 | `src/server/actions/clientes/casos-de-uso/actualizar-cliente.ts` | RAZON_SOCIAL | edición de cliente (estricta solo si cambia) |
 | `src/core/features/carta/secciones.guard.ts` | ELECCION | sección de carta |
+| `src/core/features/carta/portal-de-empresa.guard.ts` | ELECCION | nombre (opcional) de la tarjeta del portal de la empresa (PR-A, 2026-11-17); la línea superior y el título del portal tienen reglas propias (1 a 40 y 1 a 60), como Pedernal |
 | `src/server/actions/carta/casos-de-uso/guardar-seccion-carta.ts` | ELECCION | edición de sección de carta (estricta solo si cambia) |
 | `src/core/features/catalogo/opciones-de-venta.guard.ts` | ELECCION | grupo y opción de venta (conectado); descripción y prefijo «se lee en la carta como» (viejo, no son nombres) |
 | `src/server/actions/catalogo/casos-de-uso/editar-grupo-de-opciones.ts` | ELECCION | edición de grupo de opciones (estricta solo si cambia) |

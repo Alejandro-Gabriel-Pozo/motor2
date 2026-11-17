@@ -306,6 +306,8 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
   await db.versionDeOpcion.create({ data: { id: `${opcionMedidaBase.id}-v1`, empresaId, opcionId: opcionMedidaBase.id, numero: 1, tipoDeDiferencia: "MONTO", diferenciaPrecio: 0, creadoPorId: usuarioId } });
   await db.productoAdmiteGrupo.create({ data: { id: id("admite-medida-base"), empresaId, productoId: pvBase.id, grupoId: grupoMedidaBase.id, orden: 0, modoPrecio: "ABSOLUTO" } });
   await db.productoAdmiteOpcion.create({ data: { id: id("admite-entera"), empresaId, productoId: pvBase.id, opcionId: opcionMedidaBase.id, precioAbsoluto: 2500 } });
+  // Portal de la empresa PR-A: el portal de la empresa (sin tarjetas: lo que la lectura de gestión devuelve con el marcador es el título) para el control positivo de `consultarPortalDeEmpresa`; con el de otra empresa, `null`.
+  await db.portalDeEmpresa.create({ data: { id: randomUUID(), empresaId, codigo: `${marca.replace(/\W/g, "")}`.padEnd(22, "x"), titulo: `Portal ${marca}`, creadoPorId: usuarioId, actualizadoEn: new Date() } });
   const entradaDeCupo = await db.entradaDeCupo.create({ data: { id: id("entrada-de-cupo"), empresaId, cupoId: cupoLista.id, productoId: pv.id } });
   await db.registroAuditoria.create({ data: { id: id("auditoria-empresa"), empresaId, entidad: "Producto", entidadId: mp.id, descripcion: `Auditoría de empresa ${marca}`, campo: "nombre", valorAnterior: "a", valorNuevo: "b", actorId: usuarioId } });
   // Caja (C1): el medio EFECTIVO de la empresa (el único que existe antes de abrir una caja). El nombre lleva el marcador: `leerMediosDeCobro` y los `esperadoPorMedio` lo devuelven.

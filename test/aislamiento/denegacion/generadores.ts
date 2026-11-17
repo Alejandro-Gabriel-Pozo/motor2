@@ -147,6 +147,8 @@ const completos: Record<string, Valor> = {
   // Interruptor «solo salón» (docs/diseno-promo-solo-salon-2026-10-26.md): la promo AJENA (la del otro mundo), con la versión sembrada (1): no se encuentra, no se toca.
   "accion|actions/carta/promos.ts|guardarSoloSalonPromoCarta": (k) => [{ promoCartaId: k.promoComboId, versionEsperada: 1, soloSalon: true }],
   "accion|actions/carta/registro-publico.ts|guardarSucursalPublica": (k) => [k.sucursalId, { slug: "slug-nuevo", publicada: true }],
+  // Portal de la empresa PR-A: el portal es de la EMPRESA (la que sale del contexto del servidor; no hay escenario `ajenaSucursal`). Con la sucursal de OTRA empresa, «No se encontró una de las sucursales» y no se escribe nada; con la propia, el control positivo cambia el portal que el mundo ya trae (versión 1: agrega una tarjeta).
+  "accion|actions/carta/portal-empresa.ts|guardarPortalDeEmpresa": (k) => [{ variante: "A", logoVisible: true, tarjetas: [{ sucursalId: k.sucursalId, orden: 0, visible: true }], versionEsperada: 1 }],
   "accion|actions/carta/secciones.ts|guardarSeccionCarta": (k) => [{ id: k.seccionCartaId, nombre: "Nombre nuevo" }],
   // CARTA-MANT F3: la empresa del mundo tiene UNA sección de carta (orden 0): el control positivo la deja en su lugar (éxito sin cambio); con la de otra empresa, «No se encontró…».
   "accion|actions/carta/secciones.ts|ordenarSeccionesCarta": (k) => [{ secciones: [{ seccionCartaId: k.seccionCartaId, ordenVisto: 0 }] }],
@@ -499,6 +501,8 @@ const parametros: Record<string, Record<string, Valor>> = {
   "accion|actions/carta/registro-publico.ts|agregarSucursalAlPortal": { sucursalId: (k, c) => (c.escenario === "controlMutacion" ? c.mundo.s4Id : k.sucursalId) },
   // Caja (C1): la sesión cuyas cobranzas se leen; la lectura de `server/lecturas` recibe además la sucursal y la empresa (del contexto de quien la llama; en la matriz, la del escenario).
   "accion|actions/caja/lecturas-de-caja.ts|leerCobranzasDeSesion": { sesionId: (k) => k.sesionDeCajaId },
+  // Portal de la empresa PR-A: la lectura de gestión del portal de la EMPRESA (la que pide `empresaId`); con la empresa de otro mundo, `null` (no se ve); con la propia, devuelve el portal sembrado (el título lleva el marcador).
+  "lectura|lecturas/carta/portal-de-empresa.ts|consultarPortalDeEmpresa": { args: (k) => ({ empresaId: k.empresaId }) },
   "lectura|lecturas/caja/cobranzas-de-sesion.ts|listarCobranzasDeSesion": { args: (k) => ({ sucursalId: k.sucursalId, sesionId: k.sesionDeCajaId }) },
   "lectura|lecturas/caja/cuentas-sin-cobrar.ts|listarCuentasSinCobrar": { args: (k) => ({ empresaId: k.empresaId, sucursalId: k.sucursalId, ahora: new Date() }) },
   "accion|actions/pos/cuenta-anulacion.ts|anularItemEnviado": { cuentaItemId: (k) => k.cuentaItemEnviadoId, restanteVisto: () => 2 },

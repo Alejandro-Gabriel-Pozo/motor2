@@ -30,6 +30,11 @@ export const ENTIDADES_AUDITABLES = [
   // Carta, orden de renglones O1: `ModoDeOrdenDeSeccionCarta` (el modo de orden de una sección en una sucursal; `entidadId` es `${sucursalId}:${seccionCartaId}`, `campo: "modo"`, con `sucursalId`) e `ItemAgrupadoCarta` (el `orden` de un ítem agrupado que cambia de lugar al reordenar; `entidadId` es `${sucursalId}:${id}`, `campo: "orden"`, con `sucursalId`; el de un producto va como `ContenidoCartaProducto`).
   "ModoDeOrdenDeSeccionCarta",
   "ItemAgrupadoCarta",
+  // Carta, portal de la empresa PR-A: `PortalDeEmpresa` (el alta y cada cambio de sus datos o de su imagen: `campo: "portal"`; `entidadId` es el id del portal; el código del QR solo va en el alta), `PortalTarjeta` (el alta y cada cambio de una tarjeta: `campo: "tarjeta"`; `entidadId` es `${portalId}:${sucursalId}`) y
+  // `PortalZona` (el alta y cada cambio de una zona: `campo: "zona"`; `entidadId` es el id de la zona). Los valores son el estado antes (`null` en el alta) y después; todas son de la empresa (`sucursalId` null).
+  "PortalDeEmpresa",
+  "PortalTarjeta",
+  "PortalZona",
   "PermisoRol",
   "CapacidadSucursal",
   "Rol",

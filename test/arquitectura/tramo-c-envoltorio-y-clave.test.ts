@@ -156,6 +156,8 @@ const DECLARADAS: Record<string, Record<string, { envoltorio: Envoltorio; clave:
   },
   "carta/portal-empresa.ts": {
     guardarPortalEmpresa: EMP("carta_portal"),
+    // Portal de la empresa como Pedernal (PR-A, 2026-11-17): de la empresa, con la misma clave (`carta_portal`: gerente y administrador). Vive en este archivo, ya clasificado como migrado a casos de uso.
+    guardarPortalDeEmpresa: EMP("carta_portal"),
   },
   "carta/registro-publico.ts": {
     agregarSucursalAlPortal: EMP("carta_portal"),
@@ -252,12 +254,13 @@ describe("tramo C (carta, catálogo y stock): cada Server Action entra por su en
     // Pasan a 20: `reemplazarCartaDeSucursal` (2026-11-10), en `carta/copiar-carta.ts` (que ya estaba entre los archivos).
     // + 1: `ocultarProducto` («Ocultar» como Pedernal, etapa d, 2026-11-16), en `catalogo/ocultar-producto.ts` (archivo nuevo, de ahí 17 + 9 archivos).
     // Pasan a 22: `fijarModoDeOrdenDeSeccion` y `reordenarRenglonesDeSeccion` (O1, orden de renglones, 2026-11-17), en `carta/contenido-producto.ts` (que ya estaba entre los archivos).
-    expect(total).toBe(51 + 1 + RECETA_PROPIA_YA_MIGRADAS.length + 22 + 1);
+    // Pasan a 23: `guardarPortalDeEmpresa` (portal de la empresa PR-A, 2026-11-17), en `carta/portal-empresa.ts` (que ya estaba entre los archivos).
+    expect(total).toBe(51 + 1 + RECETA_PROPIA_YA_MIGRADAS.length + 23 + 1);
     expect(Object.keys(DECLARADAS).filter((a) => a !== "catalogo/recetas.ts")).toHaveLength(17 + 9);
     for (const f of RECETA_PROPIA_YA_MIGRADAS) expect(DECLARADAS["catalogo/receta-sucursal.ts"][f], f).toBeDefined();
     // Bloque D: de las 18, 7 son de empresa (secciones —con «Ordenar» de CARTA-MANT F3—, portal y registro público) y 11 de sucursal: copiar la carta y la del tema, y desde S-10/D1 (O.59) las 9 de géneros, contenido e ítems agrupados.
     const delBloqueD = ["carta/secciones.ts", "carta/generos.ts", "carta/contenido-producto.ts", "carta/items-agrupados.ts", "carta/portal-empresa.ts", "carta/registro-publico.ts", "carta/tema.ts", "carta/copiar-carta.ts"].flatMap((a) => Object.values(DECLARADAS[a]));
-    expect(delBloqueD).toHaveLength(22);
+    expect(delBloqueD).toHaveLength(23);
     expect(delBloqueD.filter((d) => d.envoltorio === "conPermiso")).toHaveLength(15);
   });
 });
