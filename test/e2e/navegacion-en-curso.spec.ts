@@ -1,4 +1,5 @@
 import { test, expect } from "./fixtures/auth";
+import { abrirAreasDelMenu } from "./fixtures/menu";
 import AxeBuilder from "@axe-core/playwright";
 
 /**
@@ -8,6 +9,7 @@ import AxeBuilder from "@axe-core/playwright";
  */
 test("menú: el enlace marca la navegación en curso y lo saca al llegar", async ({ paginaAutenticada: page }) => {
   await page.goto("/catalogo/categorias");
+  await abrirAreasDelMenu(page); // menú por áreas: «Clientes con descuento» está en Ventas, plegada
   const enlace = page.locator('aside nav a[href="/catalogo/clientes"]');
   const indicador = enlace.locator(".indicador-enlace");
   await expect(indicador).toHaveAttribute("data-pendiente", "false");
