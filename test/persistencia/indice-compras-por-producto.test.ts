@@ -20,7 +20,8 @@ describe("índice parcial de compras por producto", () => {
     expect(indice.definicion).toMatch(/WHERE \(?\(?"?proceso"? = 'COMPRA'/);
 
     await prismaAdmin.$executeRawUnsafe('ANALYZE "MovimientoStock"');
-    const plan = await prisma.$transaction(async (tx) => {
+    // Con el rol dueño (sin la condición de la política por empresa, que el planner a veces prefiere resolver con el índice de `empresaId`): el plan prueba SOLO que el índice parcial sirve para esta consulta.
+    const plan = await prismaAdmin.$transaction(async (tx) => {
       await tx.$executeRawUnsafe("SET LOCAL enable_seqscan = off");
       return tx.$queryRaw<Array<{ "QUERY PLAN": string }>>`
         EXPLAIN SELECT "id" FROM "MovimientoStock" WHERE "proceso" = 'COMPRA' AND "productoId" = 'x'`;
