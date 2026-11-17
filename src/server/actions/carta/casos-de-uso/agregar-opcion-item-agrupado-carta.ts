@@ -1,7 +1,5 @@
 import "server-only";
-import type { Prisma } from "@prisma/client";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
-import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { precioDeCarta, whereCartaDeSucursal } from "@/core/carta/public";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { esRestriccionDeLaBase } from "@/core/datos/errores-de-base";
@@ -20,7 +18,7 @@ const pesos = formatearMonto;
 const mensajeYaEnFamilia = (productoNombre: string) => `«${productoNombre}» ya está en una familia: quitalo de ahí primero para agruparlo en un ítem.`;
 
 /** El mensaje cuando el producto ya está en un ítem agrupado (el mismo u otro) de la sucursal: un producto va en a lo sumo uno (D2). `null` si no está en ninguno. */
-async function mensajeYaAgrupado(db: ContextoUsuario["db"] | Prisma.TransactionClient, sucursalId: string, productoId: string, productoNombre: string, itemAgrupadoCartaId: string): Promise<string | null> {
+async function mensajeYaAgrupado(db: ContextoUsuario["db"], sucursalId: string, productoId: string, productoNombre: string, itemAgrupadoCartaId: string): Promise<string | null> {
   const ya = await db.opcionItemAgrupadoCarta.findFirst({ where: { productoId, ...whereCartaDeSucursal(sucursalId) }, select: { itemAgrupadoCartaId: true, itemAgrupadoCarta: { select: { nombre: true } } } });
   if (!ya) return null;
   if (ya.itemAgrupadoCartaId === itemAgrupadoCartaId) return `«${productoNombre}» ya está en «${ya.itemAgrupadoCarta.nombre}».`;
@@ -50,35 +48,15 @@ async function mensajeYaAgrupado(db: ContextoUsuario["db"] | Prisma.TransactionC
  *
  * @contract Deja el producto como opción del ítem agrupado de la sucursal activa, en el orden pedido, si cumple todo lo anterior; nunca toca el producto ni su contenido de carta.
  * @idempotency Por estado — repetir el pedido encuentra al producto ya agrupado y se rechaza («ya está en…»).
- * @transaction conTransaccionSerializable (SERIALIZABLE + reintento): las lecturas que deciden y la escritura, juntas. F1: el invariante «familia o ítem agrupado» se decide contra el miembro de familia que se ve en la
- * misma foto de la transacción; con las dos altas en SERIALIZABLE, la base cancela una (40001), se repite y la repetición responde `YA_EN_FAMILIA` o `YA_AGRUPADO`. Si este alta corriera en READ COMMITTED, la foto de una
- * alta de familia en SERIALIZABLE (que ya leyó) no vería esta opción recién confirmada y las dos pasarían: por eso NO se baja el nivel. Una falla de la escritura (único, disparador) aborta la transacción: se traduce AFUERA,
- * con una lectura nueva.
+ * @transaction Ninguna: lecturas y una escritura con `actor.db`, como antes.
  * @sideEffects Ninguno (sin auditoría). La revalidación de la carta pública la hace quien llama (la Server Action o el alta con productos) cuando sale bien.
- * @ficha permiso=carta_items_agrupados transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
+ * @ficha permiso=carta_items_agrupados transaccion=NINGUNA idempotencia=POR_ESTADO auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
  */
 export async function agregarOpcionItemAgrupadoCartaCasoDeUso(
-  actor: Pick<ContextoUsuario, "db" | "transaccion" | "sucursalId">,
+  actor: Pick<ContextoUsuario, "db" | "sucursalId">,
   comando: ComandoAgregarOpcionItemAgrupadoCarta,
 ): Promise<ResultadoAgregarOpcionItemAgrupadoCarta> {
-  try {
-    return await conTransaccionSerializable(actor.transaccion, (tx) => agregarOpcionEnTransaccion(tx, actor.sucursalId, comando));
-  } catch (e) {
-    // La escritura falló y la transacción ya no sirve: se responde con una lectura nueva (`actor.db`), no con la foto abortada.
-    const { sucursalId } = actor;
-    if (esErrorDeUnicidad(e) || esRestriccionDeLaBase(e, "producto_ya_miembro_de_familia")) {
-      const producto = comando.productoId ? await actor.db.producto.findUnique({ where: { id: comando.productoId }, select: { id: true, nombre: true } }) : null;
-      if (producto) {
-        // Carrera: otro admin lo agregó a un grupo entre la verificación y el alta (`productoId` es único).
-        if (esErrorDeUnicidad(e)) return fracaso("YA_AGRUPADO", (await mensajeYaAgrupado(actor.db, sucursalId, producto.id, producto.nombre, comando.itemAgrupadoCartaId)) ?? `«${producto.nombre}» ya está en un ítem agrupado.`);
-        return fracaso("YA_EN_FAMILIA", mensajeYaEnFamilia(producto.nombre));
-      }
-    }
-    throw e;
-  }
-}
-
-async function agregarOpcionEnTransaccion(db: Prisma.TransactionClient, sucursalId: string, comando: ComandoAgregarOpcionItemAgrupadoCarta): Promise<ResultadoAgregarOpcionItemAgrupadoCarta> {
+  const { db, sucursalId } = actor;
   const { itemAgrupadoCartaId, productoId, orden } = comando;
   const item = await db.itemAgrupadoCarta.findUnique({
     where: { id: itemAgrupadoCartaId, ...whereCartaDeSucursal(sucursalId) },
@@ -131,7 +109,13 @@ async function agregarOpcionEnTransaccion(db: Prisma.TransactionClient, sucursal
     }
   }
 
-  // Si la escritura falla (único, disparador) el error sale de la transacción y lo traduce quien llama (arriba).
-  await crearOpcionDeItemAgrupado(db, { sucursalId, itemAgrupadoCartaId: item.id, productoId: producto.id, orden: o.valor });
+  try {
+    await crearOpcionDeItemAgrupado(db, { sucursalId, itemAgrupadoCartaId: item.id, productoId: producto.id, orden: o.valor });
+  } catch (e) {
+    // Carrera: otro admin lo agregó a un grupo entre la verificación y el alta (`productoId` es único).
+    if (esErrorDeUnicidad(e)) return fracaso("YA_AGRUPADO", (await mensajeYaAgrupado(db, sucursalId, producto.id, producto.nombre, item.id)) ?? `«${producto.nombre}» ya está en un ítem agrupado.`);
+    if (esRestriccionDeLaBase(e, "producto_ya_miembro_de_familia")) return fracaso("YA_EN_FAMILIA", mensajeYaEnFamilia(producto.nombre));
+    throw e;
+  }
   return exito(`«${producto.nombre}» agregado a «${item.nombre}».`, null);
 }
