@@ -9,6 +9,7 @@
  * (2026-11-13) y «Sí, copiar a Pedernal en esas cinco» (2026-11-15).
  */
 
+import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
 import { DESCRIPCION_DE_CLASE, NOMBRE_DE_CLASE } from "./clases-de-producto";
 
 /** Interruptor reversible: en `false` el alta vuelve a los dos botones MP/PV y a las casillas «Se produce…» y «Activo en todas las sucursales» (sin migración ni datos). */
@@ -25,7 +26,7 @@ export type ClaveDeClaseDeAlta = keyof typeof CLASES_DE_ALTA;
 export const CLAVES_DE_CLASE_DE_ALTA: readonly ClaveDeClaseDeAlta[] = ["MATERIA_PRIMA", "ELABORADO", "VENDIBLE"];
 
 /** La clase de un producto ya guardado, deducida de lo que existe: un producto de venta es vendible; una materia prima que se produce es elaborada; el resto, materia prima. */
-export function claseDeAltaDe(producto: { tipo: "MP" | "PV"; seProduce?: boolean }): ClaveDeClaseDeAlta {
+export function claseDeAltaDe(producto: { tipo: TipoProducto; seProduce?: boolean }): ClaveDeClaseDeAlta {
   if (producto.tipo === "PV") return "VENDIBLE";
   return producto.seProduce === true ? "ELABORADO" : "MATERIA_PRIMA";
 }

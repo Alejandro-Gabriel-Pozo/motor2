@@ -251,6 +251,18 @@ async function sembrarBase(sucursalId: string, m: string) {
   return { productoId, nombre, nombreGrupo, grupo };
 }
 
+/**
+ * Si la clase se elige ANTES de que la pantalla termine de hidratarse, React la vuelve a «Materia prima» y el campo «Precio de venta» (solo de un producto vendible) nunca aparece. La re-elección va FUERA del medidor (no es un
+ * paso de la persona: es esperar a la hidratación) y solo si hace falta: si el campo ya está, no toca nada.
+ */
+async function confirmarVendible(page: Page): Promise<void> {
+  const precio = page.getByRole("textbox", { name: "Precio de venta" });
+  await expect(async () => {
+    if (!(await precio.isVisible())) await page.getByLabel("¿Qué es?").selectOption({ label: "Producto vendible" });
+    await expect(precio).toBeVisible({ timeout: 1500 });
+  }).toPass({ timeout: 20_000 });
+}
+
 test.describe("medición de las tareas del producto (el espacio) contra el umbral de DEC-12", () => {
   test.beforeEach(async ({ paginaAutenticada: page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
@@ -264,6 +276,7 @@ test.describe("medición de las tareas del producto (el espacio) contra el umbra
     await m.clic(page.getByRole("link", { name: "+ Nuevo producto" }), "tocar «+ Nuevo producto»");
     await m.ver("se abre el alta", () => expect(page.getByRole("heading", { name: "Nuevo producto", level: 1 })).toBeVisible());
     await m.elegir(page.getByLabel("¿Qué es?"), "Producto vendible", "elegir «¿Qué es?»: Producto vendible");
+    await confirmarVendible(page);
     await m.llenar(page.locator('input[name="nombre"]'), nombre, "escribir el nombre");
     await m.elegir(page.getByLabel("Unidad de stock"), "unidad", "elegir la unidad de stock");
     await m.llenar(page.getByRole("textbox", { name: "Precio de venta" }), "4500", "escribir el precio de venta");
@@ -308,6 +321,7 @@ test.describe("medición de las tareas del producto (el espacio) contra el umbra
     await m.ir("/catalogo/productos", "abrir la lista de productos");
     await m.clic(page.getByRole("link", { name: "+ Nuevo producto" }), "tocar «+ Nuevo producto»");
     await m.elegir(page.getByLabel("¿Qué es?"), "Producto vendible", "elegir «¿Qué es?»: Producto vendible");
+    await confirmarVendible(page);
     await m.llenar(page.locator('input[name="nombre"]'), producto, "escribir el nombre del producto");
     await m.elegir(page.getByLabel("Unidad de stock"), "unidad", "elegir la unidad de stock");
     await m.llenar(page.getByRole("textbox", { name: "Precio de venta" }), "18000", "escribir el precio de venta");
