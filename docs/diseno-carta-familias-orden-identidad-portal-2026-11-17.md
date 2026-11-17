@@ -7,6 +7,18 @@
 > **Fuentes leídas:** Pedernal (`ZuluHub-docs` main y ramas `exploracion/*`): SQL 0077, 0079, 0080, 0081; `familias-especificacion.md`; `carta-identidad-y-portal-datos-diseno.md` (incluye 0078 y 0083 como propuesta); `novedades-para-motor2.md` filas 231 a 243. Motor2: `prisma/schema.prisma`, `src/core/carta/*`, `src/server/actions/carta/*`, `src/core/permisos/acciones.ts`, `docs/diseno-marca-del-portal-2026-11-13.md`.
 > **Límite honesto (†):** no leí el CÓDIGO de ZuluHub-ERP (solo clonado, sin recorrer); lo que sigue de Pedernal es lo que dicen sus especificaciones y SQL. Los SQL 0078 y 0083 no están como archivo en `main` de ZuluHub-docs: solo como texto dentro del diseño de datos.
 
+## Respuestas del dueño (2026-11-17, `AskUserQuestion`, literales, transmitidas por el orquestador general)
+
+| Pregunta | Respuesta | Efecto |
+|---|---|---|
+| 1 Familias | «Familias nuevas como Pedernal (Recomendada)» | **CONFIRMADA:** familias nuevas por empresa; el ítem agrupado queda y se migra después, en etapa aparte con ensayo en copia |
+| 2 Orden y ★ | «Dejar por sucursal, sumar modo de orden (Recomendada)» | **CONFIRMADA:** por sucursal; se suma solo el modo (alfabético / a mano) y el reordenar atómico. Diferencia declarada: carta propia por sucursal (2026-10-02) y datos existentes |
+| 3 Portal e identidad | «Migrar todo ya» | **CONFIRMADA:** el modelo completo de Pedernal de una vez (no la opción barata); con ensayo en copia de solo lectura, compatible hacia atrás y por etapas internas que no rompan lo cargado |
+| 4 Precio por medida | sin decisión del dueño | Opción A: verificado en solo lectura, ver `docs/diseno-carta-orden-permiso-y-precio-de-familia-2026-11-17.md` §B |
+| 5 Permiso del portal | «Gerente y administrador, como Pedernal (Recomendada)» | **CONFIRMADA;** ya se cumple con el código actual (§A del documento anterior): sin cambio en `acciones.ts` |
+
+**Verificado en ZuluHub-ERP `main` (#370, clonado):** no hay todavía portal, familias ni `vidrieras.administrar_portal` en el código de Pedernal: solo están especificados. Lo de Pedernal que Motor2 reproduce es la especificación y el SQL propuesto, no código ya probado.
+
 ## 0. En diez líneas (para el dueño)
 
 1. **Lo que pediste ya está a medias en Motor2 con otro nombre.** Motor2 ya tiene orden dentro de la sección, ★ «especial», ítems agrupados («Gaseosa 500 cc» = un renglón que junta varios productos), tema por sucursal y un portal de la empresa con tarjetas y mapa. Pedernal construyó lo mismo desde cero con otra forma. «Igual que Pedernal» no es construir de cero: es decidir qué cambia de lo que ya anda.
