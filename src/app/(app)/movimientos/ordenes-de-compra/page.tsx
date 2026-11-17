@@ -2,7 +2,7 @@ import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
-import { cargarNivelDelControlDeExceso, listarOrdenesParaMostrar, listarProveedoresParaOrden } from "@/server/consultas/movimientos/ordenes-de-compra";
+import { cargarPantallaDeOrdenes } from "@/server/consultas/movimientos/ordenes-de-compra";
 import { NIVEL_POR_DEFECTO_DEL_CONTROL } from "@/core/compras/public";
 import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
 import { EncabezadoDePagina } from "@/ui/componentes/estructura/encabezado-de-pagina";
@@ -25,11 +25,7 @@ export default async function OrdenesDeCompraPage() {
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "orden_de_compra_gestionar", ctx.db),
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "compras_configurar", ctx.db),
   ]);
-  const [ordenes, proveedores, nivel] = await Promise.all([
-    listarOrdenesParaMostrar(ctx.db, gestionar.editar),
-    gestionar.editar ? listarProveedoresParaOrden(ctx.db) : Promise.resolve([]),
-    configurar.editar ? cargarNivelDelControlDeExceso(ctx.db) : Promise.resolve(null),
-  ]);
+  const { ordenes, proveedores, nivelDelControl } = await cargarPantallaDeOrdenes(ctx.db, gestionar.editar, gestionar.editar, configurar.editar);
 
   return (
     <div className="flex max-w-4xl flex-col gap-4">
@@ -40,7 +36,7 @@ export default async function OrdenesDeCompraPage() {
         ordenes={ordenes}
         puedeGestionar={gestionar.editar}
         puedeConfigurar={configurar.editar}
-        nivelDelControl={nivel ?? NIVEL_POR_DEFECTO_DEL_CONTROL}
+        nivelDelControl={nivelDelControl ?? NIVEL_POR_DEFECTO_DEL_CONTROL}
         proveedores={proveedores}
         sucursalActiva={{ id: ctx.sucursalId, nombre: ctx.sucursalNombre }}
         hoy={diaDeCalendario(new Date(), ZONA_ARGENTINA)}
