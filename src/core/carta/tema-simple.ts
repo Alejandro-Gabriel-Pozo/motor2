@@ -1,4 +1,4 @@
-import { MARCADOR_DE_MARCA_OSCURA } from "./marca-oscura";
+import { DEFAULTS_DEL_LIBRO_MAQUETA } from "./libro-estilo-maqueta";
 
 /**
  * INTERRUPTOR de la pantalla simple del Tema de la carta (PASO A de «Apariencia y publicación», `docs/diseno-carta-apariencia-y-publicacion-como-pedernal-2026-11-17.md`; dueño, 2026-11-17: «Te pedía color de marca nada más…»).
@@ -12,6 +12,15 @@ import { MARCADOR_DE_MARCA_OSCURA } from "./marca-oscura";
  * `src/lib/tema-simple-visible.ts` es quien la consulta (agrega un encendido SOLO de prueba por variable de entorno).
  */
 export const TEMA_SIMPLE_VISIBLE: boolean = false;
+
+/**
+ * El marcador de `marca_derivada` que escribe la pantalla simple: la carta se lee sobre el fondo oscuro del sistema con la tinta del sistema (colores FIJOS, no derivados de la marca) y la marca solo en acentos y bordes
+ * (dueño, 2026-11-17: «Ve como un pedernal.»). Distinto de «si» (fondo claro, ya cargado por algunas empresas): «lo cargado manda».
+ */
+export const MARCADOR_DE_MARCA_OSCURA = "oscura";
+
+/** El fondo oscuro del sistema: el mismo de la maqueta de Pedernal (`#19191a`). Solo se usa cuando la empresa no cargó un fondo propio. */
+export const FONDO_OSCURO_DEL_SISTEMA: string = DEFAULTS_DEL_LIBRO_MAQUETA.color_fondo_dia!;
 
 /** Lo que responde el servidor al guardado simple con el interruptor apagado (aunque el pedido se arme a mano; el permiso sigue siendo lo primero). */
 export const MENSAJE_TEMA_SIMPLE_APAGADO = "La pantalla simple del tema de la carta todavía no está disponible.";
@@ -43,7 +52,7 @@ const objetoPlano = (v: unknown): Record<string, unknown> => (typeof v === "obje
 /**
  * MEZCLA del guardado simple (invariante I1 del diseño, «lo cargado manda»): parte de lo GUARDADO tal cual (todas las claves, incluidas las que el catálogo ya no conoce y las que están mal cargadas) y cambia SOLO las diez de
  * `CLAVES_TEMA_SIMPLE`: la que viene con valor se escribe, la que viene vacía se saca (vacío = default de la carta, como en el guardado de siempre). El marcador `marca_derivada` es el único otro cambio: con color de marca queda
- * en `oscura` (la pantalla simple muestra la carta sobre el fondo oscuro, y quien guarda ve eso mismo), sin color de marca se saca. Pura: no toca los argumentos.
+ * en `oscura` (la carta se muestra sobre el fondo oscuro, con el texto en colores fijos del sistema), sin color de marca se saca. Pura: no toca los argumentos.
  */
 export function mezclarTemaSimple(guardado: unknown, simples: Readonly<Partial<Record<ClaveTemaSimple, string>>>): Record<string, unknown> {
   const mezcla = { ...objetoPlano(guardado) };

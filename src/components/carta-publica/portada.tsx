@@ -68,7 +68,7 @@ export function Portada({ estilo, restauranteNombre, estiloLibro = false }: { es
         // eslint-disable-next-line @next/next/no-img-element
         <img src={logoUrl} alt={restauranteNombre} className="h-16 w-16 object-contain" />
       ) : restauranteNombre ? (
-        <div className="carta-rol-titulo flex h-14 w-14 items-center justify-center rounded-2xl" style={{ backgroundColor: conAire ? "var(--carta-primary)" : "var(--carta-ink)", color: "var(--carta-bg)" }}>
+        <div className="carta-rol-titulo flex h-14 w-14 items-center justify-center rounded-2xl" style={{ backgroundColor: conAire ? "var(--carta-sello-fondo, var(--carta-primary))" : "var(--carta-ink)", color: conAire ? "var(--carta-sello-texto, var(--carta-bg))" : "var(--carta-bg)", boxShadow: conAire ? "var(--carta-sello-aro, none)" : undefined }}>
           {restauranteNombre.charAt(0)}
         </div>
       ) : null}

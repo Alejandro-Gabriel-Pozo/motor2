@@ -210,7 +210,7 @@ const CONTRASTE_MINIMO_TEXTO = 4.5
 const FONDO_BASE_DE_LA_CARTA = "#ffffff"
 const TINTA_BASE_DE_LA_CARTA = "#1c1b19"
 
-export function razonDeContraste(a: [number, number, number], b: [number, number, number]): number {
+function razonDeContraste(a: [number, number, number], b: [number, number, number]): number {
   const la = relativeLuminance(a[0], a[1], a[2])
   const lb = relativeLuminance(b[0], b[1], b[2])
   return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05)

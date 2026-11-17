@@ -25,7 +25,7 @@ test("apagado: la pestaña Tema es la de siempre (el editor completo, sin pantal
 });
 
 for (const ancho of [375, 1366]) {
-  test(`encendido (${ancho} px): elegir un color que se ajusta, ver el aviso, guardar, recargar y ver lo guardado, con axe 0`, async ({ paginaAutenticada: page, sucursalId }) => {
+  test(`encendido (${ancho} px): elegir un color, ver la vista previa con texto legible, guardar, recargar y ver lo guardado, con axe 0`, async ({ paginaAutenticada: page, sucursalId }) => {
     test.skip(!temaSimpleVisible(), "la pantalla simple está apagada (TEMA_SIMPLE_VISIBLE = false en src/core/carta/tema-simple.ts): la pestaña Tema es la de siempre");
     await prisma.temaCartaSucursal.deleteMany({ where: { sucursalId } });
     // Una clave que la pantalla simple no pide y que ya estaba cargada: tiene que sobrevivir al guardado («lo cargado manda»).
@@ -44,10 +44,9 @@ for (const ancho of [375, 1366]) {
       const azul = pantalla.getByLabel("Azul");
       await esperarHidratado(azul);
       await azul.check();
-      // El azul de Pedernal no llega a 7:1 sobre el fondo oscuro: la pantalla avisa y dice cuál se usa.
-      const aviso = page.locator("[data-aviso-marca-ajustada]");
-      await expect(aviso).toContainText("El texto no se lee bien sobre este color");
-      await expect(aviso).toContainText("Se guarda el que elegiste");
+      // Sin ajuste ni aviso de contraste: el texto de la carta va en colores fijos del sistema y la marca solo en acentos.
+      await expect(page.locator("[data-aviso-marca-ajustada]")).toHaveCount(0);
+      await expect(page.getByText(/Se usa #/)).toHaveCount(0);
       await expect(page.locator("[data-vista-previa-tema-simple]")).toBeVisible();
 
       await pantalla.getByLabel("Nombre").fill("Hotel de prueba");

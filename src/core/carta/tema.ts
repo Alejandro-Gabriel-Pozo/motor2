@@ -98,7 +98,7 @@ export const CLAVES_TEMA_V1 = [
   // Colores generales
   { clave: "color_marca", zona: "Colores generales", etiqueta: "Color de marca (acento)", defaultCarta: "", ...COLOR },
   // Marcador del modelo de marca (paso 9, `docs/diseno-marca-por-sucursal-y-empresa-2026-11-12.md`): SIN él la carta se lee con sus colores sueltos como siempre; CON «si» se lee solo desde `color_marca` y el sistema deriva el resto (fondo claro).
-  // «oscura» (PASO A de «Apariencia y publicación», `marca-oscura.ts`): la marca elegida sobre el fondo oscuro del sistema, sin dejar de leer lo cargado. Lo escribe la pantalla simple, o un botón explícito del editor completo (no es un campo del formulario de colores).
+  // «oscura» (PASO A de «Apariencia y publicación», `estilo.ts`): la carta sobre el fondo oscuro del sistema con el texto en colores fijos y la marca solo como acento, sin dejar de leer lo cargado. Lo escribe la pantalla simple, o un botón explícito del editor completo (no es un campo del formulario de colores).
   { clave: "marca_derivada", zona: "Colores generales", etiqueta: "Usar solo el color de marca", defaultCarta: "", tipo: "enum", opciones: ["si", "oscura"] },
   { clave: "color_fondo_dia", zona: "Colores generales", etiqueta: "Color de fondo de la carta", defaultCarta: "", ...COLOR },
   { clave: "hero_color_fondo", zona: "Colores generales", etiqueta: "Fondo de la portada (hex #rrggbb)", defaultCarta: "", tipo: "colorHex" },
