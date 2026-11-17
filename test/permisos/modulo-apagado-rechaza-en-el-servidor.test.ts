@@ -3,7 +3,7 @@ import { crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, pr
 import { fijarModulosActivos, MODULOS_VENDIBLES } from "../setup/modulos";
 import { requierePermiso, requierePermisoDeEmpresa, requierePermisoVer, requierePermisoVerDeEmpresa } from "../../src/server/acceso/gate";
 import { ACCIONES, contextoDeAccion, moduloDeAccion, type AccionClave, type AccionDeEmpresa, type AccionDeSucursal } from "../../src/core/permisos/acciones";
-import { MODULOS } from "../../src/core/modulos/catalogo";
+import { MODULOS, moduloDelCatalogo } from "../../src/core/modulos/catalogo";
 import { modulosQueIncluyen } from "../../src/core/modulos/clausura";
 
 /**
@@ -75,7 +75,8 @@ describe("GT-12 · toda acción de un módulo apagado se rechaza en el servidor"
   });
 
   it.each(APAGABLES)("CONTROL con %s prendido: ninguna de sus acciones responde «módulo no activo»", async (modulo) => {
-    await fijarModulosActivos(E, MODULOS_VENDIBLES);
+    // `MODULOS_VENDIBLES` no trae los interruptores que nacen apagados (`recepcion_de_compras`, Compras N3-a): el módulo que se prueba se suma a mano si es vendible.
+    await fijarModulosActivos(E, moduloDelCatalogo(modulo).tipo === "vendible" ? [...new Set([...MODULOS_VENDIBLES, modulo])] : MODULOS_VENDIBLES);
     const acciones = ACCIONES.filter((a) => a.modulo === modulo).map((a) => a.clave as AccionClave);
     const fallas: string[] = [];
     for (const clave of acciones) {

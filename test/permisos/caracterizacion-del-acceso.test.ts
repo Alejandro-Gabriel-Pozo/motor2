@@ -3,7 +3,8 @@ import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import type { PrismaClient } from "@prisma/client";
 import { crearMembresia } from "../setup/membresia";
-import { MODULOS_VENDIBLES, fijarModulosActivos } from "../setup/modulos";
+import { fijarModulosActivos } from "../setup/modulos";
+import { MODULOS } from "../../src/core/modulos/catalogo";
 import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase } from "../setup/test-db";
 import { ACCIONES, contextoDeAccion, type AccionClave, type AccionDeEmpresa, type AccionDeSucursal } from "../../src/core/permisos/acciones";
 import {
@@ -36,7 +37,8 @@ const REGISTROS: Record<string, readonly string[]> = {
   vacio: [],
   "solo stock": ["stock"],
   "solo salon": ["salon"],
-  todos: MODULOS_VENDIBLES,
+  // «Todos»: cada vendible DISPONIBLE del catálogo, también los que nacen apagados en las empresas de prueba (Compras N3-a: `recepcion_de_compras`; `MODULOS_VENDIBLES` de `test/setup/modulos.ts` no lo trae), para que la matriz vea `compra_recibir` accesible en una empresa que lo tiene encendido.
+  todos: MODULOS.filter((m) => m.tipo === "vendible" && m.estado === "disponible").map((m) => m.id),
 };
 
 type Escenario = {

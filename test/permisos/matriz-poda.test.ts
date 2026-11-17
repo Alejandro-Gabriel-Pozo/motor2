@@ -8,7 +8,7 @@ import { accionesDeLaMatrizDePermisos } from "../../src/core/permisos/matriz";
 /**
  * Poda de la matriz de permisos (dueño, 2026-11-06), SIN cambiar ninguna decisión de acceso:
  * (3) la casilla «Editar» se oculta en las claves de solo ver (marca `soloVer` del catálogo);
- * (4) `compra_recibir` (reservada, sin consumidores) sale de las matrices de permisos y de capacidades.
+ * (4) una clave RESERVADA (sin consumidores) sale de las matrices de permisos y de capacidades. Hoy no hay ninguna: `compra_recibir`, la única, dejó de estar reservada con la recepción separada de Compras (N3-a, 2026-11-16).
  *
  * (a) clave × rol × fila del rol × Default × fila de la sucursal: la decisión real (`accesoDeSucursal` + `decidirEnSucursal`, con la capacidad que decide `resolverCapacidad`) coincide con un
  *     oráculo escrito aparte, TAMBIÉN para las claves marcadas: ocultar la casilla no le quita ni le da nada a nadie (una fila vieja con Editar sigue decidiendo como siempre).
@@ -62,10 +62,10 @@ describe("(a) la decisión de acceso no cambia: clave × rol × fila del rol × 
 describe("(b) lo oculto no aparece y lo demás sí", () => {
   const todas = ACCIONES.map((a) => ({ clave: a.clave as string }));
 
-  it("la matriz de permisos no lista `compra_recibir` y lista todas las demás, en el mismo orden", () => {
+  it("la matriz de permisos lista todas las claves (ya no hay reservadas: `compra_recibir` se usa desde Compras N3-a), en el mismo orden", () => {
     const claves = accionesDeLaMatrizDePermisos(todas).map((a) => a.clave);
-    expect(claves).not.toContain("compra_recibir");
-    expect(claves).toEqual(todas.map((a) => a.clave).filter((c) => c !== "compra_recibir"));
+    expect(claves).toContain("compra_recibir");
+    expect(claves).toEqual(todas.map((a) => a.clave).filter((c) => !esAccionReservada(c)));
   });
 
   it("la matriz de permisos sigue listando las claves de solo ver (se oculta la casilla, no la fila) y las de gobierno", () => {
@@ -79,18 +79,18 @@ describe("(b) lo oculto no aparece y lo demás sí", () => {
     expect(accionesConfigurablesPorSucursal([{ clave: "ver_reportes_stock" }])).toEqual([]);
   });
 
-  it("la matriz de capacidades tampoco lista `compra_recibir`, y lista el resto de lo configurable", () => {
+  it("la matriz de capacidades lista lo configurable, `compra_recibir` incluida (de sucursal y ya no reservada)", () => {
     const claves = accionesConfigurablesPorSucursal(todas).map((a) => a.clave);
-    expect(claves).not.toContain("compra_recibir");
+    expect(claves).toContain("compra_recibir");
     expect(claves).toContain("precio_local");
     expect(claves).toContain("compra_repartir");
-    expect(claves.length).toBe(todas.filter((a) => a.clave !== "compra_recibir" && !esCapacidadSiempreHabilitada(a.clave)).length);
+    expect(claves.length).toBe(todas.filter((a) => !esAccionReservada(a.clave) && !esCapacidadSiempreHabilitada(a.clave)).length);
   });
 
-  it("la marca `soloVer` cubre exactamente los reportes (y `partes_ver`, la búsqueda de fichas de Parte P1, y `caja_ver`, la lectura de la caja de C1 PR-B) y `reservada` exactamente `compra_recibir`", () => {
+  it("la marca `soloVer` cubre exactamente los reportes (y `partes_ver`, la búsqueda de fichas de Parte P1, y `caja_ver`, la lectura de la caja de C1 PR-B) y ninguna está `reservada` (la última, `compra_recibir`, se usa desde Compras N3-a)", () => {
     const soloVer = todas.map((a) => a.clave).filter(esAccionSoloVer);
     expect(soloVer).toEqual(todas.map((a) => a.clave).filter((c) => c.startsWith("reporte_") || c === "partes_ver" || c === "caja_ver"));
-    expect(todas.map((a) => a.clave).filter(esAccionReservada)).toEqual(["compra_recibir"]);
+    expect(todas.map((a) => a.clave).filter(esAccionReservada)).toEqual([]);
   });
 
   it("una clave fuera del catálogo no es ni de solo ver ni reservada", () => {

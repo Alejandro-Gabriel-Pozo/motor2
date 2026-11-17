@@ -133,6 +133,7 @@ export const ORACULO_DE_PERMISOS: Readonly<Record<string, string>> = {
   "compra_repartir": "Repartir una factura de proveedor entre sucursales y atender las facturas pendientes de reparto",
   "declarar_pago_compra": "Declarar y anular el pago de una factura de proveedor",
   "compra_recibir": "Confirmar la recepción de la mercadería de una factura de proveedor en la sucursal",
+  "compra_controlar_recepcion": "Registrar el control de la mercadería de una compra pendiente de recibir en la sucursal",
   "opciones_definir": "Definir los grupos de opciones de venta y sus opciones",
   "producto_opciones_admitidas": "Elegir qué grupos y opciones de venta admite cada producto",
   "opcion_apagar_en_sucursal": "Apagar o prender una opción de venta en la sucursal",

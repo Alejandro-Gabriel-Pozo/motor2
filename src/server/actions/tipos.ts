@@ -10,6 +10,9 @@ export type ContextoDeAccion = ContextoUsuario & { ahora: Date };
 
 export type ResultadoAccion = { ok: true; mensaje: string } | { ok: false; mensaje: string };
 
+/** Resultado de `confirmarRecepcionDeFactura` (src/server/actions/movimientos/facturas-proveedor.ts): como ResultadoAccion y, al salir bien, `yaExistia`: la compra ya estaba recibida (repetición: no se cargó stock de nuevo), para que la pantalla lo muestre como información y no como un éxito nuevo. */
+export type ResultadoConfirmarRecepcion = { ok: true; mensaje: string; yaExistia: boolean } | { ok: false; mensaje: string };
+
 /** Como ResultadoAccion, pero además devuelve el id de lo creado — para los quick-create inline (ver src/components/catalogo). */
 export type ResultadoConId = { ok: true; mensaje: string; id: string; nombre: string } | { ok: false; mensaje: string };
 

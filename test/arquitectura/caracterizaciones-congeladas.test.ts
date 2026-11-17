@@ -152,6 +152,20 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Caja y cobro C1, PR-B (ADITIVO; seis claves nuevas, semilla solo `admin`, todo nace cerrado): `caja_ver`, `caja_abrir_sesion`, `caja_cerrar_sesion`, `caja_mover_efectivo`, `caja_anular_movimiento_ajeno` y `cobrar_cuenta` (de sucursal, módulo provisorio `salon`). Se suman a las listas de claves de cada bloque de la matriz de acceso (una línea por lista, mismas listas de antes con las seis claves de más; 224 líneas). Ninguna otra respuesta del guard ni ningún otro permiso cambia: el operador no recibe ninguna (todas «ver=false editar=false»).",
       },
+      {
+        blob: "5ee380617dc513cd0afd4eb9f0b741599b0c4cf5",
+        // El commit PADRE de la regeneración es `39fc9233` (la punta de `origin/main` integrada por merge en la rama de Compras N3).
+        commit: "39fc9233",
+        motivo:
+          "Compras N3 sobre el origin/main integrado (39fc9233), matriz regenerada sobre el merge. Dos cambios de la rama, ya declarados al dueño: (1) compra_recibir pasa al módulo recepcion_de_compras y a piso administrador (Compras N3-a, recepción separada) (2) acción nueva compra_controlar_recepcion (Compras N3-a): módulo recepcion_de_compras, de sucursal, piso operario, semilla admin y operador (dueño, 2026-11-16: «Como Pedernal: también el operador»). Revisado con `git diff`: solo se suma esa clave a la lista de `MODULO_NO_ACTIVO//recepcion_de_compras` y a las listas de claves de cada bloque; ningún otro permiso ni rol cambia.",
+      },
+      {
+        blob: "f5b8ecac0ba3e61b16c0ca4c8e676715c4fd6218",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `6aedaff9` (la punta de la rama de Compras N3 antes de integrar `origin/main` en `15f3399d`).
+        commit: "6aedaff9",
+        motivo:
+          "Compras N3 sobre el origin/main integrado (15f3399d): la matriz de la rama (compra_recibir y compra_controlar_recepcion, ya declaradas arriba) suma las seis claves de la caja de Caja y cobro C1 PR-B (`caja_ver`, `caja_abrir_sesion`, `caja_cerrar_sesion`, `caja_mover_efectivo`, `caja_anular_movimiento_ajeno`, `cobrar_cuenta`; ya declaradas arriba con el blob `22b61bd0`, ADITIVO, semilla solo admin). Fusión de dos regeneraciones declaradas, sin ningún cambio nuevo de comportamiento. Revisado con `git diff -U0` contra el commit `1107fdc8`: cambian SOLO 224 líneas, las listas de claves de cada bloque (una por lista, con las seis claves de la caja de más); ningún otro permiso ni rol cambia.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
@@ -309,9 +323,16 @@ const CONGELADAS: Record<string, Congelada> = {
           "Roles propios, P2 (ADITIVO; la perilla `rolesPropiosMax` nace en 0; NO cambia comportamiento de acceso): `Empresa.rolesPropiosMax` (migración 20261117100100) aparece en las 28 filas EMPRESA de la huella y en 2 líneas `resultado:` de `cambiar-politica` (las que vuelcan la política de empresa), en 0. Revisado con `git diff`: solo se suma `rolesPropiosMax=0` (la huella ya incluía las acciones de caja de #368); ningún permiso, rol, resultado ni mensaje cambia. Aprobada por el dueño el 2026-11-17: «Sí, aprobada (Recomendada)» (motor2-docs, seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md).",
       },
       {
-        blob: "82431a9964661c89ae0bcb65f7306ea6e4ef3a8b",
-        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `d6127dda` (la integración de `main` en Roles P3).
-        commit: "d6127dda",
+        blob: "7c3e168e3eae0b8a989e151376b382946cfe6b20",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `e8b07af3` (Roles P2 en `main`).
+        commit: "e8b07af3",
+        motivo:
+          "Compras N3 sobre el origin/main integrado (e8b07af3, con Caja C1 PR-B y Roles P2 ya declarados arriba con los blobs `30eb8c0f` y `d2cf9388`): la acción `compra_controlar_recepcion` (admin y operador) suma a la huella 4 líneas `PERMISO` (una por foto y rol: `compra_controlar_recepcion ver=true editar=true`) y `ACCIONES` pasa de 139 a 140 en las dos fotos; ninguna otra línea cambia. Las dos entradas anteriores de esta rama (blobs `22f3ad56` y `8c2e41f2`) describían estados intermedios sin Roles P2 y se reemplazan por esta, la del estado final.",
+      },
+      {
+        blob: "95e87ddd1d6d2497e2c8c9e9116cfd57faa4c825",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `8d004cbd` (Compras N3 en `main`, con la huella de gobierno ya declarada arriba con el blob `7c3e168e`).
+        commit: "8d004cbd",
         motivo:
           "Roles P3, nombres visibles de los roles base (CAMBIA SOLO TEXTO; la clave interna no cambia): la siembra de fábrica imprime `ROL … nombre=administrador` y `nombre=empleado` en lugar de `admin` y `operador` (4 líneas: 2 por foto), y el rol que quedan asignando las altas por invitación se audita con el nombre visible: las 32 líneas `AUDITORIA … rol (alta por invitación)` pasan de `valorNuevo=operador`/`admin` a `valorNuevo=empleado`/`administrador` (16 por cada nombre; el CI de GitHub marcó la diferencia exacta). Ningún permiso, resultado ni mensaje cambia. Aprobada por el dueño el 2026-11-17: «5.-Si, yo agregaria encargado. O si se lo puede crear lo hago yo» (nombres Gerente, Administrador y Empleado y regeneración de las dos huellas; motor2-docs, seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md, sección «Respuestas del dueño en el chat sobre libro, menú, Compras, depósitos, roles y T2»).",
       },
