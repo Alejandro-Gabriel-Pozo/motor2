@@ -77,7 +77,9 @@ for (const ancho of [375, 1366]) {
       const guardar = page.getByRole("button", { name: "Guardar", exact: true });
       const caja = await guardar.boundingBox();
       expect(caja?.height ?? 0, "objetivo táctil de 44 px").toBeGreaterThanOrEqual(44);
-      expect(caja?.width ?? 0, "Guardar de ancho completo").toBeGreaterThanOrEqual(ancho * 0.8);
+      const proporcion = await guardar.evaluate((el) => el.getBoundingClientRect().width / (el.closest("form")?.getBoundingClientRect().width ?? 1));
+      expect(proporcion, "Guardar de ancho completo (el del formulario)").toBeGreaterThanOrEqual(0.95);
+      expect(caja?.y ?? 0, "Guardar fijo al pie: dentro de la pantalla sin bajar").toBeLessThan((await page.viewportSize())!.height);
       await guardar.click();
       await expect(page.getByRole("status").filter({ hasText: "guardados" })).toBeVisible();
 
@@ -92,6 +94,7 @@ for (const ancho of [375, 1366]) {
       await page.goto("/carta/portal");
       await page.getByRole("group", { name: "Solapas" }).getByRole("button", { name: "Colores", exact: true }).click();
       await expect(page.locator('[data-fondo-portal="encabezado"]').getByLabel("Azul")).toBeChecked();
+      await page.locator('[data-fondo-portal="pagina"] summary').click();
       await expect(page.locator('[data-fondo-portal="pagina"]').getByRole("radio", { name: "Otro color" })).toBeChecked();
       await page.getByRole("group", { name: "Solapas" }).getByRole("button", { name: "Portal", exact: true }).click();
       await expect(page.getByLabel("Título", { exact: true })).toHaveValue("Nuestros hoteles");

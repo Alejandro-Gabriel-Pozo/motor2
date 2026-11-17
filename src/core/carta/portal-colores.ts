@@ -13,7 +13,7 @@ import { valoresDelPortalDual, type EstiloDelPortalNuevo } from "./portal-de-emp
  */
 
 /** Contraste mínimo del texto sobre cada fondo del portal (Pedernal `color-de-la-carta.ts:14`; «ok» del dueño el 09/11). */
-export const CONTRASTE_MINIMO_DEL_PORTAL = 7;
+const CONTRASTE_MINIMO_DEL_PORTAL = 7;
 
 /** Las seis paletas de la maqueta del portal de Pedernal (`portal-de-la-empresa.html:438`); «Otro color» es cualquier `#rrggbb`. */
 export const PALETAS_DEL_PORTAL = [
@@ -207,7 +207,7 @@ const VARIABLE_VER_CARTA_DE_LA_MAQUETA = "--portal-ver-carta-color";
  * (los tres ya llegan a 7:1: lo fija `test/carta/portal-colores-maqueta.test.ts`). Sobre el tercer fondo no cae ningún texto. La barra lateral es decorativa: el color de marca del portal si lo hay, si no `--carta-primary`. Sin tercer fondo elegido la tarjeta contenedora no se pinta (transparente).
  * Solo agrega variables y la marca `conMaqueta`: `valores` queda como estaba.
  */
-export function conMaquetaDelPortal(estilo: EstiloPortal, detrasElegido: string | null): EstiloPortal {
+function conMaquetaDelPortal(estilo: EstiloPortal, detrasElegido: string | null): EstiloPortal {
   const variablesCss = { ...estilo.variablesCss };
   const detras = colorDelPortal(detrasElegido);
   if (detras) variablesCss[VARIABLE_DETRAS_DE_LA_MAQUETA] = detras.hex;
