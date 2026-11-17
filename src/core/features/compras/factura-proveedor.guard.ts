@@ -83,10 +83,10 @@ export function guardComandoAceptarParteDeFactura(entrada: unknown, ahora: Date)
 }
 
 /**
- * «Confirmar recepción» (Compras N3-a y N3-b): la factura, las entradas de stock y la fecha de stock (formato; el rango contra la fecha de la factura, las secciones y la suma exacta por renglón los mira el caso de uso, que conoce la factura).
- * Cada entrada es `{ renglonId, seccionId, cantidad }` con cantidad numérica (la precisión por producto la mira `validarEntradasDeRecepcion`). Sin clave de reintento: es idempotente por estado.
+ * «Confirmar recepción» (Compras N3-a y N3-b): la factura y el destino de cada renglón (formato; que cada renglón sea de la compra y tenga su único destino, y las secciones, los mira el caso de uso, que conoce la factura). Cada entrada es
+ * `{ renglonId, seccionId }`: se toman SOLO esos dos campos (una cantidad o una fecha que llegaran de más se ignoran: la cantidad es la del renglón y la fecha, la de la confirmación). Sin clave de reintento: es idempotente por estado.
  */
-export function guardComandoConfirmarRecepcionDeFactura(entrada: unknown, ahora: Date): ResultadoDato<ComandoConfirmarRecepcionDeFactura> {
+export function guardComandoConfirmarRecepcionDeFactura(entrada: unknown): ResultadoDato<ComandoConfirmarRecepcionDeFactura> {
   const e = (entrada ?? {}) as Partial<Record<keyof ComandoConfirmarRecepcionDeFactura, unknown>>;
   if (typeof e.facturaId !== "string" || !texto(e.facturaId)) return rechazar("vacio", "No se encontró la compra a recibir.");
   if (!Array.isArray(e.entradas) || e.entradas.length === 0) return rechazar("vacio", "Elegí la sección donde entra la mercadería.");
@@ -97,12 +97,9 @@ export function guardComandoConfirmarRecepcionDeFactura(entrada: unknown, ahora:
     const x = (crudo ?? {}) as Partial<Record<keyof EntradaDeRecepcionInput, unknown>>;
     if (typeof x.renglonId !== "string" || !texto(x.renglonId)) return rechazar("vacio", "Hay una entrada sin renglón.");
     if (typeof x.seccionId !== "string" || !texto(x.seccionId)) return rechazar("vacio", "Elegí la sección donde entra la mercadería.");
-    if (typeof x.cantidad !== "number" || !Number.isFinite(x.cantidad)) return rechazar("formato", "Cada cantidad tiene que ser un número.");
-    entradas.push({ renglonId: texto(x.renglonId), seccionId: texto(x.seccionId), cantidad: x.cantidad });
+    entradas.push({ renglonId: texto(x.renglonId), seccionId: texto(x.seccionId) });
   }
-  const fecha = validarFechaDeCompra(e.fechaStock, ahora);
-  if (!fecha.ok) return rechazar(fecha.codigo, fecha.mensaje);
-  return aceptar({ facturaId: texto(e.facturaId), fechaStock: e.fechaStock as Date, entradas });
+  return aceptar({ facturaId: texto(e.facturaId), entradas });
 }
 
 /**

@@ -1,13 +1,10 @@
 import { Decimal } from "decimal.js";
 import { textoDeUnaLineaDesdeTexto } from "@/core/datos/texto-de-catalogo";
-import { aCentavos, repartirEnteros } from "./reparto-de-factura";
 
 /**
  * Compras, recepción separada (etapa N3-a; docs/diseno-compras-paridad-escalera-2026-11-16.md, niveles 4 y 5; oráculo `docs/oraculo-combinaciones-compras-recepcion-2026-11-16.md`): las reglas PURAS de cuándo una parte de factura
- * nace pendiente de recibir y de cuándo se puede confirmar su recepción. Sin base, sin Prisma, sin reloj propio (el «hoy» y los días los pone quien llama): el caso de uso las aplica con la cabecera de la factura bloqueada y el oráculo
- * las contrasta combinación por combinación.
- *
- * Días como texto ISO `AAAA-MM-DD` (el día de calendario argentino): se comparan como texto, que para esa forma es el orden cronológico.
+ * nace pendiente de recibir y de cuándo se puede confirmar su recepción. Sin base, sin Prisma y sin reloj: el caso de uso las aplica con la cabecera de la factura bloqueada y el oráculo las contrasta combinación por combinación.
+ * La fecha del stock no es una decisión de la regla ni de quien confirma: es la de la confirmación (paridad con Pedernal, `hechoEn: contexto.ahora`), y la pone el caso de uso.
  */
 
 /** Los dos estados de recepción de una parte (el CHECK `FacturaProveedorSucursal_estado_recepcion_chk` de la base dice lo mismo). Una parte PENDIENTE pasa a RECIBIDA una sola vez y no vuelve atrás (lo impone un disparador). */
@@ -25,10 +22,13 @@ export function estadoInicialDeLaParte(e: { moduloEncendido: boolean; hayPartesA
 /** De quién es la sección elegida para recibir: de la sucursal que recibe y activa, de otra sucursal (o inexistente: para quien pregunta es lo mismo), o de la sucursal pero dada de baja. */
 export type SeccionParaRecibir = "PROPIA_ACTIVA" | "AJENA" | "INACTIVA";
 
-export type CodigoDeRechazoDeRecepcion = "NO_ES_DE_ESTA_SUCURSAL" | "YA_ANULADA" | "YA_RECIBIDA" | "SECCION_NO_ENCONTRADA" | "SECCION_INACTIVA" | "FECHA_FUERA_DE_RANGO";
-/** La sección dada de baja no lleva mensaje propio: el texto único `mensajeSeccionDesactivada` necesita el nombre de la sección y lo pone el caso de uso. */
+export type CodigoDeRechazoDeRecepcion = "NO_ES_DE_ESTA_SUCURSAL" | "YA_ANULADA" | "SECCION_NO_ENCONTRADA" | "SECCION_INACTIVA";
+/**
+ * La sección dada de baja no lleva mensaje propio: el texto único `mensajeSeccionDesactivada` necesita el nombre de la sección y lo pone el caso de uso.
+ * `ok` con `yaRecibida: true` es la REPETICIÓN (paridad con Pedernal, `yaExistia`): la parte ya estaba recibida y no hay nada que escribir; con `false`, se puede confirmar.
+ */
 export type DecisionDeConfirmacionDeRecepcion =
-  | { ok: true }
+  | { ok: true; yaRecibida: boolean }
   | { ok: false; codigo: Exclude<CodigoDeRechazoDeRecepcion, "SECCION_INACTIVA">; mensaje: string }
   | { ok: false; codigo: "SECCION_INACTIVA" };
 
@@ -39,34 +39,27 @@ export interface EntradaDeConfirmacionDeRecepcion {
   facturaAnulada: boolean;
   estadoDeLaParte: EstadoDeRecepcion;
   seccion: SeccionParaRecibir;
-  /** El día de la factura (Argentina). */
-  diaFactura: string;
-  /** El día de stock que se elige. */
-  diaStock: string;
-  /** Hoy (Argentina), del reloj del servidor. */
-  hoy: string;
 }
 
 export const MENSAJE_RECEPCION_NO_ENCONTRADA = "No se encontró esa compra para recibir en esta sucursal.";
 export const MENSAJE_RECEPCION_YA_RECIBIDA = "Esta compra ya fue recibida: no se cargó stock de nuevo.";
 
-/** El texto de la fecha de stock fuera de rango (lo usan la regla y quien la quiera mostrar): entre la fecha de la factura y hoy. */
+/** El texto de la fecha de stock fuera de rango (lo usa «aceptar mi parte», donde sí se elige el día): entre la fecha de la factura y hoy. */
 export function mensajeFechaDeStockFueraDeRango(diaFactura: string, hoy: string): string {
   return `La fecha de stock tiene que estar entre la fecha de la factura (${diaFactura}) y hoy (${hoy}).`;
 }
 
 /**
- * ¿Se puede confirmar la recepción de esa parte? Orden de las razones (la primera que corresponda): la parte no es de esta sucursal (no se dice nada más: no se filtra la existencia) → la factura está anulada → la parte ya está recibida →
- * la sección no es de esta sucursal (o no existe) → la sección está dada de baja → la fecha de stock no está entre la fecha de la factura y hoy. Puro y total: cada combinación tiene una sola respuesta.
+ * ¿Se puede confirmar la recepción de esa parte? Orden de las razones (la primera que corresponda): la parte no es de esta sucursal (no se dice nada más: no se filtra la existencia) → la factura está anulada → la parte ya está recibida
+ * (ÉXITO con `yaRecibida: true`: repetir confirmar no mueve nada y no mira la sección) → la sección no es de esta sucursal (o no existe) → la sección está dada de baja. Puro y total: cada combinación tiene una sola respuesta.
  */
 export function decidirConfirmacionDeRecepcion(e: EntradaDeConfirmacionDeRecepcion): DecisionDeConfirmacionDeRecepcion {
   if (!e.esDeLaSucursalDelActor) return { ok: false, codigo: "NO_ES_DE_ESTA_SUCURSAL", mensaje: MENSAJE_RECEPCION_NO_ENCONTRADA };
   if (e.facturaAnulada) return { ok: false, codigo: "YA_ANULADA", mensaje: "La factura fue anulada: esta compra ya no se puede recibir." };
-  if (e.estadoDeLaParte !== "PENDIENTE") return { ok: false, codigo: "YA_RECIBIDA", mensaje: MENSAJE_RECEPCION_YA_RECIBIDA };
+  if (e.estadoDeLaParte !== "PENDIENTE") return { ok: true, yaRecibida: true };
   if (e.seccion === "AJENA") return { ok: false, codigo: "SECCION_NO_ENCONTRADA", mensaje: "No se encontró la sección." };
   if (e.seccion === "INACTIVA") return { ok: false, codigo: "SECCION_INACTIVA" };
-  if (e.diaStock < e.diaFactura || e.diaStock > e.hoy) return { ok: false, codigo: "FECHA_FUERA_DE_RANGO", mensaje: mensajeFechaDeStockFueraDeRango(e.diaFactura, e.hoy) };
-  return { ok: true };
+  return { ok: true, yaRecibida: false };
 }
 
 // ================================================================================================
@@ -145,82 +138,36 @@ function pasosEnteros(cantidad: number): number | null {
   return pasos.isInteger() ? pasos.toNumber() : null;
 }
 
-/** Lo que la regla necesita saber de cada renglón de mercadería de la compra pendiente. `decimales` es la precisión de la unidad de stock del producto. */
-interface RenglonParaEntradas {
-  renglonId: string;
-  cantidad: number;
-  decimales: number;
-}
-
 export interface EntradaDeRecepcion {
   renglonId: string;
   seccionId: string;
-  cantidad: number;
 }
 
-export type CodigoDeRechazoDeEntradas = "SIN_ENTRADAS" | "RENGLON_AJENO" | "ENTRADA_REPETIDA" | "CANTIDAD_INVALIDA" | "CANTIDAD_NO_SUMA" | "RENGLON_SIN_ENTRADAS";
+export type CodigoDeRechazoDeEntradas = "SIN_ENTRADAS" | "RENGLON_AJENO" | "ENTRADA_REPETIDA" | "RENGLON_SIN_ENTRADAS";
 
 type ResultadoDeEntradas = { ok: true } | { ok: false; codigo: CodigoDeRechazoDeEntradas; mensaje: string };
 
 const MENSAJE_SIN_ENTRADAS = "Indicá la sección donde entra cada renglón de la compra.";
 const MENSAJE_RENGLON_AJENO = "No se encontró uno de los renglones en esta compra.";
-const MENSAJE_ENTRADA_REPETIDA = "Un renglón no puede entrar dos veces en la misma sección: juntá las cantidades.";
+const MENSAJE_ENTRADA_REPETIDA = "Cada renglón entra entero en una sola sección.";
 const MENSAJE_RENGLON_SIN_ENTRADAS = "Falta indicar la sección donde entra uno de los renglones de la compra.";
 
 /**
- * ¿Sirven las entradas de stock de la recepción? Cada entrada es `{ renglón, sección, cantidad }`: un renglón puede FRACCIONARSE entre varias secciones. Reglas, en este orden: hay al menos una entrada → cada renglón es de la compra → no se repite
- * (renglón, sección) → cada cantidad es mayor que cero, con hasta los decimales de la unidad del producto y no más de 4 → todo renglón de mercadería de la compra tiene entradas → por cada renglón, la SUMA de sus entradas es EXACTAMENTE su
- * cantidad (aritmética en pasos enteros de 10^-4, sin flotantes). Que cada sección sea propia de la sucursal y esté activa lo mira `decidirConfirmacionDeRecepcion` con lo que lee el caso de uso.
- * DIFERENCIA con Pedernal, declarada: allá la suma de las entradas de una línea tiene que ser MENOR O IGUAL a lo recibido (`entrada_de_linea_excede_lo_recibido`, en su recepción hay una cantidad recibida aparte de la pedida); en Motor2 la
- * única cantidad es la del renglón de la factura (lo facturado) y no hay otra «recibida», así que la suma es EXACTA. El faltante físico se registra después, en la etapa de diferencias (tres vías).
+ * ¿Sirven los destinos de la recepción? Cada entrada es `{ renglón, sección }`: UN solo destino por renglón, que recibe la cantidad TOTAL del renglón (paridad con Pedernal: una sola asignación por línea; no se divide un renglón entre
+ * secciones). Reglas, en este orden: hay al menos una entrada → cada renglón es de la compra → ningún renglón aparece dos veces → todo renglón de mercadería de la compra tiene su destino. Que cada sección sea propia de la sucursal y
+ * esté activa lo mira `decidirConfirmacionDeRecepcion` con lo que lee el caso de uso.
  */
-export function validarEntradasDeRecepcion(renglones: readonly RenglonParaEntradas[], entradas: readonly EntradaDeRecepcion[]): ResultadoDeEntradas {
+export function validarEntradasDeRecepcion(renglonIds: readonly string[], entradas: readonly EntradaDeRecepcion[]): ResultadoDeEntradas {
   if (entradas.length === 0) return { ok: false, codigo: "SIN_ENTRADAS", mensaje: MENSAJE_SIN_ENTRADAS };
-  const porId = new Map(renglones.map((r) => [r.renglonId, r]));
-  const vistas = new Set<string>();
-  const sumaPorRenglon = new Map<string, number>();
+  const delaCompra = new Set(renglonIds);
+  const vistos = new Set<string>();
   for (const e of entradas) {
-    const r = porId.get(e.renglonId);
-    if (!r) return { ok: false, codigo: "RENGLON_AJENO", mensaje: MENSAJE_RENGLON_AJENO };
-    const clave = JSON.stringify([e.renglonId, e.seccionId]);
-    if (vistas.has(clave)) return { ok: false, codigo: "ENTRADA_REPETIDA", mensaje: MENSAJE_ENTRADA_REPETIDA };
-    vistas.add(clave);
-    const pasos = typeof e.cantidad === "number" && Number.isFinite(e.cantidad) && e.cantidad > 0 && e.cantidad < CANTIDAD_MAXIMA_SEGUN_REMITO ? pasosEnteros(e.cantidad) : null;
-    const pasosDeLaUnidad = pasos === null ? null : new Decimal(e.cantidad).times(new Decimal(10).pow(r.decimales));
-    if (pasos === null || pasosDeLaUnidad === null || !pasosDeLaUnidad.isInteger()) {
-      return { ok: false, codigo: "CANTIDAD_INVALIDA", mensaje: mensajeDeCantidadInvalida(r.decimales) };
-    }
-    sumaPorRenglon.set(e.renglonId, (sumaPorRenglon.get(e.renglonId) ?? 0) + pasos);
+    if (!delaCompra.has(e.renglonId)) return { ok: false, codigo: "RENGLON_AJENO", mensaje: MENSAJE_RENGLON_AJENO };
+    if (vistos.has(e.renglonId)) return { ok: false, codigo: "ENTRADA_REPETIDA", mensaje: MENSAJE_ENTRADA_REPETIDA };
+    vistos.add(e.renglonId);
   }
-  for (const r of renglones) {
-    const suma = sumaPorRenglon.get(r.renglonId);
-    if (suma === undefined) return { ok: false, codigo: "RENGLON_SIN_ENTRADAS", mensaje: MENSAJE_RENGLON_SIN_ENTRADAS };
-    const esperado = pasosEnteros(r.cantidad);
-    if (esperado === null || suma !== esperado) {
-      return { ok: false, codigo: "CANTIDAD_NO_SUMA", mensaje: `Las cantidades repartidas entre las secciones tienen que sumar exactamente ${formatearCantidad(r.cantidad)}, la cantidad del renglón.` };
-    }
-  }
+  for (const id of renglonIds) if (!vistos.has(id)) return { ok: false, codigo: "RENGLON_SIN_ENTRADAS", mensaje: MENSAJE_RENGLON_SIN_ENTRADAS };
   return { ok: true };
-}
-
-function mensajeDeCantidadInvalida(decimales: number): string {
-  return decimales === 0
-    ? "Cada cantidad tiene que ser un número entero mayor que cero (la unidad del producto no admite decimales)."
-    : `Cada cantidad tiene que ser mayor que cero, con hasta ${decimales} decimales (la precisión de la unidad del producto).`;
-}
-
-function formatearCantidad(n: number): string {
-  return new Decimal(n).toString().replace(".", ",");
-}
-
-/**
- * El precio TOTAL de un renglón repartido entre sus entradas, en proporción exacta a la cantidad de cada una: devuelve el precio de cada entrada (en pesos, con 2 decimales) y la SUMA da EXACTAMENTE `precioTotal` (en centavos enteros,
- * por MAYOR RESIDUO con `repartirEnteros`: la regla de reparto exacto del repo; a igual resto gana la primera entrada). Con una sola entrada devuelve el precio entero. El precio por unidad de stock del renglón es el mismo para todas.
- */
-export function prorratearPrecioDeRenglon(precioTotal: number, cantidades: readonly number[]): number[] {
-  const centavos = aCentavos(precioTotal);
-  const pesos = cantidades.map((c) => pasosEnteros(c) ?? 0);
-  return repartirEnteros(centavos, pesos).map((c) => new Decimal(c).dividedBy(100).toNumber());
 }
 
 export type CodigoDeRechazoDeRegistroDeControl = "NO_ES_DE_ESTA_SUCURSAL" | "YA_ANULADA" | "YA_RECIBIDA";

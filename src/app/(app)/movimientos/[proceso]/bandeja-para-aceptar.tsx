@@ -10,7 +10,7 @@ import { Campo } from "@/ui/primitivas/campo";
 import { Selector } from "@/ui/primitivas/selector";
 import { CampoFecha } from "@/ui/componentes/selectores/campo-fecha";
 import { formatearCantidad } from "@/core/formato-de-numero";
-import { ETIQUETA_DE_CONDICION_DE_CONTROL, LARGO_MAXIMO_DE_LA_OBSERVACION, validarEntradasDeRecepcion, type CondicionDeControl } from "@/core/compras/public";
+import { ETIQUETA_DE_CONDICION_DE_CONTROL, LARGO_MAXIMO_DE_LA_OBSERVACION, type CondicionDeControl } from "@/core/compras/public";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 
 /**
@@ -108,14 +108,13 @@ export function BandejaParaAceptar({ propuestas, secciones }: { propuestas: Prop
  * Compras, recepción separada (N3-a y N3-b): una compra cargada «pendiente de recibir» (módulo `recepcion_de_compras` encendido): todavía no entró al stock. Sin importes. Cada renglón de mercadería muestra su producto y su cantidad y tiene dos cosas:
  *  - el CONTROL (Conforme / Con observaciones / Rechazada, con su observación y, si se quiere, la cantidad según remito): lo ve y lo guarda quien tiene `compra_controlar_recepcion` (quien recibe, el operador también). Una línea sin control queda
  *    «No se constató»; un control guardado no se cambia. NO cambia cuánto stock entra: una línea rechazada entra igual.
- *  - la SECCIÓN (depósito) donde entra, que se puede DIVIDIR entre varias secciones con su cantidad (la suma tiene que dar exactamente la cantidad del renglón): la ve quien tiene `compra_recibir` (gerente o administrador), junto con la fecha de
- *    stock (por defecto la de la factura; entre esa fecha y hoy) y el botón de confirmar: recién ahí entran el stock, el costo y el gasto.
+ *  - la SECCIÓN (depósito) donde entra ENTERO el renglón (un solo destino por renglón): la ve quien tiene `compra_recibir` (gerente o administrador), junto con el botón de confirmar: recién ahí entran el stock, el costo y el gasto, con la
+ *    fecha de la confirmación (no se elige). Si la compra ya estaba recibida (otra persona la confirmó antes), se avisa como información y no se carga stock de nuevo.
  */
 export interface RenglonPorRecibirVista {
   renglonId: string;
   productoNombre: string;
   unidadNombre: string;
-  decimales: number;
   cantidadStock: number;
   /** El control ya registrado (`null` = «no se constató»). */
   control: { condicion: string; observacion: string | null; cantidadSegunRemito: number | null } | null;
@@ -134,7 +133,6 @@ export interface CompraPorRecibirVista {
 }
 
 type Seccion = { id: string; nombre: string };
-type EntradaEditable = { seccionId: string; cantidad: string };
 type ControlEditable = { condicion: string; observacion: string; cantidadSegunRemito: string };
 
 const OPCIONES_DE_CONTROL = [
@@ -158,31 +156,15 @@ function textoDelControl(c: NonNullable<RenglonPorRecibirVista["control"]>): str
 function TarjetaDeCompraPorRecibir({ compra, secciones, puedeControlar, puedeConfirmar }: { compra: CompraPorRecibirVista; secciones: Seccion[]; puedeControlar: boolean; puedeConfirmar: boolean }) {
   const router = useRouter();
   const primeraSeccion = secciones[0]?.id ?? "";
-  const [dia, setDia] = useState(compra.diaFactura);
-  const [entradas, setEntradas] = useState<Record<string, EntradaEditable[]>>(() =>
-    Object.fromEntries(compra.renglones.map((r) => [r.renglonId, [{ seccionId: primeraSeccion, cantidad: textoDeCantidad(r.cantidadStock) }]]))
-  );
+  const [destinos, setDestinos] = useState<Record<string, string>>(() => Object.fromEntries(compra.renglones.map((r) => [r.renglonId, primeraSeccion])));
   const [controles, setControles] = useState<Record<string, ControlEditable>>({});
-  const [mensaje, setMensaje] = useState<{ ok: boolean; texto: string } | null>(null);
+  const [mensaje, setMensaje] = useState<{ variante: "exito" | "error" | "informacion"; texto: string } | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const cambiarEntrada = (renglonId: string, i: number, cambio: Partial<EntradaEditable>) =>
-    setEntradas((e) => ({ ...e, [renglonId]: (e[renglonId] ?? []).map((x, j) => (j === i ? { ...x, ...cambio } : x)) }));
-  const dividir = (renglonId: string) =>
-    setEntradas((e) => {
-      const actuales = e[renglonId] ?? [];
-      const libre = secciones.find((s) => !actuales.some((x) => x.seccionId === s.id))?.id ?? primeraSeccion;
-      return { ...e, [renglonId]: [...actuales, { seccionId: libre, cantidad: "" }] };
-    });
-  const quitar = (renglonId: string, i: number) => setEntradas((e) => ({ ...e, [renglonId]: (e[renglonId] ?? []).filter((_, j) => j !== i) }));
   const cambiarControl = (renglonId: string, cambio: Partial<ControlEditable>) =>
     setControles((c) => ({ ...c, [renglonId]: { ...(c[renglonId] ?? { condicion: "", observacion: "", cantidadSegunRemito: "" }), ...cambio } }));
 
-  const entradasParaEnviar = compra.renglones.flatMap((r) => (entradas[r.renglonId] ?? []).map((x) => ({ renglonId: r.renglonId, seccionId: x.seccionId, cantidad: numeroDeCantidad(x.cantidad) })));
-  const problemaDeEntradas = validarEntradasDeRecepcion(
-    compra.renglones.map((r) => ({ renglonId: r.renglonId, cantidad: r.cantidadStock, decimales: r.decimales })),
-    entradasParaEnviar
-  );
+  const entradasParaEnviar = compra.renglones.map((r) => ({ renglonId: r.renglonId, seccionId: destinos[r.renglonId] ?? "" }));
   const controlesParaGuardar = compra.renglones
     .filter((r) => r.control === null && (controles[r.renglonId]?.condicion ?? "") !== "")
     .map((r) => {
@@ -198,13 +180,14 @@ function TarjetaDeCompraPorRecibir({ compra, secciones, puedeControlar, puedeCon
   const guardarControl = () =>
     startTransition(async () => {
       const r = await registrarControlDeRecepcion(compra.facturaId, controlesParaGuardar);
-      setMensaje({ ok: r.ok, texto: r.mensaje });
+      setMensaje({ variante: r.ok ? "exito" : "error", texto: r.mensaje });
       router.refresh();
     });
   const confirmar = () =>
     startTransition(async () => {
-      const r = await confirmarRecepcionDeFactura(compra.facturaId, entradasParaEnviar, mediodiaDelDia(dia, ZONA_ARGENTINA));
-      setMensaje({ ok: r.ok, texto: r.mensaje });
+      const r = await confirmarRecepcionDeFactura(compra.facturaId, entradasParaEnviar);
+      // «Ya estaba recibida» (otra persona la confirmó antes) es información, no un error ni una recepción nueva.
+      setMensaje({ variante: !r.ok ? "error" : r.yaExistia ? "informacion" : "exito", texto: r.mensaje });
       // Con éxito la compra sale de la lista (ya no está pendiente); si ya estaba recibida o anulada, también: se refresca para verlo.
       router.refresh();
     });
@@ -265,33 +248,15 @@ function TarjetaDeCompraPorRecibir({ compra, secciones, puedeControlar, puedeCon
                   )}
                 </div>
               )}
-              {puedeConfirmar &&
-                (entradas[r.renglonId] ?? []).map((x, i) => (
-                  <div key={i} className="flex flex-wrap items-end gap-2">
-                    <div className="w-52">
-                      <Selector etiqueta="Depósito" tamano="compacto" value={x.seccionId} onChange={(e) => cambiarEntrada(r.renglonId, i, { seccionId: e.target.value })}>
-                        {secciones.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.nombre}
-                          </option>
-                        ))}
-                      </Selector>
-                    </div>
-                    <div className="w-32">
-                      <Campo etiqueta="Cantidad que entra" tamano="compacto" value={x.cantidad} onChange={(e) => cambiarEntrada(r.renglonId, i, { cantidad: e.target.value })} />
-                    </div>
-                    {i > 0 && (
-                      <Boton tamano="compacto" variante="secundario" onClick={() => quitar(r.renglonId, i)} disabled={pending}>
-                        Quitar
-                      </Boton>
-                    )}
-                  </div>
-                ))}
               {puedeConfirmar && (
-                <div>
-                  <Boton tamano="compacto" variante="secundario" onClick={() => dividir(r.renglonId)} disabled={pending || secciones.length < 2}>
-                    Dividir en otra sección
-                  </Boton>
+                <div className="w-52">
+                  <Selector etiqueta="Depósito" tamano="compacto" value={destinos[r.renglonId] ?? ""} onChange={(e) => setDestinos((d) => ({ ...d, [r.renglonId]: e.target.value }))}>
+                    {secciones.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.nombre}
+                      </option>
+                    ))}
+                  </Selector>
                 </div>
               )}
             </li>
@@ -306,18 +271,14 @@ function TarjetaDeCompraPorRecibir({ compra, secciones, puedeControlar, puedeCon
         </div>
       )}
       {puedeConfirmar && (
-        <div className="flex flex-wrap items-end gap-2">
-          <div className="w-44">
-            <CampoFecha etiqueta="Fecha de stock" tamano="compacto" value={dia} onChange={(e) => setDia(e.target.value)} />
-          </div>
-          <Boton tamano="compacto" onClick={confirmar} disabled={pending || !problemaDeEntradas.ok || entradasParaEnviar.some((e) => !e.seccionId)}>
+        <div>
+          <Boton tamano="compacto" onClick={confirmar} disabled={pending || entradasParaEnviar.some((e) => !e.seccionId)}>
             {pending ? "Confirmando..." : "Confirmar recepción"}
           </Boton>
         </div>
       )}
-      {puedeConfirmar && !problemaDeEntradas.ok && <p className="text-xs text-tinta-tenue">{problemaDeEntradas.mensaje}</p>}
       {mensaje && (
-        <Aviso variante={mensaje.ok ? "exito" : "error"} forma="en-linea">
+        <Aviso variante={mensaje.variante} forma="en-linea">
           {mensaje.texto}
         </Aviso>
       )}

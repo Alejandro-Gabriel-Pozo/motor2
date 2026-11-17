@@ -88,28 +88,26 @@ export type DatosAceptarParteDeFactura = { repetida: true; operacionId: null } |
 
 export type ResultadoAceptarParteDeFactura = ResultadoCaso<DatosAceptarParteDeFactura, CodigoAceptarParteDeFactura>;
 
-/** Una entrada de stock de la recepción: cuánto de UN renglón de la compra entra en UNA sección. Un renglón puede fraccionarse entre varias secciones; la suma de sus entradas es EXACTAMENTE su cantidad. */
+/** El destino de UN renglón de la compra en la recepción: la sección donde entra, con la cantidad TOTAL del renglón (un solo destino por renglón: paridad con Pedernal; no se divide entre secciones). */
 export interface EntradaDeRecepcionInput {
   renglonId: string;
   seccionId: string;
-  cantidad: number;
 }
 
 /**
- * Compras, recepción separada (N3-a y N3-b) — «Confirmar recepción»: un gerente o administrador confirma que llegó la mercadería de una compra cargada «pendiente de recibir», elige para cada renglón la sección (depósito) donde entra
- * (puede dividirlo entre varias) y la fecha de stock (entre la fecha de la factura y hoy, en hora argentina). Sin clave de reintento: es idempotente por estado (confirmar dos veces = la segunda devuelve «ya recibida», sin stock nuevo).
+ * Compras, recepción separada (N3-a y N3-b) — «Confirmar recepción»: un gerente o administrador confirma que llegó la mercadería de una compra cargada «pendiente de recibir» y elige, para cada renglón, la sección (depósito) donde entra
+ * entero. La fecha del stock es la de la confirmación (hora argentina; la pone el servidor, no se elige). Sin clave de reintento: es idempotente por estado (confirmar dos veces = la segunda devuelve éxito con `yaExistia`, sin stock nuevo).
  * El control de cada línea (conforme, con observaciones, rechazada) se registró antes con `ComandoRegistrarControlDeRecepcion` y NO cambia cuánto stock entra.
  */
 export interface ComandoConfirmarRecepcionDeFactura {
   facturaId: string;
-  /** El mediodía argentino del día de stock elegido. */
-  fechaStock: Date;
   entradas: EntradaDeRecepcionInput[];
 }
 
 export type CodigoConfirmarRecepcionDeFactura = "NO_ENCONTRADA" | CodigoDeRechazoDeRecepcion | CodigoDeRechazoDeEntradas | "PRODUCTO_NO_DISPONIBLE" | "SIN_LINEAS";
 
-export type DatosConfirmarRecepcionDeFactura = { operacionId: string; movimientos: number };
+/** `yaExistia`: la parte ya estaba recibida (repetición): no se escribió ni se auditó nada (`movimientos` cuenta los que escribió ESTA llamada; `operacionId` es la compra de la recepción original, `null` solo si se perdió una carrera). */
+export type DatosConfirmarRecepcionDeFactura = { operacionId: string | null; movimientos: number; yaExistia: boolean };
 
 export type ResultadoConfirmarRecepcionDeFactura = ResultadoCaso<DatosConfirmarRecepcionDeFactura, CodigoConfirmarRecepcionDeFactura>;
 

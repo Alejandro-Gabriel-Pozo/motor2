@@ -20,23 +20,15 @@ export const dimensionesDeRecepcion = (): Record<string, string[]> => dimensione
 export const tablaDeRecepcion = (seccion: string): TablaDelOraculo => tablaDelOraculo(seccion, TEXTO_DEL_ORACULO_DE_RECEPCION);
 export { productoCartesiano };
 
-/** Los días fijos con que se evalúan las reglas: la factura del 10, hoy es el 15. */
-const DIA_FACTURA = "2026-11-10";
-const HOY = "2026-11-15";
-const DIA_DE_STOCK: Record<string, string> = { VALIDA: "2026-11-12", ANTERIOR_A_LA_FACTURA: "2026-11-09", FUTURA: "2026-11-16" };
-
-export type FilaDeConfirmacion = { M: string; O: string; P: string; E: string; S: string; F: string };
+export type FilaDeConfirmacion = { M: string; O: string; P: string; E: string; S: string };
 
 /** La entrada de la regla pura de confirmar para una fila del oráculo. */
-function entradaDeLaRegla(f: Pick<FilaDeConfirmacion, "P" | "E" | "S" | "F">): EntradaDeConfirmacionDeRecepcion {
+function entradaDeLaRegla(f: Pick<FilaDeConfirmacion, "P" | "E" | "S">): EntradaDeConfirmacionDeRecepcion {
   return {
     esDeLaSucursalDelActor: f.P === "PROPIA",
     facturaAnulada: f.E === "ANULADA",
     estadoDeLaParte: f.E === "RECIBIDA" ? "RECIBIDA" : "PENDIENTE",
     seccion: f.S as EntradaDeConfirmacionDeRecepcion["seccion"],
-    diaFactura: DIA_FACTURA,
-    diaStock: DIA_DE_STOCK[f.F]!,
-    hoy: HOY,
   };
 }
 
@@ -53,7 +45,7 @@ export function resultadoDeConfirmar(f: FilaDeConfirmacion): string {
   const puerta = puertaDeAcceso(f);
   if (puerta) return puerta;
   const decision = decidirConfirmacionDeRecepcion(entradaDeLaRegla(f));
-  return decision.ok ? "CONFIRMA" : `RECHAZA_${decision.codigo}`;
+  return decision.ok ? (decision.yaRecibida ? "CONFIRMA_YA_RECIBIDA" : "CONFIRMA") : `RECHAZA_${decision.codigo}`;
 }
 
 /** Lo que las reglas reales deciden para una fila de «Cargar la factura». */
@@ -88,19 +80,17 @@ export function resultadoDePuertaDeControl(f: FilaDePuertaDeControl): string {
   return d.ok ? "GUARDA" : `RECHAZA_${d.codigo}`;
 }
 
-/** Las entradas de stock de cada valor de la dimensión N para un renglón de 10 unidades (de una unidad con 2 decimales) y dos secciones. */
-const ENTRADAS_DE_PRUEBA: Record<string, { renglonId: string; seccionId: string; cantidad: number }[]> = {
-  UNA_SECCION: [{ renglonId: "r1", seccionId: "s1", cantidad: 10 }],
-  FRACCIONADA: [{ renglonId: "r1", seccionId: "s1", cantidad: 4 }, { renglonId: "r1", seccionId: "s2", cantidad: 6 }],
-  SUMA_MENOR: [{ renglonId: "r1", seccionId: "s1", cantidad: 4 }, { renglonId: "r1", seccionId: "s2", cantidad: 5 }],
-  SUMA_MAYOR: [{ renglonId: "r1", seccionId: "s1", cantidad: 4 }, { renglonId: "r1", seccionId: "s2", cantidad: 6.5 }],
-  REPETIDA: [{ renglonId: "r1", seccionId: "s1", cantidad: 4 }, { renglonId: "r1", seccionId: "s1", cantidad: 6 }],
+/** Los destinos de stock de cada valor de la dimensión N para dos renglones (r1 y r2) y dos secciones. */
+const ENTRADAS_DE_PRUEBA: Record<string, { renglonId: string; seccionId: string }[]> = {
+  UNA_SECCION: [{ renglonId: "r1", seccionId: "s1" }, { renglonId: "r2", seccionId: "s2" }],
+  DOS_SECCIONES: [{ renglonId: "r1", seccionId: "s1" }, { renglonId: "r1", seccionId: "s2" }, { renglonId: "r2", seccionId: "s2" }],
+  MISMA_SECCION_DOS_VECES: [{ renglonId: "r1", seccionId: "s1" }, { renglonId: "r1", seccionId: "s1" }, { renglonId: "r2", seccionId: "s2" }],
 };
 
 export type FilaDeEntradas = { N: string; K: string };
 
 /** Lo que la regla real decide para una fila de «Entradas de la confirmación». La dimensión K (el control) NO entra en la regla: es justamente lo que el oráculo declara que no cambia el resultado. */
 export function resultadoDeEntradas(f: FilaDeEntradas): string {
-  const r = validarEntradasDeRecepcion([{ renglonId: "r1", cantidad: 10, decimales: 2 }], ENTRADAS_DE_PRUEBA[f.N]!);
+  const r = validarEntradasDeRecepcion(["r1", "r2"], ENTRADAS_DE_PRUEBA[f.N]!);
   return r.ok ? "CONFIRMA" : `RECHAZA_${r.codigo}`;
 }

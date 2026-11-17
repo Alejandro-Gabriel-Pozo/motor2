@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ESTADOS_DE_RECEPCION, MENSAJE_RECEPCION_NO_ENCONTRADA, MENSAJE_RECEPCION_YA_RECIBIDA, decidirConfirmacionDeRecepcion, estadoInicialDeLaParte, mensajeFechaDeStockFueraDeRango } from "@/core/compras/public";
+import { ESTADOS_DE_RECEPCION, MENSAJE_RECEPCION_NO_ENCONTRADA, decidirConfirmacionDeRecepcion, estadoInicialDeLaParte, validarEntradasDeRecepcion } from "@/core/compras/public";
 import type { EntradaDeConfirmacionDeRecepcion } from "@/core/compras/public";
 
 /** Las reglas PURAS de la recepción separada (Compras N3-a). La combinación completa contra el oráculo escrito aparte vive en `test/core/combinaciones-compras-recepcion.test.ts`; acá, los casos con nombre. */
@@ -8,9 +8,6 @@ const BASE: EntradaDeConfirmacionDeRecepcion = {
   facturaAnulada: false,
   estadoDeLaParte: "PENDIENTE",
   seccion: "PROPIA_ACTIVA",
-  diaFactura: "2026-11-10",
-  diaStock: "2026-11-12",
-  hoy: "2026-11-15",
 };
 const con = (cambios: Partial<EntradaDeConfirmacionDeRecepcion>) => decidirConfirmacionDeRecepcion({ ...BASE, ...cambios });
 
@@ -24,30 +21,44 @@ describe("estadoInicialDeLaParte", () => {
 });
 
 describe("decidirConfirmacionDeRecepcion", () => {
-  it("una parte pendiente, de esta sucursal, con sección activa propia y fecha en rango: se puede", () => {
-    expect(con({})).toEqual({ ok: true });
+  it("una parte pendiente, de esta sucursal, con sección activa propia: se puede (y no es una repetición)", () => {
+    expect(con({})).toEqual({ ok: true, yaRecibida: false });
   });
 
-  it("la fecha de stock vale desde el día de la factura hasta hoy, ambos incluidos", () => {
-    expect(con({ diaStock: BASE.diaFactura })).toEqual({ ok: true });
-    expect(con({ diaStock: BASE.hoy })).toEqual({ ok: true });
-    for (const diaStock of ["2026-11-09", "2026-11-16"]) {
-      expect(con({ diaStock })).toEqual({ ok: false, codigo: "FECHA_FUERA_DE_RANGO", mensaje: mensajeFechaDeStockFueraDeRango("2026-11-10", "2026-11-15") });
-    }
-    expect(mensajeFechaDeStockFueraDeRango("2026-11-10", "2026-11-15")).toBe("La fecha de stock tiene que estar entre la fecha de la factura (2026-11-10) y hoy (2026-11-15).");
+  it("repetir confirmar (la parte ya está recibida) es ÉXITO con yaRecibida, sin mirar la sección (paridad con Pedernal: yaExistia)", () => {
+    for (const seccion of ["PROPIA_ACTIVA", "AJENA", "INACTIVA"] as const) expect(con({ estadoDeLaParte: "RECIBIDA", seccion })).toEqual({ ok: true, yaRecibida: true });
   });
 
-  it("orden de las razones: sucursal ajena → anulada → ya recibida → sección ajena → sección inactiva → fecha", () => {
-    const todoMal = { esDeLaSucursalDelActor: false, facturaAnulada: true, estadoDeLaParte: "RECIBIDA", seccion: "AJENA", diaStock: "2026-12-31" } as const;
+  it("orden de las razones: sucursal ajena → anulada → ya recibida (éxito) → sección ajena → sección inactiva", () => {
+    const todoMal = { esDeLaSucursalDelActor: false, facturaAnulada: true, estadoDeLaParte: "RECIBIDA", seccion: "AJENA" } as const;
     expect(con(todoMal)).toMatchObject({ codigo: "NO_ES_DE_ESTA_SUCURSAL", mensaje: MENSAJE_RECEPCION_NO_ENCONTRADA });
     expect(con({ ...todoMal, esDeLaSucursalDelActor: true })).toMatchObject({ codigo: "YA_ANULADA" });
-    expect(con({ ...todoMal, esDeLaSucursalDelActor: true, facturaAnulada: false })).toMatchObject({ codigo: "YA_RECIBIDA", mensaje: MENSAJE_RECEPCION_YA_RECIBIDA });
+    expect(con({ ...todoMal, esDeLaSucursalDelActor: true, facturaAnulada: false })).toEqual({ ok: true, yaRecibida: true });
     expect(con({ ...todoMal, esDeLaSucursalDelActor: true, facturaAnulada: false, estadoDeLaParte: "PENDIENTE" })).toMatchObject({ codigo: "SECCION_NO_ENCONTRADA" });
     expect(con({ ...todoMal, esDeLaSucursalDelActor: true, facturaAnulada: false, estadoDeLaParte: "PENDIENTE", seccion: "INACTIVA" })).toMatchObject({ codigo: "SECCION_INACTIVA" });
-    expect(con({ ...todoMal, esDeLaSucursalDelActor: true, facturaAnulada: false, estadoDeLaParte: "PENDIENTE", seccion: "PROPIA_ACTIVA" })).toMatchObject({ codigo: "FECHA_FUERA_DE_RANGO" });
   });
 
   it("los estados de recepción del código son los dos del CHECK de la base", () => {
     expect([...ESTADOS_DE_RECEPCION]).toEqual(["PENDIENTE", "RECIBIDA"]);
+  });
+});
+
+describe("validarEntradasDeRecepcion: UN solo destino por renglón", () => {
+  const renglones = ["r1", "r2"];
+
+  it("cada renglón con su destino: sirve", () => {
+    expect(validarEntradasDeRecepcion(renglones, [{ renglonId: "r1", seccionId: "s1" }, { renglonId: "r2", seccionId: "s2" }])).toEqual({ ok: true });
+  });
+
+  it("un renglón en dos secciones (dividido) o dos veces en la misma se rechaza: ENTRADA_REPETIDA", () => {
+    for (const segunda of ["s2", "s1"]) {
+      expect(validarEntradasDeRecepcion(renglones, [{ renglonId: "r1", seccionId: "s1" }, { renglonId: "r1", seccionId: segunda }, { renglonId: "r2", seccionId: "s1" }])).toMatchObject({ ok: false, codigo: "ENTRADA_REPETIDA" });
+    }
+  });
+
+  it("sin entradas, un renglón ajeno y un renglón sin destino se rechazan con su código", () => {
+    expect(validarEntradasDeRecepcion(renglones, [])).toMatchObject({ ok: false, codigo: "SIN_ENTRADAS" });
+    expect(validarEntradasDeRecepcion(renglones, [{ renglonId: "otro", seccionId: "s1" }])).toMatchObject({ ok: false, codigo: "RENGLON_AJENO" });
+    expect(validarEntradasDeRecepcion(renglones, [{ renglonId: "r1", seccionId: "s1" }])).toMatchObject({ ok: false, codigo: "RENGLON_SIN_ENTRADAS" });
   });
 });

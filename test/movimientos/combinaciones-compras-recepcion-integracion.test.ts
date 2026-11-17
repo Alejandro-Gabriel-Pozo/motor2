@@ -21,17 +21,15 @@ import type { ContextoDeAccion } from "../../src/server/actions/tipos";
  * Compras N3-a, recepción separada — el ORÁCULO DE COMBINACIONES contra la base real (regla «Combinaciones» del dueño). `docs/oraculo-combinaciones-compras-recepcion-2026-11-16.md` es la tabla de reglas esperadas, escrita aparte del
  * código; `test/core/combinaciones-compras-recepcion.test.ts` recorre TODAS sus filas contra las reglas puras. Acá se recorre contra los casos de uso y la Server Action reales, con Postgres:
  *  - «Cargar la factura» (módulo × reparto): con qué estado nace la parte y si entra o no el stock;
- *  - «Confirmar la recepción» con módulo encendido y rol administrador, TODAS las combinaciones de sucursal de la parte × estado × sección × fecha (54), contra el caso de uso: el resultado y, cuando confirma, el stock; cuando rechaza, que
- *    no entró nada;
- *  - la puerta de la Server Action (módulo × rol): con una parte pendiente, propia, sección activa propia y fecha válida, el guard real decide (6 filas).
+ *  - «Confirmar la recepción» con módulo encendido y rol administrador, TODAS las combinaciones de sucursal de la parte × estado × sección (18), contra el caso de uso: el resultado y, cuando confirma, el stock; cuando repite (ya
+ *    recibida), éxito sin mover nada; cuando rechaza, que no entró nada;
+ *  - la puerta de la Server Action (módulo × rol): con una parte pendiente, propia y sección activa propia, el guard real decide (6 filas).
  * (El resto de las combinaciones —módulo o rol rechazados con cualquier estado— lo cubre el recorrido exhaustivo de las reglas puras: el guard rechaza antes de mirar nada más.)
  */
 const E = EMPRESA_POR_DEFECTO_ID;
 const diaDeHoy = () => diaDeCalendario(new Date(), ZONA_ARGENTINA);
 const mediodia = (dias: number) => mediodiaDelDia(sumarDias(diaDeHoy(), dias), ZONA_ARGENTINA);
 const DIAS_DE_LA_FACTURA = -5;
-/** La fecha de stock de cada valor de la dimensión F, respecto de la factura (día -5) y de hoy. */
-const FECHA_DE_STOCK: Record<string, Date> = { VALIDA: mediodia(-3), ANTERIOR_A_LA_FACTURA: mediodia(-6), FUTURA: mediodia(1) };
 
 let s3: string, s4: string;
 let secDe: Record<string, { activa: string; inactiva: string }>;
@@ -108,29 +106,33 @@ describe("oráculo contra la base real: cargar la factura (módulo × reparto)",
 describe("oráculo contra la base real: confirmar la recepción (módulo encendido, rol administrador)", () => {
   const filas = tablaDeRecepcion("Confirmar la recepción").filas.filter((f) => f["M"] === "ENCENDIDO" && f["O"] === "ADMINISTRADOR");
 
-  it("el recorte tiene las 54 combinaciones de sucursal de la parte × estado × sección × fecha", () => {
-    expect(filas).toHaveLength(54);
+  it("el recorte tiene las 18 combinaciones de sucursal de la parte × estado × sección", () => {
+    expect(filas).toHaveLength(18);
   });
 
-  it("cada combinación da el resultado de la tabla, y escribe stock solo cuando CONFIRMA", { timeout: 240_000 }, async () => {
+  it("cada combinación da el resultado de la tabla, y escribe stock solo cuando CONFIRMA (la repetición es éxito sin stock nuevo)", { timeout: 240_000 }, async () => {
     await fijarModulosActivos(E, [...MODULOS_VENDIBLES, "recepcion_de_compras"]);
     for (const fila of filas) {
-      const { P, E: estado, S, F } = { P: fila["P"]!, E: fila["E"]!, S: fila["S"]!, F: fila["F"]! };
-      const clave = `P=${P} E=${estado} S=${S} F=${F}`;
+      const { P, E: estado, S } = { P: fila["P"]!, E: fila["E"]!, S: fila["S"]! };
+      const clave = `P=${P} E=${estado} S=${S}`;
       const facturaId = await cargar([{ sucursalId: s3, valor: 100 }]);
       // El estado de la parte (dimensión E): pendiente tal cual nace, recibida confirmándola antes, anulada anulando la factura pendiente.
-      if (estado === "RECIBIDA") expect((await confirmarRecepcionDeFacturaCasoDeUso(actor3(), { facturaId, entradas: await entradasEnteras(facturaId, secDe[s3]!.activa), fechaStock: mediodia(-3) })).ok, clave).toBe(true);
+      if (estado === "RECIBIDA") expect((await confirmarRecepcionDeFacturaCasoDeUso(actor3(), { facturaId, entradas: await entradasEnteras(facturaId, secDe[s3]!.activa) })).ok, clave).toBe(true);
       if (estado === "ANULADA") expect((await anularFacturaProveedorCasoDeUso(actor3(), { facturaId, motivo: "Prueba de combinaciones", claveIdempotencia: randomUUID() })).ok, clave).toBe(true);
       // Quién confirma (dimensión P) y qué sección elige (dimensión S, respecto de SU sucursal).
       const [quien, suSucursal, nombre, otraSucursal] = P === "PROPIA" ? [admin3, s3, "Central", s4] : [admin4, s4, "Sucursal 4", s3];
       const seccionId = S === "PROPIA_ACTIVA" ? secDe[suSucursal]!.activa : S === "INACTIVA" ? secDe[suSucursal]!.inactiva : secDe[otraSucursal]!.activa;
       const antes = await comprasDeStock();
 
-      const r = await confirmarRecepcionDeFacturaCasoDeUso(actorDe(quien, suSucursal, nombre), { facturaId, entradas: await entradasEnteras(facturaId, seccionId), fechaStock: FECHA_DE_STOCK[F]! });
+      const r = await confirmarRecepcionDeFacturaCasoDeUso(actorDe(quien, suSucursal, nombre), { facturaId, entradas: await entradasEnteras(facturaId, seccionId) });
 
-      expect(r.ok ? "CONFIRMA" : `RECHAZA_${r.codigo}`, clave).toBe(fila["Resultado"]);
+      expect(r.ok ? (r.datos.yaExistia ? "CONFIRMA_YA_RECIBIDA" : "CONFIRMA") : `RECHAZA_${r.codigo}`, clave).toBe(fila["Resultado"]);
       const parte = await parteDe(facturaId);
-      if (r.ok) {
+      if (r.ok && r.datos.yaExistia) {
+        // La repetición es éxito pero NO mueve nada: ni compra nueva ni movimientos nuevos.
+        expect([parte.estadoRecepcion, await comprasDeStock()], clave).toEqual(["RECIBIDA", antes]);
+        expect(await prisma.movimientoStock.count({ where: { operacionId: parte.operacionId as string } }), clave).toBe(1);
+      } else if (r.ok) {
         expect([parte.estadoRecepcion, Boolean(parte.operacionId), await comprasDeStock()], clave).toEqual(["RECIBIDA", true, antes + 1]);
         expect(await prisma.movimientoStock.count({ where: { operacionId: parte.operacionId as string, seccionId } }), clave).toBe(1);
       } else {
@@ -143,7 +145,7 @@ describe("oráculo contra la base real: confirmar la recepción (módulo encendi
 });
 
 describe("oráculo contra la base real: la puerta de la Server Action (módulo × rol)", () => {
-  const filas = tablaDeRecepcion("Confirmar la recepción").filas.filter((f) => f["P"] === "PROPIA" && f["E"] === "PENDIENTE" && f["S"] === "PROPIA_ACTIVA" && f["F"] === "VALIDA");
+  const filas = tablaDeRecepcion("Confirmar la recepción").filas.filter((f) => f["P"] === "PROPIA" && f["E"] === "PENDIENTE" && f["S"] === "PROPIA_ACTIVA");
 
   it("el recorte tiene las 6 combinaciones de módulo × rol", () => {
     expect(filas.map((f) => `${f["M"]}|${f["O"]}`).sort()).toEqual(["APAGADO|ADMINISTRADOR", "APAGADO|GERENTE", "APAGADO|OPERADOR", "ENCENDIDO|ADMINISTRADOR", "ENCENDIDO|GERENTE", "ENCENDIDO|OPERADOR"]);
@@ -162,7 +164,7 @@ describe("oráculo contra la base real: la puerta de la Server Action (módulo �
     await mockearUsuarioActual({ id: usuario.id, email: `${O.toLowerCase()}@test.com`, nombre: null });
     const gate = await requierePermiso(usuario.id, s3, "compra_recibir", prisma);
 
-    const r = await confirmarRecepcionDeFactura(facturaId, await entradasEnteras(facturaId, secDe[s3]!.activa), FECHA_DE_STOCK["VALIDA"]!);
+    const r = await confirmarRecepcionDeFactura(facturaId, await entradasEnteras(facturaId, secDe[s3]!.activa));
 
     if (resultado === "CONFIRMA") {
       expect([gate.ok, r.ok]).toEqual([true, true]);

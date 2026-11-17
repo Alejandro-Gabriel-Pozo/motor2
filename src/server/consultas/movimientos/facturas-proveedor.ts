@@ -105,8 +105,6 @@ export interface RenglonPorRecibir {
   renglonId: string;
   productoNombre: string;
   unidadNombre: string;
-  /** Decimales de la unidad de stock: con cuánta precisión se puede fraccionar el renglón entre secciones. */
-  decimales: number;
   cantidadStock: number;
   control: { condicion: string; observacion: string | null; cantidadSegunRemito: number | null } | null;
 }
@@ -130,7 +128,7 @@ export async function listarComprasPorRecibir(sucursalId: string, db: Db): Promi
           renglones: {
             where: { productoId: { not: null } },
             orderBy: { orden: "asc" },
-            select: { id: true, cantidadStock: true, producto: { select: { nombre: true, unidadStock: { select: { nombre: true, decimales: true } } } } },
+            select: { id: true, cantidadStock: true, producto: { select: { nombre: true, unidadStock: { select: { nombre: true } } } } },
           },
         },
       },
@@ -150,7 +148,6 @@ export async function listarComprasPorRecibir(sucursalId: string, db: Db): Promi
         renglonId: r.id,
         productoNombre: r.producto?.nombre ?? "",
         unidadNombre: r.producto?.unidadStock.nombre ?? "",
-        decimales: r.producto?.unidadStock.decimales ?? 4,
         cantidadStock: Number(r.cantidadStock ?? 0),
         control: c ? { condicion: c.condicion, observacion: c.observacion, cantidadSegunRemito: c.cantidadSegunRemito === null ? null : Number(c.cantidadSegunRemito) } : null,
       };

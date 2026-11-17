@@ -18,6 +18,8 @@ Perillas: las pide esta sesión al frente 4 (`conciliacion_de_tres_vias`, que ya
 
 ## Etapa N3-b — control por línea de la recepción
 
+**Actualización 2026-11-17 (paridad con Pedernal, pedido del orquestador):** la confirmación asigna UN solo destino por renglón (entra la cantidad total del renglón en la sección elegida); se retiró «Dividir en otra sección» y la suma exacta por renglón (no hay cita del dueño que pida dividir; Pedernal asigna una sola sección por línea). El esquema no cambia (la clave y el disparador siguen admitiendo varias entradas por renglón: compatible hacia atrás). La fecha del stock es la de la confirmación y repetir confirmar es éxito (`yaExistia`): ver el oráculo `docs/oraculo-combinaciones-compras-recepcion-2026-11-16.md`.
+
 **Necesidad:** «control por línea (conforme, con observaciones, rechazada; observación obligatoria si no es conforme)» — `DDD:198` (16/11, «A»). Motivo de rechazo: «alcanza la observación escrita (lista cerrada solo si el dueño la pide)» (`DDD:198`).
 
 **Modelo (PROPUESTA):** tabla nueva `ControlDeLineaDeRecepcion`, solo inserción: `id` uuid, `empresaId`, `facturaProveedorSucursalId` (la parte) + `facturaProveedorRenglonId`, `condicion` CHECK ∈ {`CONFORME`,`CON_OBSERVACIONES`,`RECHAZADA`}, `observacion` (CHECK: obligatoria si no es `CONFORME`; ≤ 500; lista de caracteres permitidos), `cantidadSegunRemito` opcional (>0), quién y cuándo, `version`. Único `(parte, renglón)`. Sin fila = «no se constató» (vacío explícito; nunca un CONFORME por defecto). Difiere de Pedernal en la forma (satélite de `linea_de_recepcion`) porque Motor2 no tiene recepción propia: el satélite cuelga del renglón de la factura y de la parte. **Temperatura, lotes y series declarados: fuera (nadie los pidió).**
@@ -26,10 +28,10 @@ Perillas: las pide esta sesión al frente 4 (`conciliacion_de_tres_vias`, que ya
 
 | ¿Qué pasa si…? | Resultado |
 |---|---|
-| Repetición | misma confirmación dos veces: la segunda devuelve `YA_RECIBIDA`; el control no se duplica (único por parte y renglón). |
+| Repetición | misma confirmación dos veces: la segunda devuelve ÉXITO con `yaExistia` (paridad con Pedernal, 2026-11-17), sin stock nuevo ni auditoría nueva; el control no se duplica (único por parte y renglón). Una compra anulada sigue siendo error. |
 | Concurrencia | dos confirmaciones: cerrojo de cabecera + guarda de estado; gana una. |
-| Tiempo | fecha de stock entre la de la factura y hoy (como N3-a). |
-| Incertidumbre | falla de red tras commit: reintentar devuelve `YA_RECIBIDA`; la consulta muestra lo constatado. |
+| Tiempo | la fecha del stock es la de la confirmación (hora argentina, mediodía del día de `ahora`); no se elige (paridad con Pedernal, `hechoEn: contexto.ahora`, 2026-11-17: reemplaza «entre la de la factura y hoy» de N3-a). |
+| Incertidumbre | falla de red tras commit: reintentar devuelve éxito con `yaExistia`; la consulta muestra lo constatado. |
 | Error parcial | control + stock + estado en UNA transacción; si falla un renglón no queda nada. |
 | Datos faltantes | línea sin control: se rechaza la confirmación (todas las líneas se constatan) — PROPUESTA; observación vacía con `CON_OBSERVACIONES`/`RECHAZADA`: rechazo. |
 | Cambio de permisos | `compra_recibir` (gerente/administrador) re-validado en el servidor al confirmar. |

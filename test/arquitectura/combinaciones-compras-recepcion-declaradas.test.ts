@@ -28,9 +28,6 @@ const ENTRADAS: Record<keyof EntradaDeConfirmacionDeRecepcion, true> = {
   facturaAnulada: true,
   estadoDeLaParte: true,
   seccion: true,
-  diaFactura: true,
-  diaStock: true,
-  hoy: true,
 };
 
 /** Las entradas de la regla de registrar el control (la decisión de estado y la validación de una línea): agregar una al tipo sin sumarla acá no compila. */
@@ -44,7 +41,7 @@ const ENTRADAS_DEL_CONTROL: Record<keyof EntradaDeRegistroDeControl | "condicion
 };
 
 /** Los campos de una entrada de stock y lo que recibe la regla (renglones): agregar uno al tipo sin sumarlo acá no compila. */
-const ENTRADAS_DE_STOCK: Record<keyof EntradaDeRecepcion | "renglones" | "decimales", true> = { renglonId: true, seccionId: true, cantidad: true, renglones: true, decimales: true };
+const ENTRADAS_DE_STOCK: Record<keyof EntradaDeRecepcion | "renglones", true> = { renglonId: true, seccionId: true, renglones: true };
 
 describe("guardián: la recepción separada de compras declara todas sus dimensiones en el oráculo", () => {
   const declaradas = tablaDeRecepcion("Entradas de la regla de confirmar y su efecto").filas.map((f) => ({ entrada: (f["Entrada"] ?? "").trim(), efecto: (f["Efecto"] ?? "").trim() }));
@@ -82,8 +79,8 @@ describe("guardián: la recepción separada de compras declara todas sus dimensi
   });
 
   it("control de sanidad: el lector ve las entradas y las dimensiones declaradas", () => {
-    expect(declaradas.length).toBe(7);
-    expect(Object.keys(DIMENSIONES).sort()).toEqual(["B", "C", "E", "F", "K", "M", "N", "O", "P", "Q", "R", "S"]);
+    expect(declaradas.length).toBe(4);
+    expect(Object.keys(DIMENSIONES).sort()).toEqual(["B", "C", "E", "K", "M", "N", "O", "P", "Q", "R", "S"]);
   });
 });
 

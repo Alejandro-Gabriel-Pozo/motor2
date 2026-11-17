@@ -29,7 +29,6 @@ export {
   decidirRegistroDeControl,
   estadoInicialDeLaParte,
   mensajeFechaDeStockFueraDeRango,
-  prorratearPrecioDeRenglon,
   validarControlDeLinea,
   validarEntradasDeRecepcion,
 } from "./recepcion";

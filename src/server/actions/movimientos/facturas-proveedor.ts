@@ -6,7 +6,7 @@ import type { ControlDeLineaInput, DatosFacturaProveedorInput, EntradaDeRecepcio
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { azarDelProceso } from "@/lib/azar";
 import { conPermiso, exigirTambienPermisoDeEmpresa } from "../con-permiso";
-import { error, type ResultadoAccion } from "../tipos";
+import { error, type ResultadoAccion, type ResultadoConfirmarRecepcion } from "../tipos";
 import { aceptarPropuestaDeFacturaCasoDeUso } from "./casos-de-uso/aceptar-propuesta-de-factura";
 import { anularFacturaProveedorCasoDeUso } from "./casos-de-uso/anular-factura-proveedor";
 import { confirmarRecepcionDeFacturaCasoDeUso } from "./casos-de-uso/confirmar-recepcion-de-factura";
@@ -46,14 +46,15 @@ export async function aceptarPropuestaDeFactura(propuestaId: string, seccionId: 
 
 /**
  * Compras, recepción separada (N3-a y N3-b): «Confirmar recepción» de una compra cargada «pendiente de recibir». Permiso `compra_recibir` en la sucursal activa (módulo `recepcion_de_compras`, piso administrador: gerente y administrador, no el
- * operador); la parte tiene que ser de esa sucursal (lo verifica el caso de uso). El actor y la hora salen del servidor; el cliente solo manda la factura, las entradas (renglón, sección y cantidad; un renglón se puede dividir entre secciones) y el día
- * de stock. Idempotente por estado: confirmar dos veces no carga stock de nuevo.
+ * operador); la parte tiene que ser de esa sucursal (lo verifica el caso de uso). El actor y la hora salen del servidor; el cliente solo manda la factura y la sección de cada renglón (un solo destino por renglón, con su cantidad total) y la
+ * fecha del stock es la de la confirmación. Idempotente por estado: confirmar de nuevo devuelve éxito con `yaExistia` y no carga stock de nuevo.
  */
-export async function confirmarRecepcionDeFactura(facturaId: string, entradas: EntradaDeRecepcionInput[], fechaStock: Date): Promise<ResultadoAccion> {
-  return conPermiso("compra_recibir", async (ctx) => {
-    const comando = guardComandoConfirmarRecepcionDeFactura({ facturaId, entradas, fechaStock }, ctx.ahora);
+export async function confirmarRecepcionDeFactura(facturaId: string, entradas: EntradaDeRecepcionInput[]): Promise<ResultadoConfirmarRecepcion> {
+  return conPermiso("compra_recibir", async (ctx): Promise<ResultadoConfirmarRecepcion> => {
+    const comando = guardComandoConfirmarRecepcionDeFactura({ facturaId, entradas });
     if (!comando.ok) return error(comando.mensaje);
-    return aResultadoAccion(await confirmarRecepcionDeFacturaCasoDeUso(ctx, comando.valor));
+    const r = await confirmarRecepcionDeFacturaCasoDeUso(ctx, comando.valor);
+    return r.ok ? { ok: true, mensaje: r.mensaje, yaExistia: r.datos.yaExistia } : { ok: false, mensaje: r.mensaje };
   });
 }
 

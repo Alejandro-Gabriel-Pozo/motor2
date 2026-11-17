@@ -37,8 +37,8 @@ const como = async (u: { id: string; email: string }) => {
   await mockearUsuarioActual({ id: u.id, email: u.email, nombre: null });
 };
 const entradasEnteras = async (seccionId = sec3) =>
-  (await prisma.facturaProveedorRenglon.findMany({ where: { facturaProveedorId: facturaId, productoId: { not: null } }, orderBy: { orden: "asc" } })).map((r) => ({ renglonId: r.id, seccionId, cantidad: Number(r.cantidadStock) }));
-const recibir = async () => confirmarRecepcionDeFactura(facturaId, await entradasEnteras(), mediodia(-2));
+  (await prisma.facturaProveedorRenglon.findMany({ where: { facturaProveedorId: facturaId, productoId: { not: null } }, orderBy: { orden: "asc" } })).map((r) => ({ renglonId: r.id, seccionId }));
+const recibir = async () => confirmarRecepcionDeFactura(facturaId, await entradasEnteras());
 const renglonId = async () => (await prisma.facturaProveedorRenglon.findFirstOrThrow({ where: { facturaProveedorId: facturaId } })).id;
 const controles = () => prisma.controlDeLineaDeRecepcion.count();
 const compras = () => prisma.operacion.count({ where: { proceso: "COMPRA" } });
@@ -145,17 +145,27 @@ describe("confirmarRecepcionDeFactura: permisos en el servidor", () => {
 });
 
 describe("confirmarRecepcionDeFactura: formato (el actor y la hora salen del servidor)", () => {
-  it("rechaza sin factura, sin entradas, sin sección, con una cantidad que no es número o con una fecha mal formada o futura, antes de tocar nada", async () => {
+  it("rechaza sin factura, sin entradas o sin sección, antes de tocar nada", async () => {
     await como(admin);
 
     const entradas = await entradasEnteras();
-    expect(await confirmarRecepcionDeFactura("", entradas, mediodia(-2))).toMatchObject({ ok: false });
-    expect(await confirmarRecepcionDeFactura(facturaId, [], mediodia(-2))).toMatchObject({ ok: false });
-    expect(await confirmarRecepcionDeFactura(facturaId, entradas.map((e) => ({ ...e, seccionId: "" })), mediodia(-2))).toMatchObject({ ok: false });
-    expect(await confirmarRecepcionDeFactura(facturaId, entradas.map((e) => ({ ...e, cantidad: Number.NaN })), mediodia(-2))).toMatchObject({ ok: false });
-    expect(await confirmarRecepcionDeFactura(facturaId, entradas, new Date("no es una fecha"))).toMatchObject({ ok: false });
-    expect(await confirmarRecepcionDeFactura(facturaId, entradas, mediodia(3))).toMatchObject({ ok: false });
+    expect(await confirmarRecepcionDeFactura("", entradas)).toMatchObject({ ok: false });
+    expect(await confirmarRecepcionDeFactura(facturaId, [])).toMatchObject({ ok: false });
+    expect(await confirmarRecepcionDeFactura(facturaId, entradas.map((e) => ({ ...e, seccionId: "" })))).toMatchObject({ ok: false });
     expect(await compras()).toBe(0);
+  });
+
+  it("lista de permitidos: una cantidad o una fecha que el cliente mande de más se IGNORAN (entra la cantidad entera del renglón, con la fecha de la confirmación)", async () => {
+    await como(admin);
+
+    const entradas = (await entradasEnteras()).map((e) => ({ ...e, cantidad: 3, fechaStock: mediodia(-4) }));
+    const r = await confirmarRecepcionDeFactura(facturaId, entradas as never);
+
+    expect(r).toMatchObject({ ok: true, yaExistia: false });
+    const m = await prisma.movimientoStock.findMany({ where: { proceso: "COMPRA" } });
+    expect(m.map((x) => Number(x.cantidad))).toEqual([10]);
+    const operacion = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA" } });
+    expect(diaDeCalendario(operacion.fecha, ZONA_ARGENTINA)).toBe(diaDeCalendario(new Date(), ZONA_ARGENTINA));
   });
 });
 

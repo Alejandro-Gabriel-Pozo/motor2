@@ -85,11 +85,11 @@ async function cargarPendiente(extra: Partial<DatosFacturaProveedorInput> = {}):
   const r = await cargar(extra);
   return (r.ok && r.datos.facturaId) as string;
 }
-/** Una entrada por renglón de mercadería de la factura, con TODA su cantidad en la sección dada (el caso común: un renglón, una sección). */
+/** Un destino por renglón de mercadería de la factura, todos en la sección dada (un renglón, una sección, con la cantidad total del renglón). */
 const entradasEnteras = async (facturaId: string, seccionId: string) =>
-  (await prisma.facturaProveedorRenglon.findMany({ where: { facturaProveedorId: facturaId, productoId: { not: null } }, orderBy: { orden: "asc" } })).map((r) => ({ renglonId: r.id, seccionId, cantidad: Number(r.cantidadStock) }));
-const confirmar = async (facturaId: string, o: { seccionId?: string; fechaStock?: Date; ahora?: Date; entradas?: { renglonId: string; seccionId: string; cantidad: number }[] } = {}) =>
-  confirmarRecepcionDeFacturaCasoDeUso(actor3(o.ahora), { facturaId, entradas: o.entradas ?? (await entradasEnteras(facturaId, o.seccionId ?? sec3)), fechaStock: o.fechaStock ?? mediodia(-2) });
+  (await prisma.facturaProveedorRenglon.findMany({ where: { facturaProveedorId: facturaId, productoId: { not: null } }, orderBy: { orden: "asc" } })).map((r) => ({ renglonId: r.id, seccionId }));
+const confirmar = async (facturaId: string, o: { seccionId?: string; ahora?: Date; entradas?: { renglonId: string; seccionId: string }[] } = {}) =>
+  confirmarRecepcionDeFacturaCasoDeUso(actor3(o.ahora), { facturaId, entradas: o.entradas ?? (await entradasEnteras(facturaId, o.seccionId ?? sec3)) });
 
 const comprasDeStock = () => prisma.operacion.count({ where: { proceso: "COMPRA" } });
 const movimientosDeCompra = () => prisma.movimientoStock.count({ where: { proceso: "COMPRA" } });
@@ -218,13 +218,13 @@ describe("cargar con el módulo recepcion_de_compras encendido", () => {
 });
 
 describe("confirmar la recepción", () => {
-  it("éxito: entra el stock con la fecha elegida (compra COMPRA con un movimiento por renglón, su renglón, sus pesos y su costo), la parte pasa a RECIBIDA con su compra, quién y cuándo, y queda la auditoría", async () => {
+  it("éxito: entra el stock con la fecha de la confirmación (compra COMPRA con un movimiento por renglón, su renglón, sus pesos y su costo), la parte pasa a RECIBIDA con su compra, quién y cuándo, y queda la auditoría", async () => {
     const facturaId = await cargarPendiente();
-    const fechaStock = mediodia(-2);
+    const fechaStock = mediodia(0);
 
-    const r = await confirmar(facturaId, { fechaStock });
+    const r = await confirmar(facturaId);
 
-    expect(r).toMatchObject({ ok: true, mensaje: `Recepción confirmada: 2 movimiento(s) entraron al stock de esta sucursal con fecha ${diaDeCalendario(fechaStock, ZONA_ARGENTINA)}.`, datos: { movimientos: 2 } });
+    expect(r).toMatchObject({ ok: true, mensaje: `Recepción confirmada: 2 movimiento(s) entraron al stock de esta sucursal con fecha ${diaDeCalendario(fechaStock, ZONA_ARGENTINA)}.`, datos: { movimientos: 2, yaExistia: false } });
     const parte = await parteDe(facturaId);
     expect([parte.estadoRecepcion, parte.recibidaPorId, parte.recibidaEn]).toEqual(["RECIBIDA", admin, fechaStock]);
     const operacion = await prisma.operacion.findUniqueOrThrow({ where: { id: parte.operacionId as string }, include: { movimientos: true } });
@@ -246,15 +246,41 @@ describe("confirmar la recepción", () => {
     });
   });
 
-  it("idempotencia por estado: confirmar de nuevo devuelve «ya recibida» y NO crea un segundo stock ni otra compra ni otra auditoría", async () => {
+  it("idempotencia por estado (paridad con Pedernal): confirmar de nuevo es ÉXITO con yaExistia, devuelve la compra original y NO crea un segundo stock ni otra compra ni otra auditoría", async () => {
     const facturaId = await cargarPendiente();
-    expect((await confirmar(facturaId)).ok).toBe(true);
+    const primera = await confirmar(facturaId);
+    expect(primera).toMatchObject({ ok: true, datos: { yaExistia: false } });
 
     const segunda = await confirmar(facturaId);
 
-    expect(segunda).toMatchObject({ ok: false, codigo: "YA_RECIBIDA", mensaje: MENSAJE_RECEPCION_YA_RECIBIDA });
-    expect([await comprasDeStock(), await movimientosDeCompra(), await calcularSaldoTotal(harina, sec3, prisma)]).toEqual([1, 2, 10]);
+    expect(segunda).toEqual({ ok: true, mensaje: MENSAJE_RECEPCION_YA_RECIBIDA, datos: { operacionId: (await parteDe(facturaId)).operacionId, movimientos: 0, yaExistia: true } });
+    expect(primera.ok && segunda.ok && primera.datos.operacionId === segunda.datos.operacionId).toBe(true);
+    expect([await comprasDeStock(), await movimientosDeCompra(), await calcularSaldoTotal(harina, sec3, prisma), await calcularSaldoTotal(aceite, sec3, prisma)]).toEqual([1, 2, 10, 5]);
     expect(await prisma.registroAuditoria.count({ where: { entidadId: facturaId, campo: "recepcion" } })).toBe(1);
+    const parte = await parteDe(facturaId);
+    expect([parte.estadoRecepcion, parte.recibidaPorId]).toEqual(["RECIBIDA", admin]);
+  });
+
+  it("repetir confirmar con OTRA sección tampoco mueve nada: la recepción original no se pisa", async () => {
+    const facturaId = await cargarPendiente();
+    expect((await confirmar(facturaId)).ok).toBe(true);
+    const otra = (await sembrarSeccion(s3, "Cámara")).id;
+
+    const repetida = await confirmar(facturaId, { seccionId: otra });
+
+    expect(repetida).toMatchObject({ ok: true, datos: { yaExistia: true } });
+    expect([await calcularSaldoTotal(harina, sec3, prisma), await calcularSaldoTotal(harina, otra, prisma)]).toEqual([10, 0]);
+    expect(await movimientosDeCompra()).toBe(2);
+  });
+
+  it("una compra ANULADA sigue siendo error (no es una repetición): «ya anulada», aunque la parte esté recibida", async () => {
+    const facturaId = await cargarPendiente();
+    expect((await confirmar(facturaId)).ok).toBe(true);
+    expect((await anularFacturaProveedorCasoDeUso(actor3(), { facturaId, motivo: "Prueba", claveIdempotencia: randomUUID() })).ok).toBe(true);
+
+    const r = await confirmar(facturaId);
+
+    expect(r).toMatchObject({ ok: false, codigo: "YA_ANULADA" });
   });
 
   it("la compra confirmada sale con el mismo costo y los mismos pesos que si hubiera entrado al cargar (módulo apagado): misma cantidad, mismo importe", async () => {
@@ -321,7 +347,7 @@ describe("confirmar la recepción", () => {
   it("la parte es de OTRA sucursal: quien confirma desde la 4 recibe «no se encontró» y la parte de la 3 sigue pendiente", async () => {
     const facturaId = await cargarPendiente();
 
-    const r = await confirmarRecepcionDeFacturaCasoDeUso(actorDe(admin4, s4, "Sucursal 4"), { facturaId, entradas: await entradasEnteras(facturaId, sec4), fechaStock: mediodia(-2) });
+    const r = await confirmarRecepcionDeFacturaCasoDeUso(actorDe(admin4, s4, "Sucursal 4"), { facturaId, entradas: await entradasEnteras(facturaId, sec4) });
 
     expect(r).toMatchObject({ ok: false, codigo: "NO_ES_DE_ESTA_SUCURSAL" });
     expect((await parteDe(facturaId)).estadoRecepcion).toBe("PENDIENTE");
@@ -362,17 +388,36 @@ describe("confirmar la recepción", () => {
     expect(await calcularSaldoTotal(harina, sec3, prisma)).toBe(0);
   });
 
-  it("la fecha de stock vale desde el día de la factura hasta hoy (en hora argentina), ambos incluidos; antes o después se rechaza sin escribir nada", async () => {
+  it.each([
+    ["22:30 hora argentina de ayer (01:30 UTC de hoy): el día es el de Argentina, ayer", -1, 10.5, -1],
+    ["00:30 hora argentina de hoy (03:30 UTC): el día es hoy", 0, -11.5, 0],
+    ["el mediodía de hoy", 0, 0, 0],
+  ])("la fecha del stock es la de la confirmación, con el corte de día en hora argentina (reloj controlado): %s", async (_nombre, diaDelMediodia, horasDespues, diaEsperado) => {
     const facturaId = await cargarPendiente({ fecha: mediodia(-3) });
-    const mensajeEsperado = `La fecha de stock tiene que estar entre la fecha de la factura (${sumarDias(diaDeHoy(), -3)}) y hoy (${diaDeHoy()}).`;
+    const ahora = new Date(mediodia(diaDelMediodia).getTime() + horasDespues * 3_600_000);
 
-    const antes = await confirmar(facturaId, { fechaStock: mediodia(-4) });
-    const despues = await confirmar(facturaId, { fechaStock: mediodia(1) });
+    const r = await confirmar(facturaId, { ahora });
 
-    expect(antes).toEqual({ ok: false, codigo: "FECHA_FUERA_DE_RANGO", mensaje: mensajeEsperado });
-    expect(despues).toEqual({ ok: false, codigo: "FECHA_FUERA_DE_RANGO", mensaje: mensajeEsperado });
-    expect(await comprasDeStock()).toBe(0);
-    expect((await confirmar(facturaId, { fechaStock: mediodia(-3) })).ok).toBe(true);
+    const dia = sumarDias(diaDeHoy(), diaEsperado);
+    expect(r).toMatchObject({ ok: true, mensaje: `Recepción confirmada: 2 movimiento(s) entraron al stock de esta sucursal con fecha ${dia}.` });
+    const parte = await parteDe(facturaId);
+    const operacion = await prisma.operacion.findUniqueOrThrow({ where: { id: parte.operacionId as string }, include: { movimientos: true } });
+    // La compra (cuya fecha es la de sus movimientos) y la parte llevan la MISMA fecha: el mediodía argentino del día de la confirmación (como el resto de las compras).
+    expect([operacion.fecha, parte.recibidaEn]).toEqual([mediodia(diaEsperado), mediodia(diaEsperado)]);
+    expect(operacion.movimientos).toHaveLength(2);
+    const auditoria = await prisma.registroAuditoria.findFirstOrThrow({ where: { entidadId: facturaId, campo: "recepcion" } });
+    expect(auditoria.descripcion).toContain(`fecha de stock ${dia})`);
+  });
+
+  it("la fecha no se elige: un pedido que traiga una fechaStock de más (cliente viejo o manipulado) no la cambia", async () => {
+    const facturaId = await cargarPendiente({ fecha: mediodia(-3) });
+    const entradas = await entradasEnteras(facturaId, sec3);
+
+    const r = await confirmarRecepcionDeFacturaCasoDeUso(actor3(), { facturaId, entradas, fechaStock: mediodia(-3) } as never);
+
+    expect(r.ok, r.mensaje).toBe(true);
+    const operacion = await prisma.operacion.findUniqueOrThrow({ where: { id: (await parteDe(facturaId)).operacionId as string } });
+    expect(operacion.fecha).toEqual(mediodia(0));
   });
 
   it("un producto que ya no está disponible en la sucursal frena la confirmación (sin escribir nada) con el nombre del producto", async () => {
@@ -414,16 +459,6 @@ describe("confirmar la recepción", () => {
     expect([primera, segunda]).toEqual([1, 0]);
     expect((await parteDe(facturaId)).operacionId).toBe(operacion.id);
   });
-
-  it("la hora «hoy» de la regla de la fecha es la que entra por actor.ahora (Pureza 1.2), no la del reloj", async () => {
-    const facturaId = await cargarPendiente({ fecha: mediodia(-3) });
-    const unaSemanaAtras = mediodia(-7);
-
-    // Con «ahora» una semana atrás, la fecha de stock del día -2 es FUTURA y la de la factura (-3) también.
-    const r = await confirmar(facturaId, { ahora: unaSemanaAtras, fechaStock: mediodia(-2) });
-
-    expect(r).toMatchObject({ ok: false, codigo: "FECHA_FUERA_DE_RANGO" });
-  });
 });
 
 const renglonesDe = (facturaId: string) => prisma.facturaProveedorRenglon.findMany({ where: { facturaProveedorId: facturaId }, orderBy: { orden: "asc" } });
@@ -432,92 +467,78 @@ const controlar = (facturaId: string, controles: { renglonId: string; condicion:
 const controlesGuardados = () => prisma.controlDeLineaDeRecepcion.count();
 const movimientosDe = (renglonId: string) => prisma.movimientoStock.findMany({ where: { facturaProveedorRenglonId: renglonId }, orderBy: { cantidad: "asc" } });
 
-describe("confirmar con entradas fraccionadas entre secciones (N3-b)", () => {
-  it("un renglón dividido entre dos secciones: una línea del Kardex por entrada, el stock entra en cada sección, el precio del renglón se reparte exacto y el precio por unidad es el del renglón", async () => {
+describe("confirmar con UN solo destino por renglón (paridad con Pedernal)", () => {
+  it("cada renglón recibe UNA entrada por su cantidad TOTAL en la sección elegida (secciones distintas por renglón): una línea del Kardex por renglón, con el precio del renglón y el precio por unidad tal cual; una sola compra", async () => {
     const facturaId = await cargarPendiente();
     const otra = (await sembrarSeccion(s3, "Cámara")).id;
     const [rHarina, rAceite] = await renglonesDe(facturaId);
-    const entradas = [
-      { renglonId: rHarina!.id, seccionId: sec3, cantidad: 4 },
-      { renglonId: rHarina!.id, seccionId: otra, cantidad: 6 },
-      { renglonId: rAceite!.id, seccionId: sec3, cantidad: 5 },
-    ];
 
-    const r = await confirmar(facturaId, { entradas });
+    const r = await confirmar(facturaId, { entradas: [{ renglonId: rHarina!.id, seccionId: otra }, { renglonId: rAceite!.id, seccionId: sec3 }] });
 
-    expect(r).toMatchObject({ ok: true, datos: { movimientos: 3 } });
-    expect([await calcularSaldoTotal(harina, sec3, prisma), await calcularSaldoTotal(harina, otra, prisma), await calcularSaldoTotal(aceite, sec3, prisma)]).toEqual([4, 6, 5]);
+    expect(r).toMatchObject({ ok: true, datos: { movimientos: 2 } });
+    expect([await calcularSaldoTotal(harina, otra, prisma), await calcularSaldoTotal(harina, sec3, prisma), await calcularSaldoTotal(aceite, sec3, prisma)]).toEqual([10, 0, 5]);
     const deHarina = await movimientosDe(rHarina!.id);
-    expect(deHarina.map((m) => [m.seccionId, Number(m.cantidad), Number(m.precioTotal), Number(m.precioPorUnidadStock)])).toEqual([[sec3, 4, 400, 100], [otra, 6, 600, 100]]);
-    expect(deHarina.reduce((t, m) => t + Number(m.precioTotal), 0)).toBe(1000);
-    // Una sola compra (Operacion) con las tres líneas, y la auditoría nombra las dos secciones.
+    const deAceite = await movimientosDe(rAceite!.id);
+    // UNA sola entrada por renglón.
+    expect(deHarina.map((m) => [m.seccionId, Number(m.cantidad), Number(m.precioTotal), Number(m.precioPorUnidadStock)])).toEqual([[otra, 10, 1000, 100]]);
+    expect(deAceite.map((m) => [m.seccionId, Number(m.cantidad), Number(m.precioTotal), Number(m.precioPorUnidadStock)])).toEqual([[sec3, 5, 1000, 200]]);
     expect(await comprasDeStock()).toBe(1);
     const auditoria = await prisma.registroAuditoria.findFirstOrThrow({ where: { entidadId: facturaId, campo: "recepcion" } });
-    expect(auditoria.descripcion).toContain("secciones «Depósito», «Cámara»");
+    expect(auditoria.descripcion).toContain("secciones «Cámara», «Depósito»");
   });
 
-  it("el precio con centavos se reparte EXACTO: 100,01 en tres entradas iguales da 33,34 + 33,34 + 33,33 (la suma es el precio del renglón al centavo, nunca un centavo de más ni de menos)", async () => {
+  it("el precio con centavos entra TAL CUAL en la única entrada del renglón (100,01 de 3 unidades: una línea de 100,01)", async () => {
     await encenderRecepcion();
     const r = await cargar({ items: [{ productoId: harina, cantidad: 3, precioTotal: 100.01, referenciaProveedor: REFERENCIA_DE_PRUEBA }] });
     const facturaId = (r.ok && r.datos.facturaId) as string;
     const [renglon] = await renglonesDe(facturaId);
-    const dos = (await sembrarSeccion(s3, "Cámara")).id;
-    const tres = (await sembrarSeccion(s3, "Freezer")).id;
 
-    const c = await confirmar(facturaId, { entradas: [{ renglonId: renglon!.id, seccionId: sec3, cantidad: 1 }, { renglonId: renglon!.id, seccionId: dos, cantidad: 1 }, { renglonId: renglon!.id, seccionId: tres, cantidad: 1 }] });
+    const c = await confirmar(facturaId);
 
     expect(c.ok, c.mensaje).toBe(true);
-    const precios = (await movimientosDe(renglon!.id)).map((m) => Number(m.precioTotal)).sort((a, b) => b - a);
-    expect(precios).toEqual([33.34, 33.34, 33.33]);
-    expect(Math.round(precios.reduce((t, p) => t + p * 100, 0))).toBe(10001);
+    expect((await movimientosDe(renglon!.id)).map((m) => [Number(m.cantidad), Number(m.precioTotal)])).toEqual([[3, 100.01]]);
   });
 
-  it("entradas que NO suman la cantidad del renglón (menos o más) se rechazan sin escribir nada y la parte sigue pendiente", async () => {
+  it("dividir un renglón entre secciones se rechaza (ENTRADA_REPETIDA), sea en dos secciones distintas o dos veces en la misma, sin escribir nada y con la parte pendiente", async () => {
     const facturaId = await cargarPendiente();
     const otra = (await sembrarSeccion(s3, "Cámara")).id;
     const [rHarina, rAceite] = await renglonesDe(facturaId);
-    const aceiteEntero = { renglonId: rAceite!.id, seccionId: sec3, cantidad: 5 };
+    const aceite = { renglonId: rAceite!.id, seccionId: sec3 };
 
-    const menos = await confirmar(facturaId, { entradas: [{ renglonId: rHarina!.id, seccionId: sec3, cantidad: 4 }, { renglonId: rHarina!.id, seccionId: otra, cantidad: 5 }, aceiteEntero] });
-    const mas = await confirmar(facturaId, { entradas: [{ renglonId: rHarina!.id, seccionId: sec3, cantidad: 4 }, { renglonId: rHarina!.id, seccionId: otra, cantidad: 6.5 }, aceiteEntero] });
+    const dividida = await confirmar(facturaId, { entradas: [{ renglonId: rHarina!.id, seccionId: sec3 }, { renglonId: rHarina!.id, seccionId: otra }, aceite] });
+    const repetida = await confirmar(facturaId, { entradas: [{ renglonId: rHarina!.id, seccionId: sec3 }, { renglonId: rHarina!.id, seccionId: sec3 }, aceite] });
 
-    for (const r of [menos, mas]) expect(r).toMatchObject({ ok: false, codigo: "CANTIDAD_NO_SUMA" });
-    expect(menos.mensaje).toBe("Las cantidades repartidas entre las secciones tienen que sumar exactamente 10, la cantidad del renglón.");
+    for (const r of [dividida, repetida]) expect(r).toMatchObject({ ok: false, codigo: "ENTRADA_REPETIDA", mensaje: "Cada renglón entra entero en una sola sección." });
     expect([await comprasDeStock(), await movimientosDeCompra()]).toEqual([0, 0]);
     expect((await parteDe(facturaId)).estadoRecepcion).toBe("PENDIENTE");
   });
 
-  it("el mismo renglón dos veces en la misma sección, un renglón sin entradas, un renglón de otra compra y una cantidad con más decimales que la unidad se rechazan con su código", async () => {
+  it("un renglón sin destino, un renglón de otra compra y un pedido sin entradas se rechazan con su código, sin escribir nada", async () => {
     const facturaId = await cargarPendiente();
     const otraFactura = await cargarPendiente({ nroFactura: "A-00001-00000555", claveIdempotencia: randomUUID() });
     const [rHarina, rAceite] = await renglonesDe(facturaId);
     const [rAjeno] = await renglonesDe(otraFactura);
-    const aceiteEntero = { renglonId: rAceite!.id, seccionId: sec3, cantidad: 5 };
-    const harinaEntera = { renglonId: rHarina!.id, seccionId: sec3, cantidad: 10 };
+    const harinaSola = { renglonId: rHarina!.id, seccionId: sec3 };
+    const aceiteSolo = { renglonId: rAceite!.id, seccionId: sec3 };
 
-    const repetida = await confirmar(facturaId, { entradas: [{ ...harinaEntera, cantidad: 4 }, { ...harinaEntera, cantidad: 6 }, aceiteEntero] });
-    const sinEntradas = await confirmar(facturaId, { entradas: [harinaEntera] });
-    const ajeno = await confirmar(facturaId, { entradas: [harinaEntera, aceiteEntero, { renglonId: rAjeno!.id, seccionId: sec3, cantidad: 10 }] });
-    // El aceite es de una unidad con 2 decimales: 2,505 no entra aunque sume.
-    const demasiadosDecimales = await confirmar(facturaId, { entradas: [harinaEntera, { ...aceiteEntero, cantidad: 2.505 }, { ...aceiteEntero, seccionId: (await sembrarSeccion(s3, "Cámara")).id, cantidad: 2.495 }] });
-    const ceroOnegativa = await confirmar(facturaId, { entradas: [harinaEntera, { ...aceiteEntero, cantidad: 0 }] });
+    const sinDestino = await confirmar(facturaId, { entradas: [harinaSola] });
+    const ajeno = await confirmar(facturaId, { entradas: [harinaSola, aceiteSolo, { renglonId: rAjeno!.id, seccionId: sec3 }] });
+    const sinEntradas = await confirmar(facturaId, { entradas: [] });
 
-    expect(repetida).toMatchObject({ ok: false, codigo: "ENTRADA_REPETIDA" });
-    expect(sinEntradas).toMatchObject({ ok: false, codigo: "RENGLON_SIN_ENTRADAS" });
+    expect(sinDestino).toMatchObject({ ok: false, codigo: "RENGLON_SIN_ENTRADAS" });
     expect(ajeno).toMatchObject({ ok: false, codigo: "RENGLON_AJENO" });
-    expect(demasiadosDecimales).toMatchObject({ ok: false, codigo: "CANTIDAD_INVALIDA" });
-    expect(ceroOnegativa).toMatchObject({ ok: false, codigo: "CANTIDAD_INVALIDA" });
+    expect(sinEntradas).toMatchObject({ ok: false, codigo: "SIN_ENTRADAS" });
     expect([await comprasDeStock(), await movimientosDeCompra()]).toEqual([0, 0]);
   });
 
-  it("una sección AJENA o INACTIVA en UNA de las entradas frena toda la confirmación (la regla de secciones mira todas): nada entra", async () => {
+  it("una sección AJENA o INACTIVA en UNO de los renglones frena toda la confirmación (la regla de secciones mira todas): nada entra", async () => {
     const facturaId = await cargarPendiente();
     const inactiva = (await prisma.seccion.create({ data: { sucursalId: s3, nombre: "Vieja", activa: false } })).id;
     const [rHarina, rAceite] = await renglonesDe(facturaId);
-    const resto = [{ renglonId: rAceite!.id, seccionId: sec3, cantidad: 5 }];
+    const aceiteBien = { renglonId: rAceite!.id, seccionId: sec3 };
 
-    const ajena = await confirmar(facturaId, { entradas: [{ renglonId: rHarina!.id, seccionId: sec3, cantidad: 4 }, { renglonId: rHarina!.id, seccionId: sec4, cantidad: 6 }, ...resto] });
-    const desactivada = await confirmar(facturaId, { entradas: [{ renglonId: rHarina!.id, seccionId: sec3, cantidad: 4 }, { renglonId: rHarina!.id, seccionId: inactiva, cantidad: 6 }, ...resto] });
+    const ajena = await confirmar(facturaId, { entradas: [{ renglonId: rHarina!.id, seccionId: sec4 }, aceiteBien] });
+    const desactivada = await confirmar(facturaId, { entradas: [{ renglonId: rHarina!.id, seccionId: inactiva }, aceiteBien] });
 
     expect(ajena).toMatchObject({ ok: false, codigo: "SECCION_NO_ENCONTRADA" });
     expect(desactivada).toMatchObject({ ok: false, codigo: "SECCION_INACTIVA" });

@@ -17,7 +17,7 @@ import { MENSAJE_RECEPCION_YA_RECIBIDA } from "../../src/core/compras/public";
 import type { ContextoDeAccion } from "../../src/server/actions/tipos";
 
 /**
- * Compras N3-a, recepción separada — CONCURRENCIA, con Postgres real: confirmar la recepción de la misma parte a la vez no duplica el stock (una gana, las demás reciben «ya recibida»), y confirmar contra anular a la
+ * Compras N3-a, recepción separada — CONCURRENCIA, con Postgres real: confirmar la recepción de la misma parte a la vez no duplica el stock (una gana y escribe; las demás reciben ÉXITO con `yaExistia`, paridad con Pedernal), y confirmar contra anular a la
  * vez termina en uno de los dos órdenes posibles, nunca en un estado a medias (stock vivo de una factura anulada, o una compra sin su parte). La garantía es el candado de la cabecera (`FOR UPDATE`), la guarda
  * `WHERE estadoRecepcion = 'PENDIENTE'`, el disparador de la base y el aislamiento SERIALIZABLE con reintento.
  *
@@ -51,8 +51,8 @@ async function cargarPendiente(nroFactura: string): Promise<string> {
   return (r.ok && r.datos.facturaId) as string;
 }
 const entradasEnteras = async (facturaId: string) =>
-  (await prisma.facturaProveedorRenglon.findMany({ where: { facturaProveedorId: facturaId, productoId: { not: null } }, orderBy: { orden: "asc" } })).map((r) => ({ renglonId: r.id, seccionId: sec3, cantidad: Number(r.cantidadStock) }));
-const confirmar = async (facturaId: string) => confirmarRecepcionDeFacturaCasoDeUso(actor(), { facturaId, entradas: await entradasEnteras(facturaId), fechaStock: mediodia(-2) });
+  (await prisma.facturaProveedorRenglon.findMany({ where: { facturaProveedorId: facturaId, productoId: { not: null } }, orderBy: { orden: "asc" } })).map((r) => ({ renglonId: r.id, seccionId: sec3 }));
+const confirmar = async (facturaId: string) => confirmarRecepcionDeFacturaCasoDeUso(actor(), { facturaId, entradas: await entradasEnteras(facturaId) });
 const anular = (facturaId: string) => anularFacturaProveedorCasoDeUso(actor(), { facturaId, motivo: "Prueba de concurrencia", claveIdempotencia: randomUUID() });
 
 beforeEach(async () => {
@@ -72,21 +72,25 @@ beforeEach(async () => {
 });
 
 describe("dos o más confirmaciones de la MISMA parte a la vez", () => {
-  it.each([2, 8])("%i confirmaciones simultáneas: UNA sola entrada de stock (una compra, dos movimientos, no el doble) y las demás reciben «ya recibida»", async (cuantas) => {
+  it.each([2, 8])("%i confirmaciones simultáneas: todas devuelven éxito, UNA sola escribe (una compra, dos movimientos, no el doble) y las demás reciben «ya recibida» sin mover nada", async (cuantas) => {
     const facturaId = await cargarPendiente("A-00001-00000200");
 
     const resultados = await Promise.all(Array.from({ length: cuantas }, () => confirmar(facturaId)));
 
-    expect(resultados.filter((r) => r.ok)).toHaveLength(1);
-    const rechazadas = resultados.filter((r) => !r.ok);
-    expect(rechazadas).toHaveLength(cuantas - 1);
-    for (const r of rechazadas) expect(r).toMatchObject({ ok: false, codigo: "YA_RECIBIDA", mensaje: MENSAJE_RECEPCION_YA_RECIBIDA });
+    expect(resultados.every((r) => r.ok)).toBe(true);
+    const ganadoras = resultados.filter((r) => r.ok && !r.datos.yaExistia);
+    expect(ganadoras).toHaveLength(1);
+    const repetidas = resultados.filter((r) => r.ok && r.datos.yaExistia);
+    expect(repetidas).toHaveLength(cuantas - 1);
+    for (const r of repetidas) expect(r).toMatchObject({ ok: true, mensaje: MENSAJE_RECEPCION_YA_RECIBIDA, datos: { movimientos: 0, yaExistia: true } });
     expect(await prisma.operacion.count({ where: { proceso: "COMPRA" } })).toBe(1);
     expect(await prisma.movimientoStock.count({ where: { proceso: "COMPRA" } })).toBe(2);
     expect([await calcularSaldoTotal(harina, sec3, prisma), await calcularSaldoTotal(aceite, sec3, prisma)]).toEqual([10, 5]);
     expect(await prisma.registroAuditoria.count({ where: { entidadId: facturaId, campo: "recepcion" } })).toBe(1);
     const parte = await prisma.facturaProveedorSucursal.findFirstOrThrow({ where: { facturaProveedorId: facturaId } });
     expect([parte.estadoRecepcion, Boolean(parte.operacionId)]).toEqual(["RECIBIDA", true]);
+    // La repetición apunta a la compra de la recepción original.
+    for (const r of repetidas) if (r.ok) expect(r.datos.operacionId).toBe(parte.operacionId);
   });
 
   it("confirmaciones de partes DISTINTAS a la vez no se pisan: cada una entra una vez", async () => {
@@ -95,7 +99,8 @@ describe("dos o más confirmaciones de la MISMA parte a la vez", () => {
 
     const resultados = await Promise.all([confirmar(a), confirmar(b), confirmar(a), confirmar(b)]);
 
-    expect(resultados.filter((r) => r.ok)).toHaveLength(2);
+    expect(resultados.every((r) => r.ok)).toBe(true);
+    expect(resultados.filter((r) => r.ok && !r.datos.yaExistia)).toHaveLength(2);
     expect(await prisma.operacion.count({ where: { proceso: "COMPRA" } })).toBe(2);
     expect(await calcularSaldoTotal(harina, sec3, prisma)).toBe(20);
   });
