@@ -2,6 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import type { Locator } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
+import { temaSimpleVisible } from "../../src/lib/tema-simple-visible";
 
 /** Espera a que React haya hidratado el elemento (mismo criterio que carta-tema-admin.spec.ts): un clic anterior no tendría manejador. */
 async function esperarHidratado(el: Locator) {
@@ -14,6 +15,11 @@ async function esperarHidratado(el: Locator) {
  * Color de marca en /carta/tema (paso 9, PR C; docs/diseno-marca-por-sucursal-y-empresa-2026-11-12.md): botón explícito «Pasar a color de marca», rechazo de un color que no se lee, y «Volver a mis colores
  * anteriores» (quita solo el marcador). En celular (375 px): sin desborde horizontal y axe 0.
  */
+// Este spec es de la pantalla de siempre: con la pantalla simple encendida (solo en el e2e de `carta-tema-simple.spec.ts` y las capturas) se omite.
+test.beforeEach(() => {
+  test.skip(temaSimpleVisible(), "la pantalla simple del tema está encendida: vale carta-tema-simple.spec.ts");
+});
+
 test("pasar a color de marca, rechazo de un color ilegible y volver a los colores anteriores (375 px, axe 0)", async ({ paginaAutenticada: page, sucursalId }) => {
   await prisma.temaCartaSucursal.deleteMany({ where: { sucursalId } });
   await page.setViewportSize({ width: 375, height: 800 });
