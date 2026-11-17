@@ -314,6 +314,8 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
   await db.miembroDeFamilia.create({ data: { id: randomUUID(), empresaId, familiaId: familia.id, productoId: pvBase.id, posicion: 1, agregadoPorId: usuarioId, agregadoEn: new Date() } });
   const entradaDeCupo = await db.entradaDeCupo.create({ data: { id: id("entrada-de-cupo"), empresaId, cupoId: cupoLista.id, productoId: pv.id } });
   await db.registroAuditoria.create({ data: { id: id("auditoria-empresa"), empresaId, entidad: "Producto", entidadId: mp.id, descripcion: `Auditoría de empresa ${marca}`, campo: "nombre", valorAnterior: "a", valorNuevo: "b", actorId: usuarioId } });
+  // Historial de precios (Frente 6, paso 7): un CAMBIO del precio de lista del producto («de $1000 a $1200», la forma que escribe `guardarPrecioVenta`), para que la lectura PROPIA de `historialDePreciosDelProducto` devuelva algo y la matriz pueda probar que la ajena devuelve vacío. Solo números: la lectura no trae descripción ni actor.
+  await db.registroAuditoria.create({ data: { id: id("auditoria-precio-de-lista"), empresaId, entidad: "Producto", entidadId: mp.id, descripcion: `Cambio de precio de lista ${marca}`, campo: "precioVenta", valorAnterior: "1000", valorNuevo: "1200", actorId: usuarioId } });
   // Caja (C1): el medio EFECTIVO de la empresa (el único que existe antes de abrir una caja). El nombre lleva el marcador: `leerMediosDeCobro` y los `esperadoPorMedio` lo devuelven.
   const medioEfectivo = await db.medioDePago.create({ data: { id: randomUUID(), empresaId, tipo: "EFECTIVO", nombre: `Efectivo ${marca}` } });
   return {
