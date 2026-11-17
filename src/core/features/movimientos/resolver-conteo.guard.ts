@@ -1,6 +1,8 @@
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { esIdentificador } from "@/core/datos/identificador";
 import type { ComandoResolverConteo, ComoResolverConteo } from "./resolver-conteo.schema";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 
 /** Las dos formas de resolver un conteo pendiente; la clave es el tipo cerrado, así que un valor nuevo del tipo obliga a tocar esta lista. */
 const FORMAS_DE_RESOLVER: Record<ComoResolverConteo, true> = { resuelto: true, ajustar: true };
@@ -13,7 +15,7 @@ const FORMAS_DE_RESOLVER: Record<ComoResolverConteo, true> = { resuelto: true, a
  */
 export function guardComandoResolverConteo(entrada: unknown): ResultadoDato<ComandoResolverConteo> {
   const { conteoId, comoResolver } = (entrada ?? {}) as { conteoId?: unknown; comoResolver?: unknown };
-  if (!esIdentificador(conteoId)) return rechazar("formato", "No se encontró ese conteo.");
+  if (!esIdentificador(conteoId)) return rechazar("formato", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.conteo }));
   if (typeof comoResolver !== "string" || !Object.hasOwn(FORMAS_DE_RESOLVER, comoResolver)) {
     return rechazar("formato", "Elegí cómo resolver el conteo: «resuelto» o «ajustar».");
   }
