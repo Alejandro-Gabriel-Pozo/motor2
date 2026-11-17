@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { asignarConsumo, crearLibroDeStock, faltantesDe, type SaldoLote, type SeccionCandidata } from "@/core/movimientos/origen-venta";
+import { redondearCantidadExacta } from "@/core/datos/cantidad-exacta";
 import { asignarConsumoReferencia } from "./fixtures/origen-venta-referencia";
+
+/**
+ * Etapa aparte de A1b 2026-11-16 («origen-venta: resto limpio a 8 decimales»). EXCEPCIÓN DECLARADA al «no se edita en ningún paso posterior» del encabezado de arriba: el
+ * `asignarConsumo` real ahora resta el resto con `redondearACantidadDeUnidad(restante − tomar, 8)`, así que ya NO es idéntico a la referencia congelada, que conserva la resta en float
+ * (ruido de 1e-16: 0,2368 vs 0,23680000000000012, y restos de 0,00005 que PIERDE con pedidos de más de 4 decimales). Motivo: un resto de 0,00005 perdido era stock que no se descontaba.
+ * Por eso el primer test compara redondeando a 8 decimales (cualquier diferencia de estructura, orden, lote o cantidad ≥ 1e-8 sigue fallando) y el segundo, con pedidos de 5
+ * decimales, fija la propiedad que el PR arregla (no se pierde nada) y cuenta cuántas veces la referencia SÍ lo pierde (prueba de que el generador ejercita el arreglo).
+ */
+const r8 = (n: number) => redondearCantidadExacta(n, 8);
+const limpias = <T extends { cantidad: number }>(partes: T[]): T[] => partes.map((p) => ({ ...p, cantidad: r8(p.cantidad) }));
 
 /**
  * Test DIFERENCIAL (docs/plan-sustitucion-insumos-receta-2026-09-26.md, paso 1): compara el `asignarConsumo` REAL contra la
@@ -123,7 +134,7 @@ describe("asignarConsumo real vs. referencia congelada (diferencial, PRNG de sem
         const partesReal = asignarConsumo(libroReal, pedido);
         const partesRef = asignarConsumoReferencia(libroRef, pedido);
         try {
-          expect(partesReal).toStrictEqual(partesRef);
+          expect(limpias(partesReal)).toStrictEqual(limpias(partesRef));
         } catch (e) {
           throw new Error(`Escenario ${i}, pedido ${j}: resultado distinto.\n${(e as Error).message}`);
         }
@@ -132,12 +143,39 @@ describe("asignarConsumo real vs. referencia congelada (diferencial, PRNG de sem
       try {
         expect(libroReal.cargados()).toStrictEqual(libroRef.cargados());
         for (const { productoId, seccionId } of libroReal.cargados()) {
-          expect(libroReal.cargado(productoId, seccionId)).toBe(libroRef.cargado(productoId, seccionId));
+          expect(r8(libroReal.cargado(productoId, seccionId))).toBe(r8(libroRef.cargado(productoId, seccionId)));
         }
         expect(faltantesDe(libroReal, productoIds)).toStrictEqual(faltantesDe(libroRef, productoIds));
       } catch (e) {
         throw new Error(`Escenario ${i}: estado final del libro distinto.\n${(e as Error).message}`);
       }
     }
+  });
+
+  it("con pedidos de 5 decimales (una media unidad de 0,0001): el real no pierde nada; la referencia congelada sí lo pierde en alguno", () => {
+    const rand = mulberry32(SEMILLA + 1);
+    const sumar = (partes: { cantidad: number }[]) => r8(partes.reduce((suma, p) => suma + p.cantidad, 0));
+    let perdidasEnLaReferencia = 0;
+
+    for (let i = 0; i < N_ESCENARIOS; i++) {
+      const escenario = generarEscenario(rand, i);
+      // Cada pedido pide lo que suman uno o dos lotes con saldo de su familia MÁS una media unidad (0,00005, 0,00015 o 0,00025): el resto que queda tras agotarlos es el que el float perdía.
+      for (const pedido of escenario.pedidos) {
+        const delaFamilia = escenario.saldos.filter((x) => pedido.familia.includes(x.productoId) && x.saldo > 0);
+        const aAgotar = delaFamilia.slice(0, 1 + Math.floor(rand() * 2));
+        pedido.cantidad = r8(aAgotar.reduce((suma, x) => suma + x.saldo, 0) + 0.00005 + 0.0001 * Math.floor(rand() * 3));
+      }
+      const libroReal = crearLibroDeStock(escenario.saldos);
+      const libroRef = crearLibroDeStock(escenario.saldos);
+      for (let j = 0; j < escenario.pedidos.length; j++) {
+        const pedido = escenario.pedidos[j];
+        const real = sumar(asignarConsumo(libroReal, pedido));
+        const ref = sumar(asignarConsumoReferencia(libroRef, pedido));
+        // Lo único que puede quedar sin asignar es lo que el redondeo a 4 decimales lleva a 0 (< 0,00005).
+        expect(r8(pedido.cantidad - real) < 0.00005, `Escenario ${i}, pedido ${j}: el real perdió ${r8(pedido.cantidad - real)}`).toBe(true);
+        if (r8(pedido.cantidad - ref) >= 0.00005) perdidasEnLaReferencia++;
+      }
+    }
+    expect(perdidasEnLaReferencia, "el generador tiene que ejercitar el caso que el PR arregla").toBeGreaterThan(0);
   });
 });

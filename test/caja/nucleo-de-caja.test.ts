@@ -79,6 +79,7 @@ describe("movimientos: signo por clase (oráculo escrito aparte del código)", (
     COBRO: { positivo: true, cero: false, negativo: false },
     INGRESO_MANUAL: { positivo: true, cero: false, negativo: false },
     EGRESO_MANUAL: { positivo: false, cero: false, negativo: true },
+    AJUSTE: { positivo: true, cero: false, negativo: true },
     ANULACION: { positivo: true, cero: false, negativo: true },
   };
   it("todas las clases × signo coinciden con el oráculo", () => {

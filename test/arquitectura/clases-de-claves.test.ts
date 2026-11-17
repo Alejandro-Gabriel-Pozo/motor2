@@ -87,6 +87,10 @@ const O = [
   "declarar_pago_compra",
   // GO-3b: cargar el plato del día de los menús en la sucursal (piso operario, semilla solo admin; delegable al encargado, D-5).
   "promo_menu_del_dia",
+  // Caja y cobro C1, PR-B (2026-11-16): ver la caja, abrirla y cobrar una cuenta (de sucursal, piso operario, semilla solo admin: nacen cerradas; el gerente las delega a quien cobra).
+  "caja_ver",
+  "caja_abrir_sesion",
+  "cobrar_cuenta",
 ] as const satisfies readonly AccionClave[];
 
 const L = [
@@ -131,6 +135,10 @@ const L = [
 ] as const satisfies readonly AccionClave[];
 
 const A = [
+  // Caja y cobro C1, PR-B (2026-11-16): cerrar la caja con arqueo, mover efectivo a mano y anular lo ajeno (de sucursal, piso administrador, semilla admin).
+  "caja_cerrar_sesion",
+  "caja_mover_efectivo",
+  "caja_anular_movimiento_ajeno",
   // Parte P1 (b): desactivar y reactivar fichas (piso administrador, semilla admin: D10, 2026-11-12).
   "partes_desactivar",
   "guardar_receta",
@@ -224,7 +232,8 @@ describe("GT-26 — las clases de claves (G gobierno, O operativas sensibles, L 
     // O 21 → 22: Pagos X0 suma `declarar_pago_compra`.
     // O 22 → 24 y A 60 → 61: Parte P1 suma `partes_ver` y `partes_editar` (O: piso operario, semilla solo admin) y `partes_desactivar` (A).
     // O 24 → 22 y L 34 → 36: `partes_ver` y `partes_editar` suman `operador` a su semilla (pedido del dueño 2026-11-16): pasan de O a L.
-    expect([G.length, O.length, L.length, A.length]).toEqual([14, 22, 36, 61]);
+    // O 22 → 25 y A 61 → 64: Caja y cobro C1 PR-B suma `caja_ver`, `caja_abrir_sesion` y `cobrar_cuenta` (O) y `caja_cerrar_sesion`, `caja_mover_efectivo` y `caja_anular_movimiento_ajeno` (A).
+    expect([G.length, O.length, L.length, A.length]).toEqual([14, 25, 36, 64]);
   });
 
   it("toda clave del catálogo declara su clase, y toda clase declarada existe en el catálogo (las dos direcciones)", () => {

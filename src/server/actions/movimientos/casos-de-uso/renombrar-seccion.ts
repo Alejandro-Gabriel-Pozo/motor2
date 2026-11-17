@@ -3,6 +3,8 @@ import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoRenombrarSeccion, ResultadoRenombrarSeccion } from "@/core/features/movimientos/secciones.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { fijarNombreDeSeccion } from "@/server/persistencia/movimientos/secciones";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 
 /**
  * Caso de uso «renombrar una sección de stock» (Hito 4 de la pureza, bloque C de la pieza carta/catálogo/stock, paso H4C-18 — `docs/plan-hito-4-pureza.md` §3). Es
@@ -23,7 +25,7 @@ import { fijarNombreDeSeccion } from "@/server/persistencia/movimientos/seccione
 export async function renombrarSeccionCasoDeUso(actor: Pick<ContextoUsuario, "db" | "sucursalId">, comando: ComandoRenombrarSeccion): Promise<ResultadoRenombrarSeccion> {
   const { seccionId, nombre } = comando;
   const seccion = await actor.db.seccion.findUnique({ where: { id: seccionId } });
-  if (!seccion || seccion.sucursalId !== actor.sucursalId) return fracaso("NO_ENCONTRADA", "No se encontró el depósito.");
+  if (!seccion || seccion.sucursalId !== actor.sucursalId) return fracaso("NO_ENCONTRADA", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.deposito }));
 
   const existente = await actor.db.seccion.findFirst({
     where: { sucursalId: actor.sucursalId, nombre: { equals: nombre, mode: "insensitive" }, id: { not: seccionId } },

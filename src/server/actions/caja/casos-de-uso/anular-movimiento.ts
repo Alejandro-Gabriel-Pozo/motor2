@@ -9,7 +9,7 @@ import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-aud
 import { cargarMovimiento, cargarMovimientoDeClave, cargarSesion, insertarMovimiento } from "@/server/persistencia/caja/caja";
 
 /**
- * Caso de uso «anular un movimiento manual de caja» (etapa C1, CU4, nivel 5 I-2): nada se borra; anular es agregar OTRO movimiento, espejo del que se anula, con motivo. Solo se anulan ingresos y egresos manuales (un cobro
+ * Caso de uso «anular un movimiento manual de caja» (etapa C1, CU4, nivel 5 I-2): nada se borra; anular es agregar OTRO movimiento, espejo del que se anula, con motivo. Solo se anulan ingresos, egresos manuales y ajustes (C2; un cobro
  * nunca se anula desde la caja, I-9) y una sola vez, dentro de su misma sesión abierta.
  *
  * `puedeAnularAjenos` lo decide la Server Action con la acción `caja_anular_movimiento_ajeno`: sin ella solo se anula lo propio (igual que Pedernal, PROPUESTA).
@@ -20,7 +20,7 @@ import { cargarMovimiento, cargarMovimientoDeClave, cargarSesion, insertarMovimi
  * @idempotency Clave de reintento única por empresa; mismo pedido → la anulación ya hecha; además el único por movimiento anulado.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento, también ante el choque de índice único).
  * @sideEffects registrarCambioAuditado (la anulación con su motivo).
- * @ficha permiso=caja_mover_efectivo transaccion=SERIALIZABLE idempotencia=POR_CLAVE auditoria=REGISTRO_AUDITORIA reloj=NO_APLICA periodo=NO_APLICA
+ * @ficha permiso=caja_mover_efectivo transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function anularMovimientoCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "empresaId" | "transaccion">,
@@ -39,7 +39,7 @@ export async function anularMovimientoCasoDeUso(
 
       const original = await cargarMovimiento(tx, actor.empresaId, comando.movimientoId);
       if (!original || original.sucursalId !== actor.sucursalId) return fracaso("MOVIMIENTO_NO_ENCONTRADO", "No se encontró el movimiento.");
-      if (original.clase !== "INGRESO_MANUAL" && original.clase !== "EGRESO_MANUAL") return fracaso("MOVIMIENTO_NO_ANULABLE", "Este movimiento no se anula desde la caja.");
+      if (original.clase !== "INGRESO_MANUAL" && original.clase !== "EGRESO_MANUAL" && original.clase !== "AJUSTE") return fracaso("MOVIMIENTO_NO_ANULABLE", "Este movimiento no se anula desde la caja.");
       if (original.creadoPorId !== actor.usuarioId && !puedeAnularAjenos) return fracaso("SIN_PERMISO_SOBRE_MOVIMIENTO_AJENO", "Solo podés anular tus propios movimientos.");
 
       const sesion = await cargarSesion(tx, actor.empresaId, original.sesionId);

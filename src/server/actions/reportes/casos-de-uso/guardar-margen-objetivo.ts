@@ -4,6 +4,8 @@ import type { ComandoGuardarMargenObjetivo, ResultadoGuardarMargenObjetivo } fro
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { borrarMargenObjetivo, crearMargenObjetivo, fijarMargenObjetivo } from "@/server/persistencia/reportes/margen-objetivo";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 
 /**
  * Caso de uso «fijar, cambiar o borrar el food cost objetivo de la empresa o de una categoría» (decisión del dueño, 2026-10-01; Hito 4 de la pureza, bloque C de la
@@ -32,7 +34,7 @@ export async function guardarMargenObjetivoCasoDeUso(
   let alcance = "la empresa";
   if (categoriaId !== null) {
     const categoria = await actor.db.categoriaProducto.findUnique({ where: { id: categoriaId }, select: { nombre: true } });
-    if (!categoria) return fracaso("CATEGORIA_NO_ENCONTRADA", "No se encontró la categoría.");
+    if (!categoria) return fracaso("CATEGORIA_NO_ENCONTRADA", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.categoria }));
     alcance = `la categoría «${categoria.nombre}»`;
   }
 
