@@ -1,6 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
-import { alcanceDeSucursal } from "@/core/catalogo/public";
+import { alcanceDeSucursal, leerBaseDeCantidad } from "@/core/catalogo/public";
 import type { IngredienteParaVender } from "@/core/movimientos/public";
 import { cargarRecetaVigente, cargarRecetasVigentes } from "@/server/lecturas/catalogo/recetas-vigentes";
 
@@ -21,10 +21,13 @@ export async function cargarRecetaVigenteParaVender(tx: Prisma.TransactionClient
       },
     },
   });
+  // M3a: la base (NETA/BRUTA) es de la VERSIÓN y vale para todas sus líneas; se lee una vez y una marca ilegible CIERRA (lanza), nunca se asume una base.
+  const baseDeCantidad = receta ? leerBaseDeCantidad(receta.baseDeCantidad) : null;
   return (receta?.ingredientes ?? []).map((ing) => ({
     insumoProductoId: ing.insumoProductoId,
     cantidad: Number(ing.cantidad),
     mermaPorcentaje: Number(ing.mermaPorcentaje),
+    baseDeCantidad: baseDeCantidad!,
     rendimientosLocales: ing.rendimientosLocales.map((r) => ({ sucursalId: r.sucursalId, cantidad: r.cantidad !== null ? Number(r.cantidad) : null, mermaPorcentaje: r.mermaPorcentaje !== null ? Number(r.mermaPorcentaje) : null })),
     insumoSustitutoIds: ing.sustitutos.map((s) => s.insumoSustitutoId),
   }));
