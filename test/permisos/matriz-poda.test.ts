@@ -87,9 +87,9 @@ describe("(b) lo oculto no aparece y lo demás sí", () => {
     expect(claves.length).toBe(todas.filter((a) => !esAccionReservada(a.clave) && !esCapacidadSiempreHabilitada(a.clave)).length);
   });
 
-  it("la marca `soloVer` cubre exactamente los reportes (y `partes_ver`, la búsqueda de fichas de Parte P1, y `caja_ver`, la lectura de la caja de C1 PR-B) y ninguna está `reservada` (la última, `compra_recibir`, se usa desde Compras N3-a)", () => {
+  it("la marca `soloVer` cubre exactamente los reportes (y `partes_ver`, la búsqueda de fichas de Parte P1, `caja_ver`, la lectura de la caja de C1 PR-B, y `caja_jornada_ver`, la lectura del cierre del día) y ninguna está `reservada` (la última, `compra_recibir`, se usa desde Compras N3-a)", () => {
     const soloVer = todas.map((a) => a.clave).filter(esAccionSoloVer);
-    expect(soloVer).toEqual(todas.map((a) => a.clave).filter((c) => c.startsWith("reporte_") || c === "partes_ver" || c === "caja_ver"));
+    expect(soloVer).toEqual(todas.map((a) => a.clave).filter((c) => c.startsWith("reporte_") || c === "partes_ver" || c === "caja_ver" || c === "caja_jornada_ver"));
     expect(todas.map((a) => a.clave).filter(esAccionReservada)).toEqual([]);
   });
 

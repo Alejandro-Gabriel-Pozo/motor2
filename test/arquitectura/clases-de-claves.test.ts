@@ -90,6 +90,13 @@ const O = [
   "caja_ver",
   "caja_abrir_sesion",
   "cobrar_cuenta",
+  // Caja y cobro, cierre del día (etapa A, 2026-11-17): ver la jornada y las cinco acciones del cierre (de sucursal, piso operario, semilla solo admin: nacen cerradas).
+  "caja_jornada_ver",
+  "caja_jornada_iniciar_auditoria",
+  "caja_jornada_cancelar_auditoria",
+  "caja_jornada_cerrar",
+  "caja_corregir_medio_de_cobro",
+  "caja_declarar_total",
 ] as const satisfies readonly AccionClave[];
 
 const L = [
@@ -136,6 +143,8 @@ const L = [
 ] as const satisfies readonly AccionClave[];
 
 const A = [
+  // Caja y cobro, cierre del día (etapa A, 2026-11-17): registrar un ajuste sobre un día ya cerrado (de sucursal, piso administrador, semilla admin).
+  "caja_registrar_ajuste",
   // Compras N3-a (2026-11-16): confirmar la recepción de una compra pendiente pasa de O a A (piso administrador, semilla admin): confirman el gerente y el administrador, no el operador (dueño: «un gerente o administrador la confirma»).
   "compra_recibir",
   // Caja y cobro C1, PR-B (2026-11-16): cerrar la caja con arqueo, mover efectivo a mano y anular lo ajeno (de sucursal, piso administrador, semilla admin).
@@ -238,7 +247,8 @@ describe("GT-26 — las clases de claves (G gobierno, O operativas sensibles, L 
     // L 36 → 37: Compras N3-b (2026-11-16) suma `compra_controlar_recepcion` (piso operario, semilla admin y operador).
     // O 22 → 21 y A 61 → 62: Compras N3-a (2026-11-16) sube `compra_recibir` de O a A (piso administrador).
     // O +3 y A +3: Caja y cobro C1 PR-B suma `caja_ver`, `caja_abrir_sesion` y `cobrar_cuenta` (O) y `caja_cerrar_sesion`, `caja_mover_efectivo` y `caja_anular_movimiento_ajeno` (A).
-    expect([G.length, O.length, L.length, A.length]).toEqual([14, 24, 37, 65]);
+    // O 24 → 30 y A 65 → 66: Caja, cierre del día (etapa A) suma `caja_jornada_ver`, `caja_jornada_iniciar_auditoria`, `caja_jornada_cancelar_auditoria`, `caja_jornada_cerrar`, `caja_corregir_medio_de_cobro` y `caja_declarar_total` (O) y `caja_registrar_ajuste` (A).
+    expect([G.length, O.length, L.length, A.length]).toEqual([14, 30, 37, 66]);
   });
 
   it("toda clave del catálogo declara su clase, y toda clase declarada existe en el catálogo (las dos direcciones)", () => {

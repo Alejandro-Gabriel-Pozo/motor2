@@ -1399,6 +1399,62 @@
       ]
     },
     {
+      "clave": "caja_jornada_ver",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "caja_jornada_iniciar_auditoria",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "caja_jornada_cancelar_auditoria",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "caja_jornada_cerrar",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "caja_corregir_medio_de_cobro",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "caja_declarar_total",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "caja_registrar_ajuste",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
       "clave": "producto_asignar_insumo",
       "contexto": "empresa",
       "nivelMinimo": "operario",

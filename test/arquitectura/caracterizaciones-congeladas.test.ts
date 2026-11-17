@@ -166,6 +166,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Compras N3 sobre el origin/main integrado (15f3399d): la matriz de la rama (compra_recibir y compra_controlar_recepcion, ya declaradas arriba) suma las seis claves de la caja de Caja y cobro C1 PR-B (`caja_ver`, `caja_abrir_sesion`, `caja_cerrar_sesion`, `caja_mover_efectivo`, `caja_anular_movimiento_ajeno`, `cobrar_cuenta`; ya declaradas arriba con el blob `22b61bd0`, ADITIVO, semilla solo admin). Fusión de dos regeneraciones declaradas, sin ningún cambio nuevo de comportamiento. Revisado con `git diff -U0` contra el commit `1107fdc8`: cambian SOLO 224 líneas, las listas de claves de cada bloque (una por lista, con las seis claves de la caja de más); ningún otro permiso ni rol cambia.",
       },
+      {
+        blob: "74c0bad9e71f77f09d3969b3d66409bc59ce712e",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `9e5c9fe9` (la punta de `origin/main` sobre la que se hizo el cambio, antes de las siete claves del cierre del día).
+        commit: "9e5c9fe9",
+        motivo:
+          "Caja y cobro, cierre del día, etapa A, permisos (ADITIVO; siete claves nuevas, semilla solo `admin`, todo nace cerrado; tabla confirmada por el dueño 2026-11-17, «ok pedernal»): `caja_jornada_ver`, `caja_jornada_iniciar_auditoria`, `caja_jornada_cancelar_auditoria`, `caja_jornada_cerrar`, `caja_corregir_medio_de_cobro`, `caja_declarar_total` y `caja_registrar_ajuste` (de sucursal, módulo provisorio `salon`). Se suman a las listas de claves de cada bloque de la matriz de acceso. Verificado quitando las siete claves del archivo nuevo: queda IDÉNTICO al anterior (mismas líneas, cero líneas agregadas o quitadas). Ninguna otra respuesta del guard ni ningún otro permiso cambia: el operador no recibe ninguna.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
@@ -335,6 +342,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "8d004cbd",
         motivo:
           "Roles P3, nombres visibles de los roles base (CAMBIA SOLO TEXTO; la clave interna no cambia): la siembra de fábrica imprime `ROL … nombre=administrador` y `nombre=empleado` en lugar de `admin` y `operador` (4 líneas: 2 por foto), y el rol que quedan asignando las altas por invitación se audita con el nombre visible: las 32 líneas `AUDITORIA … rol (alta por invitación)` pasan de `valorNuevo=operador`/`admin` a `valorNuevo=empleado`/`administrador` (16 por cada nombre; el CI de GitHub marcó la diferencia exacta). Ningún permiso, resultado ni mensaje cambia. Aprobada por el dueño el 2026-11-17: «5.-Si, yo agregaria encargado. O si se lo puede crear lo hago yo» (nombres Gerente, Administrador y Empleado y regeneración de las dos huellas; motor2-docs, seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md, sección «Respuestas del dueño en el chat sobre libro, menú, Compras, depósitos, roles y T2»).",
+      },
+      {
+        blob: "79db3c7f561ce102c88ba519da4a7176f1048a74",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `9e5c9fe9` (la punta de `origin/main` sobre la que se hizo el cambio, antes de las siete claves del cierre del día).
+        commit: "9e5c9fe9",
+        motivo:
+          "Caja y cobro, cierre del día, etapa A, permisos (ADITIVO; siete claves nuevas, semilla solo `admin`, todo nace cerrado; tabla confirmada por el dueño 2026-11-17, «ok pedernal»): `caja_jornada_ver`, `caja_jornada_iniciar_auditoria`, `caja_jornada_cancelar_auditoria`, `caja_jornada_cerrar`, `caja_corregir_medio_de_cobro`, `caja_declarar_total` y `caja_registrar_ajuste`. `ACCIONES 140 a 147` (en las dos fotos) y las catorce filas `PERMISO` por foto de las siete claves (admin ver=true editar=true; operador ver=false editar=false). Revisado con `git diff -U0`: son 30 líneas agregadas (28 filas PERMISO y las dos de ACCIONES 147) y 2 quitadas (las dos de ACCIONES 140), nada más.",
       },
     ],
   },
