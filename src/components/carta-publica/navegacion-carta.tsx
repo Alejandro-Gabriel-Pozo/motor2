@@ -48,6 +48,8 @@ interface Props {
   /** `color_nav_iconos`: si está cargado, los íconos de redes salen de ESE color, sin la opacidad decorativa. */
   colorIconos: string | null;
   redesSociales: readonly RedSocial[];
+  /** Estilo de la maqueta: las redes se dibujan en la portada (`Portada`), no como íconos en la barra de abajo de la portada. */
+  redesEnLaPortada?: boolean;
   /** `EstiloCarta.variablesCss` (`src/core/carta/estilo.ts`): pisa los defaults de `.carta-shell` para ESTA sucursal. */
   variablesCss: Readonly<Record<string, string>>;
   /**
@@ -57,7 +59,7 @@ interface Props {
   embebida?: boolean;
 }
 
-export function NavegacionCarta({ children, paginas, hrefVolver, volver, colorIconos, redesSociales, variablesCss, embebida = false }: Props) {
+export function NavegacionCarta({ children, paginas, hrefVolver, volver, colorIconos, redesSociales, variablesCss, embebida = false, redesEnLaPortada = false }: Props) {
   const raizRef = useRef<HTMLDivElement>(null);
   const sliderRef = useRef<HTMLElement>(null);
   const navRef = useRef<HTMLElement>(null);
@@ -184,7 +186,7 @@ export function NavegacionCarta({ children, paginas, hrefVolver, volver, colorIc
 
             <div className="flex flex-col items-center gap-1">
               {esPortada ? (
-                hayRedes && (
+                hayRedes && !redesEnLaPortada && (
                   <div className="flex items-center gap-4">
                     {redesSociales.map((r) => {
                       const Icono = ICONO_POR_RED[r.id];

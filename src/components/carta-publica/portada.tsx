@@ -1,4 +1,6 @@
 import type { EstiloCarta } from "@/core/carta/public";
+import { MARCA_PARA_TEXTO } from "./colores-del-item";
+import type { RedSocial } from "./navegacion-carta";
 
 /**
  * ADR-006, Fase 3: portada de la carta — un solo árbol de markup (el original dibujaba una portada de escritorio y otra de
@@ -8,7 +10,7 @@ import type { EstiloCarta } from "@/core/carta/public";
  * del texto en mobile — mismo contenido, presentación más simple (nivel (a) del diagnóstico de UI: desenredar sin cambiar
  * el concepto, el rediseño de layout es nivel (b), Fase 5, con aprobación del dueño).
  */
-export function Portada({ estilo, restauranteNombre, estiloLibro = false }: { estilo: EstiloCarta; restauranteNombre: string; estiloLibro?: boolean }) {
+export function Portada({ estilo, restauranteNombre, estiloLibro = false, redes = [] }: { estilo: EstiloCarta; restauranteNombre: string; estiloLibro?: boolean; redes?: readonly RedSocial[] }) {
   const v = estilo.valores;
   const logoUrl = v.restaurante_logo_url;
   const bgUrl = v.hero_imagen_fondo_url;
@@ -46,7 +48,7 @@ export function Portada({ estilo, restauranteNombre, estiloLibro = false }: { es
       <div className="relative flex flex-col items-center gap-4">
       {/* Velo CENTRADO en el bloque (logo y textos), no sobre toda la imagen: oscurece solo detrás del texto y se desvanece hacia los bordes (mancha suave casi del ancho de la pantalla, como la portada original),
           así la imagen conserva sus colores. Sin ajuste en el Tema: es parte de cómo se ve la portada con imagen. Acompaña al bloque porque es su hijo. */}
-      {bgUrl && (
+      {(bgUrl || conAire) && (
         <div
           data-portada-velo
           aria-hidden
@@ -92,6 +94,16 @@ export function Portada({ estilo, restauranteNombre, estiloLibro = false }: { es
           <span className="block h-px w-10 opacity-30" style={{ backgroundColor: "currentColor" }} />
           <span className="carta-rol-etiqueta opacity-40">{v.carta_texto_portada_separador}</span>
           <span className="block h-px w-10 opacity-30" style={{ backgroundColor: "currentColor" }} />
+        </div>
+      )}
+      {conAire && redes.length > 0 && (
+        // Estilo de la maqueta: las redes que la sucursal YA cargó, como botones en la portada (solo si hay dato cargado; sin dato no se dibuja nada).
+        <div data-portada-redes className="flex flex-wrap items-center justify-center gap-2">
+          {redes.map((r) => (
+            <a key={r.id} href={r.href} target="_blank" rel="noopener noreferrer" className="carta-rol-etiqueta inline-flex min-h-11 items-center rounded-full border px-4" style={{ color: MARCA_PARA_TEXTO, borderColor: "var(--carta-primary)" }}>
+              {r.label}
+            </a>
+          ))}
         </div>
       )}
       </div>

@@ -47,6 +47,8 @@ export function CartaVista({
   // Estilo de la maqueta: las líneas siguen al fondo y a la tinta de la carta (tenues, no blancas sobre fondo oscuro).
   if (LIBRO_ESTILO_MAQUETA) variablesCss["--carta-border"] = "color-mix(in oklch, var(--carta-ink) 22%, var(--carta-bg))";
   const c = estilo.colores;
+  // La misma condición que `Portada` (estilo de la maqueta, sin imagen de fondo ni color de portada cargados): las redes salen como botones en la portada y no como íconos en la barra de abajo.
+  const portadaConAire = LIBRO_ESTILO_MAQUETA && !estilo.valores.hero_imagen_fondo_url && !estilo.portada.fondo;
 
   return (
     <NavegacionCarta
@@ -57,8 +59,9 @@ export function CartaVista({
       variablesCss={variablesCss}
       volver={estilo.volver}
       colorIconos={c.navIconos}
+      redesEnLaPortada={portadaConAire}
     >
-      <Portada estilo={estilo} restauranteNombre={restauranteNombre} estiloLibro={LIBRO_ESTILO_MAQUETA} />
+      <Portada estilo={estilo} restauranteNombre={restauranteNombre} estiloLibro={LIBRO_ESTILO_MAQUETA} redes={redesSociales} />
 
       <div className="carta-pagina flex flex-col px-6 sm:px-10">
         {estilo.valores.carta_texto_indice_etiqueta && (
