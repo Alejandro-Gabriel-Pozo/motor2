@@ -1,4 +1,4 @@
-import { pieDeLaCartaImpresa, type CartaPublicaV1, type EstiloCarta } from "@/core/carta/public";
+import { LIBRO_ESTILO_MAQUETA, pieDeLaCartaImpresa, type CartaPublicaV1, type EstiloCarta } from "@/core/carta/public";
 import { MARCA_PARA_TEXTO } from "./colores-del-item";
 import { NavegacionCarta, type PaginaCarta, type RedSocial } from "./navegacion-carta";
 import { Portada } from "./portada";
@@ -44,6 +44,8 @@ export function CartaVista({
     variablesCss["--carta-ink-soft"] = `color-mix(in oklch, ${estilo.tintaBase} 70%, var(--carta-bg))`;
   }
   if (estilo.colores.navFlechas) variablesCss["--carta-flechas"] = estilo.colores.navFlechas;
+  // Estilo de la maqueta: las líneas siguen al fondo y a la tinta de la carta (tenues, no blancas sobre fondo oscuro).
+  if (LIBRO_ESTILO_MAQUETA) variablesCss["--carta-border"] = "color-mix(in oklch, var(--carta-ink) 22%, var(--carta-bg))";
   const c = estilo.colores;
 
   return (
@@ -56,7 +58,7 @@ export function CartaVista({
       volver={estilo.volver}
       colorIconos={c.navIconos}
     >
-      <Portada estilo={estilo} restauranteNombre={restauranteNombre} />
+      <Portada estilo={estilo} restauranteNombre={restauranteNombre} estiloLibro={LIBRO_ESTILO_MAQUETA} />
 
       <div className="carta-pagina flex flex-col px-6 sm:px-10">
         {estilo.valores.carta_texto_indice_etiqueta && (
