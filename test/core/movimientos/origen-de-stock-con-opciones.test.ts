@@ -21,13 +21,13 @@ import {
 const SUCURSAL = "sucursal-1";
 const UNIDAD = "u1";
 
-const ingredienteX = (): { ingrediente: { insumoProductoId: string; cantidad: number; mermaPorcentaje: number; rendimientosLocales: []; insumoSustitutoIds: string[] }; unidadStockId: string } => ({
-  ingrediente: { insumoProductoId: "X", cantidad: 2, mermaPorcentaje: 0, rendimientosLocales: [], insumoSustitutoIds: [] },
+const ingredienteX = (): { ingrediente: { insumoProductoId: string; cantidad: number; mermaPorcentaje: number; baseDeCantidad: "NETA"; rendimientosLocales: []; insumoSustitutoIds: string[] }; unidadStockId: string } => ({
+  ingrediente: { insumoProductoId: "X", cantidad: 2, mermaPorcentaje: 0, baseDeCantidad: "NETA", rendimientosLocales: [], insumoSustitutoIds: [] },
   unidadStockId: UNIDAD,
 });
 
-const suma = (insumo: string): ConsumoDeOpcionParaVender => ({ efecto: "SUMA", insumoProductoId: insumo, reemplazaAProductoId: null, cantidad: 1, unidadStockId: UNIDAD, mermaPorcentaje: 0, escalaConLaMedida: false });
-const reemplaza = (de: string, por: string): ConsumoDeOpcionParaVender => ({ efecto: "REEMPLAZA", insumoProductoId: por, reemplazaAProductoId: de, cantidad: 1, unidadStockId: UNIDAD, mermaPorcentaje: 0, escalaConLaMedida: false });
+const suma = (insumo: string): ConsumoDeOpcionParaVender => ({ efecto: "SUMA", insumoProductoId: insumo, reemplazaAProductoId: null, cantidad: 1, unidadStockId: UNIDAD, mermaPorcentaje: 0, baseDeCantidad: "NETA", escalaConLaMedida: false });
+const reemplaza = (de: string, por: string): ConsumoDeOpcionParaVender => ({ efecto: "REEMPLAZA", insumoProductoId: por, reemplazaAProductoId: de, cantidad: 1, unidadStockId: UNIDAD, mermaPorcentaje: 0, baseDeCantidad: "NETA", escalaConLaMedida: false });
 
 function consumosDe(c: ConsumoDeLaOpcion): ConsumoDeOpcionParaVender[] {
   switch (c) {

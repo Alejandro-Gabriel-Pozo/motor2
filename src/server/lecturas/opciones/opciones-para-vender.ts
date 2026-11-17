@@ -5,6 +5,7 @@ import type { GrupoParaVender, OpcionParaVender } from "@/core/pos/public";
 import type { EfectoDeConsumoDeOpcion } from "@/core/opciones/public";
 import { precioLocalActivoEn } from "@/server/lecturas/catalogo/precio-local";
 import { preciosLocalesDeOpcionVigentes } from "@/server/lecturas/catalogo/precio-local-de-opciones";
+import { leerBaseDeCantidad } from "@/core/catalogo/public";
 
 /**
  * Las OPCIONES DE VENTA de los productos de un pedido, para venderlas en una sucursal (GO-2b, ADR-030). Es el EMBUDO de lectura de las versiones vigentes de las
@@ -88,6 +89,7 @@ export async function cargarOpcionesParaVender(
                       diferenciaPrecio: true,
                       porcentaje: true,
                       factorEscala: true,
+                      baseDeCantidad: true,
                       consumos: {
                         orderBy: { orden: "asc" },
                         select: { efecto: true, insumoProductoId: true, reemplazaAProductoId: true, cantidad: true, unidadId: true, mermaPorcentaje: true, escalaConLaMedida: true },
@@ -144,6 +146,8 @@ export async function cargarOpcionesParaVender(
               cantidad: Number(c.cantidad),
               unidadStockId: c.unidadId,
               mermaPorcentaje: Number(c.mermaPorcentaje),
+              // M3a: la base de la versión de opción vigente (NETA/BRUTA); una marca ilegible CIERRA.
+              baseDeCantidad: leerBaseDeCantidad(vigente.baseDeCantidad),
               escalaConLaMedida: c.escalaConLaMedida,
             })),
             precioAbsoluto: admite?.precioAbsoluto == null ? null : Number(admite.precioAbsoluto),
