@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
@@ -7,14 +6,7 @@ import { cargarAdminCarta } from "@/server/consultas/carta/admin";
 import { cargarCombosDeLaCarta } from "@/server/consultas/carta/combos";
 import { cargarRepartoDeLasPromos } from "@/server/consultas/carta/reparto-de-las-promos";
 import { RepartoDelPrecio } from "./reparto-del-precio";
-import {
-  actualizarActivaPromoCarta,
-  actualizarActivaPromoCartaEnSucursal,
-  guardarCuposPromoCarta,
-  guardarPrecioLocalPromoCarta,
-  guardarPromoCarta,
-  guardarSoloSalonPromoCarta,
-} from "@/server/actions/carta/promos";
+import { actualizarActivaPromoCarta, actualizarActivaPromoCartaEnSucursal, guardarCuposPromoCarta, guardarPrecioLocalPromoCarta, guardarPromoCarta, guardarSoloSalonPromoCarta } from "@/server/actions/carta/promos";
 import { actualizarActivaEntradaDeCupo, agregarEntradaDeCupo } from "@/server/actions/carta/combos";
 import { guardarParteDePromo } from "@/server/actions/carta/promos";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
@@ -30,6 +22,7 @@ import estilos from "../../carta-mant.module.css";
 import { CamposCupos, CamposLugares, CamposPromo, esFijo } from "../formularios";
 import { AvisoDelPeorCaso } from "./aviso-del-peor-caso";
 import { PartesDeLaPromo } from "./partes-de-la-promo";
+import { ConAire, Junto } from "./aire-del-armado";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { CampoNumero } from "@/components/campo-numero";
@@ -42,21 +35,6 @@ const refrescarSiOk = (r: ResultadoAccion) => {
   if (r.ok) refrescarVistaSiHaceFalta();
   return r;
 };
-
-/**
- * Aire del armado «como Pedernal» (`ARMADO_DE_PROMO_COMO_PEDERNAL`, pedido del dueño 2026-11-17: «en Pedernal veo algo limpio, en Motor 2 algo apretado»): con el interruptor encendido, los bloques de cada promo van uno debajo del otro
- * con más espacio entre sí (y sin el margen suelto que cada uno traía); apagado, no envuelve nada: la pantalla de siempre.
- */
-function ConAire({ activo, children }: { activo: boolean; children: ReactNode }) {
-  if (!activo) return <>{children}</>;
-  return <div className="mt-4 flex flex-col gap-5 [&>*]:mt-0">{children}</div>;
-}
-
-/** Un título con lo que le cuelga (un formulario, un dato): juntos entre sí, aunque el resto vaya con aire. Apagado, no envuelve nada. */
-function Junto({ activo, children }: { activo: boolean; children: ReactNode }) {
-  if (!activo) return <>{children}</>;
-  return <div className="flex flex-col gap-2 [&>*]:mt-0">{children}</div>;
-}
 
 /**
  * CARTA-MANT: Parametrización › Promociones (prototipo aprobado). Las promos de la empresa (prendidas o no en esta sucursal, con su precio local, sus cupos, sus lugares de entradas), con el
