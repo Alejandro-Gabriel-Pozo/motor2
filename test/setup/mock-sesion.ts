@@ -9,3 +9,4 @@ export async function mockearUsuarioActual(usuario: UsuarioActual) {
   const { getUsuarioActual } = await import("../../src/server/sesion/session");
   vi.mocked(getUsuarioActual).mockResolvedValue(usuario);
 }
+// demostración del filtro de alcance del CI (PR de prueba, no se integra)
