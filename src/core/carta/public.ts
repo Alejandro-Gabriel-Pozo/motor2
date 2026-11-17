@@ -54,7 +54,7 @@ export { CLAVES_PORTAL_V1 } from "./portal";
 export { origenPublicoDeCarta, urlCartaPublicaConEmpresaUnica } from "./carta-empresa-unica";
 export { textoRobotsDeCarta, xmlSitemapDeCarta } from "./robots-sitemap";
 export type { MetadatosPublicos } from "./metadatos";
-export { descripcionDeCartaDeSucursal, descripcionDelPortal, imagenParaCompartir, nombrePublicoUsable, tituloDeCartaDeSucursal, tituloDelPortal } from "./metadatos";
+export { descripcionDeCartaDeSucursal, descripcionDelPortal, imagenAlCompartirDeSucursal, imagenParaCompartir, nombrePublicoUsable, tituloDeCartaDeSucursal, tituloDelPortal } from "./metadatos";
 export type { TemaAdmin } from "./admin-tipos";
 export { CLAVES_TEMA_V1 } from "./tema";
 export { entradasVistaPreviaPortal } from "./admin-tipos";
