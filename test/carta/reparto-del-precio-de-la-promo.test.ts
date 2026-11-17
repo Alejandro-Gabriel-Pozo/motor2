@@ -18,7 +18,6 @@ describe("repartoDelPrecioDeLaPromo", () => {
     // 13500 × 12000 / 14200 = 11408,45 (redondeo al centavo); el resto, 2091,55.
     expect(r.filas.map((f) => [f.producto, f.reparto, f.lista])).toEqual([["Barbacoa", 11408.45, 12000], ["Gaseosa", 2091.55, 2200]]);
     expect(r.filas.reduce((s, f) => s + f.reparto, 0).toFixed(2)).toBe("13500.00");
-    expect(r.sinProducto).toEqual([]);
     expect(r.usaMaximo).toBe(false);
     expect(textoDeLaFilaDelReparto(r.filas[0]!)).toMatch(/^Barbacoa .*11\.408,45 \(Lista .*12\.000,00\)$/);
   });
@@ -41,13 +40,9 @@ describe("repartoDelPrecioDeLaPromo", () => {
     expect(r.usaMaximo).toBe(true);
   });
 
-  it("una parte sin producto disponible no entra al reparto y se nombra; la suma cierra con las que sí", () => {
-    const r = repartoDelPrecioDeLaPromo(13500, [BARBACOA, parte("Postres", 1, 1, null)]);
-    expect(r.tipo).toBe("ok");
-    if (r.tipo !== "ok") return;
-    expect(r.filas).toHaveLength(1);
-    expect(r.filas[0]!.reparto).toBe(13500);
-    expect(r.sinProducto).toEqual(["Postres"]);
+  it("si ALGUNA parte no tiene producto disponible NO se reparte y se nombran las que faltan (no se estima: repartir solo entre las demás sobrestimaría)", () => {
+    expect(repartoDelPrecioDeLaPromo(13500, [BARBACOA, parte("Postres", 1, 1, null)])).toEqual({ tipo: "incompleto", sinProducto: ["Postres"] });
+    expect(repartoDelPrecioDeLaPromo(13500, [parte("Entrada", 1, 1, null), BARBACOA, parte("Postres", 1, 1, null)])).toEqual({ tipo: "incompleto", sinProducto: ["Entrada", "Postres"] });
   });
 
   it("sin ninguna parte con producto disponible: «sin-productos» (no se inventa un precio)", () => {

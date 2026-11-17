@@ -32,6 +32,14 @@ describe("RepartoDelPrecio", () => {
     expect(error).toContain("no alcanza el piso");
   });
 
+  it("si falta producto en una parte NO se reparte: avisa en cuáles faltan y no muestra ningún importe repartido", () => {
+    const html = renderToStaticMarkup(<RepartoDelPrecio precio={13500} partes={[PARTES[0]!, { ...PARTES[1]!, ejemplo: null }]} />);
+    expect(html).toContain("No se puede mostrar el reparto");
+    expect(html).toContain(PARTES[1]!.nombre);
+    expect(html).not.toContain("$");
+    expect(html).not.toContain("Lista");
+  });
+
   it("promo sin componentes: no se dibuja nada", () => {
     expect(renderToStaticMarkup(<RepartoDelPrecio precio={13500} partes={[]} />)).toBe("");
   });
