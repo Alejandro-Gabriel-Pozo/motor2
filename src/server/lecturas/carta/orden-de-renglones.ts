@@ -1,5 +1,5 @@
 import "server-only";
-import { MODO_DE_ORDEN_POR_DEFECTO, modoVigente, nombreDeCarta, ordenarRenglonesDeSeccion, whereCartaDeSucursal, type ModoDeOrdenDeSeccion } from "@/core/carta/public";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE, MODO_DE_ORDEN_POR_DEFECTO, modoVigente, nombreDeCarta, ordenarRenglonesDeSeccion, whereCartaDeSucursal, type ModoDeOrdenDeSeccion } from "@/core/carta/public";
 import type { TipoDeRenglonDeCarta } from "@/core/features/carta/orden-de-renglones.schema";
 import type { Db } from "@/lib/db-tipos";
 
@@ -26,10 +26,13 @@ export async function leerRenglonesDeSeccion(db: Db, args: { sucursalId: string;
       where: { ...whereCartaDeSucursal(args.sucursalId), seccionCartaId: args.seccionCartaId, visibleEnCarta: true },
       select: { productoId: true, orden: true, nombreEnCarta: true, producto: { select: { nombre: true } } },
     }),
-    db.itemAgrupadoCarta.findMany({
-      where: { ...whereCartaDeSucursal(args.sucursalId), seccionCartaId: args.seccionCartaId, activo: true },
-      select: { id: true, nombre: true, orden: true },
-    }),
+    // Interruptor de ítem agrupado apagado (`GENERO_E_ITEM_AGRUPADO_VISIBLE`): no hay ítems agrupados en la carta, así que no son renglones (como en `menu.ts`).
+    !GENERO_E_ITEM_AGRUPADO_VISIBLE
+      ? Promise.resolve([])
+      : db.itemAgrupadoCarta.findMany({
+          where: { ...whereCartaDeSucursal(args.sucursalId), seccionCartaId: args.seccionCartaId, activo: true },
+          select: { id: true, nombre: true, orden: true },
+        }),
   ]);
   return [
     ...productos.map((p): RenglonDeSeccion => ({ tipo: "PRODUCTO", id: p.productoId, nombre: nombreDeCarta(p.producto, p), orden: p.orden })),

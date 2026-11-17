@@ -1,6 +1,6 @@
 import "server-only";
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { whereCartaDeSucursal } from "@/core/carta/public";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE, whereCartaDeSucursal } from "@/core/carta/public";
 import type { TipoDeRenglonDeCarta } from "@/core/features/carta/orden-de-renglones.schema";
 
 /**
@@ -18,6 +18,7 @@ export async function leerSeccionParaOrdenar(tx: Tx, seccionCartaId: string): Pr
 
 /** ¿La sección tiene ítems agrupados activos en esta sucursal? Lo usa el caso de uso para pedir, además, el permiso de los ítems agrupados. */
 export async function haySeccionConItemsAgrupados(db: Tx | PrismaClient, args: { sucursalId: string; seccionCartaId: string }): Promise<boolean> {
+  if (!GENERO_E_ITEM_AGRUPADO_VISIBLE) return false; // interruptor de ítem agrupado apagado: no hay ítems agrupados en la carta
   return (await db.itemAgrupadoCarta.count({ where: { ...whereCartaDeSucursal(args.sucursalId), seccionCartaId: args.seccionCartaId, activo: true } })) > 0;
 }
 
