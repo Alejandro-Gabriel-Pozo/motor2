@@ -1,6 +1,7 @@
 import "server-only";
 import type { ComandoGuardarTemaSimpleCarta, ResultadoGuardarTemaSimpleCarta } from "@/core/features/carta/tema.schema";
 import { mezclarTemaSimple, mismoContenido } from "@/core/carta/public";
+import { LARGO_MAXIMO_DEL_RUBRO_SIMPLE, MENSAJE_RUBRO_DEMASIADO_LARGO } from "@/core/carta/tema-simple";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
@@ -33,6 +34,11 @@ export async function guardarTemaSimpleCartaCasoDeUso(actor: Pick<ContextoDeAcci
       if (!sucursal) return fracaso("SUCURSAL_NO_ENCONTRADA", "No se encontró la sucursal.");
 
       const fila = await leerTemaParaMezclar(tx, { sucursalId });
+      // Rubro ≤ 40 como Pedernal, SOLO si cambia: un rubro ya guardado más largo (el catálogo admite 120) no bloquea el guardado mientras no se toque.
+      const rubroPedido = valores.hero_etiqueta_superior ?? "";
+      const rubroGuardado = (fila?.valores as Record<string, unknown> | null | undefined)?.hero_etiqueta_superior;
+      if (rubroPedido.length > LARGO_MAXIMO_DEL_RUBRO_SIMPLE && rubroPedido !== rubroGuardado) return fracaso("RUBRO_DEMASIADO_LARGO", MENSAJE_RUBRO_DEMASIADO_LARGO);
+
       const mezcla = mezclarTemaSimple(fila?.valores, valores);
       const nada = fila ? mismoContenido(fila.valores, mezcla) : Object.keys(mezcla).length === 0;
       if (nada) return exito(`El tema de "${sucursal.nombre}" ya estaba así: no cambió nada.`, { cambiado: false });

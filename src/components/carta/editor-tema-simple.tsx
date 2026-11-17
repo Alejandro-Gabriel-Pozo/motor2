@@ -25,9 +25,9 @@ import { OpcionesExcluyentes } from "@/ui/primitivas/opciones-excluyentes";
 import { CARTA_EJEMPLO } from "./carta-ejemplo";
 
 /**
- * La pantalla SIMPLE del tema de la carta (PASO A de «Apariencia y publicación», `docs/diseno-carta-apariencia-y-publicacion-como-pedernal-2026-11-17.md`, §3; solo con el interruptor `TEMA_SIMPLE_VISIBLE` encendido): siete campos —color de marca,
- * logo, nombre y los cuatro del contacto— y un solo «Guardar». El color de marca se elige entre las seis paletas de Pedernal o se escribe en «Otro color» (`#rrggbb`); la vista previa es la carta real con ese color sobre el fondo oscuro del sistema: el texto va en colores fijos del sistema y la marca solo en acentos y bordes, así que cualquier color se guarda tal cual (sin ajustes ni avisos). Formulario NO controlado (`FormConResultado`), como el editor completo: un `onInput`
- * en el cuerpo vuelve a leer el `FormData` para la vista previa. El cuerpo se vuelve a montar con `key={version}` al guardar. El servidor revalida todo (guard) y cambia SOLO estas siete claves: lo demás que la empresa haya cargado sigue como estaba.
+ * La pantalla SIMPLE del tema de la carta (PASO A de «Apariencia y publicación», `docs/diseno-carta-apariencia-y-publicacion-como-pedernal-2026-11-17.md`, §3; solo con el interruptor `TEMA_SIMPLE_VISIBLE` encendido): diez campos —color de marca,
+ * logo, nombre, rubro, lugar, foto de portada y los cuatro del contacto— y un solo «Guardar». El color de marca se elige entre las seis paletas de Pedernal o se escribe en «Otro color» (`#rrggbb`); la vista previa es la carta real con ese color sobre el fondo oscuro del sistema: el texto va en colores fijos del sistema y la marca solo en acentos y bordes, así que cualquier color se guarda tal cual (sin ajustes ni avisos). Formulario NO controlado (`FormConResultado`), como el editor completo: un `onInput`
+ * en el cuerpo vuelve a leer el `FormData` para la vista previa. El cuerpo se vuelve a montar con `key={version}` al guardar. El servidor revalida todo (guard) y cambia SOLO estas diez claves: lo demás que la empresa haya cargado sigue como estaba.
  */
 export function EditorTemaSimple({
   valoresIniciales,
@@ -76,6 +76,9 @@ function leer(form: HTMLFormElement): Lectura {
 const AYUDA: Record<string, string> = {
   restaurante_logo_url: "Dirección https:// de la imagen. Si la dejás vacía, se usa la inicial del nombre.",
   restaurante_nombre: "Si lo dejás vacío, se usa el nombre de la sucursal.",
+  hero_etiqueta_superior: "La línea sobre el nombre, por ejemplo: Restaurante.",
+  restaurante_subtitulo: "La línea debajo del nombre, por ejemplo: Villa La Angostura.",
+  hero_imagen_fondo_url: "Opcional. Dirección https:// de la foto. Con foto, la portada oscurece el fondo detrás del texto para que se lea con cualquier imagen.",
   restaurante_instagram: "El usuario (@usuario) o la URL https:// del perfil.",
   restaurante_facebook: "El usuario o la URL https:// del perfil.",
   restaurante_whatsapp: "Con código de país: +54 9 294 123-4567.",
@@ -85,6 +88,9 @@ const AYUDA: Record<string, string> = {
 const ETIQUETA: Record<string, string> = {
   restaurante_logo_url: "Logo",
   restaurante_nombre: "Nombre",
+  hero_etiqueta_superior: "Rubro",
+  restaurante_subtitulo: "Lugar",
+  hero_imagen_fondo_url: "Foto de portada",
   restaurante_instagram: "Instagram",
   restaurante_facebook: "Facebook",
   restaurante_whatsapp: "WhatsApp",
@@ -111,7 +117,7 @@ function CuerpoSimple({ valoresIniciales, soloLectura }: { valoresIniciales: Rea
   const marcaValida = marca === "" || esMarcaHex(marca);
   const errorDeOtro = lectura.eleccion === "otro" && !marcaValida ? MENSAJE_FORMATO_DEL_COLOR : undefined;
 
-  // La vista previa es la carta que va a ver quien entre: lo ya cargado por la empresa (con los por defecto de la maqueta en lo que no cargó), con los siete campos de la pantalla encima y la marca oscura.
+  // La vista previa es la carta que va a ver quien entre: lo ya cargado por la empresa (con los por defecto de la maqueta en lo que no cargó), con los diez campos de la pantalla encima y la marca oscura.
   const estilo = useMemo(() => {
     // Exactamente la mezcla que hace el servidor al guardar (`mezclarTemaSimple`) y, encima, los por defecto de la maqueta en lo que no se cargó, como la carta pública. Un color escrito a medias no cambia la vista previa.
     const mezcla = mezclarTemaSimple(valoresIniciales, { ...lectura.valores, color_marca: marcaValida ? marca : (valoresIniciales.color_marca ?? "") });
@@ -168,6 +174,17 @@ function CuerpoSimple({ valoresIniciales, soloLectura }: { valoresIniciales: Rea
           </div>
         </section>
 
+        <section aria-labelledby="titulo-portada-simple" className="flex flex-col gap-3 rounded border p-3">
+          <h2 id="titulo-portada-simple" className="text-sm font-medium">
+            Portada
+          </h2>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {(["hero_etiqueta_superior", "restaurante_subtitulo", "hero_imagen_fondo_url"] as const).map((clave) => (
+              <CampoSimple key={clave} clave={clave} inicial={valoresIniciales[clave] ?? ""} actual={lectura.valores[clave] ?? ""} />
+            ))}
+          </div>
+        </section>
+
         <section aria-labelledby="titulo-contacto-simple" className="flex flex-col gap-3 rounded border p-3">
           <h2 id="titulo-contacto-simple" className="text-sm font-medium">
             Contacto
@@ -201,7 +218,7 @@ function CampoSimple({ clave, inicial, actual }: { clave: (typeof CLAVES_DE_TEXT
   const error = r && !r.ok ? `No es válido: ${r.mensaje}.` : undefined;
   return (
     <div data-campo-tema={clave}>
-      <Campo etiqueta={ETIQUETA[clave]} ayuda={AYUDA[clave]} name={clave} type={TIPO_DE_TECLADO[clave] ?? "text"} inputMode={clave === "restaurante_logo_url" || clave === "restaurante_footer_maps_url" ? "url" : undefined} defaultValue={inicial} error={error} />
+      <Campo etiqueta={ETIQUETA[clave]} ayuda={AYUDA[clave]} name={clave} type={TIPO_DE_TECLADO[clave] ?? "text"} inputMode={clave === "restaurante_logo_url" || clave === "hero_imagen_fondo_url" || clave === "restaurante_footer_maps_url" ? "url" : undefined} defaultValue={inicial} error={error} />
     </div>
   );
 }

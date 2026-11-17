@@ -36,11 +36,11 @@ describe("guardián: cada clave del Tema declara si es de la pantalla simple o e
     expect(conNueva.filter((c) => !declaradas.includes(c))).toEqual(["clave_nueva_sin_declarar"]);
   });
 
-  it("la pantalla simple tiene exactamente las siete declaradas SIMPLE, en ese orden; 53 se derivan, 4 quedan pendientes y 1 escondida", () => {
+  it("la pantalla simple tiene exactamente las diez declaradas SIMPLE, en ese orden; 53 se derivan, 1 queda pendiente (la descripción) y 1 escondida", () => {
     expect([...CLAVES_TEMA_SIMPLE]).toEqual([...CLAVES_POR_DESTINO.SIMPLE]);
-    expect(CLAVES_POR_DESTINO.SIMPLE).toHaveLength(7);
+    expect(CLAVES_POR_DESTINO.SIMPLE).toHaveLength(10);
     expect(CLAVES_POR_DESTINO.DERIVADA).toHaveLength(53);
-    expect(CLAVES_POR_DESTINO.PENDIENTE).toEqual(["restaurante_subtitulo", "restaurante_descripcion", "hero_etiqueta_superior", "hero_imagen_fondo_url"]);
+    expect(CLAVES_POR_DESTINO.PENDIENTE).toEqual(["restaurante_descripcion"]);
     expect(CLAVES_POR_DESTINO.ESCONDIDA).toEqual(["carta_fuente_familia"]);
   });
 });
@@ -188,7 +188,7 @@ describe("texto e íconos en colores FIJOS: con cualquier color de marca, nada q
 });
 
 describe("mezclarTemaSimple: «lo cargado manda»", () => {
-  it("cambia solo las siete claves y conserva todas las demás (incluidas las que el catálogo no conoce y las mal cargadas), sin tocar el original", () => {
+  it("cambia solo las diez claves y conserva todas las demás (incluidas las que el catálogo no conoce y las mal cargadas), sin tocar el original", () => {
     const guardado = { ...TODO_LO_AJENO_CARGADO, clave_vieja: "x", color_item_precio: "no es un color;", restaurante_nombre: "Viejo", marca_derivada: "si" };
     const copia = JSON.stringify(guardado);
     const mezcla = mezclarTemaSimple(guardado, { color_marca: "#1f4e79", restaurante_nombre: "Nuevo" });
@@ -199,7 +199,7 @@ describe("mezclarTemaSimple: «lo cargado manda»", () => {
     for (const [k, v] of Object.entries(guardado)) if (!CLAVES_POR_DESTINO.SIMPLE.includes(k) && k !== "marca_derivada") expect(mezcla[k], k).toBe(v);
   });
 
-  it("una de las siete que viene vacía o ausente se saca (vacío = default de la carta)", () => {
+  it("una de las diez que viene vacía o ausente se saca (vacío = default de la carta)", () => {
     const mezcla = mezclarTemaSimple({ color_marca: "#1f4e79", marca_derivada: "oscura", restaurante_logo_url: "https://x.com/l.png", restaurante_nombre: "A" }, { color_marca: "#1f4e79", restaurante_nombre: "" });
     expect(mezcla).toEqual({ color_marca: "#1f4e79", marca_derivada: "oscura" });
   });
@@ -210,6 +210,12 @@ describe("mezclarTemaSimple: «lo cargado manda»", () => {
 
   it("de un guardado que no es un objeto (null, lista, texto) parte de vacío", () => {
     for (const raro of [null, undefined, [], "x", 3]) expect(mezclarTemaSimple(raro, { restaurante_nombre: "A" })).toEqual({ restaurante_nombre: "A" });
+  });
+
+  it("rubro, lugar y foto de portada: se escriben, y vacíos o ausentes se sacan aunque estuvieran cargados", () => {
+    const portada = { hero_etiqueta_superior: "Hotel", restaurante_subtitulo: "Huinganco", hero_imagen_fondo_url: "https://cdn.example.com/p.jpg" };
+    expect(mezclarTemaSimple({ hero_ink: "claro" }, portada)).toEqual({ hero_ink: "claro", ...portada });
+    expect(mezclarTemaSimple({ hero_ink: "claro", ...portada }, { hero_etiqueta_superior: "", restaurante_subtitulo: "Otro" })).toEqual({ hero_ink: "claro", restaurante_subtitulo: "Otro" });
   });
 
   it("algunas ajenas cargadas pasan intactas", () => {
@@ -227,15 +233,18 @@ describe("mezclarTemaSimple: «lo cargado manda»", () => {
   });
 });
 
-describe("guard del guardado simple: solo las siete claves, sin regla de contraste", () => {
+describe("guard del guardado simple: solo las diez claves, sin regla de contraste", () => {
   const ENTRADA = { sucursalId: "s1", sucursalActivaId: "s1", versionEsperada: "sin-tema" };
   const guard = (valores: Record<string, unknown>, extra: Partial<typeof ENTRADA & { versionEsperada: unknown }> = {}) => guardComandoGuardarTemaSimpleCarta({ ...ENTRADA, ...extra, valores });
 
-  it("acepta las siete, normaliza (mayúsculas del color, el @ del usuario, teléfono, nombre recortado) e ignora cualquier otra clave", () => {
+  it("acepta las diez, normaliza (mayúsculas del color, el @ del usuario, teléfono, nombre recortado) e ignora cualquier otra clave", () => {
     const r = guard({
       color_marca: "#1F4E79",
       restaurante_logo_url: "https://cdn.example.com/logo.png",
       restaurante_nombre: "  La Parrilla ",
+      hero_etiqueta_superior: "  Hotel y spa ",
+      restaurante_subtitulo: " Huinganco, Neuquén ",
+      hero_imagen_fondo_url: "https://cdn.example.com/portada.jpg",
       restaurante_instagram: "@laparrilla",
       restaurante_facebook: "laparrilla",
       restaurante_whatsapp: "+54 9 294 123-4567",
@@ -250,6 +259,9 @@ describe("guard del guardado simple: solo las siete claves, sin regla de contras
         color_marca: "#1f4e79",
         restaurante_logo_url: "https://cdn.example.com/logo.png",
         restaurante_nombre: "La Parrilla",
+        hero_etiqueta_superior: "Hotel y spa",
+        restaurante_subtitulo: "Huinganco, Neuquén",
+        hero_imagen_fondo_url: "https://cdn.example.com/portada.jpg",
         restaurante_instagram: "laparrilla",
         restaurante_facebook: "laparrilla",
         restaurante_whatsapp: "5492941234567",
@@ -278,7 +290,15 @@ describe("guard del guardado simple: solo las siete claves, sin regla de contras
     ["restaurante_logo_url", "http://x.com/logo.png"],
     ["restaurante_nombre", "x".repeat(121)],
     ["restaurante_nombre", "con\nsalto"],
-  ])("contacto, logo y nombre: %s = %j se rechaza", (clave, valor) => {
+    ["hero_etiqueta_superior", "x".repeat(121)],
+    ["hero_etiqueta_superior", "con\nsalto"],
+    ["restaurante_subtitulo", "x".repeat(121)],
+    ["restaurante_subtitulo", "con\ttab"],
+    ["hero_imagen_fondo_url", "http://x.com/portada.jpg"],
+    ["hero_imagen_fondo_url", "javascript:alert(1)"],
+    ["hero_imagen_fondo_url", "https://x.com/a b.jpg"],
+    ["hero_imagen_fondo_url", "https://x.com/a\"b.jpg"],
+  ])("contacto, logo, nombre y portada: %s = %j se rechaza", (clave, valor) => {
     expect(guard({ [clave]: valor }).ok).toBe(false);
   });
 

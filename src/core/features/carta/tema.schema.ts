@@ -36,5 +36,5 @@ export interface DatosTemaSimpleCartaGuardado {
   cambiado: boolean;
 }
 
-/** `SUCURSAL_NO_ENCONTRADA`: la sucursal activa no se pudo leer. `VERSION_DESACTUALIZADA`: otra persona cambió el tema mientras se editaba (no se escribió nada). */
-export type ResultadoGuardarTemaSimpleCarta = ResultadoCaso<DatosTemaSimpleCartaGuardado, "SUCURSAL_NO_ENCONTRADA" | "VERSION_DESACTUALIZADA">;
+/** `SUCURSAL_NO_ENCONTRADA`: la sucursal activa no se pudo leer. `RUBRO_DEMASIADO_LARGO`: el rubro nuevo pasa de 40 (el de Pedernal; solo si cambia). `VERSION_DESACTUALIZADA`: otra persona cambió el tema mientras se editaba (no se escribió nada). */
+export type ResultadoGuardarTemaSimpleCarta = ResultadoCaso<DatosTemaSimpleCartaGuardado, "SUCURSAL_NO_ENCONTRADA" | "VERSION_DESACTUALIZADA" | "RUBRO_DEMASIADO_LARGO">;
