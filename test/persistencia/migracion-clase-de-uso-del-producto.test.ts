@@ -56,7 +56,7 @@ beforeAll(async () => {
   );
   await base.cliente.query(`SET session_replication_role = DEFAULT`);
   fotoAntes = await foto();
-  await base.aplicarRestantes();
+  await base.aplicarHasta(NOMBRE); // solo hasta E1: la de E4-1 (que relaja su CHECK de «tipo») tiene su propio test
 }, 180_000);
 
 afterAll(async () => {
