@@ -173,6 +173,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "PISOS-65 (CAMBIA COMPORTAMIENTO, decidido por el dueño el 2026-11-17: «Si bajamos las 65 acciones de piso administrador a operador, esas celdas dejan de estar cerradas y la empresa decide fila por fila…»; PR #421): las 65 acciones con piso administrador bajan a piso operario, así que las filas hoy dormidas dejan de ignorarse. Cambian SOLO los usuarios «especial» y «dos-sucursales» (pasan a ok `secciones` Ver/Editar y, de las primeras 6 acciones de empresa, `guardar_receta`, `grupos_familia`, `unidades`; `sucursalesDondeElUsuarioPuedeVer(secciones)` de «ninguna» a S1/S2) más una fila nueva de `ver_auditoria` (acción de gobierno: se sigue ignorando). El administrador, el gerente y el operador de fábrica no cambian. La semilla no cambia: todo sigue naciendo cerrado.",
       },
+      {
+        blob: "fe6ef6302f8adb81b5159c5969fec663b6258a0c",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `d36e0ad3` (la punta de `origin/lote/2026-11-17-a`, con PISOS-65, sobre la que se integró el cierre del día).
+        commit: "d36e0ad3",
+        motivo:
+          "Caja y cobro, cierre del día, etapa A, permisos (ADITIVO; siete claves nuevas, semilla solo `admin`, todo nace cerrado; tabla confirmada por el dueño 2026-11-17, «ok pedernal»): `caja_jornada_ver`, `caja_jornada_iniciar_auditoria`, `caja_jornada_cancelar_auditoria`, `caja_jornada_cerrar`, `caja_corregir_medio_de_cobro`, `caja_declarar_total` y `caja_registrar_ajuste` (de sucursal, módulo provisorio `salon`). Se suman a las listas de claves de cada bloque de la matriz de acceso. Verificado quitando las siete claves del archivo nuevo: queda IDÉNTICO al anterior (mismas líneas, cero líneas agregadas o quitadas). Ninguna otra respuesta del guard ni ningún otro permiso cambia: el operador no recibe ninguna. INTEGRACIÓN con PISOS-65 (lote A): el archivo es el del lote A más las siete claves del cierre del día; regenerado sobre el merge, sin tocar ningún piso. Verificado con `git diff origin/lote/2026-11-17-a`: cambian SOLO 224 líneas, las listas de claves de cada bloque; ningún piso ni otro permiso cambia.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
@@ -342,6 +349,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "8d004cbd",
         motivo:
           "Roles P3, nombres visibles de los roles base (CAMBIA SOLO TEXTO; la clave interna no cambia): la siembra de fábrica imprime `ROL … nombre=administrador` y `nombre=empleado` en lugar de `admin` y `operador` (4 líneas: 2 por foto), y el rol que quedan asignando las altas por invitación se audita con el nombre visible: las 32 líneas `AUDITORIA … rol (alta por invitación)` pasan de `valorNuevo=operador`/`admin` a `valorNuevo=empleado`/`administrador` (16 por cada nombre; el CI de GitHub marcó la diferencia exacta). Ningún permiso, resultado ni mensaje cambia. Aprobada por el dueño el 2026-11-17: «5.-Si, yo agregaria encargado. O si se lo puede crear lo hago yo» (nombres Gerente, Administrador y Empleado y regeneración de las dos huellas; motor2-docs, seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md, sección «Respuestas del dueño en el chat sobre libro, menú, Compras, depósitos, roles y T2»).",
+      },
+      {
+        blob: "79db3c7f561ce102c88ba519da4a7176f1048a74",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `9e5c9fe9` (la punta de `origin/main` sobre la que se hizo el cambio, antes de las siete claves del cierre del día).
+        commit: "9e5c9fe9",
+        motivo:
+          "Caja y cobro, cierre del día, etapa A, permisos (ADITIVO; siete claves nuevas, semilla solo `admin`, todo nace cerrado; tabla confirmada por el dueño 2026-11-17, «ok pedernal»): `caja_jornada_ver`, `caja_jornada_iniciar_auditoria`, `caja_jornada_cancelar_auditoria`, `caja_jornada_cerrar`, `caja_corregir_medio_de_cobro`, `caja_declarar_total` y `caja_registrar_ajuste`. `ACCIONES 140 a 147` (en las dos fotos) y las catorce filas `PERMISO` por foto de las siete claves (admin ver=true editar=true; operador ver=false editar=false). Revisado con `git diff -U0`: son 30 líneas agregadas (28 filas PERMISO y las dos de ACCIONES 147) y 2 quitadas (las dos de ACCIONES 140), nada más.",
       },
     ],
   },

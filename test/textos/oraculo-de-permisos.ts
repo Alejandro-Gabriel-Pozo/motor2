@@ -144,4 +144,11 @@ export const ORACULO_DE_PERMISOS: Readonly<Record<string, string>> = {
   "caja_mover_efectivo": "Registrar un ingreso o un egreso manual de efectivo y anular los propios",
   "caja_anular_movimiento_ajeno": "Anular un movimiento de efectivo hecho por otra persona",
   "cobrar_cuenta": "Cobrar una cuenta cerrada con los medios de pago",
+  "caja_jornada_ver": "Ver la jornada del día, sus controles, la lista de jornadas y la conciliación",
+  "caja_jornada_iniciar_auditoria": "Empezar el cierre del día",
+  "caja_jornada_cancelar_auditoria": "Cancelar el cierre del día",
+  "caja_jornada_cerrar": "Cerrar el día de la caja",
+  "caja_corregir_medio_de_cobro": "Corregir el medio de pago de un cobro durante el cierre del día",
+  "caja_declarar_total": "Declarar el total de un medio de pago y dar el conforme general del día",
+  "caja_registrar_ajuste": "Registrar un ajuste sobre un día ya cerrado",
 };

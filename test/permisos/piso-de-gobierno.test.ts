@@ -163,7 +163,7 @@ describe("la reclasificación del gobierno (ADR-027 §3, 3.4-4)", () => {
     for (const a of ACCIONES.filter((x) => (ACCIONES_DE_EMPRESA_DE_D15 as readonly string[]).includes(x.clave))) expect([...a.rolesEditarSemilla], a.clave).toEqual(["admin"]);
   });
 
-  it("el conteo del catálogo: 126 operario, 0 administrador, 12 administrador de sistema, 2 gerente (PISOS-65)", () => {
+  it("el conteo del catálogo: 133 operario, 0 administrador, 12 administrador de sistema, 2 gerente (PISOS-65 y cierre del día)", () => {
     // 61 → 60 administrador: se retira `notificar_alertas` (decisión del dueño, limpieza paquete A paso 3; clase A).
     // 56 → 55 operario: se retira `pos_limite_mesas_abiertas` (el límite de mesas abiertas por sucursal; decisión del dueño 2026-10-29; clase O).
     // 55 → 56 operario y 62 → 61 administrador: E3a baja `compra_repartir` a piso operario (decisión del dueño P3, 2026-10-28; clase A → O, semilla sigue solo `admin`).
@@ -180,8 +180,9 @@ describe("la reclasificación del gobierno (ADR-027 §3, 3.4-4)", () => {
     // 57 → 58 operario: Compras N3-b (2026-11-16) suma `compra_controlar_recepcion` (clase L: piso operario, semilla admin y operador).
     // +3 operario y +3 administrador: Caja y cobro C1 PR-B suma `caja_ver`, `caja_abrir_sesion` y `cobrar_cuenta` (clase O) y `caja_cerrar_sesion`, `caja_mover_efectivo` y `caja_anular_movimiento_ajeno` (clase A).
     // PISOS-65 (2026-11-17): las 65 de piso administrador bajan a operario: 61 → 126 operario, 65 → 0 administrador.
+    // +7 operario: Caja, cierre del día (etapa A) suma siete claves de piso operario (`caja_jornada_ver`, `caja_jornada_iniciar_auditoria`, `caja_jornada_cancelar_auditoria`, `caja_jornada_cerrar`, `caja_corregir_medio_de_cobro`, `caja_declarar_total` y `caja_registrar_ajuste`; clase O).
     // 51 → 52: M.2 P1 suma `producto_campos_sensibles` (piso operario, clase O); los otros pisos no se mueven.
-    expect(["operario", "administrador", "administrador_sistema", "gerente"].map((p) => conPiso(p as NivelDeAccion).length)).toEqual([126, 0, 12, 2]);
+    expect(["operario", "administrador", "administrador_sistema", "gerente"].map((p) => conPiso(p as NivelDeAccion).length)).toEqual([133, 0, 12, 2]);
     expect(ACCIONES_QUE_DA_SOLO_EL_GERENTE).toHaveLength(65);
   });
 });

@@ -61,6 +61,8 @@ const GOBIERNO: Readonly<Record<(typeof G)[number], NivelDeAccion>> = {
 };
 
 const O = [
+  // Caja y cobro, cierre del día (etapa A, 2026-11-17): registrar un ajuste sobre un día ya cerrado (de sucursal, piso operario desde PISOS-65, semilla solo admin).
+  "caja_registrar_ajuste",
   "reporte_vencimientos",
   "reporte_salud",
   "reporte_historial",
@@ -89,6 +91,13 @@ const O = [
   "caja_ver",
   "caja_abrir_sesion",
   "cobrar_cuenta",
+  // Caja y cobro, cierre del día (etapa A, 2026-11-17): ver la jornada y las cinco acciones del cierre (de sucursal, piso operario, semilla solo admin: nacen cerradas).
+  "caja_jornada_ver",
+  "caja_jornada_iniciar_auditoria",
+  "caja_jornada_cancelar_auditoria",
+  "caja_jornada_cerrar",
+  "caja_corregir_medio_de_cobro",
+  "caja_declarar_total",
 ] as const satisfies readonly AccionClave[];
 
 const L = [
@@ -237,7 +246,8 @@ describe("GT-26 — las clases de claves (G gobierno, O operativas sensibles, L 
     // L 36 → 37: Compras N3-b (2026-11-16) suma `compra_controlar_recepcion` (piso operario, semilla admin y operador).
     // O 22 → 21 y A 61 → 62: Compras N3-a (2026-11-16) sube `compra_recibir` de O a A (piso administrador).
     // O +3 y A +3: Caja y cobro C1 PR-B suma `caja_ver`, `caja_abrir_sesion` y `cobrar_cuenta` (O) y `caja_cerrar_sesion`, `caja_mover_efectivo` y `caja_anular_movimiento_ajeno` (A).
-    expect([G.length, O.length, L.length, A.length]).toEqual([14, 24, 37, 65]);
+    // O 24 → 31 y A 65 → 65 (`caja_registrar_ajuste` nace de piso operario por PISOS-65): Caja, cierre del día (etapa A) suma `caja_jornada_ver`, `caja_jornada_iniciar_auditoria`, `caja_jornada_cancelar_auditoria`, `caja_jornada_cerrar`, `caja_corregir_medio_de_cobro` y `caja_declarar_total` (O) y `caja_registrar_ajuste` (A).
+    expect([G.length, O.length, L.length, A.length]).toEqual([14, 31, 37, 65]);
   });
 
   it("toda clave del catálogo declara su clase, y toda clase declarada existe en el catálogo (las dos direcciones)", () => {

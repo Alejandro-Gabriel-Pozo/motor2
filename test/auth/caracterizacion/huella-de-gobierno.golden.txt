@@ -11,7 +11,14 @@
   PERMISO admin:caja_abrir_sesion ver=true editar=true
   PERMISO admin:caja_anular_movimiento_ajeno ver=true editar=true
   PERMISO admin:caja_cerrar_sesion ver=true editar=true
+  PERMISO admin:caja_corregir_medio_de_cobro ver=true editar=true
+  PERMISO admin:caja_declarar_total ver=true editar=true
+  PERMISO admin:caja_jornada_cancelar_auditoria ver=true editar=true
+  PERMISO admin:caja_jornada_cerrar ver=true editar=true
+  PERMISO admin:caja_jornada_iniciar_auditoria ver=true editar=true
+  PERMISO admin:caja_jornada_ver ver=true editar=true
   PERMISO admin:caja_mover_efectivo ver=true editar=true
+  PERMISO admin:caja_registrar_ajuste ver=true editar=true
   PERMISO admin:caja_ver ver=true editar=true
   PERMISO admin:calibrar_rendimiento_local ver=true editar=true
   PERMISO admin:cancelar_conteo ver=true editar=true
@@ -151,7 +158,14 @@
   PERMISO operador:caja_abrir_sesion ver=false editar=false
   PERMISO operador:caja_anular_movimiento_ajeno ver=false editar=false
   PERMISO operador:caja_cerrar_sesion ver=false editar=false
+  PERMISO operador:caja_corregir_medio_de_cobro ver=false editar=false
+  PERMISO operador:caja_declarar_total ver=false editar=false
+  PERMISO operador:caja_jornada_cancelar_auditoria ver=false editar=false
+  PERMISO operador:caja_jornada_cerrar ver=false editar=false
+  PERMISO operador:caja_jornada_iniciar_auditoria ver=false editar=false
+  PERMISO operador:caja_jornada_ver ver=false editar=false
   PERMISO operador:caja_mover_efectivo ver=false editar=false
+  PERMISO operador:caja_registrar_ajuste ver=false editar=false
   PERMISO operador:caja_ver ver=false editar=false
   PERMISO operador:calibrar_rendimiento_local ver=false editar=false
   PERMISO operador:cancelar_conteo ver=false editar=false
@@ -285,7 +299,7 @@
   MOTIVOS Devolución de cliente (no revendible), Mal preparado / quemado, Otro, Robo o faltante, Roto o caído, Vencido
   DESTINOS Degustación / cortesía, Elaboración interna, Evento, Otro, Personal
   SUCURSALES Central/true, Norte/true
-  ACCIONES 140
+  ACCIONES 147
 ### 0b. Primer gerente incorporado
   resultado: {"ok":true,"sucursalId":"sucursal1","sucursalNombre":"Central","membresiaId":"id#1"}
   EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true rolesPropiosMax=0 slug=E zonaHoraria=America/Argentina/Buenos_Aires
@@ -450,7 +464,14 @@
   PERMISO admin:caja_abrir_sesion ver=true editar=true
   PERMISO admin:caja_anular_movimiento_ajeno ver=true editar=true
   PERMISO admin:caja_cerrar_sesion ver=true editar=true
+  PERMISO admin:caja_corregir_medio_de_cobro ver=true editar=true
+  PERMISO admin:caja_declarar_total ver=true editar=true
+  PERMISO admin:caja_jornada_cancelar_auditoria ver=true editar=true
+  PERMISO admin:caja_jornada_cerrar ver=true editar=true
+  PERMISO admin:caja_jornada_iniciar_auditoria ver=true editar=true
+  PERMISO admin:caja_jornada_ver ver=true editar=true
   PERMISO admin:caja_mover_efectivo ver=true editar=true
+  PERMISO admin:caja_registrar_ajuste ver=true editar=true
   PERMISO admin:caja_ver ver=true editar=true
   PERMISO admin:calibrar_rendimiento_local ver=true editar=true
   PERMISO admin:cancelar_conteo ver=true editar=true
@@ -590,7 +611,14 @@
   PERMISO operador:caja_abrir_sesion ver=false editar=false
   PERMISO operador:caja_anular_movimiento_ajeno ver=false editar=false
   PERMISO operador:caja_cerrar_sesion ver=false editar=false
+  PERMISO operador:caja_corregir_medio_de_cobro ver=false editar=false
+  PERMISO operador:caja_declarar_total ver=false editar=false
+  PERMISO operador:caja_jornada_cancelar_auditoria ver=false editar=false
+  PERMISO operador:caja_jornada_cerrar ver=false editar=false
+  PERMISO operador:caja_jornada_iniciar_auditoria ver=false editar=false
+  PERMISO operador:caja_jornada_ver ver=false editar=false
   PERMISO operador:caja_mover_efectivo ver=false editar=false
+  PERMISO operador:caja_registrar_ajuste ver=false editar=false
   PERMISO operador:caja_ver ver=false editar=false
   PERMISO operador:calibrar_rendimiento_local ver=false editar=false
   PERMISO operador:cancelar_conteo ver=false editar=false
@@ -724,7 +752,7 @@
   MOTIVOS Devolución de cliente (no revendible), Mal preparado / quemado, Otro, Robo o faltante, Roto o caído, Vencido
   DESTINOS Degustación / cortesía, Elaboración interna, Evento, Otro, Personal
   SUCURSALES Casa central/true
-  ACCIONES 140
+  ACCIONES 147
 ### 7a. Aceptar con un CUIT inválido
   resultado: {"ok":false,"mensaje":"El CUIT no tiene un formato válido. Escribilo con 11 números."}
   EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F llevaIvaDeCompras=false moneda=ARS nombre=Empresa en alta permisosEditables=true rolesPropiosMax=0 slug=F zonaHoraria=America/Argentina/Buenos_Aires
