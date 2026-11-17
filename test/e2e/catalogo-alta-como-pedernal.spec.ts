@@ -3,9 +3,9 @@ import { prisma } from "./fixtures/db";
 
 /**
  * «Producto nuevo» como Pedernal (docs/diseno-producto-nuevo-como-pedernal-2026-11-17.md; pedido del dueño, 2026-11-17): «¿Qué es?» elige cómo se guarda cada producto, sin las casillas «Se produce…» ni «Activo
- * en todas las sucursales». Contra Postgres real y un navegador: cada clase queda guardada con el tipo y «se produce» de siempre, y el producto nace disponible en la sucursal. A 375 px.
+ * en todas las sucursales». Contra Postgres real y un navegador: cada clase queda guardada con el tipo y «se produce» de siempre, y el producto nace disponible en la sucursal (el de venta, sin precio, nace NO disponible: el precio ya no se pide en el alta). A 375 px.
  */
-test("cada clase del alta se guarda con el tipo y «se produce» de siempre, y el producto nace disponible", async ({ paginaAutenticada: page, sucursalId }) => {
+test("cada clase del alta se guarda con el tipo y «se produce» de siempre, y el producto nace disponible (el de venta, no)", async ({ paginaAutenticada: page, sucursalId }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   const marca = Date.now();
   const casos = [
@@ -25,16 +25,17 @@ test("cada clase del alta se guarda con el tipo y «se produce» de siempre, y e
       // Reventa todavía no se puede guardar (E4): no se ofrece.
       await expect(page.getByLabel("¿Qué es?").locator("option", { hasText: "Reventa" })).toHaveCount(0);
       await page.getByLabel("¿Qué es?").selectOption({ label: c.clase });
+      // Frente 2: el alta no pide precio (se carga en la pestaña «Precios» de la ficha).
+      await expect(page.getByLabel("Precio de venta")).toHaveCount(0);
       await page.locator('input[name="nombre"]').fill(c.nombre);
       await page.getByLabel("Unidad de stock").selectOption({ label: "unidad" });
       await page.getByRole("button", { name: "Crear producto" }).click();
       await page.waitForURL(/\/catalogo\/productos\/[^/?]+\?guardado=alta/);
       const guardado = await prisma.producto.findFirstOrThrow({ where: { nombre: c.nombre } });
       expect({ tipo: guardado.tipo, seProduce: guardado.seProduce, claseDeUso: guardado.claseDeUso }, c.clase).toEqual({ tipo: c.tipo, seProduce: c.seProduce, claseDeUso: c.claseDeUso });
-      if (c.tipo === "MP") {
-        const disponibilidad = await prisma.disponibilidadProducto.findFirst({ where: { productoId: guardado.id, sucursalId } });
-        expect(disponibilidad?.disponible, `${c.clase}: nace disponible en la sucursal`).toBe(true);
-      }
+      const disponibilidad = await prisma.disponibilidadProducto.findFirst({ where: { productoId: guardado.id, sucursalId } });
+      // MP/Insumo/Elaborado nacen disponibles; el producto de venta nace NO disponible hasta tener precio y activarse (A1).
+      expect(disponibilidad?.disponible, `${c.clase}: ${c.tipo === "MP" ? "nace disponible" : "nace no disponible (sin precio)"} en la sucursal`).toBe(c.tipo === "MP");
     }
   } finally {
     const productos = await prisma.producto.findMany({ where: { nombre: { startsWith: "E2E Alta " }, codigo: { not: "" } }, select: { id: true } });

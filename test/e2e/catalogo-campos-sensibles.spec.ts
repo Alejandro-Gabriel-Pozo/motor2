@@ -206,7 +206,8 @@ test("sin la clave, el alta se ve como la crea el servidor (precio 0, factor 1, 
     await expect(sinPoderVender(page)).toHaveCount(0);
 
     await page.getByLabel("¿Qué es?").selectOption({ label: "Producto vendible" });
-    await expect(soloLectura(page, "precioVenta")).toContainText("$ 0,00");
+    // Frente 2: el alta no pide ni muestra el precio (ni editable ni en solo lectura): se carga después, en la pestaña «Precios».
+    await expect(soloLectura(page, "precioVenta")).toHaveCount(0);
     await expect(page.getByLabel("Precio de venta", { exact: true })).toHaveCount(0);
     // M.2-A4: un PV sin la clave nace sin precio, así que NO se puede vender: un aviso (visible, no una ayuda gris) lo dice. Sin casilla de sucursales (alta como Pedernal): el servidor lo deja no disponible.
     await expect(page.getByLabel("Activo en todas las sucursales")).toHaveCount(0);
@@ -360,7 +361,7 @@ test("accesibilidad (axe) sin la clave: la edición de una materia prima y de un
     await expect(soloLectura(page, "factorConversion")).toBeVisible();
     await sinViolaciones("alta de materia prima sin la clave");
     await page.getByLabel("¿Qué es?").selectOption({ label: "Producto vendible" });
-    await expect(soloLectura(page, "precioVenta")).toBeVisible();
+    await expect(soloLectura(page, "precioVenta")).toHaveCount(0); // Frente 2: el alta no muestra el precio
     await expect(sinPoderVender(page)).toBeVisible();
     await sinViolaciones("alta de producto de venta sin la clave (con el aviso de que no se podrá vender)");
   } finally {

@@ -9,7 +9,7 @@ import { CampoNumero } from "@/components/campo-numero";
 import { AyudaCampo } from "@/components/ayuda-campo";
 import { AyudaDeFicha } from "@/components/catalogo/ayuda-de-ficha";
 import { ALTA_DE_PRODUCTO_COMO_PEDERNAL, CLASES_DE_ALTA, claseDeAltaDe, OBSERVACIONES_VISIBLES, PRESENTACIONES_VISIBLES, type ClaveDeClaseDeAlta } from "@/core/catalogo/public";
-import { CampoQueEs } from "./campo-que-es"; import { CasillaActivoEnTodas } from "./casilla-activo-en-todas";
+import { CampoPrecioDeVenta } from "./campo-precio-de-venta"; import { CampoQueEs } from "./campo-que-es"; import { CasillaActivoEnTodas } from "./casilla-activo-en-todas";
 import { CampoAlicuotaIva, alicuotasDelFormulario } from "./campo-alicuota-iva"; import { CampoNombreDeCocina, nombreDeCocinaDelFormulario } from "./campo-nombre-de-cocina";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { SincronizarPrecioGrupo } from "@/components/carta/sincronizar-precio-grupo";
@@ -405,23 +405,7 @@ export function ProductoForm({
         </div>
       )}
 
-      {tipo === "PV" &&
-        !esBase &&
-        (puedeEditarCamposSensibles ? (
-          <CampoNumero
-            name="precioVenta"
-            prefijo="$"
-            placeholder="Precio de venta"
-            ariaLabel="Precio de venta"
-            defaultValue={String(productoExistente?.precioVenta ?? 0)}
-            tipo="importe"
-            etiqueta="El precio de venta"
-          />
-        ) : (
-          <ValorSoloLectura campo="precioVenta" etiqueta="Precio de venta">
-            {pesos(productoExistente?.precioVenta ?? 0)}
-          </ValorSoloLectura>
-        ))}
+      {tipo === "PV" && !esBase && <CampoPrecioDeVenta editando={editando} altaComoPedernal={altaComoPedernal} puedeEditarCamposSensibles={puedeEditarCamposSensibles} precioGuardado={productoExistente?.precioVenta ?? 0} />}
       <CampoAlicuotaIva key={tipo} tipo={tipo} existente={productoExistente} puedeEditar={puedeEditarCamposSensibles} />
       {!puedeEditarCamposSensibles && (
         <AvisoCamposSensibles>

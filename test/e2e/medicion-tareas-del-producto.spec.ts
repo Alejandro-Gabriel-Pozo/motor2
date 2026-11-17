@@ -264,19 +264,24 @@ test.describe("medición de las tareas del producto (el espacio) contra el umbra
     await m.clic(page.getByRole("link", { name: "+ Nuevo producto" }), "tocar «+ Nuevo producto»");
     await m.ver("se abre el alta", () => expect(page.getByRole("heading", { name: "Nuevo producto", level: 1 })).toBeVisible());
     await m.elegir(page.getByLabel("¿Qué es?"), "Producto vendible", "elegir «¿Qué es?»: Producto vendible");
+    // La clase «agarró» (antes lo confirmaba el campo de precio). Si se eligió antes de hidratar, la pantalla vuelve a «Materia prima»: se reelige FUERA del medidor (no suma pasos ni clics a la tarea).
+    await expect(async () => {
+      if (!(await page.getByLabel("Paso de venta").isVisible())) await page.getByLabel("¿Qué es?").selectOption({ label: "Producto vendible" });
+      await expect(page.getByLabel("Paso de venta")).toBeVisible({ timeout: 1500 });
+    }).toPass({ timeout: 20_000 });
     await m.llenar(page.locator('input[name="nombre"]'), nombre, "escribir el nombre");
     await m.elegir(page.getByLabel("Unidad de stock"), "unidad", "elegir la unidad de stock");
-    await m.llenar(page.getByRole("textbox", { name: "Precio de venta" }), "4500", "escribir el precio de venta");
     await m.clic(page.getByRole("button", { name: "Crear producto" }), "tocar «Crear producto»");
     await m.ver("se llega a la ficha del producto creado", () => expect(page).toHaveURL(/\/catalogo\/productos\/[^/?]+\?guardado=alta/));
-    await m.ver("la ficha dice que está disponible en la sucursal", () => expect(page.getByText(/Disponible en «/)).toBeVisible());
+    // Frente 2: el alta ya no pide precio, así que el producto nace SIN precio y NO disponible (A1) hasta que se le cargue el precio en «Precios» y se active.
+    await m.ver("la ficha dice que no está disponible en la sucursal (nace sin precio)", () => expect(page.getByText(/No disponible en «/)).toBeVisible());
 
     const medicion = m.resultado(false);
-    // Vendible = producto de venta, directo, con precio y disponible en la sucursal activa.
+    // Frente 2: el alta crea el producto de venta directo, sin precio y NO disponible (el precio se carga después, en la pestaña «Precios»).
     const producto = await prisma.producto.findFirstOrThrow({ where: { nombre }, select: { id: true, tipo: true, modoDeVenta: true, precioVenta: true } });
-    expect({ tipo: producto.tipo, modoDeVenta: producto.modoDeVenta, precioVenta: Number(producto.precioVenta) }).toEqual({ tipo: "PV", modoDeVenta: "DIRECTO", precioVenta: 4500 });
+    expect({ tipo: producto.tipo, modoDeVenta: producto.modoDeVenta, precioVenta: Number(producto.precioVenta) }).toEqual({ tipo: "PV", modoDeVenta: "DIRECTO", precioVenta: 0 });
     const disponibilidad = await prisma.disponibilidadProducto.findUniqueOrThrow({ where: { sucursalId_productoId: { sucursalId, productoId: producto.id } } });
-    expect(disponibilidad.disponible, "el producto quedó disponible en la sucursal").toBe(true);
+    expect(disponibilidad.disponible, "el producto nació no disponible en la sucursal (sin precio)").toBe(false);
     afirmarElUmbral(medicion);
     guardarMedicion(medicion);
   });
@@ -308,9 +313,13 @@ test.describe("medición de las tareas del producto (el espacio) contra el umbra
     await m.ir("/catalogo/productos", "abrir la lista de productos");
     await m.clic(page.getByRole("link", { name: "+ Nuevo producto" }), "tocar «+ Nuevo producto»");
     await m.elegir(page.getByLabel("¿Qué es?"), "Producto vendible", "elegir «¿Qué es?»: Producto vendible");
+    // La clase «agarró» (antes lo confirmaba el campo de precio). Si se eligió antes de hidratar, la pantalla vuelve a «Materia prima»: se reelige FUERA del medidor (no suma pasos ni clics a la tarea).
+    await expect(async () => {
+      if (!(await page.getByLabel("Paso de venta").isVisible())) await page.getByLabel("¿Qué es?").selectOption({ label: "Producto vendible" });
+      await expect(page.getByLabel("Paso de venta")).toBeVisible({ timeout: 1500 });
+    }).toPass({ timeout: 20_000 });
     await m.llenar(page.locator('input[name="nombre"]'), producto, "escribir el nombre del producto");
     await m.elegir(page.getByLabel("Unidad de stock"), "unidad", "elegir la unidad de stock");
-    await m.llenar(page.getByRole("textbox", { name: "Precio de venta" }), "18000", "escribir el precio de venta");
     await m.clic(page.getByRole("button", { name: "Crear producto" }), "tocar «Crear producto»");
     await m.ver("se llega a la ficha del producto", () => expect(page).toHaveURL(/\/catalogo\/productos\/[^/?]+\?guardado=alta/));
 

@@ -328,10 +328,13 @@ for (const { ancho, alto } of [
     // 1) El alta: desde la lista de productos.
     await page.goto("/catalogo/productos");
     await page.getByRole("link", { name: "+ Nuevo producto" }).click();
-    await page.getByLabel("¿Qué es?").selectOption({ label: "Producto vendible" });
+    // Sin el campo de precio no hay nada que confirme que la clase «agarró» (si se elige antes de hidratar, la pantalla vuelve a «Materia prima»): se reintenta hasta ver un campo propio del producto de venta.
+    await expect(async () => {
+      await page.getByLabel("¿Qué es?").selectOption({ label: "Producto vendible" });
+      await expect(page.getByLabel("Paso de venta")).toBeVisible({ timeout: 1500 });
+    }).toPass({ timeout: 20_000 });
     await page.locator('input[name="nombre"]').fill(nombre);
     await page.getByLabel("Unidad de stock").selectOption({ label: "unidad" });
-    await page.getByRole("textbox", { name: "Precio de venta" }).fill("18000");
     await page.getByRole("button", { name: "Crear producto" }).click();
     await expect(page).toHaveURL(/\/catalogo\/productos\/[^/?]+\?guardado=alta/);
     await expect(page.getByRole("heading", { level: 1 })).toContainText(nombre);

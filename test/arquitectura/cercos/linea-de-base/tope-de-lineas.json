@@ -17,7 +17,7 @@
       "lineas-sobre-400": 10
     },
     "src/app/(app)/catalogo/productos/producto-form.tsx": {
-      "lineas-sobre-400": 147
+      "lineas-sobre-400": 132
     },
     "src/app/(app)/catalogo/recetas/[productoId]/page.tsx": {
       "lineas-sobre-400": 358

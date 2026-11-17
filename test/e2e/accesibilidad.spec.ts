@@ -455,9 +455,9 @@ testAutenticado("catalogo/productos/nuevo: el formulario de alta (materia prima,
   await expect(page.getByRole("combobox", { name: "Proveedor de consignación" })).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations, "alta en consignación").toEqual([]);
 
-  // Producto de venta: sin insumo ni unidad de compra, con precio de venta.
+  // Producto de venta: sin insumo ni unidad de compra y, desde el Frente 2, sin precio de venta (se carga en la pestaña «Precios» de la ficha).
   await page.getByLabel("¿Qué es?").selectOption({ label: "Producto vendible" });
-  await expect(page.getByLabel("Precio de venta")).toBeVisible();
+  await expect(page.getByLabel("Precio de venta")).toHaveCount(0);
   expect((await new AxeBuilder({ page }).analyze()).violations, "alta de producto de venta").toEqual([]);
 });
 

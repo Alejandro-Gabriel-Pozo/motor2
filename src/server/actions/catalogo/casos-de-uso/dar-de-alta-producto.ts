@@ -97,7 +97,10 @@ export async function darDeAltaProductoCasoDeUso(
     if (motivoDeClase) return fracaso("DATOS_INVALIDOS", motivoDeClase);
   }
   // M.2-A4: un PV sin la clave nace sin precio y apagado (ver arriba). Repetir el envío no crea otro: el índice único del nombre (sin distinguir mayúsculas) de la base lo rechaza aunque el primero no esté disponible.
-  const naceApagado = datos.tipo === "PV" && !puedeEditarCamposSensibles;
+  // Frente 2 (`docs/diseno-precio-fuera-del-alta-2026-11-17.md`, A1; pedido del dueño 2026-11-17: «No, el precio donde lo pide... Donde lo pide Pedernal.»): el precio ya no se pide en el alta, así que un PV nace NO disponible también CON la clave
+  // si no trae precio (ausente o 0): solo nace disponible el que trae un precio distinto de 0 (únicamente posible con la clave). Todo nace cerrado.
+  const traePrecioElAlta = datos.precioVenta !== undefined && Number(datos.precioVenta) !== 0;
+  const naceApagado = datos.tipo === "PV" && (!puedeEditarCamposSensibles || !traePrecioElAlta);
 
   try {
     const producto = await crearConCodigoAutogenerado(

@@ -65,7 +65,7 @@ async function darDeAltaPV(page: import("@playwright/test").Page, nombre: string
   await page.getByLabel("¿Qué es?").selectOption({ label: "Producto vendible" });
   await page.getByRole("textbox", { name: "Nombre", exact: true }).fill(nombre);
   await page.getByRole("combobox", { name: "Unidad de stock" }).selectOption({ label: "kg" });
-  // Como Pedernal, el alta ya no ofrece «Activo en todas las sucursales»: el producto nace disponible en todas.
+  // Como Pedernal, el alta ya no ofrece «Activo en todas las sucursales». Frente 2: tampoco pide precio, así que el producto de venta nace NO disponible (A1) en todas hasta que se le cargue el precio y se active.
   await expect(page.getByRole("checkbox", { name: "Activo en todas las sucursales" })).toHaveCount(0);
   await page.getByRole("button", { name: "Crear producto" }).click();
   await page.waitForURL(/\/catalogo\/productos\/[^/]+\?guardado=alta/);
@@ -85,7 +85,7 @@ async function apareceEnSelectorDeVenta(page: import("@playwright/test").Page, n
   return (await page.getByRole("option", { name: nombre, exact: false }).count()) > 0;
 }
 
-test("el alta como Pedernal deja el producto disponible en las dos sucursales (sin el tilde); desactivar en una no cambia la otra", async ({
+test("el alta como Pedernal siembra el producto en las dos sucursales (no disponible hasta tener precio); ya disponible, desactivar en una no cambia la otra", async ({
   browser,
   baseURL,
   sucursalId,
@@ -96,6 +96,13 @@ test("el alta como Pedernal deja el producto disponible en las dos sucursales (s
 
     const universal = `E2E Disp Universal ${marca}`;
     await darDeAltaPV(pageA, universal);
+    const productoNuevo = await prisma.producto.findFirstOrThrow({ where: { nombre: universal } });
+    const filasDelAlta = await prisma.disponibilidadProducto.findMany({ where: { productoId: productoNuevo.id } });
+    expect(filasDelAlta.length, "sembró una fila por sucursal").toBeGreaterThanOrEqual(2);
+    expect(filasDelAlta.every((f) => !f.disponible), "sin precio, nace no disponible en todas").toBe(true);
+    // Se simula el paso siguiente (cargar el precio en «Precios» y activarlo en todas): el resto del caso es el de siempre.
+    await prisma.producto.update({ where: { id: productoNuevo.id }, data: { precioVenta: 1000 } });
+    await prisma.disponibilidadProducto.updateMany({ where: { productoId: productoNuevo.id }, data: { disponible: true } });
     expect(await apareceEnSelectorDeVenta(pageA, universal)).toBe(true);
     expect(await apareceEnSelectorDeVenta(pageB, universal), "nace disponible en todas las sucursales: aparece también en B").toBe(true);
 
