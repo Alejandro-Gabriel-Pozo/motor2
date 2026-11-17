@@ -94,3 +94,67 @@ Decisiones del orquestador general (declaradas; el dueño las corrige):
 - **D-8 / 7c** la temperatura del control **no entra** (no pedida; «lo que el dueño no pidió no entra»): queda como sugerencia.
 - **D-1** el control por línea se carga **antes** de confirmar y no se exige en todas las líneas; **D-2** un depósito por línea y fraccionar una línea entre depósitos: **se alinean con Pedernal** por la regla del 2026-11-13 («Necesitamos ser iguales [a Pedernal] en todo»). Como N3-a todavía no está pusheado, se corrige el **comando construido** antes de pushear.
 - La diferencia (1) «recepción = parte de la factura» queda declarada con la cita del dueño «Toda compra sigue llevando factura (Recomendada)» (2026-11-16).
+
+## 9. Contraste con 0067, 0084, 0085 y 0060 (2026-11-17)
+
+Fuente: ZuluHub-docs `main` 03cde03, `11-especificaciones/sql-compras-pendientes/{0067,0084,0085}` y `sql-pendientes-otros-modulos/0060` (leídos enteros). Son SQL **pendientes, sin aplicar** (números provisorios): pueden cambiar; NO VERIFICADO que estén aplicados en algún lado. Nada de esto se construye todavía. «Motor2 hoy» = código de `main`; «diseño #341» = `diseno-compras-n3b-n4-etapas-2026-11-16.md`. Cada diferencia queda como CORREGIR EL DISEÑO (se alinea), PREGUNTA (necesita al dueño u orquestador) o DECLARADA (con motivo).
+
+### 9.1 Devolución al proveedor (0084)
+
+| Regla de Pedernal 0084 | Diseño #341 / Motor2 hoy | Resultado |
+|---|---|---|
+| Motivo: se ELIGE de la lista del sistema `MOTIVOS_DE_RECHAZO` (activo al devolver), **sin texto libre**; el detalle va en el remito de devolución | #341: `motivo` texto obligatorio con lista de permitidos | **CORREGIR**: motivo de lista, no texto. NO VERIFICADO que Motor2 tenga esa lista (N3-a guarda observación de texto, no motivo de lista): crearla sería un dato nuevo, va como PREGUNTA al orquestador |
+| Remito de devolución: número y fecha opcionales, juntos o ninguno | #341 no lo tiene | **PREGUNTA**: no figura en lo pedido en Motor2; es parte de la forma de Pedernal |
+| Línea de devolución con origen opcional (recepción + línea); con origen: recepción CONFIRMADA, mismo proveedor, mismo producto que la línea recibida | #341: `compraOrigen` opcional a nivel cabecera | **CORREGIR**: origen por línea y las tres validaciones |
+| Tope: lo devuelto vigente (CONFIRMADA) de una línea recibida ≤ lo recibido; bloquea la fila de saldo de la línea y dos devoluciones simultáneas se serializan; anulada deja de contar | #341: solo «la base impide pasar de cero» (stock) | **CORREGIR**: falta el tope por línea recibida. En Motor2 el saldo recibido por renglón es el de N3-a (control/recepción); se usa `FOR UPDATE` de la parte, no tabla nueva |
+| Número consecutivo por empresa (candado por empresa) y fecha de negocio por jornada de la sucursal | #341: sin número | **CORREGIR**: agregar número consecutivo y fecha de negocio (Motor2 ya tiene jornada de sucursal; se reutiliza) |
+| Solo inserción salvo CONFIRMADA→ANULADA con quién, cuándo y motivo (≤500); la base fija el momento | #341: igual en espíritu | IGUAL |
+| Sale de cuarentena/rechazo: única excepción nueva a la validación de depósito; resto de salidas desde esos depósitos sigue rechazado | #341: no lo dice | **DEPENDE** de que exista el depósito de cuarentena/rechazo (0064, N3-a lo difirió: «rechazada entra a un depósito común», decisión del dueño 16/11). Mientras no exista, no aplica. NO VERIFICADO |
+| Una línea por (depósito, artículo) y devolución | #341: no lo dice | CORREGIR (regla) |
+| Sin plata: no crea nota, no devuelve dinero, no toca la factura | #341 igual | IGUAL |
+| Idempotencia por clave + huella única por empresa | #341: claveIdempotencia | IGUAL (Motor2: clave + payloadHash, convención del proyecto) |
+| Salida de stock con origen `DEVOLUCION_A_PROVEEDOR` + id de la devolución (una salida por devolución) | Motor2 ya tiene el proceso `DEVOLUCION_PROVEEDOR` (piso operario) | DECLARADA: se reutiliza el proceso y su `Operacion`; el permiso pasa a gerente/administrador (cita del dueño 16/11, ya en #341) |
+| Pedernal **no** tiene: guarda «compra con devolución no se anula», `diferenciaId`, ni pedido de nota ligado a la devolución | #341 sí las pide | **PODA/PREGUNTA**: 0084 no las trae; sin necesidad escrita en Motor2 no entran (regla «lo que el dueño no pidió no entra») |
+
+### 9.2 Nota de crédito (0085)
+
+| Regla de Pedernal 0085 | Diseño #341 / Motor2 hoy | Resultado |
+|---|---|---|
+| La nota es un comprobante clase NOTA_DE_CREDITO con **factura asociada obligatoria** (FK compuesta con la empresa); sin líneas, sin saldo, sin tocar stock, no reduce lo que se paga | #341: reutiliza `NotaCreditoProveedor*` (cabecera con `facturaProveedorId`, tipo `SOBRE_FACTURA`/`SUELTA`, más líneas, imputaciones y tributos) | DECLARADA (decisión del orquestador, 16/11): mismo resultado si se carga solo cabecera. **A VERIFICAR** al implementar: que la cabecera se pueda crear sin líneas (CHECK/FK de las tablas) y que `SUELTA` quede sin usar (Pedernal rechaza nota sin factura: IGUAL) |
+| Alta: bloquea la factura (`FOR UPDATE`); debe ser FACTURA, REGISTRADA, del **mismo proveedor** | Motor2: FK de tres columnas ya ata factura y proveedor; `bloquearFactura` existe | IGUAL en resultado |
+| Tope: lo acreditado vigente + esta nota ≤ total de la factura (las anuladas no cuentan); dos notas simultáneas se serializan | #341: tope atómico | IGUAL (Motor2: bajo el candado de cabecera de la factura, no `UPDATE … WHERE`) |
+| Una factura con notas vigentes **no se anula** | Motor2 hoy ya lo hace (`tieneNotasDeCredito`, `CON_NOTAS_DE_CREDITO`) | IGUAL, ya construido |
+| Cambiar el proveedor de una factura con notas | Motor2 hoy: rechazo en `corregirFacturaProveedor` | Pedernal 0085 no lo dice (NO VERIFICADO en otro SQL); Motor2 conserva su regla |
+| Importe: `total_segun_factura` (2 decimales) | Motor2: `importeTotal` Decimal(14,2) > 0 | IGUAL |
+| Pedernal **no** tiene tabla de **pedido de nota** | #341 agrega `PedidoDeNotaDeCredito` (cita relatada «15A») | **PREGUNTA/PODA**: 0085 no la trae; el SQL de Pedernal solo cubre la nota. Mientras no se confirme con cita del dueño para Motor2, no se construye |
+| Crédito fiscal de IVA de la nota en 0 (según el orquestador; sin verificar con el contador) | Motor2: la nota trae neto/IVA/tributos opcionales | NO VERIFICADO: 0085 no menciona IVA. No se toca el IVA de la nota hasta ver la regla real |
+
+### 9.3 Diferencias y tolerancias (0067)
+
+| Regla de Pedernal 0067 | Diseño #341 | Resultado |
+|---|---|---|
+| Tolerancias: **4** (cantidad % sobre lo recibido, precio % sobre referencia, importe $, **recepción % sobre lo pedido**); NULL = no definida ≠ 0; las configura el gerente | #341: tres, sin tolerancia de recepción | **CORREGIR**: agregar `toleranciaDeRecepcion`; con ella el tope de recibir contra la orden pasa a `pedida × (1 + t/100)` (solo cuando el nivel `recepcion_excede_la_orden` exige). Con la tolerancia vacía, idéntico a antes. Afecta la etapa OC (pendiente de pasar al agente) |
+| Una fila por empresa, tabla propia ligada a la configuración de compras | #341: tabla propia (Motor2 no tiene `configuracion_de_compras`) | DECLARADA (ya estaba) |
+| Tolerancias aplicadas copiadas a la conciliación (solo inserción) y también en cada diferencia | #341: «se congela al registrar» | IGUAL en resultado |
+| Tipos de diferencia: **solo 3** (`FACTURADO_DISTINTO_DE_LO_RECIBIDO`, `PRECIO_DISTINTO`, `FACTURADO_Y_NO_RECIBIDO`); `TOTAL_NO_CIERRA` y `RECIBIDO_DISTINTO_DE_LO_PEDIDO` quedan **fuera** | #341: 4 tipos con `RECIBIDO_DISTINTO_DE_LO_PEDIDO` y `TOTAL_NO_CIERRA`, sin `FACTURADO_Y_NO_RECIBIDO` | **CORREGIR**: alinear a los 3 de Pedernal |
+| Precio de referencia: el de la línea de la ORDEN si la recepción es contra una orden; si no, el de la RECEPCIÓN; se guarda el origen | #341: no lo define | **CORREGIR**: agregar (`ORDEN`/`RECEPCION`) |
+| **Siete** resoluciones: ACEPTADA, DENTRO_DE_TOLERANCIA, NOTA_DE_CREDITO, NOTA_DE_DEBITO, DEVOLUCION, FACTURA_COMPLEMENTARIA, CORREGIDA_POR_EL_PROVEEDOR | #341: **cuatro** («2A reemplaza las siete de `DDD:121`, 16/11») | **PREGUNTA AL ORQUESTADOR**: el SQL (que cita decisiones del 14 y 16/11) trae siete; el diseño citó que una decisión del 16/11 las reduce a cuatro. Pedernal se contradice entre su doc de decisiones y su SQL: no se elige sola, se confirma cuál es la vigente |
+| Motivo obligatorio (≤500) salvo DENTRO_DE_TOLERANCIA; DENTRO_DE_TOLERANCIA solo si realmente está dentro | #341: igual | IGUAL |
+| Estados: ABIERTA→RESUELTA\|ANULADA y RESUELTA→ANULADA; nada se reabre; al anularse conserva su resolución | #341: igual en espíritu | IGUAL; agregar «anulada conserva la resolución» |
+| Única por (conciliación, tipo, línea de comprobante, recepción, línea de recepción) | #341: único por (conciliación, tipo, renglón) | **CORREGIR** la clave (incluye recepción y su línea) |
+| La diferencia entra solo en la transacción de su conciliación | #341: una transacción | IGUAL |
+| Sin tolerancia definida toda diferencia queda ABIERTA | #341 igual | IGUAL |
+| Quién resuelve | 0067 no lo dice (lo ve la app) | Motor2: gerente/administrador (cita del dueño 16/11), sin cambio |
+
+### 9.4 Corrección de compra ampliada (0060) contra lo que Motor2 ya tiene
+
+- Pedernal (0060 sobre `correccion_de_compra` de 0036/0037): la corrección es **una fila nueva por línea** que puede cambiar **precio, cantidad o peso real**, y **completar el precio de una línea «Sin precio»** (guarda «precio por» presentación/unidad y su unidad). Decisión del dueño de Pedernal, 15/11, «Respuestas 24 a 27», Q2 = C. Es aditiva; la tabla sigue de solo inserción; CHECK «cambia precio, cantidad o peso».
+- **Motor2 hoy:** `corregirFacturaProveedorCasoDeUso` (permiso `corregir_compra`, piso administrador) corrige **proveedor, N.º de factura y detalle de la FACTURA entera**, «sin tocar renglones, partes ni Kardex», con guarda optimista y auditoría por campo. **No existe** corrección de precio, cantidad ni peso por línea; tampoco encontré un camino de «completar precio» (NO VERIFICADO que Motor2 permita líneas sin precio: no lo leí).
+- Resultado: **diferencia grande, no se alinea sola**. Corregir cantidad o peso reescribe stock y costo (Kardex) y exige su propio diseño (escalera 10 niveles, invariantes de costo y stock). Queda como PREGUNTA al dueño/orquestador: ¿se pide para Motor2, y en qué etapa? Mientras tanto la corrección de Motor2 sigue siendo solo de datos de cabecera; no se agrega nada por las dudas.
+- Base de 0036/0037 (`correccion_de_compra`) NO leída por mí en esta pasada (la carpeta publicada trae 0063 en adelante); lo anterior sobre 0060 sale de su propio encabezado y SQL.
+
+### 9.5 Efecto sobre lo construido y el plan
+
+- N3-a, N3-b y OC en curso no se tocan por esto. **Único efecto sobre OC:** la tolerancia de recepción (9.3) entra con 3V, no antes; hoy el tope contra la orden queda sin tolerancia (equivalente a Pedernal con la tolerancia vacía).
+- Cambios que el diseño #341 debe absorber antes de construir 3V/NC/DEV (pendiente de editar la sección de cada etapa): tipos de diferencia, clave única, precio de referencia y su origen, tolerancia de recepción, tope y origen por línea en la devolución, motivo de lista, número consecutivo.
+- Preguntas abiertas nuevas: (1) cuatro o siete resoluciones; (2) lista de motivos de rechazo en Motor2; (3) remito de devolución; (4) pedido de nota y guarda «compra con devolución» (Pedernal no las tiene); (5) IVA de la nota; (6) corrección de línea de compra (0060).
