@@ -454,6 +454,8 @@ describe("el arqueo se lleva por (medio, cuenta de cobro)", () => {
     const c1 = await cuentaCerrada();
     const c2 = await cuentaCerrada();
     expect(await cobrar(c1.id, [{ medioDePagoId: debito, importeEnCentavos: c(3000_00), cuentaDeCobroId: posnet.datos.cuentaDeCobroId }], 3000_00)).toMatchObject({ ok: true });
+    // Etapa P-C3: con una sola cuenta activa compatible un renglón sin cuenta la recibe solo; para tener un cobro «sin cuenta» se desactiva la cuenta antes (la sucursal queda sin cuenta activa: la venta no se frena).
+    await prismaAdmin.cuentaDeCobro.update({ where: { id: posnet.datos.cuentaDeCobroId }, data: { activa: false } });
     expect(await cobrar(c2.id, [{ medioDePagoId: debito, importeEnCentavos: c(3000_00) }], 3000_00)).toMatchObject({ ok: true });
     const cerrar = (conforme: boolean) => cerrarSesionCasoDeUso(actor(), { sesionId: a.datos.sesionId, conteo: { billetes: {}, monedasEnCentavos: c(0) }, conformeDeLosDemasMedios: conforme, observacion: null }, azarDelProceso);
     expect((await iniciarCierreDeSesion(actor(), { sesionId: a.datos.sesionId })).ok).toBe(true); // C1b: se cierra desde EN_CIERRE

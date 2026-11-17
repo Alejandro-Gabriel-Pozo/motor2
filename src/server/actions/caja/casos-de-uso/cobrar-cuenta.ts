@@ -1,5 +1,5 @@
 import "server-only";
-import { centavosDeImporte, datosCompletados, decidirMovimiento, estadoDeSesion, datosEnFormaCompleta, repartirCobro, sinDatos, textoDeCentavos, validarDatosDelCobro, validarParDeCobro } from "@/core/caja/public";
+import { centavosDeImporte, cuentaDelRenglon, datosCompletados, decidirMovimiento, estadoDeSesion, datosEnFormaCompleta, repartirCobro, sinDatos, textoDeCentavos, validarDatosDelCobro, validarParDeCobro } from "@/core/caja/public";
 import type { DatosDelCobroCompletos, RenglonDeCobro } from "@/core/caja/public";
 import { fechaDeNegocio } from "@/core/tiempo/fecha-de-negocio";
 import type { ComandoCobrarCuenta, ResultadoCobrarCuenta } from "@/core/features/caja/caja.schema";
@@ -12,7 +12,7 @@ import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-aud
 import { diaDeColumnaDate } from "@/core/tiempo/zona-horaria";
 import { asegurarYBloquearJornadaCompartida, horaDeCorteDeColumna } from "@/server/persistencia/caja/jornada";
 import { cargarCajaDeSucursal, cargarCobranzaDeClave, cargarCobranzaDeCuenta, cargarSesion, cargarSesionSinCerrarDeCaja, cargarTiposDeMedios, insertarCobranza, insertarCobro, insertarMovimiento } from "@/server/persistencia/caja/caja";
-import { cargarCuentaDeCobro, esMarcaDeTarjetaActiva } from "@/server/persistencia/caja/configuracion";
+import { cargarCuentaDeCobro, cargarCuentasActivasDeLaSucursal, esMarcaDeTarjetaActiva } from "@/server/persistencia/caja/configuracion";
 import { cargarCuentaParaCobrar } from "@/server/lecturas/caja/total-de-cuenta";
 
 /**
@@ -24,6 +24,8 @@ import { cargarCuentaParaCobrar } from "@/server/lecturas/caja/total-de-cuenta";
  *  2. la cuenta es de la sucursal activa, está cerrada y tuvo venta; si ya tiene cobro → `CUENTA_YA_COBRADA { cobranzaId }`; el total que vio quien cobra tiene que ser el actual (`TOTAL_CAMBIO`: nadie cobra un número viejo);
  *  3. hay una sesión de caja ABIERTA en la sucursal (`SIN_SESION_ABIERTA`; con la sesión EN_CIERRE → `CAJA_EN_CIERRE`, C1b), la JORNADA de esa sesión está ABIERTA (C2; tomada `FOR SHARE`: con el cierre del día en curso → `JORNADA_EN_AUDITORIA`, con la jornada cerrada → `JORNADA_CERRADA`; una sesión abierta
  *     pasada su hora de corte sigue cobrando en SU jornada y el resultado avisa `jornadaVencida`) y todos los medios existen y están activos (`MEDIO_NO_HABILITADO`);
+ *     Etapa P-C3 (dueño, 2026-11-17, «RESPUESTA: b»): un renglón SIN cuenta cuyo medio admite cuenta recibe la única cuenta activa compatible de la sucursal (`cuentaDelRenglon`); con ninguna queda sin cuenta (la venta nunca se frena); con
+ *     dos o más → `CUENTA_DE_COBRO_A_ELEGIR` SIN escribir nada (ni cobranza ni clave de reintento: el cajero elige y reintenta con la MISMA clave). La huella del pedido NO incluye la cuenta resuelta;
  *  4. `repartirCobro` (suma = total, ni de más ni de menos: `COBRO_NO_CUADRA` con `falta` o `sobra`);
  *  5. inserta la cobranza (con el total congelado), un movimiento COBRO por renglón y su renglón de cobro, y la auditoría. TODO o nada: la base verifica además, al confirmar, que la suma da el total (disparador diferido).
  * Segunda barrera: los únicos por cuenta y por clave de la cobranza, `Cobranza_cuadra` y los disparadores de sesión abierta, de sucursal y de jornada abierta (`MovimientoCaja_validar`).
@@ -88,9 +90,20 @@ export async function cobrarCuentaCasoDeUso(
       const medios = await cargarTiposDeMedios(tx, actor.empresaId, comando.renglones.map((r) => r.medioDePagoId));
       // Cada renglón, en orden canónico: el medio existe y está activo; la cuenta de cobro (si viene) es de la sucursal, está activa y es compatible; cada dato presente lo pidió el medio y está bien escrito.
       const datosValidos = new Map<RenglonDeCobro, DatosDelCobroCompletos>();
+      // Etapa P-C3: la cuenta con que queda cada renglón (la que trajo o, si no trajo, la única activa compatible de la sucursal). Se lee UNA vez y dentro de esta transacción SERIALIZABLE.
+      const cuentaResuelta = new Map<RenglonDeCobro, string | null>();
+      let activasDeLaSucursal: Awaited<ReturnType<typeof cargarCuentasActivasDeLaSucursal>> | null = null;
       for (const r of canonicos) {
         const medio = medios.get(r.medioDePagoId);
-        const cuentaId = r.cuentaDeCobroId ?? null;
+        let cuentaId = r.cuentaDeCobroId ?? null;
+        // Solo un renglón sin cuenta, de un medio que existe y está activo y admite cuenta: lo demás (medio no habilitado, efectivo) lo dice `validarParDeCobro` como siempre.
+        if (cuentaId === null && medio && medio.activo && medio.tipo !== "EFECTIVO") {
+          activasDeLaSucursal ??= await cargarCuentasActivasDeLaSucursal(tx, actor.empresaId, sesion.sucursalId);
+          const porDefecto = cuentaDelRenglon(null, medio.tipo, activasDeLaSucursal);
+          if (!porDefecto.ok) return fracaso(porDefecto.error, textoDeError(porDefecto.error));
+          cuentaId = porDefecto.valor;
+        }
+        cuentaResuelta.set(r, cuentaId);
         const cuenta = cuentaId === null ? null : await cargarCuentaDeCobro(tx, actor.empresaId, cuentaId);
         const par = validarParDeCobro({ medio: medio ?? null, cuentaDeCobroId: cuentaId, cuenta, sucursalDeLaCaja: sesion.sucursalId });
         if (!par.ok) return fracaso(par.error, textoDeError(par.error));
@@ -119,13 +132,13 @@ export async function cobrarCuentaCasoDeUso(
       for (const r of reparto.valor) {
         orden += 1;
         const movimientoId = azar.uuid();
-        await insertarMovimiento(tx, { id: movimientoId, empresaId: actor.empresaId, sucursalId: actor.sucursalId, sesionId: sesion.id, clase: "COBRO", medioDePagoId: r.medioDePagoId, cuentaDeCobroId: r.cuentaDeCobroId ?? null, importeEnCentavos: r.importeEnCentavos, motivo: null, anulaAId: null, claveIdempotencia: null, creadoPorId: actor.usuarioId });
-        await insertarCobro(tx, { id: azar.uuid(), empresaId: actor.empresaId, sucursalId: actor.sucursalId, cobranzaId, orden, medioDePagoId: r.medioDePagoId, cuentaDeCobroId: r.cuentaDeCobroId ?? null, movimientoId, importeEnCentavos: r.importeEnCentavos, datos: datosValidos.get(r) });
+        await insertarMovimiento(tx, { id: movimientoId, empresaId: actor.empresaId, sucursalId: actor.sucursalId, sesionId: sesion.id, clase: "COBRO", medioDePagoId: r.medioDePagoId, cuentaDeCobroId: cuentaResuelta.get(r) ?? null, importeEnCentavos: r.importeEnCentavos, motivo: null, anulaAId: null, claveIdempotencia: null, creadoPorId: actor.usuarioId });
+        await insertarCobro(tx, { id: azar.uuid(), empresaId: actor.empresaId, sucursalId: actor.sucursalId, cobranzaId, orden, medioDePagoId: r.medioDePagoId, cuentaDeCobroId: cuentaResuelta.get(r) ?? null, movimientoId, importeEnCentavos: r.importeEnCentavos, datos: datosValidos.get(r) });
       }
       await registrarCambioAuditado(tx, {
         entidad: "Cobranza",
         entidadId: cobranzaId,
-        descripcion: `Cuenta cobrada con ${reparto.valor.length} medio(s)${descripcionDeCuentasYDatos(reparto.valor)}`,
+        descripcion: `Cuenta cobrada con ${reparto.valor.length} medio(s)${descripcionDeCuentasYDatos(reparto.valor, cuentaResuelta)}`,
         campo: "cobro",
         valorAnterior: null,
         valorNuevo: textoDeCentavos(totalActual),
@@ -147,6 +160,7 @@ const TEXTOS_DE_PAR: Readonly<Record<string, string>> = {
   CUENTA_DE_COBRO_DE_OTRA_SUCURSAL: "La cuenta de cobro es de otra sucursal.",
   CUENTA_DE_COBRO_INACTIVA: "La cuenta de cobro está desactivada.",
   CUENTA_DE_COBRO_INCOMPATIBLE: "El medio de pago no admite ese tipo de cuenta de cobro.",
+  CUENTA_DE_COBRO_A_ELEGIR: "Hay más de una cuenta de cobro activa para este medio: elegí una.",
 };
 
 function textoDeError(codigo: string): string {
@@ -154,8 +168,8 @@ function textoDeError(codigo: string): string {
 }
 
 /** Para la auditoría: cuántos renglones llevan cuenta y QUÉ datos se completaron (los nombres, NUNCA los valores: el DNI y los últimos 4 son datos personales). */
-function descripcionDeCuentasYDatos(renglones: readonly RenglonDeCobro[]): string {
-  const conCuenta = renglones.filter((r) => (r.cuentaDeCobroId ?? null) !== null).length;
+function descripcionDeCuentasYDatos(renglones: readonly RenglonDeCobro[], cuentaResuelta: ReadonlyMap<RenglonDeCobro, string | null>): string {
+  const conCuenta = renglones.filter((r) => (cuentaResuelta.get(r) ?? null) !== null).length;
   const completados = [...new Set(renglones.flatMap((r) => datosCompletados(r.datos ?? {})))];
   return `${conCuenta > 0 ? `; con cuenta de cobro: ${conCuenta}` : ""}${completados.length > 0 ? `; datos completados: ${completados.join(", ")}` : ""}`;
 }

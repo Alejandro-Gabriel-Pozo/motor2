@@ -80,3 +80,28 @@ export function validarDatosQuePide(tipoDeMedio: TipoDeMedio, pide: DatosQuePide
   }
   return valido(null);
 }
+
+export type ErrorDeCuentaPorDefecto = "CUENTA_DE_COBRO_A_ELEGIR";
+/** Una cuenta ACTIVA de la sucursal de la caja (quien la carga ya filtró activa y sucursal: acá solo importa el tipo). */
+export type CuentaActivaDeLaSucursal = Readonly<{ id: string; tipo: TipoDeCuenta }>;
+
+/**
+ * Etapa P-C3 (docs/diseno-caja-c3c-cuenta-activa-por-defecto-2026-11-17.md; dueño, 2026-11-17: «RESPUESTA: b»): la cuenta que recibe un renglón de cobro que NO trae cuenta. Sea A el conjunto de cuentas activas de la sucursal
+ * de la caja compatibles con el tipo del medio (`CUENTAS_ADMITIDAS`): |A| = 1 → esa cuenta; |A| = 0 → `null` (el renglón queda sin cuenta, la venta nunca se frena); |A| ≥ 2 → `CUENTA_DE_COBRO_A_ELEGIR` (hay que elegir una).
+ * El efectivo nunca lleva cuenta. Puro: sin reloj, sin azar, sin I/O.
+ */
+export function cuentaPorDefectoDelRenglon(tipoDeMedio: TipoDeMedio, cuentasActivasDeLaSucursal: readonly CuentaActivaDeLaSucursal[]): ResultadoDeRegla<string | null, ErrorDeCuentaPorDefecto> {
+  const compatibles = cuentasActivasDeLaSucursal.filter((c) => cuentaAdmitidaPorMedio(tipoDeMedio, c.tipo));
+  if (compatibles.length >= 2) return invalido("CUENTA_DE_COBRO_A_ELEGIR");
+  return valido(compatibles[0]?.id ?? null);
+}
+
+/** La cuenta con que queda un renglón: la que trae (no se cambia; se valida aparte con `validarParDeCobro`) o, si no trae, la de `cuentaPorDefectoDelRenglon`. */
+export function cuentaDelRenglon(
+  cuentaDeCobroId: string | null,
+  tipoDeMedio: TipoDeMedio,
+  cuentasActivasDeLaSucursal: readonly CuentaActivaDeLaSucursal[],
+): ResultadoDeRegla<string | null, ErrorDeCuentaPorDefecto> {
+  if (cuentaDeCobroId !== null) return valido(cuentaDeCobroId);
+  return cuentaPorDefectoDelRenglon(tipoDeMedio, cuentasActivasDeLaSucursal);
+}

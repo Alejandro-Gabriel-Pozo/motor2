@@ -1,5 +1,5 @@
 import "server-only";
-import type { CuentaGuardada, MedioGuardado } from "@/core/caja/public";
+import type { CuentaActivaDeLaSucursal, CuentaGuardada, MedioGuardado } from "@/core/caja/public";
 import type { DatosQuePideElMedio, TipoDeCuenta, TipoDeMedio } from "@/core/caja/public";
 import type { Prisma } from "@prisma/client";
 import { errorConocidoDeBase, esChoqueDeIndiceUnico } from "@/core/datos/errores-de-base";
@@ -115,6 +115,12 @@ export async function cambiarActivaDeCuenta(db: Prisma.TransactionClient, args: 
     data: { activa: args.activa, actualizadoEn: args.ahora, version: { increment: 1 } },
   });
   return count > 0;
+}
+
+/** Las cuentas de cobro ACTIVAS de la sucursal (id y tipo), en orden estable. Las lee el cobro dentro de su transacción SERIALIZABLE (etapa P-C3): el conjunto vigente decide la cuenta por defecto. */
+export async function cargarCuentasActivasDeLaSucursal(db: Prisma.TransactionClient, empresaId: string, sucursalId: string): Promise<CuentaActivaDeLaSucursal[]> {
+  const filas = await db.cuentaDeCobro.findMany({ where: { empresaId, sucursalId, activa: true }, select: { id: true, tipo: true }, orderBy: { id: "asc" } });
+  return filas.map((f) => ({ id: f.id, tipo: f.tipo as TipoDeCuenta }));
 }
 
 /** ¿Hay en la sucursal otra cuenta de cobro ACTIVA (distinta de `exceptoId`, si se pasa)? Es la lectura previa de la regla «una sola activa por sucursal»; la barrera real es el índice único parcial de la base. */

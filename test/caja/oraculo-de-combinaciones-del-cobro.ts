@@ -8,6 +8,7 @@
  *   2. qué datos pide el medio    (5)  cupón, últimos 4, marca, cuotas, DNI (cada uno sí/no, con el techo por tipo)
  *   3. qué datos manda el cobro   (5)  los mismos cinco (cada uno presente/ausente)
  *   4. la cuenta de cobro         (5)  ninguna, compatible, incompatible, inactiva, de otra sucursal
+ *   5. (P-C3) cuentas activas compatibles en la sucursal (3)  0, 1, 2 — declarada y recorrida en `oraculo-de-cuenta-por-defecto.ts`
  *
  * REGLAS (en el orden en que el caso de uso las revisa, y cada una gana sobre las que le siguen):
  *   R1. El efectivo no lleva cuenta de cobro: cualquier cuenta con efectivo → CUENTA_DE_COBRO_NO_ADMITIDA.
@@ -18,6 +19,9 @@
  *   R6. Un dato que el cobro manda y el medio NO pide → DATO_DE_COBRO_NO_HABILITADO (el primero en el orden cupón, últimos 4, marca, cuotas, DNI).
  *   R7. Un dato que el cobro manda y el medio pide (con forma válida) → entra. Pedir un dato y no mandarlo es válido (ninguno es obligatorio).
  *   R8. El techo por tipo: un medio no puede PEDIR un dato fuera de su lista (DATO_NO_ADMITIDO_POR_EL_MEDIO al editarlo; la base lo rechaza con `MedioDePago_datos_chk`).
+ *   R9. (Etapa P-C3) Un renglón SIN cuenta cuyo medio admite cuenta la recibe del caso de uso cuando la sucursal tiene EXACTAMENTE UNA cuenta activa compatible; con ninguna queda sin cuenta; con dos o más se rechaza
+ *       (`CUENTA_DE_COBRO_A_ELEGIR`). Es la dimensión «cuentas activas compatibles en la sucursal»: su oráculo, escrito aparte, es `oraculo-de-cuenta-por-defecto.ts` (recorrido contra el caso de uso en
+ *       `cuenta-por-defecto-oraculo.test.ts`). Este archivo sigue modelando el PAR (medio, cuenta) ya resuelto: «ninguna cuenta» (R5) es el renglón que llega al par sin cuenta, o sea el caso de 0 compatibles.
  */
 
 export const TIPOS_DE_MEDIO = ["EFECTIVO", "TARJETA_DEBITO", "TARJETA_CREDITO", "TRANSFERENCIA", "QR", "OTRO"] as const;
