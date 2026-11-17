@@ -765,6 +765,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Nombre de cocina (ADITIVO; migración 20261115170000_nombre_de_cocina): la fila PRODUCTO de la lectura del estado de la receta propia suma `nombreDeCocina: null` (nadie tiene nombre de cocina en este mundo). Una sola línea agregada, a mano sobre el golden anterior: ningún otro campo ni conteo de consultas cambia.",
       },
+      {
+        blob: "dc1ea8bc411612714e7c278af54836ce5a6488de",
+        // El commit PADRE de este es ef98ae44 (M2 respaldada con las declaraciones de guardianes, justo antes de regenerar este golden con la columna nueva).
+        commit: "ef98ae44",
+        motivo:
+          "M2 de la merma sobre el bruto (migración 20261117140000_base_de_cantidad_en_versiones; ADITIVA, nada la lee todavía; regenerado con REGENERAR_CARACTERIZACION_TRAMO_A=1): la lectura `catalogo.obtenerEstadoDeRecetaPropia` devuelve la fila de RecetaVersion entera y suma `baseDeCantidad: \"NETA\"` (el valor por defecto de todo lo ya cargado). Ninguna otra lectura ni conteo de consultas cambia.",
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {
