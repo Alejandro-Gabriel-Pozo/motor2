@@ -130,3 +130,10 @@ Aditiva y reversible. `verificacion-previa.sql` (solo lectura) antes de aplicar;
 
 - **Q1 (código):** ¿el rechazo de un ingreso, egreso o anulación con la caja en cierre se llama `CAJA_EN_CIERRE` (como pidió esta etapa) o `SESION_EN_CIERRE` (como Pedernal)? Mismo resultado; solo cambia el nombre interno que traduce la pantalla.
 - **Q2 (texto):** los textos que ve el cliente («La caja está en cierre: se está contando el efectivo.», «Para cerrar la caja primero hay que iniciar el cierre.», «Cierre de caja iniciado», «Cierre de caja cancelado») son del caso de uso y NO están aprobados: Pedernal también los tiene como pendientes (Q6). Se aprueban al armar la pantalla.
+
+## Pendientes declarados (2026-11-17, del verificador de #368; ninguno bloqueante)
+
+- **Fichas de idempotencia:** las `@ficha` de abrir-sesion, anular-movimiento, cobrar-cuenta y registrar-movimiento-manual dicen `idempotencia=NO_APLICA` pero SÍ son idempotentes por clave de reintento; el vocabulario de `test/arquitectura/ficha-de-caso-de-uso.test.ts` no admite `POR_CLAVE` para esos. Declarado como pendiente (ampliar el vocabulario solo si Pedernal lo tiene igual: NO VERIFICADO); `declarar-total`, `dar-conforme-general`, `corregir-medio-de-cobro` y `registrar-ajuste` sí dicen `POR_CLAVE`: la incoherencia queda anotada para resolverla junta.
+- **Rendimiento de `listarCuentasSinCobrar`:** hace una consulta por cuenta (hasta 30 por página). Mejora futura, no ahora.
+- **Módulo `salon` provisorio** para las seis claves de caja (una empresa sin Salón no puede usar caja): pendiente de decisión hasta que exista el módulo `caja` (Frente 4). Estas dos acciones nuevas reutilizan `caja_cerrar_sesion`, que hereda lo mismo.
+- **Trazabilidad:** las entradas de `caracterizaciones-congeladas` de PR-B citan el commit `f17172aa`, que no existe en el historial (squash #368 = `31cd0de4`); en la próxima entrada se cita el SHA que quede en `main`.
