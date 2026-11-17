@@ -184,3 +184,8 @@ export async function listarOrdenesPedidasParaElegir(db: Db, proveedorId: string
   return (await listarOrdenesPedidasDelProveedor(db, proveedorId)).map((o) => aMostrar(o, false));
 }
 
+
+/** Los proveedores ACTIVOS (id y nombre) que se ofrecen al armar una orden nueva: solo la página de órdenes los pide, y solo a quien gestiona las órdenes (la página ya exigió `orden_de_compra_ver` y mira `orden_de_compra_gestionar`). */
+export async function listarProveedoresParaOrden(db: Db): Promise<{ id: string; nombre: string }[]> {
+  return db.proveedor.findMany({ where: { activo: true }, select: { id: true, nombre: true }, orderBy: { nombre: "asc" } });
+}

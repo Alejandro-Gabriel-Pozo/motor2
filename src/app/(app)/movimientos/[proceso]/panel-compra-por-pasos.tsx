@@ -4,9 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { ItemMovimientoInput } from "@/server/actions/movimientos/movimientos";
 import { registrarFacturaProveedor } from "@/server/actions/movimientos/facturas-proveedor";
-import { listarOrdenesParaElegir } from "@/server/actions/movimientos/ordenes-de-compra";
-import type { OrdenParaMostrar } from "@/server/consultas/movimientos/ordenes-de-compra";
 import { BloqueDeReparto, REPARTO_APAGADO, type EstadoDeReparto } from "./bloque-de-reparto";
+import { FILA_VACIA, type FilaCompra } from "./fila-de-compra";
+import { SelectorDeOrden, VinculoDeLaFila, sinVinculoConLaOrden, useOrdenDeLaCompra, vinculosDeLaCompra } from "./orden-en-la-compra";
 import { listarProductosDeProveedor } from "@/server/actions/catalogo/proveedor-por-producto";
 import { obtenerDatosDeCompraDelProducto } from "@/server/actions/catalogo/productos";
 import { useLeerServidor } from "@/lib/use-leer-servidor";
@@ -29,7 +29,6 @@ import {
   type ErrorDePaso,
   type LineaParaValidar,
   type PasoDeCompra,
-  type UnidadesDeCompraDelProducto,
 } from "@/core/compras/public";
 import type { ProcesoUiConfig } from "@/core/movimientos/public";
 import { formatearCantidad, formatearMonto } from "@/core/pos/public";
@@ -58,55 +57,6 @@ interface Opcion {
   id: string;
   nombre: string;
 }
-
-interface FilaCompra {
-  productoId: string;
-  /** Precarga: evita que SelectorProducto arranque vacío para una fila ya resuelta. */
-  etiquetaInicial: string;
-  /** NUESTRO código (Producto.codigo) y nombre, solo lectura. Vacíos hasta que el servidor responde. */
-  codigo: string;
-  nombre: string;
-  /** Unidades en que se puede comprar el producto; `null` mientras se leen. */
-  unidades: UnidadesDeCompraDelProducto | null;
-  /** Vacío = la unidad por defecto del producto; si no, el id de una presentación activa. */
-  unidadCompraId: string;
-  /** Nombre de la unidad de la última compra cuando ya no está activa (hay que confirmar la que quedó). */
-  unidadNoVigente: string | null;
-  unidadConfirmada: boolean;
-  cantidad: string;
-  loteVencimiento: string;
-  importe: string;
-  pesoReal: string;
-  referenciaProveedor: string;
-  /** Solo referencia visual, no se manda al servidor. */
-  ultimaCompraTexto: string;
-  /** La fila vino de la precarga de un proveedor y nadie la tocó desde entonces: al cambiar de proveedor se descarta (las de otro proveedor no se arrastran). */
-  precargada: boolean;
-  /** Orden de compra (etapa OC): el número de la línea de la orden elegida contra la que se recibe este renglón; vacío = ninguna (nada «viene vinculado»). */
-  lineaDeOrden: string;
-  /** Orden de compra: confirmo recibir más de lo pedido en esa línea (nace sin tildar). */
-  confirmoExceso: boolean;
-}
-
-const FILA_VACIA: FilaCompra = {
-  productoId: "",
-  etiquetaInicial: "",
-  codigo: "",
-  nombre: "",
-  unidades: null,
-  unidadCompraId: "",
-  unidadNoVigente: null,
-  unidadConfirmada: false,
-  cantidad: "",
-  loteVencimiento: "",
-  importe: "",
-  pesoReal: "",
-  referenciaProveedor: "",
-  ultimaCompraTexto: "",
-  precargada: false,
-  lineaDeOrden: "",
-  confirmoExceso: false,
-};
 
 // El día de hoy en Argentina (no en UTC: desde las 21:00 locales UTC ya es mañana).
 const hoyISO = () => diaDeCalendario(new Date(), ZONA_ARGENTINA);
@@ -168,9 +118,7 @@ export function PanelCompraPorPasos({
   const [productosYaVinculados, setProductosYaVinculados] = useState<ReadonlySet<string>>(new Set());
   const [cargandoProveedor, setCargandoProveedor] = useState(false);
   const [infoProveedor, setInfoProveedor] = useState("");
-  // Orden de compra (etapa OC): las órdenes pedidas del proveedor elegido y la elegida (vacío = sin orden: la compra sigue como siempre).
-  const [ordenes, setOrdenes] = useState<OrdenParaMostrar[]>([]);
-  const [ordenId, setOrdenId] = useState("");
+  const orden = useOrdenDeLaCompra(ordenesHabilitadas);
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
   // I3: un UUID por intento de envío, reenviado tal cual en cada reintento del MISMO envío; se renueva recién después de un éxito.
@@ -239,17 +187,8 @@ export function PanelCompraPorPasos({
 
   const elegirProveedor = (id: string) => {
     setProveedorId(id);
-    setOrdenId("");
-    setOrdenes([]);
-    setItems((prev) => prev.map((f) => ({ ...f, lineaDeOrden: "", confirmoExceso: false })));
-    if (ordenesHabilitadas && id) {
-      void leer(
-        () => listarOrdenesParaElegir(id),
-        () => setOrdenes([])
-      ).then((lista) => {
-        if (lista) setOrdenes(lista);
-      });
-    }
+    orden.cargarDelProveedor(id);
+    setItems((prev) => prev.map(sinVinculoConLaOrden));
     const pedido = ++pedidoProveedor.current;
     setProductosYaVinculados(new Set());
 
@@ -384,9 +323,7 @@ export function PanelCompraPorPasos({
           items: itemsValidos,
           reparto: { modo: repartiendo && reparto ? estadoReparto.modo : "PORCENTAJE", partes },
           ...(pendienteDePago ? { condicionPago: "PENDIENTE_DE_PAGO" as const } : {}),
-          ...(ordenesHabilitadas && ordenId
-            ? { ordenDeCompra: { ordenId, renglones: lineasAGuardar.flatMap((f, i) => (f.lineaDeOrden ? [{ itemIndex: i, lineaDeOrden: Number(f.lineaDeOrden), confirmoExceso: f.confirmoExceso }] : [])) } }
-            : {}),
+          ...vinculosDeLaCompra(ordenesHabilitadas, orden.ordenId, lineasAGuardar),
           claveIdempotencia,
         });
         setOk(resultado.ok);
@@ -403,8 +340,7 @@ export function PanelCompraPorPasos({
           reiniciarFilas();
           setEstadoReparto(REPARTO_APAGADO);
           setPendienteDePago(false);
-          setOrdenId("");
-          setOrdenes([]);
+          orden.limpiar();
           setClaveIdempotencia(crypto.randomUUID());
           router.refresh();
         }
@@ -468,23 +404,7 @@ export function PanelCompraPorPasos({
             <CampoFecha etiqueta="Fecha de la factura" value={fecha} max={hoy} onChange={(e) => setFecha(e.target.value)} required />
           </div>
           <CampoNumeroDeComprobante partes={numero} onCambio={setNumero} mostrarErrores={intentoFactura} />
-          {ordenesHabilitadas && ordenes.length > 0 && (
-            <Selector
-              etiqueta="Orden de compra (opcional)"
-              value={ordenId}
-              onChange={(e) => {
-                setOrdenId(e.target.value);
-                setItems((prev) => prev.map((f) => ({ ...f, lineaDeOrden: "", confirmoExceso: false })));
-              }}
-            >
-              <option value="">Sin orden de compra</option>
-              {ordenes.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {`N.º ${o.numero ?? ""}${o.fechaDeEntregaPrevista ? ` · entrega ${o.fechaDeEntregaPrevista}` : ""}`}
-                </option>
-              ))}
-            </Selector>
-          )}
+          {ordenesHabilitadas && <SelectorDeOrden ordenes={orden.ordenes} ordenId={orden.ordenId} onCambio={(id) => { orden.setOrdenId(id); setItems((prev) => prev.map(sinVinculoConLaOrden)); }} />}
         </div>
       )}
 
@@ -595,23 +515,7 @@ export function PanelCompraPorPasos({
                     </Aviso>
                   </div>
                 )}
-                {ordenesHabilitadas && ordenId && (
-                  <div className="flex w-full flex-wrap items-end gap-2">
-                    <div className="min-w-56 flex-1">
-                      <Selector etiqueta="Línea de la orden (opcional)" tamano="compacto" value={fila.lineaDeOrden} onChange={(e) => actualizarFila(idx, { lineaDeOrden: e.target.value, confirmoExceso: false })}>
-                        <option value="">Ninguna</option>
-                        {(ordenes.find((o) => o.id === ordenId)?.lineas ?? [])
-                          .filter((l) => !l.retirada)
-                          .map((l) => (
-                            <option key={l.numero} value={String(l.numero)}>
-                              {`${l.productoNombre}: pedida ${formatearCantidad(l.cantidadPedida)}, recibida ${formatearCantidad(l.cantidadRecibida ?? 0)}`}
-                            </option>
-                          ))}
-                      </Selector>
-                    </div>
-                    {fila.lineaDeOrden !== "" && <Casilla etiqueta="Confirmo recibir más de lo pedido" checked={fila.confirmoExceso} onChange={(e) => actualizarFila(idx, { confirmoExceso: e.target.checked })} />}
-                  </div>
-                )}
+                {ordenesHabilitadas && orden.ordenId && <VinculoDeLaFila orden={orden.ordenes.find((o) => o.id === orden.ordenId)} fila={fila} onCambio={(c) => actualizarFila(idx, c)} />}
                 <Boton variante="secundario" tamano="compacto" onClick={() => quitarFila(idx)} disabled={items.length === 1}>
                   Quitar
                 </Boton>

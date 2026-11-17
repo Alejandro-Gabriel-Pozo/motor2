@@ -65,8 +65,9 @@ describe("la migración deja las columnas, las reglas, el disparador y los privi
     expect(fk[0]!.d).toMatch(/REFERENCES "User"\(id\).*ON DELETE RESTRICT/);
     const t = await prismaAdmin.$queryRaw<Array<{ nombre: string; habilitado: string; def: string }>>`
       SELECT tgname::text AS nombre, tgenabled::text AS habilitado, pg_get_triggerdef(oid) AS def FROM pg_trigger WHERE tgrelid = '"FacturaProveedorSucursal"'::regclass AND NOT tgisinternal`;
-    expect(t.map((x) => [x.nombre, x.habilitado])).toEqual([["FacturaProveedorSucursal_recepcion_transicion_chk", "O"]]);
-    expect(t[0]!.def).toMatch(/BEFORE UPDATE OF "estadoRecepcion", "recibidaEn", "recibidaPorId" ON/);
+    // Compras, orden de compra (etapa OC, migración 20261117130000): se cuelga un disparador más (AFTER UPDATE de estadoRecepcion: suma lo recibido al saldo de la orden); el de la transición sigue siendo el mismo.
+    expect(t.map((x) => [x.nombre, x.habilitado]).sort()).toEqual([["FacturaProveedorSucursal_recepcion_transicion_chk", "O"], ["FacturaProveedorSucursal_suma_a_la_orden", "O"]]);
+    expect(t.find((x) => x.nombre === "FacturaProveedorSucursal_recepcion_transicion_chk")!.def).toMatch(/BEFORE UPDATE OF "estadoRecepcion", "recibidaEn", "recibidaPorId" ON/);
   });
 
   it("motor2_app tiene UPDATE por columna SOLO de la recepción en la parte (estado, fecha, persona y, desde Compras N3-a, la compra `operacionId`; nunca DELETE ni UPDATE de tabla)", async (ctx) => {

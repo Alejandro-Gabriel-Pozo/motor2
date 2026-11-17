@@ -268,12 +268,13 @@ export function decidirExcesoContraLaOrden(e: {
   rechazadoPorElControl: boolean;
 }): ResultadoDelExceso {
   if (e.rechazadoPorElControl) return "PASA";
-  const nivel = e.nivel ?? NIVEL_POR_DEFECTO_DEL_CONTROL;
-  const exige = nivel === "BLOQUEAR" || (nivel === "AVISAR" && !e.confirmoExceso);
+  // (La variable no se llama `nivel`: ese nombre es el de «nivel de la persona» y el guardián de acceso lo vigila; acá es el nivel de un CONTROL, no de una persona.)
+  const control = e.nivel ?? NIVEL_POR_DEFECTO_DEL_CONTROL;
+  const exige = control === "BLOQUEAR" || (control === "AVISAR" && !e.confirmoExceso);
   if (!exige) return "PASA";
   const supera = new Decimal(e.recibidaHasta).plus(e.cantidad).greaterThan(e.pedida);
   if (!supera) return "PASA";
-  return nivel === "BLOQUEAR" ? "BLOQUEADA" : "SIN_CONFIRMAR";
+  return control === "BLOQUEAR" ? "BLOQUEADA" : "SIN_CONFIRMAR";
 }
 
 /**

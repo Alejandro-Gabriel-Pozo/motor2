@@ -121,6 +121,31 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
     puertas: ["permisos/capacidades-sucursal.ts|actualizarCapacidad"],
     motivo: "`capacidades_sucursal` es gobierno de la empresa y el caso de uso la limita al gerente (O.41): prender o apagar una capacidad de UNA sucursal (o la fila por defecto, `null`) es la función de la acción",
   },
+  // ── Compras: la orden de compra (etapa OC) ────────────────────────────────────────────────────────────────────────────────
+  "movimientos/casos-de-uso/crear-orden-de-compra.ts": {
+    ata: "EMPRESA_ENTERA",
+    ensanches: ["ESCRITURA_EN_LA_EMPRESA"],
+    puertas: ["movimientos/ordenes-de-compra.ts|crearOrdenDeCompra"],
+    motivo: "la orden de compra es un documento de la EMPRESA (`orden_de_compra_gestionar`, de empresa): su sucursal destino es opcional e informativa y puede ser cualquiera, no solo la activa; quien la gestiona (gerente o administrador) la escribe y la ve en toda la empresa, y las compras contra ella se miran en todas las sucursales (Compras, etapa OC)",
+  },
+  "movimientos/casos-de-uso/pedir-orden-de-compra.ts": {
+    ata: "EMPRESA_ENTERA",
+    ensanches: ["ESCRITURA_EN_LA_EMPRESA"],
+    puertas: ["movimientos/ordenes-de-compra.ts|pedirOrdenDeCompra"],
+    motivo: "la orden de compra es un documento de la EMPRESA (`orden_de_compra_gestionar`, de empresa): su sucursal destino es opcional e informativa y puede ser cualquiera, no solo la activa; quien la gestiona (gerente o administrador) la escribe y la ve en toda la empresa, y las compras contra ella se miran en todas las sucursales (Compras, etapa OC)",
+  },
+  "movimientos/casos-de-uso/anular-orden-de-compra.ts": {
+    ata: "EMPRESA_ENTERA",
+    ensanches: ["ESCRITURA_EN_LA_EMPRESA"],
+    puertas: ["movimientos/ordenes-de-compra.ts|anularOrdenDeCompra"],
+    motivo: "la orden de compra es un documento de la EMPRESA (`orden_de_compra_gestionar`, de empresa): su sucursal destino es opcional e informativa y puede ser cualquiera, no solo la activa; quien la gestiona (gerente o administrador) la escribe y la ve en toda la empresa, y las compras contra ella se miran en todas las sucursales (Compras, etapa OC)",
+  },
+  "movimientos/casos-de-uso/cerrar-orden-de-compra.ts": {
+    ata: "EMPRESA_ENTERA",
+    ensanches: ["ESCRITURA_EN_LA_EMPRESA"],
+    puertas: ["movimientos/ordenes-de-compra.ts|cerrarOrdenDeCompra"],
+    motivo: "la orden de compra es un documento de la EMPRESA (`orden_de_compra_gestionar`, de empresa): su sucursal destino es opcional e informativa y puede ser cualquiera, no solo la activa; quien la gestiona (gerente o administrador) la escribe y la ve en toda la empresa, y las compras contra ella se miran en todas las sucursales (Compras, etapa OC)",
+  },
   // ── El catálogo central ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
   "catalogo/casos-de-uso/dar-de-alta-producto.ts": {
     ata: "EMPRESA_ENTERA",

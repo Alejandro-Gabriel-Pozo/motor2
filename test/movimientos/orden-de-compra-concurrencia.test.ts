@@ -74,6 +74,23 @@ beforeEach(async () => {
   await fijarModulosActivos(E, [...MODULOS_VENDIBLES, "ordenes_de_compra"]);
 });
 
+describe("crear a la vez con la misma clave (I3)", () => {
+  it.each([2, 6])("%i creaciones simultáneas con la MISMA clave de reintento: UNA sola orden y todas devuelven esa misma orden", async (cuantas) => {
+    const claveIdempotencia = randomUUID();
+    const comando = { proveedorId, lineas: [{ productoId: harina, cantidad: 10, precio: 100 }], claveIdempotencia };
+
+    const rs = await Promise.allSettled(Array.from({ length: cuantas }, () => crearOrdenDeCompraCasoDeUso(actor(), comando, azarDelProceso)));
+
+    const ok = rs.flatMap((r) => (r.status === "fulfilled" && r.value.ok ? [r.value.datos] : []));
+    expect(ok).toHaveLength(cuantas);
+    expect(new Set(ok.map((d) => d.ordenId)).size).toBe(1);
+    expect(ok.filter((d) => !d.repetida)).toHaveLength(1);
+    expect(await prisma.ordenDeCompra.count()).toBe(1);
+    expect(await prisma.lineaDeOrdenDeCompra.count()).toBe(1);
+    expect(await prisma.registroAuditoria.count({ where: { entidad: "OrdenDeCompra", valorNuevo: "BORRADOR" } })).toBe(1);
+  });
+});
+
 describe("pedir a la vez", () => {
   it.each([2, 6])("%i pedidos simultáneos de la MISMA orden: uno solo gana (número 1) y los demás reciben «ya pedida»", async (cuantos) => {
     const id = await crear();

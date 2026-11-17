@@ -4,6 +4,7 @@ import type { ComandoDeOrdenDeCompra, ResultadoPedirOrdenDeCompra } from "@/core
 import { exito, fracaso } from "@/core/resultado-caso";
 import { ZONA_ARGENTINA, diaDeCalendario, diaDeColumnaDate, fechaDeColumnaDate } from "@/core/tiempo/zona-horaria";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
+import { conEscrituraEnLaEmpresa } from "@/server/acceso/alcance";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { bloquearOrden, contarLineasNoRetiradas } from "@/server/persistencia/movimientos/cargar-orden-de-compra";
@@ -28,11 +29,13 @@ import { marcarOrdenPedida } from "@/server/persistencia/movimientos/escribir-or
  * @ficha permiso=orden_de_compra_gestionar transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function pedirOrdenDeCompraCasoDeUso(
-  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "db" | "transaccion" | "ahora">,
+  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "db" | "transaccion" | "empresaId" | "alcance" | "ahora">,
   comando: ComandoDeOrdenDeCompra
 ): Promise<ResultadoPedirOrdenDeCompra> {
   const hoy = diaDeCalendario(actor.ahora, ZONA_ARGENTINA);
-  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoPedirOrdenDeCompra> => {
+  // La orden es un documento de la EMPRESA (`EMPRESA_ENTERA`): quien la gestiona la pide aunque esté destinada a otra sucursal.
+  const base = await conEscrituraEnLaEmpresa(actor);
+  return conTransaccionSerializable(base.transaccion, async (tx): Promise<ResultadoPedirOrdenDeCompra> => {
     const orden = await bloquearOrden(tx, comando.ordenId);
     if (!orden) return fracaso("NO_ENCONTRADA", MENSAJE_ORDEN_NO_ENCONTRADA);
     const decision = decidirPedirOrden({

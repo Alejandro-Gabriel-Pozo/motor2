@@ -31,7 +31,8 @@ export async function configurarControlDeExcesoCasoDeUso(
 ): Promise<ResultadoConfigurarControlDeExceso> {
   return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoConfigurarControlDeExceso> => {
     const actual = (await cargarNivelDelControlDeExceso(tx)) ?? NIVEL_POR_DEFECTO_DEL_CONTROL;
-    if (actual === comando.nivel) return fracaso("SIN_CAMBIOS", `El control ya está en «${ETIQUETA_DE_NIVEL_DE_CONTROL[actual]}»: no hay nada que cambiar.`);
+    const pedido = comando.nivel;
+    if (actual === pedido) return fracaso("SIN_CAMBIOS", `El control ya está en «${ETIQUETA_DE_NIVEL_DE_CONTROL[actual]}»: no hay nada que cambiar.`);
     await escribirNivelDelControlDeExceso(tx, { id: azar.uuid(), nivel: comando.nivel, usuarioId: actor.usuarioId, ahora: actor.ahora });
     await registrarCambioAuditado(tx, {
       entidad: "NivelDeControl",

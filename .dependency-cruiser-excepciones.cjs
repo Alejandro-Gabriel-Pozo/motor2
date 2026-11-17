@@ -171,6 +171,11 @@ const ACCIONES_CON_CASO_DE_USO = [
       "E3a (ADR-041): registrarFacturaProveedor → movimientos/casos-de-uso/registrar-factura-proveedor.ts, aceptarPropuestaDeFactura → aceptar-propuesta-de-factura.ts y anularFacturaProveedor → anular-factura-proveedor.ts, corregirFacturaProveedor → corregir-factura-proveedor.ts (transacción serializable, idempotencia, candado de la cabecera, persistencia en server/persistencia/compras y auditoría viven en el caso de uso). La acción solo pide el permiso, valida el formato y traduce el resultado.",
   },
   {
+    ruta: "src/server/actions/movimientos/ordenes-de-compra.ts",
+    motivo:
+      "Compras, orden de compra (etapa OC): crearOrdenDeCompra → movimientos/casos-de-uso/crear-orden-de-compra.ts, pedirOrdenDeCompra → pedir-orden-de-compra.ts, anularOrdenDeCompra → anular-orden-de-compra.ts, cerrarOrdenDeCompra → cerrar-orden-de-compra.ts y configurarControlDeExceso → configurar-control-de-exceso.ts (transacción serializable, candado de la cabecera, persistencia en server/persistencia/movimientos y auditoría viven en el caso de uso). La acción solo pide el permiso de empresa (`orden_de_compra_gestionar` o `compras_configurar`), valida el formato y delega; `listarOrdenesParaElegir` es una lectura (`orden_de_compra_ver`) sin caso de uso.",
+  },
+  {
     ruta: "src/server/actions/movimientos/venta.ts",
     motivo:
       "M8: anularVenta → casos-de-uso/anular-venta.ts (transacción, hermanas de promo, persistencia y auditoría). Como la regla vale para todo el archivo, registrarVenta pasó su bloque transaccional (I3 + registrarVentaEnTx) a casos-de-uso/registrar-venta.ts; sus validaciones de entrada siguen en la acción.",

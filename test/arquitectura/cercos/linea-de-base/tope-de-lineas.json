@@ -1,10 +1,10 @@
 {
   "regla": "tope-de-lineas",
   "meta": "0 (ningún archivo de src/ pasa de 400 líneas: cada uno se parte por responsabilidad en un trabajo aparte)",
-  "total": 2199,
+  "total": 2167,
   "entradas": 17,
   "porTipo": {
-    "lineas-sobre-400": 2199
+    "lineas-sobre-400": 2167
   },
   "cuentas": {
     "src/app/(app)/carta/agrupados/page.tsx": {
@@ -23,7 +23,7 @@
       "lineas-sobre-400": 358
     },
     "src/app/(app)/movimientos/[proceso]/panel-compra-por-pasos.tsx": {
-      "lineas-sobre-400": 284
+      "lineas-sobre-400": 252
     },
     "src/components/carta-publica/seccion.tsx": {
       "lineas-sobre-400": 187

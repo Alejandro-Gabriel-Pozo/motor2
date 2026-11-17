@@ -3,7 +3,7 @@ import { decidirCerrarOrden, MENSAJE_ORDEN_NO_ENCONTRADA, type EstadoDeOrden, ty
 import type { ComandoDeOrdenDeCompra, ResultadoCerrarOrdenDeCompra } from "@/core/features/compras/orden-de-compra.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
-import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
+import { conEscrituraEnLaEmpresa } from "@/server/acceso/alcance";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { bloquearOrden, hayCompraContraLaOrden } from "@/server/persistencia/movimientos/cargar-orden-de-compra";
@@ -22,7 +22,7 @@ import { marcarOrdenCerrada } from "@/server/persistencia/movimientos/escribir-o
  *
  * @contract Cierra la orden pedida exactamente una vez, sin compras pendientes de recibir, con su motivo de cierre calculado por la base, o no hace nada.
  * @idempotency POR_ESTADO: la guarda `estado = 'PEDIDA'` y el candado de la cabecera; el segundo cierre recibe «ya cerrada».
- * @transaction conTransaccionSerializable (SERIALIZABLE + reintento) con la base de verificación, con candado sobre la cabecera de la orden.
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento) con la base ampliada a la empresa (`conEscrituraEnLaEmpresa`), con candado sobre la cabecera de la orden.
  * @sideEffects registrarCambioAuditado (el cierre).
  * @ficha permiso=orden_de_compra_gestionar transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
@@ -30,8 +30,9 @@ export async function cerrarOrdenDeCompraCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "db" | "transaccion" | "empresaId" | "alcance" | "ahora">,
   comando: ComandoDeOrdenDeCompra
 ): Promise<ResultadoCerrarOrdenDeCompra> {
-  const verificacion = await lecturaDeVerificacionEnLaEmpresa(actor);
-  return conTransaccionSerializable(verificacion.transaccion, async (tx): Promise<ResultadoCerrarOrdenDeCompra> => {
+  // La orden es un documento de la EMPRESA (`EMPRESA_ENTERA`): quien la gestiona la ve y la escribe aunque esté destinada a otra sucursal, y la pregunta «¿hay compras contra ella?» mira todas las sucursales.
+  const base = await conEscrituraEnLaEmpresa(actor);
+  return conTransaccionSerializable(base.transaccion, async (tx): Promise<ResultadoCerrarOrdenDeCompra> => {
     const orden = await bloquearOrden(tx, comando.ordenId);
     if (!orden) return fracaso("NO_ENCONTRADA", MENSAJE_ORDEN_NO_ENCONTRADA);
     const decision = decidirCerrarOrden({ estado: orden.estado as EstadoDeOrden, hayRecepcionesPendientes: await hayCompraContraLaOrden(tx, orden.id, true) });

@@ -3,7 +3,7 @@ import { decidirAnularOrden, MENSAJE_ORDEN_NO_ENCONTRADA, type EstadoDeOrden } f
 import type { ComandoAnularOrdenDeCompra, ResultadoAnularOrdenDeCompra } from "@/core/features/compras/orden-de-compra.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
-import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
+import { conEscrituraEnLaEmpresa } from "@/server/acceso/alcance";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { bloquearOrden, hayCompraContraLaOrden } from "@/server/persistencia/movimientos/cargar-orden-de-compra";
@@ -23,7 +23,7 @@ import { marcarOrdenAnulada } from "@/server/persistencia/movimientos/escribir-o
  *
  * @contract Anula la orden exactamente una vez, con su motivo y sin compras vigentes contra ella, o no hace nada.
  * @idempotency POR_ESTADO: la guarda `estado IN ('BORRADOR','PEDIDA')` y el candado de la cabecera; la segunda anulación recibe «ya anulada».
- * @transaction conTransaccionSerializable (SERIALIZABLE + reintento) con la base de verificación, con candado sobre la cabecera de la orden.
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento) con la base ampliada a la empresa (`conEscrituraEnLaEmpresa`), con candado sobre la cabecera de la orden.
  * @sideEffects registrarCambioAuditado (la anulación, con el motivo).
  * @ficha permiso=orden_de_compra_gestionar transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
@@ -31,8 +31,9 @@ export async function anularOrdenDeCompraCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "db" | "transaccion" | "empresaId" | "alcance" | "ahora">,
   comando: ComandoAnularOrdenDeCompra
 ): Promise<ResultadoAnularOrdenDeCompra> {
-  const verificacion = await lecturaDeVerificacionEnLaEmpresa(actor);
-  return conTransaccionSerializable(verificacion.transaccion, async (tx): Promise<ResultadoAnularOrdenDeCompra> => {
+  // La orden es un documento de la EMPRESA (`EMPRESA_ENTERA`): quien la gestiona la ve y la escribe aunque esté destinada a otra sucursal, y la pregunta «¿hay compras contra ella?» mira todas las sucursales.
+  const base = await conEscrituraEnLaEmpresa(actor);
+  return conTransaccionSerializable(base.transaccion, async (tx): Promise<ResultadoAnularOrdenDeCompra> => {
     const orden = await bloquearOrden(tx, comando.ordenId);
     if (!orden) return fracaso("NO_ENCONTRADA", MENSAJE_ORDEN_NO_ENCONTRADA);
     const decision = decidirAnularOrden({

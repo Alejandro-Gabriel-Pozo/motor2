@@ -6,11 +6,15 @@ import { exito, fracaso } from "@/core/resultado-caso";
 import type { FuenteDeAzar } from "@/core/seguridad/azar";
 import { ZONA_ARGENTINA, diaDeCalendario, fechaDeColumnaDate } from "@/core/tiempo/zona-horaria";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
+import { conEscrituraEnLaEmpresa } from "@/server/acceso/alcance";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
+import { chequearIdempotencia } from "@/server/persistencia/movimientos/idempotencia";
 import { cargarOrdenPorClaveIdempotencia } from "@/server/persistencia/movimientos/cargar-orden-de-compra";
 import { escribirOrdenBorrador } from "@/server/persistencia/movimientos/escribir-orden-de-compra";
 import { cargarProveedor } from "@/server/persistencia/movimientos/cargar-validaciones-de-movimiento";
+
+const MENSAJE_ORDEN_YA_GUARDADA = "Esa orden ya estaba guardada.";
 
 /**
  * Caso de uso «crear una orden de compra» (Compras, etapa OC; docs/diseno-compras-n3b-n4-etapas-2026-11-16.md §«Etapa OC»): un gerente o administrador deja armada la orden al proveedor como BORRADOR (proveedor, sucursal destino opcional, entrega prevista
@@ -21,7 +25,7 @@ import { cargarProveedor } from "@/server/persistencia/movimientos/cargar-valida
  * En UNA transacción SERIALIZABLE:
  *  1. idempotencia: la clave de reintento vive en la cabecera con la huella del pedido; la misma clave y los mismos datos devuelven la MISMA orden (`repetida`), la misma clave con otros datos es conflicto;
  *  2. `validarDatosDeOrden` (regla pura con el «hoy» argentino del reloj inyectado): proveedor, líneas (cantidad > 0, precio >= 0 o vacío, sin producto repetido) y entrega no anterior a hoy;
- *  3. el proveedor existe y está activo, la sucursal destino (si hay) existe, está activa y está en el alcance de quien crea, y cada producto existe en la empresa;
+ *  3. el proveedor existe y está activo, la sucursal destino (si hay) existe y está activa, y cada producto existe en la empresa;
  *  4. escribe la cabecera BORRADOR y sus líneas (ids uuid de la aplicación) y audita (`OrdenDeCompra`, campo `estado`, de nada a BORRADOR).
  * Sin tabla de números: el número se asigna al pedir (la base, con un candado por empresa).
  *
@@ -32,7 +36,7 @@ import { cargarProveedor } from "@/server/persistencia/movimientos/cargar-valida
  * @ficha permiso=orden_de_compra_gestionar transaccion=SERIALIZABLE idempotencia=I3 auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function crearOrdenDeCompraCasoDeUso(
-  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "db" | "transaccion" | "alcance" | "ahora">,
+  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "db" | "transaccion" | "empresaId" | "alcance" | "ahora">,
   comando: ComandoCrearOrdenDeCompra,
   azar: FuenteDeAzar
 ): Promise<ResultadoCrearOrdenDeCompra> {
@@ -42,20 +46,26 @@ export async function crearOrdenDeCompraCasoDeUso(
   const o = datos.valor;
   const payloadHash = calcularPayloadHash("ORDEN_DE_COMPRA", actor.sucursalId, { proveedorId: o.proveedorId, sucursalId: o.sucursalId, fechaDeEntregaPrevista: o.fechaDeEntregaPrevista, lineas: o.lineas });
 
-  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoCrearOrdenDeCompra> => {
-    const previa = await cargarOrdenPorClaveIdempotencia(tx, comando.claveIdempotencia);
-    if (previa) {
-      return previa.payloadHash === payloadHash
-        ? exito("Esa orden ya estaba guardada.", { repetida: true, ordenId: previa.id })
-        : fracaso("CONFLICTO_IDEMPOTENCIA", MENSAJE_CONFLICTO_IDEMPOTENCIA);
+  // La orden es un documento de la EMPRESA (`EMPRESA_ENTERA`): su sucursal destino es opcional e informativa y puede ser cualquiera de la empresa, no solo la activa.
+  const base = await conEscrituraEnLaEmpresa(actor);
+  return conTransaccionSerializable(base.transaccion, async (tx): Promise<ResultadoCrearOrdenDeCompra> => {
+    // I3: la clave vive en la cabecera de la orden con la huella del pedido (la orden no guarda un mensaje de resultado: el de un reintento es siempre el mismo).
+    const chequeo = await chequearIdempotencia(tx, comando.claveIdempotencia, payloadHash, async (db, clave) => {
+      const guardada = await cargarOrdenPorClaveIdempotencia(db, clave);
+      return guardada ? { payloadHash: guardada.payloadHash, resultadoMensaje: MENSAJE_ORDEN_YA_GUARDADA } : null;
+    });
+    if (chequeo.estado === "conflicto") return fracaso("CONFLICTO_IDEMPOTENCIA", MENSAJE_CONFLICTO_IDEMPOTENCIA);
+    if (chequeo.estado === "duplicado") {
+      const previa = await cargarOrdenPorClaveIdempotencia(tx, comando.claveIdempotencia);
+      if (!previa) throw new Error("crearOrdenDeCompra: la clave figuraba como guardada y la orden no se ve.");
+      return exito(chequeo.mensaje, { repetida: true, ordenId: previa.id });
     }
 
     const proveedor = await cargarProveedor(tx, o.proveedorId);
     if (!proveedor?.activo) return fracaso("PROVEEDOR_NO_DISPONIBLE", "El proveedor elegido ya no está disponible.");
     if (o.sucursalId) {
       const sucursal = await tx.sucursal.findUnique({ where: { id: o.sucursalId }, select: { activo: true } });
-      const enAlcance = !actor.alcance || actor.alcance.escritura.includes(o.sucursalId);
-      if (!sucursal || !sucursal.activo || !enAlcance) return fracaso("SUCURSAL_NO_DISPONIBLE", "La sucursal destino no está disponible.");
+      if (!sucursal || !sucursal.activo) return fracaso("SUCURSAL_NO_DISPONIBLE", "La sucursal destino no está disponible.");
     }
     const existentes = await tx.producto.findMany({ where: { id: { in: o.lineas.map((l) => l.productoId) } }, select: { id: true } });
     if (existentes.length !== o.lineas.length) return fracaso("PRODUCTO_NO_DISPONIBLE", "Uno de los productos de la orden ya no está disponible.");
@@ -88,7 +98,7 @@ export async function crearOrdenDeCompraCasoDeUso(
       const ganador = await cargarOrdenPorClaveIdempotencia(actor.db, comando.claveIdempotencia);
       if (ganador) {
         return decidirIdempotencia({ payloadHash: ganador.payloadHash, resultadoMensaje: "." }, payloadHash).estado === "duplicado"
-          ? exito("Esa orden ya estaba guardada.", { repetida: true, ordenId: ganador.id })
+          ? exito(MENSAJE_ORDEN_YA_GUARDADA, { repetida: true, ordenId: ganador.id })
           : fracaso("CONFLICTO_IDEMPOTENCIA", MENSAJE_CONFLICTO_IDEMPOTENCIA);
       }
     }

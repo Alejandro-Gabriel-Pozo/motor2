@@ -234,7 +234,8 @@ describe("GT-26 — las clases de claves (G gobierno, O operativas sensibles, L 
     // O 24 → 22 y L 34 → 36: `partes_ver` y `partes_editar` suman `operador` a su semilla (pedido del dueño 2026-11-16): pasan de O a L.
     // L 36 → 37: Compras N3-b (2026-11-16) suma `compra_controlar_recepcion` (piso operario, semilla admin y operador).
     // O 22 → 21 y A 61 → 62: Compras N3-a (2026-11-16) sube `compra_recibir` de O a A (piso administrador).
-    expect([G.length, O.length, L.length, A.length]).toEqual([14, 21, 37, 62]);
+    // L 37 → 38 y A 62 → 64: Compras, orden de compra (2026-11-17) suma `orden_de_compra_ver` (L: piso operario, solo lectura, semilla admin y operador) y `orden_de_compra_gestionar` y `compras_configurar` (A: piso administrador, semilla admin).
+    expect([G.length, O.length, L.length, A.length]).toEqual([14, 21, 38, 64]);
   });
 
   it("toda clave del catálogo declara su clase, y toda clase declarada existe en el catálogo (las dos direcciones)", () => {
