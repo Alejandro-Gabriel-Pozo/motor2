@@ -199,7 +199,7 @@ export function AgregarEntradaDeLugar({
                 <div key={p.productoId} className="py-1" data-producto-de-origen={p.nombre}>
                   <Casilla
                     etiqueta={p.nombreParaMostrar}
-                    ayuda={yaEsta ? "Ya está en la lista." : undefined}
+                    aviso={yaEsta ? "Ya está en la lista." : undefined}
                     checked={yaEsta || !!borrador}
                     disabled={yaEsta || pendiente}
                     onChange={(e) => (e.target.checked ? tildar(p) : destildar(p.productoId))}

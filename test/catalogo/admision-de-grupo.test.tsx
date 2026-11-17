@@ -221,3 +221,6 @@ describe("admisionDelFormulario: el campo «seMuestraEnCarta» (2026-10-29)", ()
     expect(admisionDelFormulario(formulario({ seMuestraEnCarta: "cualquier cosa" })).seMuestraEnCarta).toBeUndefined();
   });
 });
+
+// V5: este archivo prueba las AYUDAS FIJAS cuando se ven (con el interruptor apagado no se dibujan: `test/ui/ayudas-fijas-interruptor.test.tsx`).
+vi.mock("../../src/core/textos/ayudas-fijas-visibles", () => ({ AYUDAS_FIJAS_VISIBLES: true }));

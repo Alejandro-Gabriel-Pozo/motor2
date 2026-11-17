@@ -60,3 +60,6 @@ describe("DondeSeVe: quien solo ve", () => {
     expect(dibujar({ puedeDefinir: false, soloSalon: true })).toContain("Solo salón (no aparece en la carta pública)");
   });
 });
+
+// V5: este archivo prueba las AYUDAS FIJAS cuando se ven (con el interruptor apagado no se dibujan: `test/ui/ayudas-fijas-interruptor.test.tsx`).
+vi.mock("../../src/core/textos/ayudas-fijas-visibles", () => ({ AYUDAS_FIJAS_VISIBLES: true }));

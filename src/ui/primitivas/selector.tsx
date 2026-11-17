@@ -17,6 +17,8 @@ interface PropsDeSelector extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 
   etiquetaOculta?: boolean;
   /** Texto fijo bajo el selector. */
   ayuda?: ReactNode;
+  /** Aviso CONDICIONAL bajo el control (un permiso que falta, un estado): se dibuja SIEMPRE, no depende de `AYUDAS_FIJAS_VISIBLES`; `ayuda` es el texto fijo y sí depende. */
+  aviso?: ReactNode;
   /** Mensaje de error ya redactado para el usuario; si viene, el selector queda marcado como inválido. */
   error?: ReactNode;
   tamano?: TamanoDeCampo;
@@ -26,9 +28,9 @@ interface PropsDeSelector extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 
 }
 
 // @contrato primitiva-selector
-export function Selector({ etiqueta, etiquetaOculta, ayuda, error, tamano = "normal", id, className, required, ref, children, ...resto }: PropsDeSelector) {
+export function Selector({ etiqueta, etiquetaOculta, ayuda, aviso, error, tamano = "normal", id, className, required, ref, children, ...resto }: PropsDeSelector) {
   return (
-    <EnvolturaDeCampo id={id} etiqueta={etiqueta} etiquetaOculta={etiquetaOculta} requerido={required} ayuda={ayuda} error={error}>
+    <EnvolturaDeCampo id={id} etiqueta={etiqueta} etiquetaOculta={etiquetaOculta} requerido={required} ayuda={ayuda} aviso={aviso} error={error}>
       {(control) => (
         <select {...resto} {...control} ref={ref} required={required} className={`${control.className} ${ALTURA_DEL_CAMPO[tamano]}${className ? ` ${className}` : ""}`}>
           {children}

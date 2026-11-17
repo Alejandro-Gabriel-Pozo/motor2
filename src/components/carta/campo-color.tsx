@@ -51,7 +51,8 @@ export function CampoColor({ id, name, inicial, etiqueta, placeholder, ayuda, er
             defaultValue={inicial}
             placeholder={placeholder}
             onInput={(e) => setActual(e.currentTarget.value)}
-            ayuda={[ayuda, actual.trim() && !hex ? "Formato avanzado: el selector no lo muestra." : null].filter(Boolean).join(" ") || undefined}
+            ayuda={ayuda}
+            aviso={actual.trim() && !hex ? "Formato avanzado: el selector no lo muestra." : undefined}
             error={error}
           />
         </div>

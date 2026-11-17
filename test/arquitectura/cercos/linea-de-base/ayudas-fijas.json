@@ -1,0 +1,470 @@
+{
+  "regla": "ayudas-fijas",
+  "meta": "bajar a medida que cada texto explicativo pase por el interruptor AYUDAS_FIJAS_VISIBLES, se acorte a lo de la maqueta de Pedernal o se borre",
+  "total": 313,
+  "entradas": 149,
+  "porTipo": {
+    "ayuda-campo": 5,
+    "parrafo-de-ayuda": 289,
+    "prop-ayuda": 19
+  },
+  "cuentas": {
+    "src/app/(app)/administracion/auditoria/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/administracion/capacidades-sucursal/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/administracion/empresa/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/administracion/gerencia/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/administracion/permisos/permisos-matriz.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(app)/administracion/usuarios/usuarios-tabla.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(app)/carta/agregar-entrada-de-lugar.tsx": {
+      "parrafo-de-ayuda": 7
+    },
+    "src/app/(app)/carta/agrupados/page.tsx": {
+      "parrafo-de-ayuda": 4,
+      "prop-ayuda": 1
+    },
+    "src/app/(app)/carta/parametrizacion/generos/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/carta/parametrizacion/promociones/donde-se-ve.tsx": {
+      "prop-ayuda": 1
+    },
+    "src/app/(app)/carta/parametrizacion/promociones/page.tsx": {
+      "parrafo-de-ayuda": 6,
+      "prop-ayuda": 1
+    },
+    "src/app/(app)/carta/parametrizacion/secciones/[id]/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/carta/portal/page.tsx": {
+      "parrafo-de-ayuda": 3
+    },
+    "src/app/(app)/carta/tema/page.tsx": {
+      "parrafo-de-ayuda": 3
+    },
+    "src/app/(app)/catalogo/categorias/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/catalogo/clientes/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/catalogo/insumos-grupos/page.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(app)/catalogo/margen-objetivo/page.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/alta-de-opcion.tsx": {
+      "parrafo-de-ayuda": 1,
+      "prop-ayuda": 1
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/campo-se-lee-en-la-carta.tsx": {
+      "prop-ayuda": 1
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/campos-de-version.tsx": {
+      "parrafo-de-ayuda": 5
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/lectura-del-factor.tsx": {
+      "parrafo-de-ayuda": 4
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/page.tsx": {
+      "parrafo-de-ayuda": 11
+    },
+    "src/app/(app)/catalogo/opciones/alta-de-grupo.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/catalogo/opciones/limpiar/limpiar-opciones.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(app)/catalogo/opciones/limpiar/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/catalogo/opciones/page.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(app)/catalogo/productos/[id]/compra/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/catalogo/productos/[id]/en-la-carta/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/catalogo/productos/[id]/opciones/admision-de-grupo.tsx": {
+      "prop-ayuda": 1
+    },
+    "src/app/(app)/catalogo/productos/[id]/opciones/page.tsx": {
+      "parrafo-de-ayuda": 5
+    },
+    "src/app/(app)/catalogo/productos/[id]/page.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(app)/catalogo/productos/[id]/precios/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/catalogo/productos/campo-alicuota-iva.tsx": {
+      "ayuda-campo": 1,
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/catalogo/productos/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/catalogo/productos/producto-form.tsx": {
+      "ayuda-campo": 2
+    },
+    "src/app/(app)/catalogo/proveedores/[id]/page.tsx": {
+      "parrafo-de-ayuda": 3
+    },
+    "src/app/(app)/catalogo/proveedores/comparativa/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/catalogo/proveedores/proveedor-form.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/catalogo/recetas/[productoId]/historial/page.tsx": {
+      "parrafo-de-ayuda": 5
+    },
+    "src/app/(app)/catalogo/recetas/[productoId]/page.tsx": {
+      "parrafo-de-ayuda": 4
+    },
+    "src/app/(app)/catalogo/recetas/[productoId]/receta-de-la-sucursal.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/catalogo/recetas/nueva-receta.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/error.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/inicio/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/movimientos/[proceso]/bandeja-para-aceptar.tsx": {
+      "parrafo-de-ayuda": 3
+    },
+    "src/app/(app)/movimientos/[proceso]/bloque-de-reparto.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/movimientos/[proceso]/panel-compra-por-pasos.tsx": {
+      "parrafo-de-ayuda": 3
+    },
+    "src/app/(app)/movimientos/conteo-fisico/conteo-fisico-grid.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/movimientos/conteo-fisico/page.tsx": {
+      "parrafo-de-ayuda": 3
+    },
+    "src/app/(app)/movimientos/opciones-agotadas/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/movimientos/page.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(app)/movimientos/precio-local/page.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(app)/movimientos/precio-local/precio-local-form.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/movimientos/secciones/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/reportes/categorias/page.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(app)/reportes/compras/formulario-corregir-compra.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(app)/reportes/compras/page.tsx": {
+      "parrafo-de-ayuda": 5
+    },
+    "src/app/(app)/reportes/consignacion/page.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(app)/reportes/consolidado/page.tsx": {
+      "parrafo-de-ayuda": 5
+    },
+    "src/app/(app)/reportes/conteos/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/reportes/costos/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/reportes/descuentos-clientes/page.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(app)/reportes/descuentos-productos/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/reportes/devoluciones/page.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(app)/reportes/diferencias/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/reportes/historial/como-se-compro.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/reportes/historial/como-se-vendio.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/reportes/historial/grafico-saldo.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/reportes/historial/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/reportes/huecos-catalogo/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/reportes/insumos-sin-receta/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/reportes/loading.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/reportes/margen-promociones/page.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(app)/reportes/page.tsx": {
+      "parrafo-de-ayuda": 5
+    },
+    "src/app/(app)/reportes/perdidas/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/reportes/periodo/comparativa-precios.tsx": {
+      "parrafo-de-ayuda": 3
+    },
+    "src/app/(app)/reportes/periodo/page.tsx": {
+      "parrafo-de-ayuda": 6
+    },
+    "src/app/(app)/reportes/rendimiento-recetas/fila-compartida.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(app)/reportes/rendimiento-recetas/fila-simple.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(app)/reportes/rendimiento-recetas/page.tsx": {
+      "parrafo-de-ayuda": 5
+    },
+    "src/app/(app)/reportes/rendimiento-recetas/por-sucursal/page.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(app)/reportes/rotacion-mesas/page.tsx": {
+      "parrafo-de-ayuda": 7
+    },
+    "src/app/(app)/reportes/salud/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/reportes/sin-receta/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/reportes/tickets/page.tsx": {
+      "parrafo-de-ayuda": 4
+    },
+    "src/app/(app)/reportes/trazabilidad/page.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(app)/reportes/valuacion/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/reportes/ventas-por-seccion/page.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(app)/stock/alertas/page.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(app)/stock/configuracion/page.tsx": {
+      "parrafo-de-ayuda": 5
+    },
+    "src/app/(app)/stock/consolidado/page.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(app)/stock/conteo-frecuencia/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/stock/por-familia/page.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(app)/stock/reclasificar/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/stock/seccion-habitual/page.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(app)/traspasos/bandeja.tsx": {
+      "parrafo-de-ayuda": 5
+    },
+    "src/app/(app)/traspasos/enviar/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/traspasos/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(app)/traspasos/solicitar/page.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(pos)/error.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/abrir-cuenta.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/agregar-items.tsx": {
+      "parrafo-de-ayuda": 4
+    },
+    "src/app/(pos)/mesas/[mesaId]/anular-item.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/anular-promo.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/armar-promo.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(pos)/mesas/[mesaId]/cerrar-cuenta.tsx": {
+      "parrafo-de-ayuda": 3
+    },
+    "src/app/(pos)/mesas/[mesaId]/corregir-linea.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(pos)/mesas/[mesaId]/elegir-opciones.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(pos)/mesas/[mesaId]/emitir-ticket-corregido.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/loading.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/pantalla-del-puesto.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/sin-enviar.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/app/(pos)/mesas/mostrador/page.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/(pos)/mesas/page.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/invitacion/formulario-de-aceptacion.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/app/login/page.tsx": {
+      "parrafo-de-ayuda": 5
+    },
+    "src/components/ayuda-campo.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/components/campo-numero-de-comprobante.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/components/campo-numero.tsx": {
+      "parrafo-de-ayuda": 1,
+      "prop-ayuda": 1
+    },
+    "src/components/carta/campo-color.tsx": {
+      "prop-ayuda": 1
+    },
+    "src/components/carta/contenido-del-producto.tsx": {
+      "parrafo-de-ayuda": 3,
+      "prop-ayuda": 1
+    },
+    "src/components/carta/copiar-carta-de-sucursal.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/components/carta/editor-marca.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/components/carta/editor-portal.tsx": {
+      "parrafo-de-ayuda": 2,
+      "prop-ayuda": 2
+    },
+    "src/components/carta/editor-tema.tsx": {
+      "parrafo-de-ayuda": 1,
+      "prop-ayuda": 2
+    },
+    "src/components/carta/reemplazar-carta-de-sucursal.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/components/catalogo/agregar-grupo-existente.tsx": {
+      "prop-ayuda": 1
+    },
+    "src/components/catalogo/asistente-hermanar.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/components/catalogo/ayuda-de-ficha.tsx": {
+      "ayuda-campo": 1
+    },
+    "src/components/catalogo/campos-sensibles-solo-lectura.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/components/catalogo/consumo-de-opcion.tsx": {
+      "parrafo-de-ayuda": 4
+    },
+    "src/components/catalogo/consumos-del-grupo.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/components/catalogo/duplicar-producto.tsx": {
+      "parrafo-de-ayuda": 2,
+      "prop-ayuda": 4
+    },
+    "src/components/catalogo/editor-de-consumos.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/components/catalogo/espacio-del-producto/marco.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/components/catalogo/espacio-del-producto/precio-de-la-sucursal.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/components/catalogo/espacio-del-producto/vista-previa-de-la-carta.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/components/catalogo/gestion-presentaciones.tsx": {
+      "ayuda-campo": 1
+    },
+    "src/components/catalogo/historial-de-precios.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/components/catalogo/nueva-opcion-en-el-grupo.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/components/catalogo/nuevo-grupo-en-el-producto.tsx": {
+      "parrafo-de-ayuda": 2,
+      "prop-ayuda": 1
+    },
+    "src/components/catalogo/quick-crear-producto.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/components/catalogo/resumen-de-opciones.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/components/menu-celular.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/components/mesas/mesa-card.tsx": {
+      "parrafo-de-ayuda": 2
+    },
+    "src/components/receta/materia-prima-y-cantidad.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/components/selector-rango.tsx": {
+      "parrafo-de-ayuda": 1
+    },
+    "src/components/sidebar-nav.tsx": {
+      "parrafo-de-ayuda": 2
+    }
+  }
+}

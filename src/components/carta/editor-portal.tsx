@@ -247,19 +247,14 @@ function CampoDeClave({ d, inicial, actual, aviso }: { d: DefinicionClavePortal;
   const ayuda = AYUDA_POR_CLAVE[d.clave] ?? AYUDA[d.tipo];
   const placeholder = d.defaultPortal || "sin valor";
   // El aviso del mapa (solo la imagen del fondo) es un texto más de la ayuda del campo: el lector de pantalla lo lee al entrar (`aria-describedby`) y, como `role="status"`, también cuando aparece.
-  const ayudaConAviso =
+  const avisoDelMapa =
     aviso && !error ? (
-      <>
-        {ayuda}
-        <span role="status" className="mt-1 block text-aviso-tinta" data-aviso-mapa>
-          {aviso}
-        </span>
-      </>
-    ) : (
-      ayuda
-    );
+      <span role="status" className="block text-aviso-tinta" data-aviso-mapa>
+        {aviso}
+      </span>
+    ) : undefined;
   // Lo que cada control lleva igual: el rótulo, la ayuda y el error los dibuja la primitiva (atados con `aria-describedby`).
-  const comun = { id, name: d.clave, defaultValue: inicial, etiqueta: d.etiqueta, ayuda: ayudaConAviso, error } as const;
+  const comun = { id, name: d.clave, defaultValue: inicial, etiqueta: d.etiqueta, ayuda, aviso: avisoDelMapa, error } as const;
 
   let control: React.ReactNode;
   switch (d.tipo) {
@@ -275,7 +270,7 @@ function CampoDeClave({ d, inicial, actual, aviso }: { d: DefinicionClavePortal;
           <label htmlFor={id} className="text-sm font-medium">
             {d.etiqueta}
           </label>
-          <CampoNumero id={id} name={d.clave} tipo="porcentaje" decimales={2} etiqueta={d.etiqueta} defaultValue={inicial} placeholder={placeholder} ayuda={ayudaConAviso} errorDeRegla={error} />
+          <CampoNumero id={id} name={d.clave} tipo="porcentaje" decimales={2} etiqueta={d.etiqueta} defaultValue={inicial} placeholder={placeholder} ayuda={ayuda} aviso={avisoDelMapa} errorDeRegla={error} />
         </div>
       );
       break;

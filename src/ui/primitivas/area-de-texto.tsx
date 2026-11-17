@@ -14,6 +14,8 @@ interface PropsDeAreaDeTexto extends Omit<TextareaHTMLAttributes<HTMLTextAreaEle
   etiquetaOculta?: boolean;
   /** Texto fijo bajo el área (no desaparece al tipear, a diferencia de un placeholder). */
   ayuda?: ReactNode;
+  /** Aviso CONDICIONAL bajo el control (un permiso que falta, un estado): se dibuja SIEMPRE, no depende de `AYUDAS_FIJAS_VISIBLES`; `ayuda` es el texto fijo y sí depende. */
+  aviso?: ReactNode;
   /** Mensaje de error ya redactado para el usuario; si viene, el área queda marcada como inválida. */
   error?: ReactNode;
   tamano?: TamanoDeCampo;
@@ -23,9 +25,9 @@ interface PropsDeAreaDeTexto extends Omit<TextareaHTMLAttributes<HTMLTextAreaEle
 }
 
 // @contrato primitiva-area-de-texto
-export function AreaDeTexto({ etiqueta, etiquetaOculta, ayuda, error, tamano = "normal", id, className, required, rows = 3, ref, ...resto }: PropsDeAreaDeTexto) {
+export function AreaDeTexto({ etiqueta, etiquetaOculta, ayuda, aviso, error, tamano = "normal", id, className, required, rows = 3, ref, ...resto }: PropsDeAreaDeTexto) {
   return (
-    <EnvolturaDeCampo id={id} etiqueta={etiqueta} etiquetaOculta={etiquetaOculta} requerido={required} ayuda={ayuda} error={error}>
+    <EnvolturaDeCampo id={id} etiqueta={etiqueta} etiquetaOculta={etiquetaOculta} requerido={required} ayuda={ayuda} aviso={aviso} error={error}>
       {(control) => <textarea {...resto} {...control} ref={ref} rows={rows} required={required} className={`${control.className} ${ALTURA_DEL_CAMPO[tamano]} resize-y py-2${className ? ` ${className}` : ""}`} />}
     </EnvolturaDeCampo>
   );

@@ -102,3 +102,6 @@ describe("C9: «Se lee en la carta como» en el formulario del grupo", () => {
     expect(html).toMatch(/<p aria-live="polite"[^>]*>Sin prefijo: cada opción se lee con su nombre\.<\/p>/);
   });
 });
+
+// V5: este archivo prueba las AYUDAS FIJAS cuando se ven (con el interruptor apagado no se dibujan: `test/ui/ayudas-fijas-interruptor.test.tsx`).
+vi.mock("../../src/core/textos/ayudas-fijas-visibles", () => ({ AYUDAS_FIJAS_VISIBLES: true }));
