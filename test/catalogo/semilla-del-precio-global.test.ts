@@ -7,6 +7,7 @@ import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, sembrarBase, sembr
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { sincronizarPrecioGrupoCarta } from "../../src/server/actions/catalogo/productos";
 
+import { crearCategoriaDeTest } from "../setup/categoria-de-prueba";
 /**
  * S-41 / D4 (plan de endurecimiento de seguridad, tanda T2; decisión 22 del dueño: tres clases de claves). `producto_sincronizar_precio_carta` aplica el mismo precio de
  * venta GLOBAL a varios productos de un ítem agrupado de la carta: fija el precio de venta de todas las sucursales, igual que `producto_editar`. Se sembraba al rol de fábrica
@@ -35,7 +36,7 @@ describe("S-41: la semilla del precio global es solo del administrador (clase O)
     // M.2 (D-3): sincronizar el precio es cambiar el precio de venta de varios productos, así que además de la clave de sincronizar pide la clave fina `producto_campos_sensibles`: el rol «Precios» recibe las dos.
     await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "producto_campos_sensibles", puedeVer: true, puedeEditar: true } });
     const unidad = await prisma.unidad.create({ data: { nombre: "u", magnitud: "CANTIDAD", decimales: 0 } });
-    const categoriaId = (await prisma.categoriaProducto.create({ data: { nombre: "Gaseosa" } })).id;
+    const categoriaId = (await crearCategoriaDeTest(prisma, { nombre: "Gaseosa" })).id;
     productoId = (await sembrarProductoDisponible({ codigo: "SP_1", nombre: "Coca", tipo: "PV", categoriaId, precioVenta: 1000, unidadStockId: unidad.id }, sucursalId)).id;
     hermanoId = (await sembrarProductoDisponible({ codigo: "SP_2", nombre: "Fanta", tipo: "PV", categoriaId, precioVenta: 1000, unidadStockId: unidad.id }, sucursalId)).id;
     const seccion = await prisma.seccionCarta.create({ data: { nombre: "Bebidas" } });

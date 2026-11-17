@@ -4,6 +4,7 @@ import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { ACCIONES, nivelMinimoDeAccion, type AccionClave, type NivelDeAccion } from "../../src/core/permisos/acciones";
 import { nivelAlcanzaElPiso } from "../../src/core/permisos/jerarquia";
+import { resguardoAlcanza, resguardoDe, type Resguardo } from "./guardas/resguardo-de-clave";
 
 /**
  * GT-2 (plan de endurecimiento de seguridad, tanda T5), el tramo «pares de acción equivalente»: cuando DOS caminos llegan al mismo efecto, el piso del camino hermano no puede ser menor
@@ -17,7 +18,7 @@ import { nivelAlcanzaElPiso } from "../../src/core/permisos/jerarquia";
  * M.2 suma el par `producto_editar` ⇒ `producto_campos_sensibles` (piso mínimo operario; la clave fina se SUMA a la de editar, no la reemplaza): `actualizarProducto` calcula el dato con el ayudante compartido
  * `puedeEditarCamposSensiblesDelProducto` (`src/server/acceso/campos-sensibles-de-producto.ts`, fuente única desde M.2-A4; consulta la clave con `obtenerMiNivelPermisoDeEmpresa`) y lo pasa al caso de uso; P3, P4 y P5 suman sus puertas. Este guardián exige,
  * por cada par declarado (lista cerrada: un par nuevo se declara acá, con su motivo):
- *  1. que el piso del equivalente sea al menos el declarado (`pisoMinimo`) y al menos el del principal (bajar `proceso_ajuste` a operario → rojo);
+ *  1. que el piso del equivalente sea al menos el declarado (`pisoMinimo`) y al menos el del principal, y que su resguardo (`guardas/resguardo-de-clave.ts`, PISOS-65) sea al menos el declarado (`resguardoMinimo`) y al menos el del principal (sacar `proceso_ajuste` de `ACCIONES_QUE_DA_SOLO_EL_GERENTE` o darle a `operador` su semilla → rojo);
  *  2. que cada puerta declarada (una función exportada de una Server Action) llame al ayudante que consulta la clave del equivalente, y que ese ayudante consulte `requierePermiso(…, "<equivalente>", …)`
  *     (sacar la llamada de una puerta, o cambiar la clave del ayudante → rojo).
  * Por AST: un comentario no cuenta.
@@ -36,6 +37,8 @@ interface ParDePiso {
   principal: AccionClave;
   equivalente: AccionClave;
   pisoMinimo: NivelDeAccion;
+  /** PISOS-65: el resguardo mínimo del equivalente (desde que las 65 bajaron a piso operario, el piso solo no alcanza). */
+  resguardoMinimo?: Resguardo;
   motivo: string;
   puertas: Puerta[];
 }
@@ -47,7 +50,8 @@ const PARES: ParDePiso[] = [
   {
     principal: "proceso_control",
     equivalente: "proceso_ajuste",
-    pisoMinimo: "administrador",
+    pisoMinimo: "operario",
+    resguardoMinimo: "la_da_solo_el_gerente",
     motivo:
       "Aplicar la diferencia de un conteo al stock (AJUSTAR en la grilla, «ajustar» al resolver un pendiente) es un Ajuste: sin la clave de Ajuste, un operario con la clave del conteo vaciaba el stock de la sucursal (S-09).",
     puertas: [
@@ -219,6 +223,7 @@ const PARES_DE_PISO_IGUAL: readonly { hermana: AccionClave; ajuste: AccionClave;
 describe("pares de piso igual (GT-2, M-28): el camino hermano no baja del piso del Ajuste", () => {
   it.each(PARES_DE_PISO_IGUAL)("$hermana es al menos de piso $ajuste", ({ hermana, ajuste, motivo }) => {
     expect(nivelAlcanzaElPiso(nivelMinimoDeAccion(hermana), nivelMinimoDeAccion(ajuste)), `${hermana} (piso ${nivelMinimoDeAccion(hermana)}) no puede ser menos que ${ajuste} (piso ${nivelMinimoDeAccion(ajuste)}): ${motivo}`).toBe(true);
+    expect(resguardoAlcanza(hermana, resguardoDe(ajuste)), `${hermana} (${resguardoDe(hermana)}) protege menos que ${ajuste} (${resguardoDe(ajuste)}): ${motivo}`).toBe(true);
   });
 });
 
@@ -236,6 +241,8 @@ describe("pares de acción equivalente (GT-2): el camino hermano no baja el piso
         const pisoEquivalente = nivelMinimoDeAccion(par.equivalente);
         expect(nivelAlcanzaElPiso(pisoEquivalente, par.pisoMinimo), `${par.equivalente} bajó a ${pisoEquivalente}: ${par.motivo}`).toBe(true);
         expect(nivelAlcanzaElPiso(pisoEquivalente, nivelMinimoDeAccion(par.principal)), `${par.equivalente} (${pisoEquivalente}) no puede ser menos que ${par.principal}`).toBe(true);
+        expect(resguardoAlcanza(par.equivalente, resguardoDe(par.principal)), `${par.equivalente} (${resguardoDe(par.equivalente)}) protege menos que ${par.principal} (${resguardoDe(par.principal)})`).toBe(true);
+        if (par.resguardoMinimo) expect(resguardoAlcanza(par.equivalente, par.resguardoMinimo), `${par.equivalente} es «${resguardoDe(par.equivalente)}»; tiene que ser al menos «${par.resguardoMinimo}»: ${par.motivo}`).toBe(true);
       });
 
       it.each(par.puertas.map((p) => [p.archivo, p] as const))("%s: cada puerta pide la clave del equivalente", (archivo, puerta) => {
