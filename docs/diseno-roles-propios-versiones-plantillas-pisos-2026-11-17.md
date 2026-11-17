@@ -111,7 +111,7 @@ Rol (de sistema / propio / plantilla) × tipo de piso (sin piso / `SOLO_GERENTE`
 
 ## 6 bis. Equivalencia 1 a 1: de los 4 niveles a los pisos por acción (PROPUESTA; la lista de pisos la confirma el dueño)
 
-Cuenta real del catálogo de `main` (`ACCIONES`, 133 claves): **58 operario, 61 administrador, 12 administrador de sistema, 2 gerente**. Regla de la equivalencia: **el resultado de hoy no cambia para nadie que ya tenga un rol**. Un piso por acción solo tiene dos valores; «sin piso» significa «se puede asignar dentro del plan».
+Cuenta real del catálogo de `main` (`ACCIONES`, **140 claves** —verificada con `tsx` al implementar EB-1, 2026-11-17; el documento decía 133 por una cuenta anterior—): **61 operario, 65 administrador, 12 administrador de sistema, 2 gerente**. Regla de la equivalencia: **el resultado de hoy no cambia para nadie que ya tenga un rol**. Un piso por acción solo tiene dos valores; «sin piso» significa «se puede asignar dentro del plan».
 
 | Nivel de hoy | Cuántas | Piso por acción propuesto | Por qué (resultado) |
 |---|---|---|---|
@@ -128,7 +128,7 @@ Cuenta real del catálogo de `main` (`ACCIONES`, 133 claves): **58 operario, 61 
 - *Dinero: anular, corregir, pagar (5, **sin piso: CONFIRMADA 2026-11-17, «Asignables a un rol propio, como Pedernal»; nacen cerradas para todo rol nuevo**):* `anular_venta`, `anular_compra`, `corregir_compra`, `pagar_consignante`, `clientes`.
 - *Reportes de solo ver (21):* `reporte_resumen`, `reporte_consolidado`, `reporte_periodo`, `reporte_categorias`, `reporte_ventas_por_seccion`, `reporte_costos`, `reporte_compras`, `reporte_rendimiento_recetas`, `reporte_rendimiento_sucursal`, `reporte_valuacion`, `reporte_tickets`, `reporte_descuentos_clientes`, `reporte_descuentos_productos`, `reporte_margen_promociones`, `reporte_historial_importes`, `reporte_perdidas`, `reporte_devoluciones`, `reporte_diferencias`, `reporte_sin_receta`, `reporte_insumos_sin_receta`, `reporte_huecos_catalogo`.
 - *Parte (1):* `partes_desactivar` (en Pedernal `partes.desactivar` es del gerente y el administrador, no del operador: hoy es nivel administrador; sin piso lo conserva el `admin`).
-Suma comprobada con un script contra `ACCIONES`: 15 + 13 + 6 + 5 + 21 + 1 = **61**, sin ninguna repetida ni suelta. La cuenta exacta la fija además la prueba de equivalencia (T1).
+Suma comprobada con un script contra `ACCIONES`: 15 + 13 + 6 + 5 + 21 + 1 = **61** listadas; **faltaba listar 4 de nivel administrador** que el catálogo ya trae (`caja_cerrar_sesion`, `caja_mover_efectivo`, `caja_anular_movimiento_ajeno`, `compra_recibir`): quedan **sin piso**, como el resto del nivel (65 en total). La cuenta exacta la fija la prueba de paridad de EB-1 (`test/core/plantillas-y-pisos.test.ts`), que la deriva del catálogo y no fija ningún número.
 
 **Qué pasa con el «Encargado» (rango intermedio):** deja de necesitar un nivel nuevo (`Rol.nivel`, F3 de ADR-027, que nunca se construyó): es un rol propio sin piso que el gerente arma con las acciones del nivel administrador que quiera, **salvo las `SOLO_GERENTE`**. Resultado de Pedernal igualado.
 
@@ -194,6 +194,29 @@ Principio del diseño de Pedernal que se conserva (§6.1 de H4b): **el comportam
 | D-6 | Rol por persona | Por empresa | Por sucursal | DATOS; sin motivo del dueño | SIN MOTIVO (fila 2 de la auditoría) |
 | D-7 | Claves de acción | `recurso.accion` | planas `snake_case` | Catálogo existente | PROPUESTA |
 
+## 8 bis. EB-1 implementada: diferencias con Pedernal (D-A a D-N), con motivo
+
+Etapa **EB-1** (T1 de §7 bis): migración `20261117100400_plantillas_y_pisos` (4 tablas globales, candados, semilla generada desde el catálogo), `src/core/permisos/plantillas-y-pisos.ts` (reglas puras), `src/server/operaciones-de-plataforma/plantillas-y-pisos.ts` (escritor por script) y `scripts/plantillas-y-pisos.ts`. **El guard no se conecta** (eso es EB-3) y ningún comportamiento ni texto visible cambia. Oráculo de combinaciones: `docs/oraculo-combinaciones-plantillas-y-pisos-2026-11-17.md`. Referencia de Pedernal: `0061_permisos_configurables.sql` y su reversión (leídas de `zuluhub-docs`, `11-especificaciones/sql-pendientes-otros-modulos/`).
+
+| # | Tema | Pedernal | Motor2 (EB-1) | Motivo |
+|---|---|---|---|---|
+| D-A | Identidad de las filas | Clave natural | `id UUID` + clave natural única | Molde de Datos de Motor2 (`datos-molde-de-tabla-nueva`): toda tabla nueva lleva `id UUID` e instantes `TIMESTAMPTZ` |
+| D-B | Lista de acciones | Una lista por versión | Dos listas, Ver y Editar (Editar ⊆ Ver, CHECK) | El permiso de Motor2 es acción + Ver + Editar (`PermisoRol`) |
+| D-C | Reintento | No hay clave de reintento en la versión | `claveIdempotencia` + `payloadHash` | Contrato de reintento de M1 (misma clave y mismo pedido = lo ya hecho; otro pedido = error) |
+| D-D | Clave de acción | `recurso.accion` | Clave plana `snake_case` validada por forma (lista de permitidos) | Catálogo de acciones existente (D-7 de §8) |
+| D-E | `SOLO_GERENTE` en plantillas | `incumplimiento_de_pisos` lo rechaza en TODA plantilla | Se controla en OPERADOR (y en EB-2 en los roles propios), **no en ADMINISTRADOR** | ADMINISTRADOR v1 lleva las 12 acciones de gobierno (SOLO_GERENTE): respuesta (b) del dueño, 2026-11-17, y el invariante I-10 (el resultado de hoy no cambia para el rol `admin`) |
+| D-F | Nivel | Sin niveles | **Regla transitoria de nivel**: una versión no puede llevar una acción que el rol de fábrica de la plantilla no alcanza hoy por su nivel (ADMINISTRADOR no recibe las de gerente; OPERADOR nada por encima de operario) | Hasta que el guard lea las plantillas (T5) las dos decisiones tienen que coincidir; se retira en T5 |
+| D-G | Lectura desde la app | La app lee | **La app no lee** (REVOKE total a `motor2_app`); RLS `solo_plataforma` sin FORCE | EB-1 no conecta el guard; el dueño migra y limpia la base de test |
+| D-H | TRUNCATE del dueño | No aplica | El dueño puede TRUNCATE las cuatro tablas (limpieza de tests); UPDATE y DELETE siguen prohibidos incluso para él | Precedente de M1 (`proteger_tablas_de_planes`) |
+| D-I | Autor | Texto libre | Hasta 200 caracteres (CHECK) | Igual que `PlanDeEmpresa.asignadoPor` |
+| D-J | Acciones nuevas | Automático (NO VERIFICADO) | `sincronizar` manual de plataforma; además crea los pisos por la equivalencia de nivel | Primero lo más barato: un comando explícito y auditado; si Pedernal lo hace solo, se iguala después (NO VERIFICADO) |
+| D-K | FK a `Accion` | Sí | **Sin FK** (`accionClave` de texto validado por forma) | En una base nueva `Accion` está vacía hasta el seed y el CI migra antes de sembrar |
+| D-L | Serialización | Por fila de empresa | Candado consultivo de transacción (`pg_advisory_xact_lock`) por caso de uso | Las tablas son globales: no hay fila de empresa que bloquear |
+| D-M | Quién opera | Consola | Script con `--actor` y segundo factor por TOTP (`abrirContextoDePlataforma`) | Régimen de M1: los cambios de plataforma por script prueban al actor |
+| D-N | Cantidad de acciones | — | **140** (no 133) | Cuenta verificada contra el catálogo real al implementar |
+
+**Qué impone la base y qué la aplicación.** La base: formas de clave, Editar ⊆ Ver, número consecutivo, pisos (SOLO_GERENTE fuera de OPERADOR, TODOS_LOS_ROLES presentes, sin pisos se rechaza), versiones y plantillas inmutables, pisos que cambian de tipo y suben de versión. La aplicación, antes de escribir y para dar un mensaje claro: el catálogo, la regla transitoria de nivel (D-F) y que ADMINISTRADOR conserve las acciones de `ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE`.
+
 ## 9. «¿Qué pasa si…?» (comandos principales)
 
 | Situación | Crear / editar un rol propio (versión) | Publicar versión de plantilla | Cambiar un piso |
@@ -232,6 +255,6 @@ Principio del diseño de Pedernal que se conserva (§6.1 de H4b): **el comportam
 
 ## 12. Qué no verifiqué
 - Las líneas 330 a 759 de la 0061 (RLS, privilegios, políticas de plataforma) ni su reversión.
-- Cuántas acciones hay por piso hoy en Motor2 (uso los números de la auditoría previa: 58 / 61 / 12 / 2).
+- Cuántas acciones hay por piso hoy en Motor2: lo verifiqué al implementar EB-1 con `tsx` (61 / 65 / 12 / 2 = 140; la cuenta vieja 58 / 61 / 12 / 2 era de una auditoría anterior).
 - Si el guard de Motor2 mira el techo del plan al otorgar una acción en la matriz.
 - Ninguna prueba ni migración se corrió: es solo un documento.

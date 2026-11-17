@@ -1,7 +1,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { PrismaClient } from "@prisma/client";
+import { ACCIONES } from "../../src/core/permisos/acciones";
 import { semillaDePlantillas } from "../../src/core/permisos/plantillas-y-pisos";
+
+type AccionParaSemilla = Parameters<typeof semillaDePlantillas>[0] extends readonly (infer A)[] | undefined ? A : never;
 
 /**
  * El bloque de SEMILLA de la migración `20261117100400_plantillas_y_pisos`, GENERADO desde el catálogo (nada a mano): las tres plantillas, los pisos por equivalencia de nivel, la versión 1 de ADMINISTRADOR y de
@@ -23,8 +26,8 @@ const literal = (texto: string): string => `'${texto.replaceAll("'", "''")}'`;
 const arreglo = (claves: readonly string[]): string => `ARRAY[${claves.map(literal).join(", ")}]::text[]`;
 
 /** Las sentencias de la semilla, una por elemento, SIN el punto y coma final. */
-export function sentenciasDeLaSemilla(): string[] {
-  const s = semillaDePlantillas();
+export function sentenciasDeLaSemilla(acciones: readonly AccionParaSemilla[] = ACCIONES): string[] {
+  const s = semillaDePlantillas(acciones);
   const sentencias: string[] = [];
   sentencias.push(
     `INSERT INTO "PlantillaDeRol" ("id", "clave") VALUES\n${(["GERENTE", "ADMINISTRADOR", "OPERADOR"] as const).map((c) => `  (${literal(ID_PLANTILLA[c])}, ${literal(c)})`).join(",\n")}\nON CONFLICT ("clave") DO NOTHING`,
@@ -81,4 +84,10 @@ export function bloqueDeLaMigracion(): string {
 export async function restaurarSemillaDePlantillasYPisos(prismaAdmin: PrismaClient): Promise<void> {
   await prismaAdmin.$executeRawUnsafe('TRUNCATE TABLE "VersionDePlantilla", "PisoDePlataforma", "AccionIntroducida", "PlantillaDeRol"');
   for (const sentencia of sentenciasDelBloque(bloqueDeLaMigracion())) await prismaAdmin.$executeRawUnsafe(sentencia);
+}
+
+/** Siembra un SUBCONJUNTO del catálogo (como si la base conociera solo esas acciones): sirve para probar la sincronización de acciones nuevas. */
+export async function sembrarSoloEstasAcciones(prismaAdmin: PrismaClient, acciones: readonly AccionParaSemilla[]): Promise<void> {
+  await prismaAdmin.$executeRawUnsafe('TRUNCATE TABLE "VersionDePlantilla", "PisoDePlataforma", "AccionIntroducida", "PlantillaDeRol"');
+  for (const sentencia of sentenciasDeLaSemilla(acciones)) await prismaAdmin.$executeRawUnsafe(sentencia);
 }
