@@ -120,6 +120,7 @@ describe("catálogo de textos: cada regla con su violación inyectada", () => {
     expect(dicen(con("aviso.saludo", { porDefecto: "Hola {nombre} {apellido}" }))).toContain("{apellido}");
     expect(dicen(con("aviso.saludo", { porDefecto: "Hola" }))).toContain("no lo usa");
     expect(dicen(con("aviso.saludo", { marcadores: { nombre: "dinero" } }))).toContain("tipo que no existe");
+    expect(revisarCatalogo(con("aviso.saludo", { marcadores: { nombre: "entidad" } }), contexto())).toEqual([]);
     expect(dicen(con("aviso.saludo", { porDefecto: "Hola {nombre} }" }))).toContain("suelta");
     expect(dicen(con("aviso.saludo", { porDefecto: "Hola {Nombre}", marcadores: { nombre: "texto" } }))).toContain("C5");
     expect(dicen(con("rechazo.NO_HAY_STOCK", { porDefecto: " " }))).toContain("vacío");
