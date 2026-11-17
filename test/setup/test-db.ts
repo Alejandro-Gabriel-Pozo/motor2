@@ -66,6 +66,26 @@ export const EMPRESA_POR_DEFECTO_ID = EMPRESA_DE_PRUEBA_ID;
  * rol de ejecución solo vería la empresa por defecto y las filas de una segunda empresa sobrevivirían a la limpieza.
  */
 export async function limpiarBaseDeTest() {
+  // Caja y cobro C2 (jornada y cierre del día): lo que cuelga de la jornada y de un cobro, antes que lo de C1 (referencian a Cobro, MedioDePago y JornadaDeSucursal).
+  await prismaAdmin.conciliacionDeCobroPorOrigen.deleteMany();
+  await prismaAdmin.conciliacionDeJornada.deleteMany();
+  await prismaAdmin.cierreDeCajaDeJornada.deleteMany();
+  await prismaAdmin.controlDeJornadaCerrada.deleteMany();
+  await prismaAdmin.correccionDeMedio.deleteMany();
+  await prismaAdmin.declaracionDeTotal.deleteMany();
+  await prismaAdmin.conformeDeJornada.deleteMany();
+  // Caja y cobro C1 (etapa C1): lo que cuelga de una sesión, antes que nada (referencian Cuenta, Sucursal, User y entre sí). Las anulaciones primero: apuntan a su movimiento original.
+  await prismaAdmin.arqueoBillete.deleteMany();
+  await prismaAdmin.arqueoCaja.deleteMany();
+  await prismaAdmin.cobro.deleteMany();
+  await prismaAdmin.cobranza.deleteMany();
+  await prismaAdmin.movimientoCaja.deleteMany({ where: { anulaAId: { not: null } } });
+  await prismaAdmin.movimientoCaja.deleteMany();
+  await prismaAdmin.sesionCaja.deleteMany();
+  await prismaAdmin.caja.deleteMany();
+  await prismaAdmin.jornadaDeSucursal.deleteMany();
+  await prismaAdmin.medioDePago.deleteMany();
+  await prismaAdmin.cuentaDeCobro.deleteMany(); // C3: después de lo que la referencia (movimientos, cobros, arqueos). `ValorDeLista` es global y sembrada: no se limpia.
   // Carta antes que nada: sus tablas referencian Producto y Sucursal (RESTRICT), que se borran más abajo.
   // Las opciones de un ítem agrupado primero: referencian al ítem agrupado (RESTRICT) y a Producto.
   // OJO: PromoCartaCupo, PromoCarta y SeccionCarta NO se borran acá (Task #16, docs/plan-promo-combo-2026-09-26.md, M2) —
@@ -73,6 +93,7 @@ export async function limpiarBaseDeTest() {
   // junto a `promoCuenta.deleteMany()`), así que las tres se movieron a ese bloque.
   // GO-3: lo de combos, menú del día y combinaciones primero (nadie lo referencia; ver `limpiarTablasDeGo3`, al final del archivo).
   await limpiarTablasDeGo3();
+  await prismaAdmin.modoDeOrdenDeSeccionCarta.deleteMany(); // O1: el modo de orden cuelga de la sucursal y de la sección (RESTRICT).
   await prismaAdmin.opcionItemAgrupadoCarta.deleteMany();
   await prismaAdmin.itemAgrupadoCarta.deleteMany();
   await prismaAdmin.temaCartaSucursal.deleteMany();
@@ -231,6 +252,8 @@ export async function limpiarBaseDeTest() {
   // Plataforma (ADR-007, A2): `empresaId` tiene default `app_empresa_actual()` (la ÚNICA empresa ACTIVE), así que la base de test
   // tiene que terminar con exactamente la empresa por defecto de la migración, en pie y ACTIVE, sea lo que sea que un test haya tocado.
   // El registro de módulos (P4) apunta a la empresa con ON DELETE RESTRICT: las filas de las empresas que se van se borran antes. Las de la empresa por defecto quedan.
+  // Planes versionados (M1): solo se agregan (ni el dueño borra fila por fila): se vacían con TRUNCATE, las tres juntas porque se referencian. Referencian a la empresa con RESTRICT: antes de borrarlas.
+  await prismaAdmin.$executeRawUnsafe('TRUNCATE TABLE "PlanDeEmpresa", "VersionDePlan", "Plan"');
   await prismaAdmin.moduloEmpresa.deleteMany({ where: { empresaId: { notIn: [EMPRESA_POR_DEFECTO_ID, EMPRESA_TESTIGO_ID] } } });
   await prismaAdmin.empresa.deleteMany({ where: { id: { notIn: [EMPRESA_POR_DEFECTO_ID, EMPRESA_TESTIGO_ID] } } });
   // La empresa testigo (ADR-022): siempre presente, ACTIVE y vacía — un test que la suspendió la encuentra de nuevo activa.

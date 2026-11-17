@@ -1,6 +1,8 @@
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { nombreDeCatalogo } from "@/core/features/catalogo/nombre-de-catalogo";
 import type { ComandoActualizarRespaldoSeccion, ComandoCrearSeccion, ComandoRenombrarSeccion } from "./secciones.schema";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 
 /**
  * Guard de la feature «secciones de stock de una sucursal» (convención «guard por feature», 2026-09-25; Hito 4, bloque C, paso H4C-18). Formato del comando, ANTES
@@ -11,8 +13,8 @@ import type { ComandoActualizarRespaldoSeccion, ComandoCrearSeccion, ComandoReno
  * nunca se validaron: sin guard (`SIN_GUARD`).
  */
 
-/** El nombre de una sección: recortado, no vacío (con el texto de cada acción), charset y largo de catálogo con la etiqueta «El nombre de la sección». */
-const nombreDeSeccion = (nombre: unknown, mensajeVacio: string): ResultadoDato<string> => nombreDeCatalogo(nombre, mensajeVacio, "El nombre de la sección");
+/** El nombre de una sección: recortado, no vacío (con el texto de cada acción), charset y largo de la ficha ELECCION. */
+const nombreDeSeccion = (nombre: unknown, mensajeVacio: string): ResultadoDato<string> => nombreDeCatalogo(nombre, mensajeVacio);
 
 /** Guard del alta de una sección: EXACTAMENTE lo que antes era lo primero de `crearSeccion`, con los MISMOS textos. Que el nombre esté libre lo resuelve el caso de uso. */
 export function guardComandoCrearSeccion(entrada: { nombre: unknown }): ResultadoDato<ComandoCrearSeccion> {
@@ -38,7 +40,7 @@ export function guardComandoRenombrarSeccion(entrada: { seccionId: string; nombr
 export function guardComandoActualizarRespaldoSeccion(entrada: { seccionId: unknown; sirveDeRespaldoEnVentas: unknown }): ResultadoDato<ComandoActualizarRespaldoSeccion> {
   const { seccionId, sirveDeRespaldoEnVentas } = entrada;
   if (typeof sirveDeRespaldoEnVentas !== "boolean") return rechazar("formato", "Valor inválido.");
-  if (typeof seccionId !== "string") return rechazar("formato", "No se encontró el depósito.");
+  if (typeof seccionId !== "string") return rechazar("formato", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.deposito }));
   return aceptar({ seccionId, sirveDeRespaldoEnVentas });
 }
 

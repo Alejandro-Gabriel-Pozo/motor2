@@ -154,7 +154,7 @@ describe("la reclasificación del gobierno (ADR-027 §3, 3.4-4)", () => {
     for (const a of ACCIONES.filter((x) => (ACCIONES_DE_EMPRESA_DE_D15 as readonly string[]).includes(x.clave))) expect([...a.rolesEditarSemilla], a.clave).toEqual(["admin"]);
   });
 
-  it("el conteo del catálogo: 55 operario, 60 administrador, 12 administrador de sistema, 2 gerente", () => {
+  it("el conteo del catálogo: 61 operario, 64 administrador, 12 administrador de sistema, 2 gerente", () => {
     // 61 → 60 administrador: se retira `notificar_alertas` (decisión del dueño, limpieza paquete A paso 3; clase A).
     // 56 → 55 operario: se retira `pos_limite_mesas_abiertas` (el límite de mesas abiertas por sucursal; decisión del dueño 2026-10-29; clase O).
     // 55 → 56 operario y 62 → 61 administrador: E3a baja `compra_repartir` a piso operario (decisión del dueño P3, 2026-10-28; clase A → O, semilla sigue solo `admin`).
@@ -167,7 +167,8 @@ describe("la reclasificación del gobierno (ADR-027 §3, 3.4-4)", () => {
     // 59 → 60 administrador: Paquete 3 M3a suma `compra_repartir` (clase A).
     // 55 → 56 operario: Pagos X0 suma `declarar_pago_compra` (clase O).
     // 56 → 58 operario y 60 → 61 administrador: Parte P1 suma `partes_ver` y `partes_editar` (clase O) y `partes_desactivar` (clase A).
+    // 58 → 61 operario y 61 → 64 administrador: Caja y cobro C1 PR-B suma `caja_ver`, `caja_abrir_sesion` y `cobrar_cuenta` (clase O) y `caja_cerrar_sesion`, `caja_mover_efectivo` y `caja_anular_movimiento_ajeno` (clase A).
     // 51 → 52: M.2 P1 suma `producto_campos_sensibles` (piso operario, clase O); los otros pisos no se mueven.
-    expect(["operario", "administrador", "administrador_sistema", "gerente"].map((p) => conPiso(p as NivelDeAccion).length)).toEqual([58, 61, 12, 2]);
+    expect(["operario", "administrador", "administrador_sistema", "gerente"].map((p) => conPiso(p as NivelDeAccion).length)).toEqual([61, 64, 12, 2]);
   });
 });

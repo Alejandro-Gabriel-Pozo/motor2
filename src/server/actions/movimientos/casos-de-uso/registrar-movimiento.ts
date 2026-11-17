@@ -16,6 +16,8 @@ import { cargarDestinoConsumo, cargarMotivoMerma, cargarProveedor } from "@/serv
 import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
 import { armarLineaMovimiento, type LineaCalculada } from "./armar-linea-de-movimiento";
 import { registrarFacturaProveedorCasoDeUso } from "./registrar-factura-proveedor";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 
 /** Los únicos procesos que admiten una sección dada de baja como ORIGEN (P17): los que solo sacan mercadería. Como destino (Transferencia) nunca se admite. */
 const PROCESOS_QUE_SACAN_DE_UNA_SECCION_DADA_DE_BAJA: ReadonlySet<ProcesoGenerico> = new Set<ProcesoGenerico>(["CONSUMO", "MERMA", "TRANSFERENCIA"]);
@@ -63,9 +65,9 @@ export async function registrarMovimientoCasoDeUso(
   // el cliente sea realmente de esa sucursal — sin esto, cualquier
   // seccionId ajeno (de otra sucursal) se aceptaba igual.
   const seccionOrigen = await obtenerSeccionPropia(datos.seccionId, actor.sucursalId, actor.db);
-  if (!seccionOrigen) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección.");
+  if (!seccionOrigen) return fracaso("SECCION_NO_ENCONTRADA", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.seccion }));
   const seccionDestino = datos.proceso === "TRANSFERENCIA" ? await obtenerSeccionPropia(datos.seccionDestinoId!, actor.sucursalId, actor.db) : null;
-  if (datos.proceso === "TRANSFERENCIA" && !seccionDestino) return fracaso("SECCION_DESTINO_NO_ENCONTRADA", "No se encontró la sección destino.");
+  if (datos.proceso === "TRANSFERENCIA" && !seccionDestino) return fracaso("SECCION_DESTINO_NO_ENCONTRADA", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.seccion_destino }));
 
   // Motivo/Destino: catálogos GLOBALES (no por sucursal, a diferencia de Sección) — solo hace falta que la fila
   // exista y siga activa (un motivo desactivado no puede ELEGIRSE de nuevo, pero las Operacion viejas que ya lo

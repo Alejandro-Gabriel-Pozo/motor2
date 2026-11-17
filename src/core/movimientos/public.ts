@@ -21,6 +21,7 @@ export {
   esSignoFijo,
   precioPorUnidad,
   productoValidoParaProceso,
+  DECIMALES_DE_STOCK,
   redondearACantidadDeUnidad,
   tieneStockReal,
 } from "./transiciones";

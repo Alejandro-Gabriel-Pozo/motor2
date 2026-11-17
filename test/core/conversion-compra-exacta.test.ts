@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
-import { convertirCantidadAUnidadDeStock, precioPorUnidad, redondearACantidadDeUnidad } from "../../src/core/movimientos/transiciones";
+import { convertirCantidadAUnidadDeStock, precioPorUnidad } from "../../src/core/movimientos/transiciones";
 
 /**
  * Conversión de una compra (unidad de compra → unidad de stock) y precios por unidad en decimal EXACTO
@@ -59,19 +59,24 @@ function divisionPiso(dividendo: bigint, divisor: bigint): { q: bigint; r: bigin
   return { q, r };
 }
 
-/** Pasa `v` a `decimales` decimales con empate hacia +∞ (el empate exacto sube; con resto ≥ la mitad, sube). */
-function aDecimalesEmpateHaciaMasInfinito(v: Escalado, decimales: number): Escalado {
+/**
+ * Pasa `v` a `decimales` decimales con el empate ALEJÁNDOSE DEL CERO (el empate exacto va al lado de mayor valor absoluto; con resto ≥ la mitad, también).
+ * A1b 2026-11-16 («Pasar a cuenta exacta como Pedernal»): antes el oráculo usaba empate hacia +∞ (heredado de `Math.round`); solo cambia el resultado de un empate NEGATIVO exacto.
+ */
+function aDecimalesEmpateAlejandoseDelCero(v: Escalado, decimales: number): Escalado {
   if (v.escala <= decimales) return { n: v.n * POTENCIA(decimales - v.escala), escala: decimales };
   const paso = POTENCIA(v.escala - decimales);
-  const { q, r } = divisionPiso(v.n, paso);
-  return { n: q + (BigInt(2) * r >= paso ? BigInt(1) : BigInt(0)), escala: decimales };
+  const negativo = v.n < BigInt(0);
+  const { q, r } = divisionPiso(negativo ? -v.n : v.n, paso);
+  const absoluto = q + (BigInt(2) * r >= paso ? BigInt(1) : BigInt(0));
+  return { n: negativo ? -absoluto : absoluto, escala: decimales };
 }
 
 function oraculoCantidadDeStock(cantidad: string, factor: string, decimales: number): number {
   const a = leer(cantidad);
   const b = leer(factor);
   const producto: Escalado = { n: a.n * b.n, escala: a.escala + b.escala };
-  return Number(aTexto(aDecimalesEmpateHaciaMasInfinito(producto, decimales)));
+  return Number(aTexto(aDecimalesEmpateAlejandoseDelCero(producto, decimales)));
 }
 
 /** precioTotal (≥ 0) ÷ cantidad (> 0) a 4 decimales, empate alejándose del cero (para positivos: el resto ≥ mitad sube). */
@@ -106,7 +111,9 @@ const RUNS = { numRuns: 3000 };
 
 /** LO QUE HACÍA ANTES (no se usa en producción): `numCant * factor` en float y `Math.round(x * 10^d) / 10^d`. */
 function conversionVieja(cantidad: number, factor: number, decimales: number): number {
-  return redondearACantidadDeUnidad(cantidad * factor, decimales);
+  // A1b 2026-11-16: `redondearACantidadDeUnidad` ya es exacta; el algoritmo viejo (float) vive acá, copiado, solo para demostrar que el test lo detecta.
+  const escala = 10 ** decimales;
+  return Math.round(cantidad * factor * escala) / escala;
 }
 /** LO QUE HACÍA ANTES (no se usa en producción): división en float sin redondear (después la base redondeaba a 4 decimales). */
 const precioViejo = (precioTotal: number, cantidad: number) => (precioTotal > 0 && cantidad > 0 ? precioTotal / cantidad : 0);
@@ -176,10 +183,10 @@ describe("convertirCantidadAUnidadDeStock — contra el oráculo BigInt", () => 
     expect(convertirCantidadAUnidadDeStock(7, 0.1, 2)).toEqual({ exacta: 0.7, redondeada: 0.7 });
   });
 
-  it("empate con negativos: hacia +∞, como Math.round (0,125 → 0,13 pero −0,125 → −0,12) — regla heredada, no una decisión nueva", () => {
+  it("empate con negativos: alejándose del cero, simétrico (0,125 → 0,13 y −0,125 → −0,13) — A1b 2026-11-16, como Pedernal; antes iba hacia +∞ (−0,125 → −0,12)", () => {
     expect(convertirCantidadAUnidadDeStock(1, 0.125, 2).redondeada).toBe(0.13);
-    expect(convertirCantidadAUnidadDeStock(-1, 0.125, 2).redondeada).toBe(-0.12);
-    expect(convertirCantidadAUnidadDeStock(-1, 2.5, 0).redondeada).toBe(-2);
+    expect(convertirCantidadAUnidadDeStock(-1, 0.125, 2).redondeada).toBe(-0.13); // A1b: antes −0,12
+    expect(convertirCantidadAUnidadDeStock(-1, 2.5, 0).redondeada).toBe(-3); // A1b: antes −2
   });
 
   it("propiedad (negativos): coincide con el oráculo también con cantidad negativa", () => {

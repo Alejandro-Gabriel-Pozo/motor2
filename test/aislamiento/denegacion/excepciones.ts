@@ -23,6 +23,7 @@ export const CONTEXTO_DECLARADO: Readonly<Record<string, { contexto: "empresa" |
 export const EN_LA_SUCURSAL_VACIA: Readonly<Record<string, string>> = {
   "accion|actions/carta/copiar-carta.ts|copiarCartaDeSucursal": "solo se copia sobre una carta vacía: en S1 (que tiene carta) rechaza por «ya tiene carta propia» antes de mirar el origen",
   "accion|actions/carta/copiar-carta.ts|reemplazarCartaDeSucursal": "el control positivo necesita un origen con carta al que u1 acceda y distinto del destino: parada en S4 (vacía, donde u1 es administrador) reemplaza con la carta de S1; el nombre escrito es el de S4 (`nombreEscrito` en argumentos.ts)",
+  "accion|actions/caja/caja.ts|abrirSesionDeCaja": "el mundo deja la caja de S1 ABIERTA (las lecturas de caja necesitan esa sesión como dato propio) y abrir exige la caja cerrada: el control positivo, parado en S4 (vacía, donde u1 es administrador y no hay caja), abre la primera sesión",
 };
 
 /** Escenarios que no aplican a una puerta, con el motivo. `<puerta>|<escenario>` → por qué. */
@@ -198,6 +199,7 @@ export const SIN_MARCA_PROPIA: Readonly<Record<string, string>> = {
   "accion|actions/traspasos/lecturas.ts|listarSucursalesParaSolicitar": "lista las OTRAS sucursales de la empresa (id y nombre) para elegir contraparte: por diseño no llevan el marcador de la sucursal propia",
   "consulta|consultas/movimientos/facturas-proveedor.ts|listarOtrasSucursalesParaReparto": "lista las OTRAS sucursales activas de la empresa (id y nombre) para repartir la factura: por diseño no llevan el marcador de la sucursal propia",
   // Consultas de las páginas.
+  "consulta|consultas/catalogo/ocultar-producto.ts|cargarLoQueMuestraOcultar": "devuelve solo cuatro banderas (oculto en la sucursal, oculto en la empresa, y si se le ofrece cada botón), sin ninguna fila ni texto donde ponerle el marcador",
   "consulta|consultas/carta/admin.ts|cargarPortalEmpresaAdmin": "devuelve solo los valores de una lista cerrada de claves del portal (colores, tipografías…), sin texto libre donde ponerle el marcador",
   "consulta|consultas/carta/admin.ts|estadoDelProductoEnLaCarta": "devuelve solo un estado de una lista cerrada («visible», «oculto», «fuera»…), sin ninguna fila identificable; con un producto de otra empresa o sucursal responde «no-disponible», igual que ante un id inexistente",
   "consulta|consultas/carta/admin.ts|cuentasDeCartaPropiaPorSucursal": "devuelve solo tres cuentas (productos, ítems agrupados y géneros) por id de sucursal, sin ningún texto libre donde ponerle el marcador; con ids de otra empresa o de una sucursal sin acceso la base no devuelve ninguna fila (lo prueban los escenarios de denegación)",

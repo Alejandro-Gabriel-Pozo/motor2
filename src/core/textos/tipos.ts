@@ -7,9 +7,10 @@
  * Qué clase de valor llena un hueco `{nombre}` del texto.
  *  - `texto`: una cadena (por ejemplo el nombre de un producto); se escribe tal cual, sin volver a interpretarla.
  *  - `causa`: la CLAVE de otro texto del catálogo que no tiene huecos propios (un solo nivel, sin recursión); se escribe su `porDefecto`.
- * Los tipos `numero`, `dinero` y `entidad` del diseño entran con la primera entrada real que los pida (hoy ninguna).
+ *  - `entidad`: una cosa del negocio de `entidades.ts` (con su nombre y su género); el hueco `{entidad}` se escribe con su artículo definido («el producto», «la sucursal») y `{entidad:un}` con el indefinido («un cliente», «una sucursal»).
+ * Los tipos `numero` y `dinero` del diseño entran con la primera entrada real que los pida (hoy ninguna).
  */
-export type TipoDeMarcador = "texto" | "causa";
+export type TipoDeMarcador = "texto" | "causa" | "entidad";
 
 /** Quién autorizó el texto: una decisión del registro (`DEC-NNNN`, `ACEPTADA` o `CORREGIDA`) o `HEREDADO` (escrito antes del catálogo; solo para la línea base, que solo baja). */
 export type FuenteDeTexto = { readonly decision: string } | "HEREDADO";

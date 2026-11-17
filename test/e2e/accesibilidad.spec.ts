@@ -4,6 +4,7 @@ import { test as base, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { test as testAutenticado } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
+import { abrirTodosLosDetails } from "./fixtures/movil";
 import { GENERO_E_ITEM_AGRUPADO_VISIBLE } from "../../src/core/carta/genero-e-item-agrupado";
 import { impresiones, interceptarImpresion } from "./fixtures/impresion";
 import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
@@ -201,6 +202,7 @@ testAutenticado("movimientos/destinos-consumo: sin violaciones de axe", async ({
 testAutenticado("administracion/capacidades-sucursal: sin violaciones de axe", async ({ paginaAutenticada: page }) => {
   await page.goto("/administracion/capacidades-sucursal");
   await conTitulo(page, /Capacidades por sucursal/);
+  await abrirTodosLosDetails(page); // Frente 6, paso 3: cada módulo viene plegado
   await expect(page.getByRole("cell", { name: "stock_minimo", exact: true })).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
@@ -1091,12 +1093,11 @@ testAutenticado("carta: sin violaciones de axe, con formularios abiertos y «Fue
     await page.goto("/carta/parametrizacion");
     expect((await new AxeBuilder({ page }).analyze()).violations, "carta: Parametrización").toEqual([]);
     await page.goto("/carta/parametrizacion/secciones");
-    await page.locator(`[data-seccion-carta="${seccion.nombre}"] summary`).click();
-    await page.locator(`[data-grupo-de-la-carta="${seccion.nombre}"] > summary`).click();
-    await page.locator(`[data-contenido-carta="${conContenido.nombre}"] summary`).click();
-    await expect(page.locator(`[data-contenido-carta="${conContenido.nombre}"]`).getByLabel("Especial (★)")).toBeChecked();
-    await expect(page.locator(`[data-contenido-carta="${conContenido.nombre}"]`).getByLabel(/^Sección de carta/)).toHaveValue(seccion.id);
-    expect((await new AxeBuilder({ page }).analyze()).violations, "carta: Parametrización › Secciones").toEqual([]);
+    expect((await new AxeBuilder({ page }).analyze()).violations, "carta: Parametrización › Secciones (lista)").toEqual([]);
+    await page.locator(`[data-seccion-orden="${seccion.nombre}"]`).getByRole("link", { name: seccion.nombre }).click();
+    await expect(page.locator(`[data-seccion-carta="${seccion.nombre}"]`)).toBeVisible();
+    await expect(page.locator(`[data-producto-de-la-seccion="${conContenido.nombre}"]`)).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "carta: Parametrización › Una sección").toEqual([]);
     await page.goto("/carta/parametrizacion/promociones");
     await page.locator(`[data-promo-carta="${promo.titulo}"] summary`).click();
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);

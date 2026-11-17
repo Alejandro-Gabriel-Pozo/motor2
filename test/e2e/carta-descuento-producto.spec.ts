@@ -35,10 +35,10 @@ test("cargar y sacar el descuento de un producto desde /carta se refleja en la c
     // CARTA-MANT: la ficha de cada producto vive en Parametrización › Secciones.
     await page.goto("/carta/parametrizacion/secciones");
     await expect(page.getByRole("heading", { name: "Carta", level: 1 })).toBeVisible();
-    // CARTA-MANT: los productos van agrupados por sección (plegada).
-    await page.locator(`[data-grupo-de-la-carta="${seccion.nombre}"] > summary`).click();
+    // Lista simple (Frente 6): la sección abre sus productos y cada uno lleva a su ficha de carta (ya abierta).
+    await page.locator(`[data-seccion-orden="${seccion.nombre}"]`).getByRole("link", { name: seccion.nombre }).click();
+    await page.locator(`[data-producto-de-la-seccion="${producto.nombre}"]`).getByRole("link", { name: producto.nombre }).click();
     const fila = page.locator(`[data-contenido-carta="${producto.nombre}"]`);
-    await fila.locator("summary").click();
 
     // Sin descuento al principio: la carta pública no trae precio de lista.
     expect(await itemEnCarta()).not.toHaveProperty("precioLista");
@@ -83,9 +83,9 @@ test("con el interruptor apagado, la ficha del producto en /carta no ofrece el d
   try {
     await page.goto("/carta/parametrizacion/secciones");
     await expect(page.getByRole("heading", { name: "Carta", level: 1 })).toBeVisible();
-    await page.locator(`[data-grupo-de-la-carta="${seccion.nombre}"] > summary`).click();
+    await page.locator(`[data-seccion-orden="${seccion.nombre}"]`).getByRole("link", { name: seccion.nombre }).click();
+    await page.locator(`[data-producto-de-la-seccion="${producto.nombre}"]`).getByRole("link", { name: producto.nombre }).click();
     const fila = page.locator(`[data-contenido-carta="${producto.nombre}"]`);
-    await fila.locator("summary").click();
 
     // La ficha se abrió (el contenido sigue editable) pero no hay campo ni botón de descuento.
     await expect(fila.getByRole("button", { name: `Guardar contenido de «${producto.nombre}»` })).toBeVisible();

@@ -39,7 +39,7 @@ Convenciones que valen para TODAS (verificadas, anexo A §cabecera): `empresaId`
 
 ## Modelos por primitiva
 
-Una fila por modelo de `prisma/schema.prisma` (112 modelos, 18 primitivas o grupos). Es la tabla que lee el guardián: la primera columna es el nombre exacto del modelo entre comillas invertidas.
+Una fila por modelo de `prisma/schema.prisma` (113 modelos, 18 primitivas o grupos). Es la tabla que lee el guardián: la primera columna es el nombre exacto del modelo entre comillas invertidas.
 
 | Modelo | Primitiva |
 |---|---|
@@ -83,6 +83,7 @@ Una fila por modelo de `prisma/schema.prisma` (112 modelos, 18 primitivas o grup
 | `SeccionCarta` | Carta |
 | `ContenidoCartaProducto` | Carta |
 | `ItemAgrupadoCarta` | Carta |
+| `ModoDeOrdenDeSeccionCarta` | Carta |
 | `GeneroCarta` | Carta |
 | `OpcionItemAgrupadoCarta` | Carta |
 | `SucursalPublica` | Carta |
@@ -103,6 +104,9 @@ Una fila por modelo de `prisma/schema.prisma` (112 modelos, 18 primitivas o grup
 | `Empresa` | Empresa y sucursal |
 | `Sucursal` | Empresa y sucursal |
 | `ModuloEmpresa` | Empresa y sucursal |
+| `Plan` | Empresa y sucursal |
+| `VersionDePlan` | Empresa y sucursal |
+| `PlanDeEmpresa` | Empresa y sucursal |
 | `User` | Usuarios, roles y permisos |
 | `Account` | Usuarios, roles y permisos |
 | `Session` | Usuarios, roles y permisos |
@@ -157,3 +161,21 @@ Una fila por modelo de `prisma/schema.prisma` (112 modelos, 18 primitivas o grup
 | `DistribucionCostoLinea` | Gastos y centros de costos (sin escritor en src) |
 | `IndicePrecio` | Cotizaciones e índices |
 | `CotizacionDolar` | Cotizaciones e índices |
+| `Caja` | Caja y cobro (C1) |
+| `MedioDePago` | Caja y cobro (C1) |
+| `SesionCaja` | Caja y cobro (C1) |
+| `MovimientoCaja` | Caja y cobro (C1) |
+| `Cobranza` | Caja y cobro (C1) |
+| `Cobro` | Caja y cobro (C1) |
+| `ArqueoCaja` | Caja y cobro (C1) |
+| `ArqueoBillete` | Caja y cobro (C1) |
+| `CuentaDeCobro` | Caja y cobro (C3) |
+| `ValorDeLista` | Caja y cobro (C3) |
+| `JornadaDeSucursal` | Caja y cobro (C2) |
+| `ControlDeJornadaCerrada` | Caja y cobro (C2) |
+| `CorreccionDeMedio` | Caja y cobro (C2) |
+| `DeclaracionDeTotal` | Caja y cobro (C2) |
+| `ConformeDeJornada` | Caja y cobro (C2) |
+| `CierreDeCajaDeJornada` | Caja y cobro (C2b) |
+| `ConciliacionDeJornada` | Caja y cobro (C2b) |
+| `ConciliacionDeCobroPorOrigen` | Caja y cobro (C2b) |

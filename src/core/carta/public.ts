@@ -16,6 +16,8 @@ export { cantidadDeLaParte, conectorDeLaParte, detalleDelBloque, incluyeDeLaSecc
 export type { BloqueDeOpciones, ParteDeIncluye } from "./incluye-en-carta";
 export { VERSION_DE_LA_CARTA_EN_CACHE, etiquetaDeCacheDeCartasPublicas, proyectarCartaPublica } from "./carta-publica";
 export { nombreDeCarta, precioDeCarta } from "./armar-menu";
+// O1 (orden de renglones): el modo de orden de una sección por sucursal y la única regla que ordena (la usan la carta, la lectura de gestión, el guard y los casos de uso).
+export { MODOS_DE_ORDEN_DE_SECCION, MODO_DE_ORDEN_POR_DEFECTO, esModoDeOrdenDeSeccion, modoVigente, ordenarRenglonesDeSeccion, type ModoDeOrdenDeSeccion } from "./orden-de-seccion";
 export { nombreParaMostrar } from "./nombre-para-mostrar";
 export { buscarChoqueEntreNombres, claveDeNombreDeCarta, estadoDelNombreDeCarta, mensajeDeChoqueDeNombre, type ChoqueDeNombre, type NombreUsadoEnLaCarta } from "./nombre-en-carta";
 export { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, type AudienciaDePromo } from "./promo-sucursal";
@@ -90,6 +92,7 @@ export type { EntradaPortalCarta } from "./portal";
 export { ESTA_BIEN_ASI_VISIBLE, MENSAJE_ESTA_BIEN_ASI_APAGADO } from "./esta-bien-asi";
 // Poda 2026-11-06: el interruptor de género de carta e ítem agrupado (ver `genero-e-item-agrupado.ts`).
 export { GENERO_E_ITEM_AGRUPADO_VISIBLE, MENSAJE_GENERO_E_ITEM_AGRUPADO_APAGADO } from "./genero-e-item-agrupado";
+export { ALTA_DE_SECCION_SOLO_NOMBRE } from "./alta-de-seccion-solo-nombre";
 // Fase 7, DEC-24: el grupo Carta del menú (tres entradas), sus filas de pestañas y las rutas que cuelgan de cada entrada.
 export {
   NAV_CARTA,

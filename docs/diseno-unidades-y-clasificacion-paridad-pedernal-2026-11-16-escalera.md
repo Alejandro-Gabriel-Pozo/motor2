@@ -130,4 +130,4 @@ Columnas: **R**epetición · **C**oncurrencia · **T**iempo · **I**ncertidumbre
 
 ## Pendiente (para el dueño, una por vez)
 
-**P1, el redondeo y P2 ya están respondidos** (entrada §8). La que está en vuelo es **P2b** (unidad de venta separada, pieza de fracciones §4). P3 a P5 en fila. **P0** (lectura del pedido) se corrige leyendo este documento.
+**P1, el redondeo y P2 ya están respondidos** (entrada §8). **P2b** (unidad de venta separada) también quedó respondida: (b), pieza de fracciones §4. Sin pregunta en vuelo; P3 a P5 en fila. **P0** (lectura del pedido) se corrige leyendo este documento.

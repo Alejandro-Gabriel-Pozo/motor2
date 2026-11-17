@@ -103,7 +103,7 @@ describe("asignarOrigenDeLaVenta: la sección de cada venta", () => {
     expect(ventas[0]!.seccionId).toBe(COCINA.id);
     expect(ventas[0]!.loteVencimiento).toEqual(vence1);
     expect(ventas[0]!.consumos).toEqual([]);
-    expect(ventas[0]!.partesPropias!.map((p) => [p.loteVencimiento, p.cantidad])).toEqual([[vence1, 0.4], [vence2, 0.6 - 0.4]]);
+    expect(ventas[0]!.partesPropias!.map((p) => [p.loteVencimiento, p.cantidad])).toEqual([[vence1, 0.4], [vence2, 0.2]]); // origen-venta (resto limpio a 8 decimales): antes `0.6 - 0.4` = 0,19999999999999996 en float
     expect(pedidosPlanos).toEqual([]);
   });
 });
@@ -162,13 +162,22 @@ describe("asignarOrigenDeLaVenta: el orden de las mutaciones del libro", () => {
 describe("avisoDeStockNegativo y mensajeStockInsuficiente (B3)", () => {
   const faltante = { productoId: "mp-harina", seccionId: COCINA.id, actual: 0.4, requerido: 0.6666666 };
 
-  it("el aviso redondea lo requerido y el saldo resultante a los decimales de la unidad del producto, y deja el saldo previo tal cual", () => {
-    const harina = { nombre: "Harina", unidadStock: { decimales: 3 } };
-    expect(avisoDeStockNegativo(faltante, harina, "Cocina")).toEqual({
-      productoId: "mp-harina", nombre: "Harina", seccionId: COCINA.id, seccionNombre: "Cocina", actual: 0.4, requerido: 0.667, resultante: -0.267,
-    });
-    expect(avisoDeStockNegativo(faltante, { nombre: "Harina", unidadStock: { decimales: 0 } }, "Cocina")).toMatchObject({ requerido: 1 });
-    expect(avisoDeStockNegativo(faltante, { nombre: "Harina", unidadStock: { decimales: 1 } }, "Cocina")).toMatchObject({ requerido: 0.7, resultante: -0.3 });
+  // A1b 2026-11-16 («4 decimales fijos como Pedernal»): el aviso redondea SIEMPRE a 4 decimales, sin importar los `Unidad.decimales` del producto (antes: los de su unidad).
+  it("el aviso redondea lo requerido y el saldo resultante a 4 decimales fijos (no a los de la unidad del producto), y deja el saldo previo tal cual", () => {
+    for (const decimales of [0, 1, 2, 3]) {
+      expect(avisoDeStockNegativo(faltante, { nombre: "Harina", unidadStock: { decimales } }, "Cocina")).toEqual({
+        productoId: "mp-harina", nombre: "Harina", seccionId: COCINA.id, seccionNombre: "Cocina", actual: 0.4, requerido: 0.6667, resultante: -0.2667,
+      }); // A1b: antes 0,667 / −0,267 con 3 decimales; 1 con 0; 0,7 / −0,3 con 1
+    }
+  });
+
+  // A1b 2026-11-16 (pedido del verificador): ataca el redondeo desde la venta. Con stock 0 y una venta que pide 0,00005, el saldo
+  // resultante es −0,00005: un EMPATE negativo. Cuenta exacta (empate alejándose del cero) → −0,0001; `Math.round` daba −0 (0).
+  it("venta con stock negativo permitido y empate −0,00005: el saldo resultante queda −0,0001 (alejándose del cero), no 0", () => {
+    const aviso = avisoDeStockNegativo({ productoId: "mp-harina", seccionId: COCINA.id, actual: 0, requerido: 0.00005 }, { nombre: "Harina", unidadStock: { decimales: 4 } }, "Cocina");
+    expect(aviso.resultante).toBe(-0.0001);
+    expect(aviso.requerido).toBe(0.0001);
+    expect(Object.is(aviso.resultante, -0)).toBe(false);
   });
 
   it("el aviso conserva el ORDEN de las claves de siempre", () => {
@@ -177,9 +186,9 @@ describe("avisoDeStockNegativo y mensajeStockInsuficiente (B3)", () => {
     ]);
   });
 
-  it("sin ficha del producto, el nombre es su id y se redondea a 2 decimales", () => {
+  it("sin ficha del producto, el nombre es su id y se redondea a 4 decimales (A1b 2026-11-16: antes 2)", () => {
     for (const sinFicha of [null, undefined]) {
-      expect(avisoDeStockNegativo(faltante, sinFicha, "Cocina")).toMatchObject({ nombre: "mp-harina", requerido: 0.67, resultante: -0.27 });
+      expect(avisoDeStockNegativo(faltante, sinFicha, "Cocina")).toMatchObject({ nombre: "mp-harina", requerido: 0.6667, resultante: -0.2667 });
     }
   });
 

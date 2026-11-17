@@ -205,6 +205,8 @@
         "conteo_resolver_pendiente",
         "insumo_alta",
         "opcion_apagar_en_sucursal",
+        "partes_editar",
+        "partes_ver",
         "proceso_compra",
         "proceso_consumo",
         "proceso_control",
@@ -1330,7 +1332,8 @@
       "contexto": "empresa",
       "nivelMinimo": "operario",
       "rolesEditarSemilla": [
-        "admin"
+        "admin",
+        "operador"
       ]
     },
     {
@@ -1338,13 +1341,62 @@
       "contexto": "empresa",
       "nivelMinimo": "operario",
       "rolesEditarSemilla": [
-        "admin"
+        "admin",
+        "operador"
       ]
     },
     {
       "clave": "partes_desactivar",
       "contexto": "empresa",
       "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "caja_ver",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "caja_abrir_sesion",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "caja_cerrar_sesion",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "caja_mover_efectivo",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "caja_anular_movimiento_ajeno",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "cobrar_cuenta",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]

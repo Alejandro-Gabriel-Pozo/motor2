@@ -2,6 +2,8 @@ import "server-only";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoSeccionHabitual, ResultadoSetSeccionHabitual } from "@/core/features/seccion-habitual/seccion-habitual.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 import { guardarSeccionHabitual } from "@/server/persistencia/stock/seccion-habitual";
 
 /**
@@ -22,11 +24,11 @@ import { guardarSeccionHabitual } from "@/server/persistencia/stock/seccion-habi
  */
 export async function setSeccionHabitualCasoDeUso(actor: Pick<ContextoUsuario, "db" | "sucursalId">, comando: ComandoSeccionHabitual): Promise<ResultadoSetSeccionHabitual> {
   const producto = await actor.db.producto.findUnique({ where: { id: comando.productoId } });
-  if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró el producto.");
+  if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.producto }));
   if (producto.tipo !== "PV") return fracaso("NO_ES_PV", `Solo un producto de venta (PV) tiene depósito habitual: «${producto.nombre}» es una materia prima.`);
 
   const seccion = await actor.db.seccion.findUnique({ where: { id: comando.seccionId } });
-  if (!seccion || seccion.sucursalId !== actor.sucursalId) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró el depósito.");
+  if (!seccion || seccion.sucursalId !== actor.sucursalId) return fracaso("SECCION_NO_ENCONTRADA", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.deposito }));
   if (!seccion.activa) return fracaso("SECCION_INACTIVA", `El depósito «${seccion.nombre}» está desactivado: activalo o elegí otro.`);
 
   await guardarSeccionHabitual(actor.db, { sucursalId: actor.sucursalId, productoId: producto.id, seccionId: seccion.id });

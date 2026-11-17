@@ -6,6 +6,8 @@ import { mensajeSiNoPuedeGestionar } from "@/core/permisos/gestion-de-usuarios";
 import { actorDesdeLaBase, objetivoEnSucursal } from "@/server/lecturas/permisos/gestion-de-usuarios";
 import { SELECCION_DE_ROL_PARA_JERARQUIA } from "@/core/permisos/jerarquia";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 import { texto } from "@/core/texto";
 import { cambiarNotasDeMembresia } from "@/server/persistencia/permisos/membresias";
 
@@ -48,7 +50,7 @@ export async function actualizarNotasMembresiaCasoDeUso(
   // reintento relee y el techo se mide con el estado nuevo. Los rechazos devuelven ANTES de escribir; el cuerpo puede reintentarse: no tiene efectos fuera de la base.
   return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoActualizarNotasMembresia> => {
     const membresia = await tx.usuarioSucursal.findUnique({ where: { id: membresiaId }, include: { rol: { select: SELECCION_DE_ROL_PARA_JERARQUIA } } });
-    if (!membresia || membresia.sucursalId !== actor.sucursalId) return fracaso("MEMBRESIA_NO_ENCONTRADA", "No se encontró esa membresía.");
+    if (!membresia || membresia.sucursalId !== actor.sucursalId) return fracaso("MEMBRESIA_NO_ENCONTRADA", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.membresia }));
 
     const objetivo = await objetivoEnSucursal(tx, actor.empresaId, membresia.usuarioId, membresia.rol);
     const rechazo = mensajeSiNoPuedeGestionar(await actorDesdeLaBase(tx, actor.empresaId, actor.usuarioId, actor.sucursalId), objetivo);

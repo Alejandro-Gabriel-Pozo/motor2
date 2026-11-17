@@ -2,6 +2,8 @@ import "server-only";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { exito, fracaso } from "@/core/resultado-caso";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 import type { ResultadoCancelarConteo } from "@/core/features/movimientos/cancelar-conteo.schema";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { evaluarPosterioresACancelarConteo } from "@/core/movimientos/public";
@@ -51,7 +53,7 @@ export async function cancelarConteoFisicoCasoDeUso(
 ): Promise<ResultadoCancelarConteo> {
   return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoCancelarConteo> => {
     const conteo = await cargarConteoFisico(tx, conteoId);
-    if (!conteo || conteo.sucursalId !== actor.sucursalId) return fracaso("CONTEO_NO_ENCONTRADO", "No se encontró ese conteo.");
+    if (!conteo || conteo.sucursalId !== actor.sucursalId) return fracaso("CONTEO_NO_ENCONTRADO", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.conteo }));
     if (conteo.estado === "CANCELADO") return fracaso("CONTEO_YA_CANCELADO", "Ese conteo ya está cancelado.");
     if (conteo.estado !== "RESUELTO") {
       return fracaso(

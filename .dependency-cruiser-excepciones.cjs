@@ -141,6 +141,11 @@ const PAGINAS_CON_LECTURAS_O_PERSISTENCIA = [];
  */
 const ACCIONES_CON_CASO_DE_USO = [
   {
+    ruta: "src/server/actions/catalogo/ocultar-producto.ts",
+    motivo:
+      "«Ocultar» como Pedernal, etapa d (docs/diseno-ocultar-como-pedernal-2026-11-15.md): ocultarProducto = permiso de la sucursal (conPermiso) + alcance total para la empresa (puedeOcultarEnLaEmpresa) → casos-de-uso/ocultar-producto.ts (transacción SERIALIZABLE, marca por estado, auditoría) → revalidar la carta pública → aResultadoAccion. El archivo nace migrado: no tiene ninguna otra mutación.",
+  },
+  {
     ruta: "src/server/actions/catalogo/duplicar-producto.ts",
     motivo:
       "«Duplicar producto» (E4, docs/diseno-duplicar-producto-2026-11-12.md): duplicarProducto → catalogo/casos-de-uso/duplicar-producto.ts (una sola transacción SERIALIZABLE con reintento del código autogenerado, idempotencia por el id del producto nuevo, lecturas del original en server/persistencia/catalogo/duplicar-producto.ts, escrituras reusadas de la receta, las opciones y la disponibilidad, y la auditoría de quién duplicó a partir de cuál). La acción pide alta_producto, guardar_receta y producto_opciones_admitidas según lo que se copie, el formato lo valida guardComandoDuplicarProducto y arma el ResultadoConId. El archivo nace migrado: no tiene ninguna otra función.",
@@ -154,6 +159,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     ruta: "src/server/actions/partes/partes.ts",
     motivo:
       "Parte P1 (b): altaDeParte → partes/casos-de-uso/alta-de-parte.ts, editarParte → editar-parte.ts y cambiarEstadoDeParte → cambiar-estado-de-parte.ts (transacción serializable, clave de alta única por empresa, control de versión, persistencia y auditoría sin valores personales viven en el caso de uso); la búsqueda es una lectura.",
+  },
+  {
+    ruta: "src/server/actions/caja/caja.ts",
+    motivo:
+      "Caja y cobro C1, PR-B: abrirSesionDeCaja → caja/casos-de-uso/abrir-sesion.ts, registrarMovimientoDeCaja → registrar-movimiento-manual.ts, anularMovimientoDeCaja → anular-movimiento.ts, cerrarSesionDeCaja → cerrar-sesion.ts y cobrarCuenta → cobrar-cuenta.ts (transacción serializable, clave de reintento con huella, persistencia en server/persistencia/caja y auditoría viven en el caso de uso). La acción solo pide el permiso de sucursal, valida el formato y traduce el resultado. El archivo nace migrado: no tiene ninguna otra función.",
   },
   {
     ruta: "src/server/actions/movimientos/pagos-factura-proveedor.ts",
