@@ -3,7 +3,7 @@ import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
-import { crearSucursalConAdmin, actualizarActivoSucursal, renombrarSucursal, listarSucursales } from "@/server/actions/auth/sucursales";
+import { crearSucursalConAdmin, actualizarActivoSucursal, renombrarSucursal, cambiarHoraDeCorteDeSucursal, listarSucursales } from "@/server/actions/auth/sucursales";
 import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
@@ -61,6 +61,35 @@ export default async function SucursalesPage() {
                 ) : (
                   s.nombre
                 )}
+                <div className="mt-2 space-y-1">
+                  <p className="text-xs text-tinta-tenue">Hora de corte del día</p>
+                  {renombrar.editar ? (
+                    <FormConResultado
+                      accion={async (formData: FormData) => {
+                        "use server";
+                        return cambiarHoraDeCorteDeSucursal(s.id, String(formData.get("horaDeCorte") ?? ""));
+                      }}
+                      className="flex items-center gap-1"
+                    >
+                      <div className="w-28">
+                        <Campo
+                          name="horaDeCorte"
+                          aria-label={`Hora de corte del día de la sucursal "${s.nombre}"`}
+                          defaultValue={s.horaDeCorte}
+                          placeholder="HH:MM"
+                          maxLength={5}
+                          tamano="compacto"
+                        />
+                      </div>
+                      <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
+                        Guardar
+                      </BotonDeServidor>
+                    </FormConResultado>
+                  ) : (
+                    <p>{s.horaDeCorte}</p>
+                  )}
+                  <p className="text-xs text-tinta-tenue">A esta hora empieza el día de negocio de la caja.</p>
+                </div>
               </td>
               <td>{s.activo ? "Sí" : "No"}</td>
               <td>

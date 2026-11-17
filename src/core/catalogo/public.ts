@@ -107,3 +107,10 @@ export type { FichaDeCocina, RecetaParaFicha } from "./ficha-de-cocina";
 export { LO_QUE_NO_SE_COPIA } from "./duplicar-producto";
 export { OPCIONES_AGOTADAS_AYUDAS_VISIBLES } from "./opciones-agotadas-ayudas-visibles";
 export { OPCIONES_AGOTADAS_PLEGADAS } from "./opciones-agotadas-plegadas";
+
+// «¿Qué es?» del alta como Pedernal (solo pantalla; diseño `docs/diseno-producto-nuevo-como-pedernal-2026-11-17.md`).
+export { ALTA_DE_PRODUCTO_COMO_PEDERNAL, CLASES_DE_ALTA, CLAVES_DE_CLASE_DE_ALTA, claseDeAltaDe } from "./clase-de-alta";
+export type { ClaveDeClaseDeAlta } from "./clase-de-alta";
+
+// Qué puede hacer un producto (se compra, se vende, stock propio, receta…), decidido en un solo lugar: E4-0 de la Reventa (docs/diseno-reventa-e4-2026-11-17.md §3). Hoy lo usa `tieneStockReal`; los demás circuitos pasan en E4-2 a E4-4.
+export { capacidadesDelProducto } from "./capacidades-del-producto";

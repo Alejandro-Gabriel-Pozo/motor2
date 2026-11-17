@@ -48,6 +48,11 @@ const PUBLICACION_CARTA: Readonly<Record<string, readonly string[]>> = {
   ModuloEmpresa: ["estado", "modulo"],
   OpcionItemAgrupadoCarta: ["orden", "producto"],
   PortalCartaEmpresa: ["valores"],
+  // Portal de la empresa como Pedernal (PR-A, lectura dual): se LEE en el servidor para armar las tarjetas y el estilo del portal con la forma de siempre (`EntradaPortalCarta` y `EstiloPortal`); no sale ningún campo propio (ni el código, ni la versión, ni quién lo creó, ni el teléfono ni la foto de la tarjeta:
+  // la pantalla que los muestra es del Frente 6). `colorDetras` tampoco se lee todavía: no tiene dónde dibujarse.
+  PortalDeEmpresa: ["colorEncabezado", "colorPagina", "id", "imagenCuenta", "imagenExtension", "imagenIdPublico", "imagenProveedor", "imagenVersion", "lineaSuperior", "logoVisible", "titulo", "variante"],
+  PortalTarjeta: ["nombre", "orden", "sucursalId", "visible"],
+  PortalZona: ["alto", "ancho", "sucursalId", "visible", "x", "y"],
   PrecioLocalProducto: ["habilitado", "precio", "productoId"],
   // GO-2d: + `gruposAdmitidos` y `opcionesAdmitidas` (las opciones de venta que la carta muestra, decisión del dueño 2026-10-13; abajo, sus modelos).
   // Fase 4 de la ola «precio y carta» (ADR-035; decisión técnica del dueño: «modo y prefijo entran a la lista cerrada»): + `modoDeVenta`, para que la carta componga una base sobre su precio de
@@ -57,7 +62,7 @@ const PUBLICACION_CARTA: Readonly<Record<string, readonly string[]>> = {
   PromoCartaSucursal: ["activa", "precioLocal"],
   SeccionCarta: ["descripcion", "id", "imagenUrl", "modosDeOrden", "nombre", "orden", "titulo"],
   Sucursal: ["activo", "empresaId", "id", "nombre", "temaCarta"],
-  SucursalPublica: ["etiqueta", "orden", "posH", "posW", "posX", "posY", "publicada", "slug", "subtituloPortal", "sucursal"],
+  SucursalPublica: ["etiqueta", "orden", "posH", "posW", "posX", "posY", "publicada", "slug", "subtituloPortal", "sucursal", "sucursalId"],
   TemaCartaSucursal: ["aplicarEnCarta", "valores"],
   // GO-2d (ADR-030; GO-0 §4, ampliación aprobada por el dueño el 2026-10-13: la carta muestra tamaños, variantes, guarniciones y adicionales con su precio). Se LEE para calcular el
   // precio con la regla de la venta; lo que SALE lo cierra `CLAVES_DE_LA_CARTA` (nombre del grupo y, por opción, nombre y precio o recargo: desde CARTA-B solo sale lo que CAMBIA EL PRECIO, decidido en el servidor, sin sumar ningún campo). NUNCA: `VersionDeOpcion.factorEscala`,
