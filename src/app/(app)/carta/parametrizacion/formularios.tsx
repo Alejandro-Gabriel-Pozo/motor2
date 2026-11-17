@@ -212,8 +212,8 @@ export function CamposLugares({ lugares }: { lugares: LugarDeCombo[] }) {
           )}
         </div>
       ))}
-      {/* «Sumar un lugar» (`SUMAR_LUGAR_DE_LISTA_VISIBLE`: apagado el 2026-10-28, vuelto a prender el 2026-11-11 por el pedido del «Menú ejecutivo»); aparece solo con su interruptor. */}
-      {SUMAR_LUGAR_DE_LISTA_VISIBLE && (
+      {/* «Sumar un lugar» (`SUMAR_LUGAR_DE_LISTA_VISIBLE`: apagado el 2026-10-28, vuelto a prender el 2026-11-11 por el pedido del «Menú ejecutivo»); aparece solo con su interruptor y NO con el armado «como Pedernal» (`ARMADO_DE_PROMO_COMO_PEDERNAL`, E2b): ahí cada sección elige «Solo estos platos» en su fila y existe la fila «No está en la carta». */}
+      {SUMAR_LUGAR_DE_LISTA_VISIBLE && !ARMADO_DE_PROMO_COMO_PEDERNAL && (
         <fieldset className={aire ? "mt-1 flex min-w-0 flex-col gap-3 text-sm sm:flex-row sm:flex-wrap sm:items-end" : "mt-1 grid min-w-0 grid-cols-2 gap-2 text-sm sm:flex sm:flex-wrap sm:items-end"}>
           <legend className="mb-1 text-sm">{textosDeLaPantallaDePromos(aire).leyendaDeSumarUnLugar}</legend>
           <div className="col-span-2">

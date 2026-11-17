@@ -2,6 +2,7 @@
 
 import {
   guardComandoGuardarCuposPromoCarta,
+  guardComandoGuardarParteDePromo,
   guardComandoGuardarPrecioLocalPromoCarta,
   guardComandoGuardarPromoCarta,
   guardComandoGuardarSoloSalonPromoCarta,
@@ -13,6 +14,7 @@ import { error, type ResultadoAccion } from "../tipos";
 import { actualizarActivaPromoCartaCasoDeUso } from "./casos-de-uso/actualizar-activa-promo-carta";
 import { actualizarActivaPromoCartaEnSucursalCasoDeUso } from "./casos-de-uso/actualizar-activa-promo-carta-en-sucursal";
 import { guardarCuposPromoCartaCasoDeUso } from "./casos-de-uso/guardar-cupos-promo-carta";
+import { guardarParteDePromoCasoDeUso } from "./casos-de-uso/guardar-parte-de-promo";
 import { guardarPrecioLocalPromoCartaCasoDeUso } from "./casos-de-uso/guardar-precio-local-promo-carta";
 import { guardarPromoCartaCasoDeUso } from "./casos-de-uso/guardar-promo-carta";
 import { guardarSoloSalonPromoCartaCasoDeUso } from "./casos-de-uso/guardar-solo-salon-promo-carta";
@@ -162,5 +164,20 @@ export async function guardarCuposPromoCarta(promoCartaId: string, cupos: readon
     // S-52: el guard se CALCULA acá (forma, tope y rango de los cupos) pero su rechazo lo aplica el caso de uso después de leer la promo: una promo inexistente gana sobre un cupo inválido.
     const cuposValidados = guardComandoGuardarCuposPromoCarta({ cupos });
     return aResultadoAccion(await guardarCuposPromoCartaCasoDeUso(ctx, { promoCartaId, cupos: cuposValidados }));
+  });
+}
+
+/**
+ * Lleva UNA parte de una promo al estado pedido (E2a de `docs/diseno-promo-parte-de-seccion-2026-11-11.md`): una sección de la carta o una lista con nombre («No está en la carta»), con su modo («Toda la sección», «Solo estos platos» o no entra), su cantidad y,
+ * en «Solo estos platos», los platos tildados con su opción fija o «el mozo elige». Todo o nada, en una transacción (`casos-de-uso/guardar-parte-de-promo.ts`). Gate: `carta_promo_definir` (empresa). Adaptador fino: permiso → formato → caso de uso → revalidar la carta
+ * pública si cambió algo (lo que un combo incluye se puede mostrar) → `aResultadoAccion`. Vuelve a decidir todo en el servidor: lo que mande el cliente no se da por bueno.
+ */
+export async function guardarParteDePromo(entrada: unknown): Promise<ResultadoAccion> {
+  return conPermisoDeEmpresa("carta_promo_definir", async (ctx) => {
+    const comando = guardComandoGuardarParteDePromo(entrada);
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await guardarParteDePromoCasoDeUso(ctx, comando.valor);
+    if (resultado.ok && resultado.datos.huboCambio) revalidarCartasPublicas(ctx.empresaSlug);
+    return aResultadoAccion(resultado);
   });
 }

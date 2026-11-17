@@ -24,8 +24,14 @@ export { nombreParaMostrar } from "./nombre-para-mostrar";
 export { buscarChoqueEntreNombres, claveDeNombreDeCarta, estadoDelNombreDeCarta, mensajeDeChoqueDeNombre, type ChoqueDeNombre, type NombreUsadoEnLaCarta } from "./nombre-en-carta";
 export { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, type AudienciaDePromo } from "./promo-sucursal";
 // GO-3 (ADR-032): los tipos de cupo y la lectura tolerante del primer despliegue (solo los cupos de sección activos; una promo con un cupo activo de tipo nuevo no se ofrece).
-export { ORIGEN_FUERA_DE_LA_CARTA, borradorInicial, categoriasDe, comandoDeProducto, origenInferido, productosDelOrigen, tieneOpciones } from "./armar-lugar-de-lista";
+export { ORIGEN_FUERA_DE_LA_CARTA, borradorCerrado, borradorInicial, categoriasDe, comandoDeProducto, origenInferido, productosDelOrigen, tieneOpciones } from "./armar-lugar-de-lista";
 export type { BorradorDeProducto } from "./armar-lugar-de-lista";
+// E2a: llevar UNA parte de una promo al estado pedido (el plan de cupos y el bloqueo de I12b).
+export { MODOS_DE_PARTE, motivoDeParteSinPlatos, planDeParte } from "./parte-de-promo";
+export type { CupoExistenteConSeccion, OperacionDeCupo } from "./parte-de-promo";
+// E2b: las partes de una promo en la pantalla de armado («Toda la sección» / «Solo estos platos») y su comando.
+export { NOMBRE_DE_LA_PARTE_FUERA_DE_LA_CARTA, armarFilasDeLaPromo, comandoDeLaFila, platosParaTildar } from "./partes-de-promo";
+export type { ComandoDeFila, FilaDeParte, ModoDeFila } from "./partes-de-promo";
 // Armado de promos «como Pedernal» (primer paso, solo pantalla; docs/diseno-promociones-igual-a-pedernal-2026-11-17.md).
 export { ARMADO_DE_PROMO_COMO_PEDERNAL, cantidadesDelFormulario, comoLoVeElCliente, esCantidadExacta, estadoDeLaPromo, loQueLlevaLaPromo, renglonDeLaLista, type ParteDeLaPromoParaLeer } from "./armado-de-promo-como-pedernal";
 // Los textos de la pantalla de promociones, según el interruptor (docs/palabras-de-la-pantalla-de-promociones-2026-11-17.md).

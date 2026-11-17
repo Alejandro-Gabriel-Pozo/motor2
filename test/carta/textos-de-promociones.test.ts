@@ -35,8 +35,10 @@ const DE_HOY: Record<string, string | boolean> = {
   botonGuardarCupos: "Guardar cupos",
   sinComponentes: "Sin cupos: esta promo es solo informativa, el POS la ignora.",
   agregarComponente: "Agregar un componente",
-  parrafoDeAgregarComponente: "Tildá la sección de la carta de la que el mozo elige y poné cuántos productos (mín. y máx.).",
-  ayudaParaQuitar: "Para quitar un componente, destildalo y guardá.",
+  parrafoDeAgregarComponente: "Tildá la sección de la carta (o «No está en la carta»), elegí si entra toda la sección o solo ciertos platos y poné la cantidad. Ninguna viene tildada: cada decisión es tuya.",
+  parrafoDeLasPartes:
+    "Cada componente es una sección de la carta (o «No está en la carta»): entra toda la sección o solo los platos que tildes, y lleva una cantidad exacta. Cada uno se guarda con su propio botón. Los que se cargaron con un rango «de mín. a máx.» se siguen leyendo así hasta que les pongas una cantidad exacta.",
+  modalidadDeLaListaPropia: "Solo estos platos (los que no están en la carta se tildan de a uno).",
   leyendaDeSumarUnLugar: "Sumar un lugar (opcional)",
   sinEntradas: "Sin entradas todavía: sumá los productos que se pueden elegir acá.",
   ayudaDelRepartoConRango: "En las partes cargadas con un rango se usa la cantidad máxima.",
@@ -47,11 +49,11 @@ const DE_HOY: Record<string, string | boolean> = {
 /** Vocabulario aprobado por el dueño el 09/11/2026 (maqueta `combos.html` de Pedernal) más «Guardar» (decisión del 2026-11-17: Motor2 no tiene versiones, no se usa «Guardar versión»). */
 const APROBADOS = new Set(["Combos", "Nuevo combo", "Nombre", "Precio", "Qué lleva", "Agregar componente", "Todavía no lleva nada", "Guardar"]);
 /** Rótulos que la maqueta no tiene y se conservan de hoy, sin su ayuda («(opcional)», «vacío = …», la explicación de «solo salón»). */
-const CONSERVADOS_DE_HOY = new Set(["Descripción", "Precio en esta sucursal", "Solo salón", "Sumar un lugar"]);
+const CONSERVADOS_DE_HOY = new Set(["Descripción", "Precio en esta sucursal", "Solo salón", "Sumar un lugar", "Solo estos platos"]);
 /** Frases de hoy con la palabra aprobada «combo» en lugar de «promo» (dudoso, anotado en la tabla del documento). */
 const DE_HOY_CON_COMBO = new Set(["La empresa no tiene combos cargados.", "Para cargar un combo hace falta al menos una sección de carta activa."]);
 /** Lo que se SACA de la pantalla encendida (párrafos y ayudas). */
-const SACADOS = ["introduccion", "soloSalonAyuda", "avisoSoloSalonSinCupos", "parrafoDeLoQueLleva", "parrafoDeAgregarComponente", "ayudaParaQuitar", "ayudaDelRepartoConRango"];
+const SACADOS = ["introduccion", "soloSalonAyuda", "avisoSoloSalonSinCupos", "parrafoDeLoQueLleva", "parrafoDeAgregarComponente", "parrafoDeLasPartes", "ayudaDelRepartoConRango"];
 
 const textosComoLista = (t: TextosDePromos): Record<string, unknown> => ({ ...t, quitarEntrada: t.quitarEntrada("«X»") });
 

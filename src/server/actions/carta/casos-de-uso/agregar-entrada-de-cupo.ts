@@ -1,4 +1,5 @@
 import "server-only";
+import type { Prisma } from "@prisma/client";
 import type { ComandoAgregarEntradaDeCupo, ResultadoAgregarEntradaDeCupo } from "@/core/features/carta/combos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
@@ -39,54 +40,58 @@ export async function agregarEntradaDeCupoCasoDeUso(
   comando: ComandoAgregarEntradaDeCupo,
 ): Promise<ResultadoAgregarEntradaDeCupo> {
   const verificacion = await lecturaDeVerificacionEnLaEmpresa(actor);
-  return conTransaccionSerializable(
-    verificacion.transaccion,
-    async (tx): Promise<ResultadoAgregarEntradaDeCupo> => {
-      const cupo = await tx.promoCartaCupo.findFirst({ where: { id: comando.cupoId }, select: { id: true, tipo: true, activo: true, nombre: true, promoCartaId: true, promoCarta: { select: { titulo: true } } } });
-      if (!cupo) return fracaso("CUPO_NO_ENCONTRADO", "No se encontró ese lugar de la promo.");
-      if (cupo.tipo !== "LISTA") return fracaso("CUPO_INVALIDO", "Ese lugar de la promo no es una lista propia: sus opciones salen de una sección de la carta o del plato del día.");
-      if (!cupo.activo) return fracaso("CUPO_INVALIDO", `«${cupo.nombre ?? ""}» está dado de baja en la promo: volvé a agregarlo en sus cupos.`);
+  return conTransaccionSerializable(verificacion.transaccion, (tx) => agregarEntradaDeCupoEnTx(tx, actor, comando), undefined, undefined, true);
+}
 
-      const validado = await validarComponenteEnTx(tx, { sucursalId: actor.sucursalId, productoId: comando.productoId, opciones: comando.opciones, etiqueta: "con esa configuración", modoDeOpciones: comando.modoDeOpciones });
-      if (!validado.ok) return validado;
-      const { producto, claveConfiguracion } = validado.componente;
-      const alicuotas = await revisarAlicuotasEnTx(tx, {
-        lugares: await cargarLugaresActivosDePromo(tx, cupo.promoCartaId),
-        sucursalIds: await sucursalesDeLaEmpresa(tx, actor.empresaId),
-        producto,
-      });
-      if (!alicuotas.ok) return alicuotas;
+/**
+ * El cuerpo de `agregarEntradaDeCupoCasoDeUso` DENTRO de una transacción que ya abrió quien llama (SERIALIZABLE, con la lectura de verificación de toda la empresa): lo reutiliza `guardarParteDePromo` (E2a) para llevar los platos de una parte
+ * en la MISMA transacción que su cupo. Mismas reglas, mismos textos y misma auditoría; no abre transacción ni reintenta. Un `fracaso` NO deshace lo ya escrito por quien llama: si necesita todo o nada, lo lanza.
+ */
+export async function agregarEntradaDeCupoEnTx(
+  tx: Prisma.TransactionClient,
+  actor: Pick<ContextoDeAccion, "usuarioId" | "empresaId" | "sucursalId" | "ahora">,
+  comando: ComandoAgregarEntradaDeCupo,
+): Promise<ResultadoAgregarEntradaDeCupo> {
+  const cupo = await tx.promoCartaCupo.findFirst({ where: { id: comando.cupoId }, select: { id: true, tipo: true, activo: true, nombre: true, promoCartaId: true, promoCarta: { select: { titulo: true } } } });
+  if (!cupo) return fracaso("CUPO_NO_ENCONTRADO", "No se encontró ese lugar de la promo.");
+  if (cupo.tipo !== "LISTA") return fracaso("CUPO_INVALIDO", "Ese lugar de la promo no es una lista propia: sus opciones salen de una sección de la carta o del plato del día.");
+  if (!cupo.activo) return fracaso("CUPO_INVALIDO", `«${cupo.nombre ?? ""}» está dado de baja en la promo: volvé a agregarlo en sus cupos.`);
 
-      const nombre = await nombreDeLaEntrada(tx, producto.nombre, comando.opciones.map((o) => o.opcionId));
-      const descripcion = `Promo "${cupo.promoCarta.titulo}", lugar «${cupo.nombre ?? ""}»: ${nombre}${comando.modoDeOpciones === "A_ELEGIR" ? " (el mozo elige entre las opciones permitidas)" : ""}`;
-      const existente = await tx.entradaDeCupo.findUnique({ where: { cupoId_productoId_claveConfiguracion: { cupoId: cupo.id, productoId: producto.id, claveConfiguracion } }, select: { id: true, activa: true, modoDeOpciones: true } });
-      // La clave (lugar, producto, opciones) es la misma para una configuración fija y para un conjunto permitido igual: no se mezclan (se rechaza, nunca se «convierte» una en la otra).
-      if (existente && existente.modoDeOpciones !== comando.modoDeOpciones) {
-        return fracaso("CONFIGURACION_INVALIDA", `${nombre} ya está en «${cupo.nombre ?? ""}» ${existente.modoDeOpciones === "A_ELEGIR" ? "como opción a elegir por el mozo" : "con esas opciones fijas"}: dala de baja si querés cambiar el modo.`);
-      }
-      if (existente?.activa) return exito(`${nombre} ya era una opción de «${cupo.nombre ?? ""}».`, { entradaId: existente.id, huboCambio: false });
+  const validado = await validarComponenteEnTx(tx, { sucursalId: actor.sucursalId, productoId: comando.productoId, opciones: comando.opciones, etiqueta: "con esa configuración", modoDeOpciones: comando.modoDeOpciones });
+  if (!validado.ok) return validado;
+  const { producto, claveConfiguracion } = validado.componente;
+  const alicuotas = await revisarAlicuotasEnTx(tx, {
+    lugares: await cargarLugaresActivosDePromo(tx, cupo.promoCartaId),
+    sucursalIds: await sucursalesDeLaEmpresa(tx, actor.empresaId),
+    producto,
+  });
+  if (!alicuotas.ok) return alicuotas;
 
-      let entradaId: string;
-      if (existente) {
-        await fijarActivaDeEntradaDeCupo(tx, { id: existente.id, activa: true });
-        entradaId = existente.id;
-      } else {
-        const ultima = await tx.entradaDeCupo.aggregate({ where: { cupoId: cupo.id }, _max: { orden: true } });
-        entradaId = (await crearEntradaDeCupo(tx, { cupoId: cupo.id, productoId: producto.id, claveConfiguracion, modoDeOpciones: comando.modoDeOpciones, orden: (ultima._max.orden ?? -1) + 1, opciones: comando.opciones, ahora: actor.ahora })).id;
-      }
-      await registrarCambioAuditado(tx, {
-        entidad: "EntradaDeCupo",
-        entidadId: entradaId,
-        campo: "activa",
-        descripcion,
-        valorAnterior: existente ? false : null,
-        valorNuevo: true,
-        actorId: actor.usuarioId,
-      });
-      return exito(`${nombre} quedó como opción de «${cupo.nombre ?? ""}».`, { entradaId, huboCambio: true });
-    },
-    undefined,
-    undefined,
-    true,
-  );
+  const nombre = await nombreDeLaEntrada(tx, producto.nombre, comando.opciones.map((o) => o.opcionId));
+  const descripcion = `Promo "${cupo.promoCarta.titulo}", lugar «${cupo.nombre ?? ""}»: ${nombre}${comando.modoDeOpciones === "A_ELEGIR" ? " (el mozo elige entre las opciones permitidas)" : ""}`;
+  const existente = await tx.entradaDeCupo.findUnique({ where: { cupoId_productoId_claveConfiguracion: { cupoId: cupo.id, productoId: producto.id, claveConfiguracion } }, select: { id: true, activa: true, modoDeOpciones: true } });
+  // La clave (lugar, producto, opciones) es la misma para una configuración fija y para un conjunto permitido igual: no se mezclan (se rechaza, nunca se «convierte» una en la otra).
+  if (existente && existente.modoDeOpciones !== comando.modoDeOpciones) {
+    return fracaso("CONFIGURACION_INVALIDA", `${nombre} ya está en «${cupo.nombre ?? ""}» ${existente.modoDeOpciones === "A_ELEGIR" ? "como opción a elegir por el mozo" : "con esas opciones fijas"}: dala de baja si querés cambiar el modo.`);
+  }
+  if (existente?.activa) return exito(`${nombre} ya era una opción de «${cupo.nombre ?? ""}».`, { entradaId: existente.id, huboCambio: false });
+
+  let entradaId: string;
+  if (existente) {
+    await fijarActivaDeEntradaDeCupo(tx, { id: existente.id, activa: true });
+    entradaId = existente.id;
+  } else {
+    const ultima = await tx.entradaDeCupo.aggregate({ where: { cupoId: cupo.id }, _max: { orden: true } });
+    entradaId = (await crearEntradaDeCupo(tx, { cupoId: cupo.id, productoId: producto.id, claveConfiguracion, modoDeOpciones: comando.modoDeOpciones, orden: (ultima._max.orden ?? -1) + 1, opciones: comando.opciones, ahora: actor.ahora })).id;
+  }
+  await registrarCambioAuditado(tx, {
+    entidad: "EntradaDeCupo",
+    entidadId: entradaId,
+    campo: "activa",
+    descripcion,
+    valorAnterior: existente ? false : null,
+    valorNuevo: true,
+    actorId: actor.usuarioId,
+  });
+  return exito(`${nombre} quedó como opción de «${cupo.nombre ?? ""}».`, { entradaId, huboCambio: true });
 }

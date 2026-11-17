@@ -35,6 +35,8 @@ const IMPORTADOS_PUROS: Record<string, string> = {
   lugaresDelFormulario: "./lugares-del-formulario",
   // Frente 6 (cantidad exacta): los cupos de sección tildados del mismo formulario; igual que el anterior, solo arma datos (no valida ni escribe).
   cuposDeSeccionDelFormulario: "./lugares-del-formulario",
+  // Cantidad exacta de una parte de promo (2026-11-17): elige entre el campo de cantidad y mín./máx. del FormData de un cupo; no valida ni escribe (lo hace el guard).
+  cantidadesDelFormulario: "@/core/carta/public",
 };
 /** Abrir/cerrar sesión: solo en estos archivos (el login y los dos shells). */
 const SESION: Record<string, string[]> = {

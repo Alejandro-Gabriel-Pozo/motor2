@@ -45,3 +45,18 @@ describe("«Sumar un lugar» APAGADO (reversibilidad)", () => {
     expect(html).toContain('data-cupo-lugar="Bebida"');
   });
 });
+
+describe("«Sumar un lugar» con el armado «como Pedernal» ENCENDIDO (E2b)", () => {
+  afterEach(() => {
+    vi.doUnmock("../../src/core/carta/armado-de-promo-como-pedernal");
+    vi.resetModules();
+  });
+
+  it("aunque su interruptor esté encendido, con el armado «como Pedernal» no se ofrece (la sección elige «Solo estos platos» en su fila); el lugar existente se sigue mostrando", async () => {
+    vi.resetModules();
+    vi.doMock("../../src/core/carta/armado-de-promo-como-pedernal", async (original) => ({ ...(await original<typeof import("../../src/core/carta/armado-de-promo-como-pedernal")>()), ARMADO_DE_PROMO_COMO_PEDERNAL: true }));
+    const html = dibujar((await import("../../src/app/(app)/carta/parametrizacion/formularios")).CamposLugares);
+    expect(html).not.toContain("Sumar un lugar");
+    expect(html).toContain('data-cupo-lugar="Bebida"');
+  });
+});

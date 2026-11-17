@@ -244,7 +244,7 @@ export function AgregarEntradaDeLugar({
 }
 
 /** Lo que se define de UN producto tildado: configuración fija o «el mozo elige». */
-function ConfiguracionDelProducto({
+export function ConfiguracionDelProducto({
   producto,
   borrador,
   alCambiar,

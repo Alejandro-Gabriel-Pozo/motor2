@@ -109,3 +109,42 @@ export interface ComandoGuardarCuposPromoCarta {
  *  - `COMBO_ALICUOTAS_DISTINTAS` (GO-3b, D-2): los componentes posibles del combo con estos lugares mezclan alícuotas de IVA declaradas distintas.
  */
 export type ResultadoGuardarCuposPromoCarta = ResultadoCaso<null, "PROMO_NO_ENCONTRADA" | "CUPO_INVALIDO" | "SECCION_NO_ENCONTRADA" | "BAJO_EL_PISO" | "COMBO_ALICUOTAS_DISTINTAS">;
+
+/**
+ * Comando «guardar UNA parte de una promo» (E2a de `docs/diseno-promo-parte-de-seccion-2026-11-11.md`): el lugar (una sección de la carta, o una lista con nombre, p. ej. «No está en la carta»), su modo y, si lleva
+ * platos tildados, esos platos con su configuración. Llega ya validado de forma por `guardComandoGuardarParteDePromo`. `NO_ENTRA` = el lugar no entra en la promo (nada tildado: todo nace cerrado); `TODA` = «Toda la sección»
+ * (solo con una sección: regla viva, cupo SECCION); `SOLO_ESTOS` = «Solo estos platos» (lista explícita: cupo LISTA con el nombre de la sección, y `entradas` son los platos que quedan activos, ni uno más).
+ */
+export type LugarDeParteDePromo = { tipo: "SECCION"; seccionCartaId: string } | { tipo: "LISTA"; nombre: string };
+export type ModoDeParteDePromo = "NO_ENTRA" | "TODA" | "SOLO_ESTOS";
+
+export interface ComandoGuardarParteDePromo {
+  promoCartaId: string;
+  lugar: LugarDeParteDePromo;
+  modo: ModoDeParteDePromo;
+  /** 0 y 0 con `NO_ENTRA` (no se usan). */
+  cantidadMinima: number;
+  cantidadMaxima: number;
+  /** Solo con `SOLO_ESTOS`: el conjunto FINAL de platos de la parte (cada uno con su modo y sus opciones, como `agregarEntradaDeCupo`). */
+  entradas: readonly { productoId: string; modoDeOpciones: "FIJAS" | "A_ELEGIR"; opciones: readonly { opcionId: string; cantidad: number }[] }[];
+}
+
+/**
+ *  - `PROMO_NO_ENCONTRADA` / `SECCION_NO_ENCONTRADA`: no existen (o son de otra empresa: RLS);
+ *  - `CUPO_INVALIDO`: el nombre del lugar ya lo usa un lugar de otro tipo, la sección ya entra «entera» con otro nombre, o una parte «Solo estos platos» sin ningún plato y con mínimo mayor a 0 (se bloquea, I12b);
+ *  - `BAJO_EL_PISO`: con esta parte, el precio de la promo (o el local de alguna sucursal) no alcanza el piso de $0,01 por unidad en el peor caso;
+ *  - más los de un plato como componente (`agregarEntradaDeCupo`): `PRODUCTO_NO_ENCONTRADO`, `PRODUCTO_INVALIDO`, `COMPONENTE_SIN_PRECIO_DE_REFERENCIA`, `COMPONENTE_SIN_RECETA`, `CONFIGURACION_INVALIDA`, `COMBO_ALICUOTAS_DISTINTAS`.
+ */
+export type ResultadoGuardarParteDePromo = ResultadoCaso<
+  { huboCambio: boolean },
+  | "PROMO_NO_ENCONTRADA"
+  | "SECCION_NO_ENCONTRADA"
+  | "CUPO_INVALIDO"
+  | "BAJO_EL_PISO"
+  | "PRODUCTO_NO_ENCONTRADO"
+  | "PRODUCTO_INVALIDO"
+  | "COMPONENTE_SIN_PRECIO_DE_REFERENCIA"
+  | "COMPONENTE_SIN_RECETA"
+  | "CONFIGURACION_INVALIDA"
+  | "COMBO_ALICUOTAS_DISTINTAS"
+>;

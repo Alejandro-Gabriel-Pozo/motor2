@@ -22,14 +22,16 @@ async function dibujar(encendido: boolean) {
   vi.doMock(RUTA, async (original) => ({ ...(await original<typeof import("../../src/core/carta/armado-de-promo-como-pedernal")>()), ARMADO_DE_PROMO_COMO_PEDERNAL: encendido }));
   const formularios = await import("../../src/app/(app)/carta/parametrizacion/formularios");
   const { DondeSeVe } = await import("../../src/app/(app)/carta/parametrizacion/promociones/donde-se-ve");
-  const { CamposQueLleva } = await import("../../src/app/(app)/carta/parametrizacion/promociones/campos-que-lleva");
+  const { PartesDeLaPromo } = await import("../../src/app/(app)/carta/parametrizacion/promociones/partes-de-la-promo");
   const { RepartoDelPrecio } = await import("../../src/app/(app)/carta/parametrizacion/promociones/reparto-del-precio");
   const guardar = vi.fn();
   return {
     promo: renderToStaticMarkup(<formularios.CamposPromo secciones={SECCIONES} />),
     lugares: renderToStaticMarkup(<formularios.CamposLugares lugares={LUGARES} />),
     dondeSeVe: renderToStaticMarkup(<DondeSeVe titulo="Menú" soloSalon tieneCupos={false} puedeDefinir guardar={guardar} />),
-    queLleva: renderToStaticMarkup(<CamposQueLleva secciones={[...SECCIONES, { id: "s2", nombre: "Postres", activa: true }]} guardados={[{ seccionCartaId: "s1", cantidadMinima: 1, cantidadMaxima: 1 }]} />),
+    queLleva: renderToStaticMarkup(
+      <PartesDeLaPromo secciones={[...SECCIONES, { id: "s2", nombre: "Postres", activa: true }]} cuposDeSeccion={[{ seccionCartaId: "s1", cantidadMinima: 1, cantidadMaxima: 1 }]} lugares={[]} productos={[]} puedeEditar guardar={guardar} />
+    ),
     reparto: renderToStaticMarkup(<RepartoDelPrecio precio={13500} partes={PARTES} />),
   };
 }
@@ -51,6 +53,8 @@ describe("interruptor APAGADO: la pantalla de siempre", () => {
     expect(h.dondeSeVe).toContain("Útil para un menú pactado con una empresa: el precio no queda publicado.");
     expect(h.dondeSeVe).toContain("Esta promo está en «solo salón» pero no tiene cupos");
     expect(h.dondeSeVe).toContain("mt-3 flex flex-col gap-1");
+    expect(h.queLleva).toContain("Agregar un componente");
+    expect(h.queLleva).toContain("Tildá la sección de la carta (o «No está en la carta»)");
   });
 });
 
@@ -65,9 +69,9 @@ describe("interruptor ENCENDIDO: aire y pocas palabras", () => {
     expect(h.promo).not.toContain("Precio<span");
   });
 
-  it("CamposLugares: un campo por línea en celular (apilado), rótulo arriba, «Sumar un lugar» sin «(opcional)»", async () => {
+  it("CamposLugares: un campo por línea en celular (apilado), rótulo arriba; «Sumar un lugar» no se dibuja (E2b)", async () => {
     const h = await dibujar(true);
-    expect(h.lugares).toContain("Sumar un lugar");
+    expect(h.lugares).not.toContain("Sumar un lugar");
     expect(h.lugares).not.toContain("(opcional)");
     expect(h.lugares).toContain("flex flex-col gap-3 rounded border p-3");
     expect(h.lugares).not.toContain("grid-cols-2");
@@ -82,14 +86,12 @@ describe("interruptor ENCENDIDO: aire y pocas palabras", () => {
     expect(h.dondeSeVe).toContain("Guardar dónde se ve");
   });
 
-  it("«Qué lleva»: «Agregar componente» plegado, sin párrafos ni ayudas, con «Cantidad» arriba del campo", async () => {
+  it("«Qué lleva»: «Agregar componente» plegado y sin el párrafo, con «Cantidad» en la parte que ya lleva", async () => {
     const h = await dibujar(true);
     expect(h.queLleva).toContain("Agregar componente");
     expect(h.queLleva).not.toContain("Agregar un componente");
-    expect(h.queLleva).not.toContain("Para quitar un componente");
     expect(h.queLleva).not.toContain("Tildá la sección");
     expect(h.queLleva).toContain("Cantidad");
-    expect(h.queLleva).not.toContain("grid-cols-2");
   });
 
   it("«Reparto del precio»: la frase de la maqueta y, con un rango, sin la explicación del máximo", async () => {

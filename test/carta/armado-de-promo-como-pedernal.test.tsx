@@ -1,15 +1,14 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ARMADO_DE_PROMO_COMO_PEDERNAL, cantidadesDelFormulario, comoLoVeElCliente, esCantidadExacta, estadoDeLaPromo, loQueLlevaLaPromo, renglonDeLaLista, type ParteDeLaPromoParaLeer } from "../../src/core/carta/public";
+import { ARMADO_DE_PROMO_COMO_PEDERNAL, cantidadesDelFormulario, comoLoVeElCliente, esCantidadExacta, estadoDeLaPromo, loQueLlevaLaPromo, renglonDeLaLista, type LugarDeCombo, type ParteDeLaPromoParaLeer } from "../../src/core/carta/public";
 import { textoDeLaParte } from "../../src/core/carta/armado-de-promo-como-pedernal";
-import { CamposQueLleva } from "../../src/app/(app)/carta/parametrizacion/promociones/campos-que-lleva";
-import { CamposCupos } from "../../src/app/(app)/carta/parametrizacion/formularios";
+import { PartesDeLaPromo } from "../../src/app/(app)/carta/parametrizacion/promociones/partes-de-la-promo";
 
 /**
  * Armado de promos «como Pedernal» (primer paso, solo pantalla; docs/diseno-promociones-igual-a-pedernal-2026-11-17.md). Fija:
  *  - el interruptor nace APAGADO (la pantalla de siempre; el valor por defecto lo decide el dueño viendo la captura);
  *  - las funciones puras que escriben lo que lleva la promo, su estado y «Cómo lo ve el cliente» (oráculo escrito acá, aparte del código);
- *  - que «Qué lleva» manda EXACTAMENTE los mismos campos que el formulario viejo (`incluir_/min_/max_`), con lo que no tilda nada que nadie tildó (todo nace cerrado).
+ *  - que «Qué lleva» (E2b) dibuja una fila por parte con `PartesDeLaPromo` (sustituye a `CamposQueLleva`), sin tildar nada que nadie tildó (todo nace cerrado).
  */
 const ENTRADA: ParteDeLaPromoParaLeer = { nombre: "Entrada", cantidadMinima: 0, cantidadMaxima: 2, productoFijo: null };
 const BEBIDA: ParteDeLaPromoParaLeer = { nombre: "Bebidas", cantidadMinima: 1, cantidadMaxima: 1, productoFijo: null };
@@ -60,41 +59,58 @@ describe("renglón de la lista y «Cómo lo ve el cliente»", () => {
   });
 });
 
-describe("«Qué lleva»: los mismos campos que el formulario viejo", () => {
-  const secciones = [
-    { id: "s1", nombre: "Entrada", activa: true },
-    { id: "s2", nombre: "Postres", activa: true },
-    { id: "s3", nombre: "Vinos", activa: false },
-  ];
-  const guardados = [{ seccionCartaId: "s1", cantidadMinima: 0, cantidadMaxima: 2 }];
-  const nuevo = renderToStaticMarkup(<CamposQueLleva secciones={secciones} guardados={guardados} />);
-  const viejo = renderToStaticMarkup(<CamposCupos secciones={secciones} guardados={guardados} />);
-  const nombres = (html: string) => [...html.matchAll(/name="((?:incluir|min|max|cantidad)_[^"]+)"/g)].map((m) => m[1]).sort();
+/** «Qué lleva» (E2b): una fila por parte, cada una con su propio «Guardar»; sin ningún campo de formulario suelto (la acción es `guardarParteDePromo`, una por parte). */
+const SECCIONES = [
+  { id: "s1", nombre: "Entrada", activa: true },
+  { id: "s2", nombre: "Bebidas", activa: true },
+  { id: "s3", nombre: "Postres", activa: true },
+  { id: "s4", nombre: "Vinos", activa: false },
+];
+const PRODUCTOS = [{ productoId: "p1", nombre: "Bife", nombreParaMostrar: "Bife", grupos: [], seccionCartaId: "s1", categoria: null, gruposAElegir: [] }];
+const dibujarPartes = (cuposDeSeccion: { seccionCartaId: string; cantidadMinima: number; cantidadMaxima: number }[], lugares: LugarDeCombo[] = []) =>
+  renderToStaticMarkup(<PartesDeLaPromo secciones={SECCIONES} cuposDeSeccion={cuposDeSeccion} lugares={lugares} productos={PRODUCTOS} puedeEditar guardar={async () => ({ ok: true, mensaje: "" })} />);
+const entrada = (id: string, productoId: string, nombre: string) => ({ id, activa: true, productoId, nombre, modoDeOpciones: "FIJAS" as const, opciones: [] });
 
-  it("manda el mismo «incluir» de cada sección (también las plegadas) y, de la cantidad, o la exacta o mín./máx. (el rango heredado)", () => {
-    const incluir = (html: string) => nombres(html).filter((n) => n.startsWith("incluir_"));
-    expect(incluir(nuevo)).toEqual(incluir(viejo));
-    expect(incluir(nuevo)).toHaveLength(3);
-    // s1 es un rango heredado (0 a 2): mín. y máx.; s2 y s3 no tienen rango: una cantidad exacta.
-    expect(nombres(nuevo).filter((n) => !n.startsWith("incluir_"))).toEqual(["cantidad_s2", "cantidad_s3", "max_s1", "min_s1"]);
+describe("«Qué lleva»: una fila por parte, todo nace cerrado", () => {
+  it("promo sin componentes: nada tildado, no se dibuja «Qué lleva» y todo (secciones y «No está en la carta») está plegado en «Agregar un componente»", () => {
+    const html = dibujarPartes([]);
+    expect(html).not.toContain("data-que-lleva");
+    expect(html).not.toContain('checked=""');
+    const plegado = html.split("data-agregar-componente")[1]!;
+    for (const nombre of ["Entrada", "Bebidas", "Postres", "Vinos", "No está en la carta"]) expect(plegado).toContain(`data-cupo-seccion="${nombre}"`);
+    expect(plegado).toContain("Vinos (apagada)");
   });
 
-  it("lo que ya lleva va arriba, tildado y con su rango; el resto, plegado en «Agregar componente» y sin tildar", () => {
-    const [arriba, plegado] = nuevo.split("data-agregar-componente");
+  it("lo que ya lleva va arriba, tildado y con la modalidad elegida; el resto, plegado y sin tildar (rango heredado con mín. y máx.; cantidad exacta con una sola cantidad)", () => {
+    const html = dibujarPartes([
+      { seccionCartaId: "s1", cantidadMinima: 0, cantidadMaxima: 2 },
+      { seccionCartaId: "s2", cantidadMinima: 1, cantidadMaxima: 1 },
+    ]);
+    const [arriba, plegado] = html.split("data-agregar-componente");
     expect(arriba).toContain("data-que-lleva");
     expect(arriba).toContain('data-cupo-seccion="Entrada"');
+    expect(arriba).toContain('data-cupo-seccion="Bebidas"');
     expect(arriba).not.toContain('data-cupo-seccion="Postres"');
-    expect(arriba).toMatch(/name="incluir_s1"[^>]*checked=""|checked=""[^>]*name="incluir_s1"/);
-    expect(plegado).toContain("Agregar componente");
+    expect(arriba).toContain('<option value="TODA" selected="">Toda la sección</option>');
+    // El rango heredado se sigue leyendo «mín.» y «máx.»; la parte exacta muestra una cantidad.
+    const entradaHtml = arriba!.split('data-parte-de-promo="Bebidas"')[0]!;
+    expect(entradaHtml).toContain("mín.");
+    expect(arriba!.split('data-parte-de-promo="Bebidas"')[1]).toContain("Cantidad");
     expect(plegado).toContain('data-cupo-seccion="Postres"');
-    expect(plegado).toContain('data-cupo-seccion="Vinos"');
     expect(plegado).not.toContain('checked=""');
   });
 
-  it("promo sin componentes: nada tildado y no se dibuja el bloque «Qué lleva»", () => {
-    const vacio = renderToStaticMarkup(<CamposQueLleva secciones={secciones} guardados={[]} />);
-    expect(vacio).not.toContain("data-que-lleva");
-    expect(vacio).not.toContain('checked=""');
+  it("una lista con el nombre de una sección es su «Solo estos platos»: sale en la fila de la sección con sus platos; una lista con otro nombre sale entre las demás partes", () => {
+    const lugares: LugarDeCombo[] = [
+      { id: "l1", tipo: "LISTA", nombre: "Entrada", cantidadMinima: 1, cantidadMaxima: 1, orden: 1, entradas: [entrada("e1", "p1", "Bife")] },
+      { id: "l2", tipo: "LISTA", nombre: "Bebida", cantidadMinima: 1, cantidadMaxima: 1, orden: 2, entradas: [] },
+    ];
+    const html = dibujarPartes([], lugares);
+    const arriba = html.split("data-agregar-componente")[0]!;
+    expect(arriba).toContain('<option value="SOLO_ESTOS" selected="">Solo estos platos</option>');
+    expect(arriba).toContain("Lo que ya lleva");
+    expect(arriba).toContain('data-entrada-de-lugar="Bife"');
+    expect(arriba).toContain('data-cupo-seccion="Bebida"');
   });
 });
 
@@ -120,33 +136,6 @@ describe("cantidad exacta (dueño 2026-11-17): se guarda como mín = máx = N", 
   });
 });
 
-describe("«Qué lleva» con cantidad exacta", () => {
-  const secciones = [
-    { id: "s1", nombre: "Entrada", activa: true },
-    { id: "s2", nombre: "Bebidas", activa: true },
-    { id: "s3", nombre: "Postres", activa: true },
-  ];
-  const guardados = [
-    { seccionCartaId: "s1", cantidadMinima: 0, cantidadMaxima: 2 },
-    { seccionCartaId: "s2", cantidadMinima: 1, cantidadMaxima: 1 },
-  ];
-  const html = renderToStaticMarkup(<CamposQueLleva secciones={secciones} guardados={guardados} />);
-
-  it("la parte que ya era exacta muestra UNA cantidad con su valor; el rango heredado se sigue mostrando con mín. y máx.", () => {
-    expect(html).toContain('name="cantidad_s2"');
-    expect(html).not.toContain('name="min_s2"');
-    expect(html).toContain('name="min_s1"');
-    expect(html).toContain('name="max_s1"');
-    expect(html).not.toContain('name="cantidad_s1"');
-  });
-
-  it("un componente nuevo (plegado) nace con cantidad 1 y sin tildar", () => {
-    const plegado = html.split("data-agregar-componente")[1];
-    expect(plegado).toContain('name="cantidad_s3"');
-    expect(plegado).not.toContain('checked=""');
-  });
-});
-
 describe("lugares de lista: la cantidad exacta aparece solo con el interruptor encendido (los dos estados)", () => {
   const LUGARES = [
     { id: "l1", tipo: "LISTA" as const, nombre: "Bebida", cantidadMinima: 1, cantidadMaxima: 1, orden: 1, entradas: [] },
@@ -163,14 +152,14 @@ describe("lugares de lista: la cantidad exacta aparece solo con el interruptor e
     vi.resetModules();
   });
 
-  it("ENCENDIDO: el lugar exacto muestra una cantidad, el de rango sigue con mín. y máx., y el lugar nuevo nace con una cantidad", async () => {
+  it("ENCENDIDO: el lugar exacto muestra una cantidad, el de rango sigue con mín. y máx., y «Sumar un lugar» se retira (E2b: cada sección elige «Solo estos platos» en su fila)", async () => {
     const html = await dibujar(true);
     expect(html).toContain('name="lugar_cantidad_l1"');
     expect(html).not.toContain('name="lugar_min_l1"');
     expect(html).toContain('name="lugar_min_l2"');
     expect(html).toContain('name="lugar_max_l2"');
-    expect(html).toContain('name="nuevo_lugar_cantidad"');
-    expect(html).not.toContain('name="nuevo_lugar_min"');
+    expect(html).not.toContain("Sumar un lugar");
+    expect(html).not.toContain("nuevo_lugar_");
   });
 
   it("APAGADO: la pantalla de siempre (mín. y máx. en todos, y en el lugar nuevo)", async () => {

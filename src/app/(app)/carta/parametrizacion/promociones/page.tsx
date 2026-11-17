@@ -16,7 +16,7 @@ import {
   guardarSoloSalonPromoCarta,
 } from "@/server/actions/carta/promos";
 import { actualizarActivaEntradaDeCupo, agregarEntradaDeCupo } from "@/server/actions/carta/combos";
-import { precioMinimoPromo } from "@/core/pos/public";
+import { guardarParteDePromo } from "@/server/actions/carta/promos";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
@@ -28,7 +28,8 @@ import { ARMADO_DE_PROMO_COMO_PEDERNAL, PESTANAS_DE_PROMOCIONES, comoLoVeElClien
 import { EncabezadoDeCarta } from "../../encabezado-de-carta";
 import estilos from "../../carta-mant.module.css";
 import { CamposCupos, CamposLugares, CamposPromo, esFijo } from "../formularios";
-import { CamposQueLleva } from "./campos-que-lleva";
+import { AvisoDelPeorCaso } from "./aviso-del-peor-caso";
+import { PartesDeLaPromo } from "./partes-de-la-promo";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { CampoNumero } from "@/components/campo-numero";
@@ -224,7 +225,23 @@ export default async function PromocionesDeCartaPage() {
                   {repartoDeLasPromos && <RepartoDelPrecio precio={pr.precioAca} partes={repartoDeLasPromos[pr.id] ?? []} />}
                   <Junto activo={ARMADO_DE_PROMO_COMO_PEDERNAL}>
                   <h3 className="mt-3 text-sm font-medium">{t.tituloDeLoQueLleva}</h3>
-                  {puedeDefinirPromos ? (
+                  {puedeDefinirPromos && ARMADO_DE_PROMO_COMO_PEDERNAL ? (
+                    <div className="mt-1 flex flex-col gap-2">
+                      {t.parrafoDeLasPartes !== null && <p className="text-sm text-tinta-tenue">{t.parrafoDeLasPartes}</p>}
+                      {t.mostrarAvisoDelPeorCaso && <AvisoDelPeorCaso titulo={pr.titulo} precio={pr.precio} cupos={pr.cupos} />}
+                      <PartesDeLaPromo
+                        secciones={datos.secciones}
+                        cuposDeSeccion={pr.cupos}
+                        lugares={lugares}
+                        productos={combos.productos}
+                        puedeEditar={puedeDefinirPromos}
+                        guardar={async (comando) => {
+                          "use server";
+                          return refrescarSiOk(await guardarParteDePromo({ promoCartaId: id, ...comando }));
+                        }}
+                      />
+                    </div>
+                  ) : puedeDefinirPromos ? (
                     <FormConResultado
                       accion={async (fd: FormData) => {
                         "use server";
@@ -236,23 +253,8 @@ export default async function PromocionesDeCartaPage() {
                       className={ARMADO_DE_PROMO_COMO_PEDERNAL ? "mt-1 flex flex-col gap-4" : "mt-1 flex flex-col gap-2"}
                     >
                       {t.parrafoDeLoQueLleva !== null && <p className="text-sm text-tinta-tenue">{t.parrafoDeLoQueLleva}</p>}
-                      {/* Paso 13 (opcional, no bloqueante): con los cupos YA guardados, cuánta holgura hay hoy antes de tocar el piso de
-                          $0,01 por unidad en el peor caso (D3) — guardarCuposPromoCarta rechaza de una si un cambio lo cruza; esto avisa
-                          ANTES de intentarlo, con lo que hay guardado ahora mismo (no recalcula en vivo lo que se está tipeando). */}
-                      {t.mostrarAvisoDelPeorCaso &&
-                        pr.cupos.length > 0 &&
-                        (() => {
-                          const unidadesEnElPeorCaso = pr.cupos.reduce((suma, c) => suma + c.cantidadMaxima, 0);
-                          const minimo = precioMinimoPromo([{ cantidad: unidadesEnElPeorCaso }]);
-                          const holgura = pr.precio - minimo;
-                          return (
-                            <p className="text-xs text-tinta-tenue" data-aviso-peor-caso={pr.titulo}>
-                              Con los cupos de hoy, el peor caso son {unidadesEnElPeorCaso} unidad{unidadesEnElPeorCaso === 1 ? "" : "es"} y el precio mínimo permitido es {formatearMonto(minimo)}
-                              {holgura > 0 ? ` — hay ${formatearMonto(holgura)} de margen antes de ese piso si subís algún máximo.` : "."}
-                            </p>
-                          );
-                        })()}
-                      {ARMADO_DE_PROMO_COMO_PEDERNAL ? <CamposQueLleva secciones={datos.secciones} guardados={pr.cupos} /> : <CamposCupos secciones={datos.secciones} guardados={pr.cupos} />}
+                      {t.mostrarAvisoDelPeorCaso && <AvisoDelPeorCaso titulo={pr.titulo} precio={pr.precio} cupos={pr.cupos} />}
+                      <CamposCupos secciones={datos.secciones} guardados={pr.cupos} />
                       <CamposLugares lugares={lugares} />
                       <div>
                         <BotonDeServidor type="submit" tamano="compacto">
@@ -279,7 +281,7 @@ export default async function PromocionesDeCartaPage() {
                   </Junto>
 
                   {/* GO-3b (U1): las entradas de cada lugar LISTA (con una sola y mínimo = máximo, viene FIJO). */}
-                  {lugares.map((l) => {
+                  {!(ARMADO_DE_PROMO_COMO_PEDERNAL && puedeDefinirPromos) && lugares.map((l) => {
                     // Los closures "use server" capturan solo el id del lugar (texto): lo que capturan viaja al cliente.
                     const cupoId = l.id;
                     return (

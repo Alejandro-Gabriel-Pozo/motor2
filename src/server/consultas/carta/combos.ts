@@ -29,7 +29,7 @@ export async function cargarCombosDeLaCarta(db: Db, sucursalId: string): Promise
             orden: true,
             entradas: {
               orderBy: [{ orden: "asc" }, { creadoEn: "asc" }, { id: "asc" }],
-              select: { id: true, activa: true, productoId: true, modoDeOpciones: true, producto: { select: { nombre: true } }, opciones: { orderBy: [{ creadoEn: "asc" }, { id: "asc" }], select: { cantidad: true, opcion: { select: { nombre: true } } } } },
+              select: { id: true, activa: true, productoId: true, modoDeOpciones: true, producto: { select: { nombre: true } }, opciones: { orderBy: [{ creadoEn: "asc" }, { id: "asc" }], select: { opcionId: true, cantidad: true, opcion: { select: { nombre: true } } } } },
             },
           },
         },
@@ -96,6 +96,7 @@ export async function cargarCombosDeLaCarta(db: Db, sucursalId: string): Promise
         activa: e.activa,
         productoId: e.productoId,
         modoDeOpciones: e.modoDeOpciones as "FIJAS" | "A_ELEGIR",
+        opciones: e.opciones.map((o) => ({ opcionId: o.opcionId, cantidad: o.cantidad })),
         // «el mozo elige»: las opciones de la entrada son las PERMITIDAS (sin sus unidades: el tope es el de los límites del grupo).
         nombre:
           e.modoDeOpciones === "A_ELEGIR"

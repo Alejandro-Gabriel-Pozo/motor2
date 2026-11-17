@@ -43,8 +43,10 @@ export interface TextosDePromos {
   agregarComponente: string;
   /** Párrafo dentro de «Agregar componente»; `null` = no se dibuja. */
   parrafoDeAgregarComponente: string | null;
-  /** Ayuda «para quitar…»; `null` = no se dibuja. */
-  ayudaParaQuitar: string | null;
+  /** Párrafo bajo el título del armado por partes (E2b, una fila por parte); `null` = no se dibuja. */
+  parrafoDeLasPartes: string | null;
+  /** Lo que dice la fila de una lista con nombre propio (no es una sección) sobre qué entra; con `null` no se dibuja. */
+  modalidadDeLaListaPropia: string;
   /** Leyenda de «sumar un lugar» (el alta de un lugar de entradas). */
   leyendaDeSumarUnLugar: string;
   sinEntradas: string;
@@ -82,8 +84,10 @@ const DE_HOY: TextosDePromos = {
   sinComponentes: "Sin cupos: esta promo es solo informativa, el POS la ignora.",
   // Solo se dibujan con el interruptor encendido: lo que decían antes de este cambio.
   agregarComponente: "Agregar un componente",
-  parrafoDeAgregarComponente: "Tildá la sección de la carta de la que el mozo elige y poné cuántos productos (mín. y máx.).",
-  ayudaParaQuitar: "Para quitar un componente, destildalo y guardá.",
+  parrafoDeAgregarComponente: "Tildá la sección de la carta (o «No está en la carta»), elegí si entra toda la sección o solo ciertos platos y poné la cantidad. Ninguna viene tildada: cada decisión es tuya.",
+  parrafoDeLasPartes:
+    "Cada componente es una sección de la carta (o «No está en la carta»): entra toda la sección o solo los platos que tildes, y lleva una cantidad exacta. Cada uno se guarda con su propio botón. Los que se cargaron con un rango «de mín. a máx.» se siguen leyendo así hasta que les pongas una cantidad exacta.",
+  modalidadDeLaListaPropia: "Solo estos platos (los que no están en la carta se tildan de a uno).",
   leyendaDeSumarUnLugar: "Sumar un lugar (opcional)",
   sinEntradas: "Sin entradas todavía: sumá los productos que se pueden elegir acá.",
   quitarEntrada: (nombre) => `Sacar «${nombre}»`,
@@ -117,7 +121,8 @@ const COMO_PEDERNAL: TextosDePromos = {
   sinComponentes: "Todavía no lleva nada",
   agregarComponente: "Agregar componente",
   parrafoDeAgregarComponente: null,
-  ayudaParaQuitar: null,
+  parrafoDeLasPartes: null,
+  modalidadDeLaListaPropia: "Solo estos platos",
   leyendaDeSumarUnLugar: "Sumar un lugar",
   sinEntradas: "Todavía no lleva nada",
   quitarEntrada: (nombre) => `Quitar «${nombre}»`,

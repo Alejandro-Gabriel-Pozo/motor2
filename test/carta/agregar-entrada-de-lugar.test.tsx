@@ -74,7 +74,7 @@ describe("AgregarEntradaDeLugar: un lugar que ya tiene opciones", () => {
 });
 
 describe("esFijo: una entrada «el mozo elige» no es una configuración fija", () => {
-  const lugar = (modoDeOpciones: "FIJAS" | "A_ELEGIR") => ({ id: "l", tipo: "LISTA" as const, nombre: "Plato", cantidadMinima: 1, cantidadMaxima: 1, orden: 1, entradas: [{ id: "e", activa: true, productoId: "bife", nombre: "BIFE-", nombreParaMostrar: "Bife a criolla · Bife con chimichurri (BIFE-)", modoDeOpciones }] });
+  const lugar = (modoDeOpciones: "FIJAS" | "A_ELEGIR") => ({ id: "l", tipo: "LISTA" as const, nombre: "Plato", cantidadMinima: 1, cantidadMaxima: 1, orden: 1, entradas: [{ id: "e", activa: true, productoId: "bife", nombre: "BIFE-", nombreParaMostrar: "Bife a criolla · Bife con chimichurri (BIFE-)", modoDeOpciones, opciones: [] }] });
   it("una sola entrada fija con mínimo = máximo viene fija; la «a elegir», no", () => {
     expect(esFijo(lugar("FIJAS"))).toBe(true);
     expect(esFijo(lugar("A_ELEGIR"))).toBe(false);
