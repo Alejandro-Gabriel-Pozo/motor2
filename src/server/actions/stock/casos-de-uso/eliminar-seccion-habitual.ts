@@ -3,6 +3,8 @@ import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoEliminarSeccionHabitual, ResultadoEliminarSeccionHabitual } from "@/core/features/seccion-habitual/seccion-habitual.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { borrarSeccionHabitual } from "@/server/persistencia/stock/seccion-habitual";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 
 /**
  * Caso de uso «quitar la sección habitual de un producto» (Hito 4 de la pureza, bloque C de la pieza carta/catálogo/stock, paso H4C-20 —
@@ -24,7 +26,7 @@ export async function eliminarSeccionHabitualCasoDeUso(
   comando: ComandoEliminarSeccionHabitual,
 ): Promise<ResultadoEliminarSeccionHabitual> {
   const fila = await actor.db.seccionHabitualProducto.findUnique({ where: { id: comando.id }, include: { producto: { select: { nombre: true } } } });
-  if (!fila || fila.sucursalId !== actor.sucursalId) return fracaso("NO_ENCONTRADA", "No se encontró ese depósito habitual.");
+  if (!fila || fila.sucursalId !== actor.sucursalId) return fracaso("NO_ENCONTRADA", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.deposito_habitual }));
   await borrarSeccionHabitual(actor.db, { id: fila.id });
   return exito(`«${fila.producto.nombre}» ya no tiene depósito habitual.`, null);
 }

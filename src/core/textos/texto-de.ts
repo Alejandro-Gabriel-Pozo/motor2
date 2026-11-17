@@ -47,7 +47,9 @@ function armar(clave: string, valores: Readonly<Record<string, unknown>>): strin
     }
     if (tipo === "entidad") {
       const e = valor as Partial<Entidad> | null;
-      if (typeof e?.nombre !== "string" || e.nombre.trim() === "" || (e.genero !== "m" && e.genero !== "f")) {
+      // Cerrado también en ejecución: solo vale una entidad que ESTÁ en la tabla (una bien formada pero ajena, con un cast, cae al mensaje genérico).
+      const declarada = Object.values(ENTIDADES).some((x) => x.nombre === e?.nombre && x.genero === e?.genero);
+      if (!declarada || typeof e?.nombre !== "string" || e.nombre.trim() === "" || (e.genero !== "m" && e.genero !== "f")) {
         falta = true;
         return "";
       }

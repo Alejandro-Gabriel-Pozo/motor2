@@ -148,7 +148,7 @@ describe("casos de uso de la recepción de un traspaso", () => {
 
     it("NO_ENCONTRADO", async () => {
       const r = await aceptarTraspasoCasoDeUso(comoB(), { traspasoId: "no-existe", seccionDestinoId: seccionBId, claveIdempotencia: null });
-      expect(r).toEqual({ ok: false, codigo: "NO_ENCONTRADO", mensaje: "No se encontró ese traspaso." });
+      expect(r).toEqual({ ok: false, codigo: "NO_ENCONTRADO", mensaje: "No se encontró el traspaso." });
     });
 
     it("LADO: el origen no puede aceptar su propio envío", async () => {
@@ -213,7 +213,7 @@ describe("casos de uso de la recepción de un traspaso", () => {
     it("NO_ENCONTRADO / LADO / ESTADO con los textos de antes", async () => {
       const mp = await producto(10);
       const env = await envio(mp.id, 4);
-      expect(await rechazarEnvioDeTraspasoCasoDeUso(comoB(), { traspasoId: "no-existe", motivo: null })).toEqual({ ok: false, codigo: "NO_ENCONTRADO", mensaje: "No se encontró ese traspaso." });
+      expect(await rechazarEnvioDeTraspasoCasoDeUso(comoB(), { traspasoId: "no-existe", motivo: null })).toEqual({ ok: false, codigo: "NO_ENCONTRADO", mensaje: "No se encontró el traspaso." });
       expect(await rechazarEnvioDeTraspasoCasoDeUso(comoA(), { traspasoId: env.id, motivo: null })).toEqual({
         ok: false,
         codigo: "LADO",
@@ -293,7 +293,7 @@ describe("casos de uso de la recepción de un traspaso", () => {
       expect(await confirmarReingresoDeTraspasoCasoDeUso(comoA(), { traspasoId: "no-existe", claveIdempotencia: null })).toEqual({
         ok: false,
         codigo: "NO_ENCONTRADO",
-        mensaje: "No se encontró ese traspaso.",
+        mensaje: "No se encontró el traspaso.",
       });
       expect(await confirmarReingresoDeTraspasoCasoDeUso(comoB(), { traspasoId: enviado.id, claveIdempotencia: null })).toEqual({
         ok: false,

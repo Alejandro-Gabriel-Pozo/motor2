@@ -17,8 +17,8 @@ describe("guardComandoResolverConteo", () => {
     expect(guardComandoResolverConteo({ conteoId: "c-1", comoResolver })).toMatchObject({ ok: false, codigo: "formato" });
   });
 
-  it.each([undefined, null, "", 42, {}])("conteoId %j rechaza con «No se encontró ese conteo.»", (conteoId) => {
-    expect(guardComandoResolverConteo({ conteoId, comoResolver: "ajustar" })).toMatchObject({ ok: false, mensaje: "No se encontró ese conteo." });
+  it.each([undefined, null, "", 42, {}])("conteoId %j rechaza con «No se encontró el conteo.»", (conteoId) => {
+    expect(guardComandoResolverConteo({ conteoId, comoResolver: "ajustar" })).toMatchObject({ ok: false, mensaje: "No se encontró el conteo." });
   });
 
   it("sin entrada: rechaza igual", () => {
@@ -32,7 +32,7 @@ describe("guardComandoCancelarConteo", () => {
   });
 
   it.each([undefined, null, "", 42, {}])("conteoId %j rechaza (con undefined Prisma ignoraría el filtro y cargaría el primer conteo)", (conteoId) => {
-    expect(guardComandoCancelarConteo({ conteoId })).toMatchObject({ ok: false, mensaje: "No se encontró ese conteo." });
+    expect(guardComandoCancelarConteo({ conteoId })).toMatchObject({ ok: false, mensaje: "No se encontró el conteo." });
   });
 
   it("sin entrada: rechaza igual", () => {

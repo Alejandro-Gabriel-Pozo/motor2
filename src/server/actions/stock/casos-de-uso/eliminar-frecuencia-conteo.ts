@@ -3,6 +3,8 @@ import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoEliminarFrecuenciaConteo, ResultadoEliminarFrecuenciaConteo } from "@/core/features/stock/frecuencia-conteo.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { borrarFrecuenciaConteo } from "@/server/persistencia/stock/frecuencia-conteo";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 
 /**
  * Caso de uso «borrar una fila de la agenda de conteo» (Hito 4 de la pureza, bloque C de la pieza carta/catálogo/stock, paso H4C-19 — `docs/plan-hito-4-pureza.md`
@@ -24,7 +26,7 @@ export async function eliminarFrecuenciaConteoCasoDeUso(
 ): Promise<ResultadoEliminarFrecuenciaConteo> {
   const { id } = comando;
   const fila = await actor.db.frecuenciaConteoProducto.findUnique({ where: { id } });
-  if (!fila || fila.sucursalId !== actor.sucursalId) return fracaso("NO_ENCONTRADA", "No se encontró esa fila de Frecuencia de conteo.");
+  if (!fila || fila.sucursalId !== actor.sucursalId) return fracaso("NO_ENCONTRADA", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.fila_de_frecuencia_de_conteo }));
   await borrarFrecuenciaConteo(actor.db, { id });
   return exito("Fila de Frecuencia de conteo eliminada.", null);
 }

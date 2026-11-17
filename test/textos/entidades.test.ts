@@ -27,6 +27,9 @@ describe("textoDe con entidad: el género de la cosa", () => {
     const espia = vi.spyOn(console, "error").mockImplementation(() => {});
     const leer = textoDe as unknown as (clave: string, valores?: Record<string, unknown>) => string;
     expect(leer("rechazo.NO_ENCONTRADO", { entidad: { nombre: "mesa", genero: "x" } })).toBe(MENSAJE_GENERICO);
+    // bien formada pero que NO está en la tabla (con un cast): también falla cerrado, no se escribe
+    expect(leer("rechazo.NO_ENCONTRADO", { entidad: { nombre: "mesa", genero: "f" } })).toBe(MENSAJE_GENERICO);
+    expect(leer("rechazo.NO_ENCONTRADO", { entidad: { nombre: "sucursal", genero: "m" } })).toBe(MENSAJE_GENERICO);
     expect(leer("rechazo.NO_ENCONTRADO", { entidad: { nombre: " ", genero: "m" } })).toBe(MENSAJE_GENERICO);
     expect(leer("rechazo.NO_ENCONTRADO", { entidad: "sucursal" })).toBe(MENSAJE_GENERICO);
     expect(leer("rechazo.NO_ENCONTRADO", { entidad: null })).toBe(MENSAJE_GENERICO);
