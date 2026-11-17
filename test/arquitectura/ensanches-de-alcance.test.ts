@@ -239,6 +239,13 @@ const VERIFICACION: Readonly<Record<string, UsoDeVerificacion>> = {
     devuelve: "MENSAJE",
     motivo: "cupos de una promo: el piso de $0,01 por unidad se mide contra el precio local de CUALQUIER sucursal (`PromoCartaSucursal`); la transacción SERIALIZABLE lee toda la empresa y escribe solo cupos y auditoría de empresa; el rechazo no nombra importe ni sucursal. GO-3b (D-2): también las alícuotas de los productos de la carta de cualquier sucursal en las secciones de los cupos (el rechazo nombra dos productos del catálogo de la empresa, nunca una sucursal)",
   },
+  "src/server/actions/carta/casos-de-uso/guardar-parte-de-promo.ts": {
+    lectores: {},
+    directos: [],
+    transaccionA: { conTransaccionSerializable: 0 },
+    devuelve: "MENSAJE",
+    motivo: "E2a, UNA parte de una promo (cupo y platos en una transacción): igual que los cupos, el piso de $0,01 por unidad se mide contra el precio local de CUALQUIER sucursal (`PromoCartaSucursal`) y las alícuotas de los componentes posibles miran la carta de todas; la transacción SERIALIZABLE lee toda la empresa y escribe solo cupos, platos y auditoría de empresa; el rechazo no nombra importe ni sucursal",
+  },
   // ── Carta: GO-3b, las opciones de un lugar LISTA (D-2: las alícuotas de los componentes posibles del combo, en la carta de CUALQUIER sucursal) ─────────────────────────────────────────────────
   "src/server/actions/carta/casos-de-uso/agregar-entrada-de-cupo.ts": {
     lectores: {},

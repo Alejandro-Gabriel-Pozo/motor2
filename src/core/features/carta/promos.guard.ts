@@ -1,8 +1,9 @@
 import { esIdentificador } from "@/core/datos/identificador";
-import { MAXIMO_CUPOS_POR_PROMO, validarTopeDeLista, LARGO_MAXIMO_DE_ID } from "@/core/datos/limites";
+import { MAXIMO_CUPOS_POR_PROMO, MAXIMO_ENTRADAS_POR_PARTE_DE_PROMO, validarTopeDeLista, LARGO_MAXIMO_DE_ID } from "@/core/datos/limites";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
-import { LARGO_MAXIMO_DESCRIPCION_CARTA, LARGO_MAXIMO_NOMBRE_DE_CUPO, LARGO_MAXIMO_TITULO_CARTA, TIPOS_DE_CUPO, validarCantidadCupoPromo, validarOrdenCarta, validarPrecioCarta, validarTextoLibreCarta, type TipoDeCupo } from "@/core/carta/public";
-import type { ComandoGuardarPromoCarta, ComandoGuardarSoloSalonPromoCarta, CupoValidadoPromoCarta } from "./promos.schema";
+import { LARGO_MAXIMO_DESCRIPCION_CARTA, LARGO_MAXIMO_NOMBRE_DE_CUPO, LARGO_MAXIMO_TITULO_CARTA, MODOS_DE_PARTE, TIPOS_DE_CUPO, validarCantidadCupoPromo, validarOrdenCarta, validarPrecioCarta, validarTextoLibreCarta, type TipoDeCupo } from "@/core/carta/public";
+import { guardComandoAgregarEntradaDeCupo } from "./combos.guard";
+import type { ComandoGuardarParteDePromo, ComandoGuardarPromoCarta, ComandoGuardarSoloSalonPromoCarta, CupoValidadoPromoCarta } from "./promos.schema";
 
 /**
  * Guard de la feature «promos de la carta» (convención «guard por feature», 2026-09-25; Hito 4, bloque 4.2, paso H4C-2). Formato del comando, ANTES de tocar la
@@ -143,4 +144,63 @@ export function guardComandoGuardarCuposPromoCarta(entrada: { cupos: unknown }):
     validados.push({ tipo: tipo as TipoDeCupo, seccionCartaId, nombre, cantidadMinima: minima.valor, cantidadMaxima: maxima.valor, orden: i });
   }
   return aceptar(validados);
+}
+
+/**
+ * Guard del comando «guardar UNA parte de una promo» (E2a, `docs/diseno-promo-parte-de-seccion-2026-11-11.md`): la forma, ANTES de leer la base. Declara lo que se PERMITE (todo nace cerrado): el id de la promo; el lugar, exactamente una sección
+ * (`{ tipo: "SECCION", seccionCartaId }`) o una lista con nombre (`{ tipo: "LISTA", nombre }`); el modo, uno de los tres; con `NO_ENTRA` ni cantidades ni platos; con `TODA` solo una sección, las cantidades (mínimo entero de 0 a 999, máximo de 1 a 999, mínimo ≤ máximo)
+ * y ningún plato; con `SOLO_ESTOS` las cantidades y de 0 a `MAXIMO_ENTRADAS_POR_PARTE_DE_PROMO` platos, cada uno validado con el mismo guard de `agregarEntradaDeCupo` (producto, modo de opciones y opciones). Que haya al menos un plato con mínimo mayor a 0 lo decide el caso de
+ * uso (I12b); lo que depende de la base también.
+ */
+export function guardComandoGuardarParteDePromo(entrada: unknown): ResultadoDato<ComandoGuardarParteDePromo> {
+  const e = (typeof entrada === "object" && entrada !== null ? entrada : {}) as { promoCartaId?: unknown; lugar?: unknown; modo?: unknown; cantidadMinima?: unknown; cantidadMaxima?: unknown; entradas?: unknown };
+  if (!esIdentificador(e.promoCartaId) || e.promoCartaId.length > LARGO_MAXIMO_DE_ID) return rechazar("formato", "No se encontró la promo.");
+  const promoCartaId = e.promoCartaId;
+  const l = (typeof e.lugar === "object" && e.lugar !== null ? e.lugar : {}) as { tipo?: unknown; seccionCartaId?: unknown; nombre?: unknown };
+  let lugar: ComandoGuardarParteDePromo["lugar"];
+  if (l.tipo === "SECCION") {
+    if (!esIdentificador(l.seccionCartaId) || l.seccionCartaId.length > LARGO_MAXIMO_DE_ID) return rechazar("vacio", "Elegí la sección de la parte.");
+    if (l.nombre !== undefined) return rechazar("formato", "Una parte de una sección no lleva nombre: se llama como su sección.");
+    lugar = { tipo: "SECCION", seccionCartaId: l.seccionCartaId };
+  } else if (l.tipo === "LISTA") {
+    const nombre = typeof l.nombre === "string" ? l.nombre.trim() : "";
+    if (!nombre) return rechazar("vacio", "Poné un nombre a cada lugar de la promo («Entrada»…).");
+    if (nombre.length > LARGO_MAXIMO_NOMBRE_DE_CUPO) return rechazar("largo", `El nombre de un lugar de la promo puede tener hasta ${LARGO_MAXIMO_NOMBRE_DE_CUPO} caracteres.`);
+    if (l.seccionCartaId !== undefined) return rechazar("formato", "Un lugar con su propia lista no elige de una sección de la carta.");
+    lugar = { tipo: "LISTA", nombre };
+  } else {
+    return rechazar("formato", "El lugar de la parte no es válido.");
+  }
+  const modo = (MODOS_DE_PARTE as readonly unknown[]).includes(e.modo) ? (e.modo as (typeof MODOS_DE_PARTE)[number]) : null;
+  if (modo === null) return rechazar("formato", "Elegí si la parte no entra, entra toda la sección o entran solo ciertos platos.");
+  if (modo === "TODA" && lugar.tipo !== "SECCION") return rechazar("formato", "«Toda la sección» solo se puede elegir en una sección de la carta.");
+  if (modo === "NO_ENTRA") {
+    if (e.cantidadMinima !== undefined || e.cantidadMaxima !== undefined || (e.entradas !== undefined && !(Array.isArray(e.entradas) && e.entradas.length === 0))) {
+      return rechazar("formato", "Una parte que no entra no lleva cantidades ni platos.");
+    }
+    return aceptar({ promoCartaId, lugar, modo, cantidadMinima: 0, cantidadMaxima: 0, entradas: [] });
+  }
+  const minima = validarCantidadCupoPromo(e.cantidadMinima, "La cantidad mínima", 0);
+  if (!minima.ok) return rechazar("rango", minima.mensaje);
+  const maxima = validarCantidadCupoPromo(e.cantidadMaxima, "La cantidad máxima");
+  if (!maxima.ok) return rechazar("rango", maxima.mensaje);
+  if (maxima.valor < 1) return rechazar("rango", "La cantidad máxima de un cupo tiene que ser al menos 1.");
+  if (minima.valor > maxima.valor) return rechazar("rango", "En cada cupo, el mínimo no puede ser mayor que el máximo.");
+  if (modo === "TODA") {
+    if (e.entradas !== undefined && !(Array.isArray(e.entradas) && e.entradas.length === 0)) return rechazar("formato", "«Toda la sección» no lleva platos tildados: entra la sección entera.");
+    return aceptar({ promoCartaId, lugar, modo, cantidadMinima: minima.valor, cantidadMaxima: maxima.valor, entradas: [] });
+  }
+  const crudas = e.entradas === undefined ? [] : e.entradas;
+  if (!Array.isArray(crudas)) return rechazar("formato", "Los platos de la parte no son válidos.");
+  const excede = validarTopeDeLista(crudas, "Los platos de la parte", MAXIMO_ENTRADAS_POR_PARTE_DE_PROMO);
+  if (excede) return rechazar("rango", excede);
+  const entradas: ComandoGuardarParteDePromo["entradas"][number][] = [];
+  for (const cruda of crudas as unknown[]) {
+    const c = (typeof cruda === "object" && cruda !== null ? cruda : {}) as { productoId?: unknown; modoDeOpciones?: unknown; opciones?: unknown };
+    // Cada plato se valida con el guard de `agregarEntradaDeCupo` (con un id de lugar de relleno: el lugar de esta parte lo resuelve el caso de uso).
+    const plato = guardComandoAgregarEntradaDeCupo({ cupoId: "parte", productoId: c.productoId, modoDeOpciones: c.modoDeOpciones ?? "FIJAS", opciones: c.opciones });
+    if (!plato.ok) return plato;
+    entradas.push({ productoId: plato.valor.productoId, modoDeOpciones: plato.valor.modoDeOpciones, opciones: plato.valor.opciones });
+  }
+  return aceptar({ promoCartaId, lugar, modo, cantidadMinima: minima.valor, cantidadMaxima: maxima.valor, entradas });
 }

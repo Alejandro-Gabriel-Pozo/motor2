@@ -1,7 +1,7 @@
 import "server-only";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { mensajePisoDePromo, mensajePisoLocalDePromo, pisoDePrecioDePromo } from "@/core/carta/piso-de-promo";
-import { claveNaturalDeCupo, diferenciaDeCupos, type CupoExistente, type CupoPedido, type TipoDeCupo } from "@/core/carta/public";
+import { claveNaturalDeCupo, diferenciaDeCupos, type CupoExistente, type CupoPedido, type OperacionDeCupo, type TipoDeCupo } from "@/core/carta/public";
 import type { ComandoGuardarCuposPromoCarta, ResultadoGuardarCuposPromoCarta } from "@/core/features/carta/promos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
@@ -137,6 +137,32 @@ export async function guardarCuposPromoCartaCasoDeUso(
     undefined,
     true,
   );
+}
+
+/**
+ * Escribe UNA operación sobre un cupo (baja, cambio o alta) con su auditoría, en la transacción de quien llama (E2a: la comparte `guardarParteDePromo`, que lleva UNA parte al estado pedido; así la cadena escritura → auditoría de `PromoCartaCupo` es una sola).
+ * Devuelve el id del cupo escrito (el nuevo, en un alta).
+ */
+export async function aplicarOperacionDeCupo(
+  tx: Parameters<typeof registrarCambioAuditado>[0],
+  actorId: string,
+  datos: { promoCartaId: string; titulo: string; nombresDeSecciones: ReadonlyMap<string, string> },
+  operacion: OperacionDeCupo,
+): Promise<string> {
+  if (operacion.op === "BAJA") {
+    await darDeBajaCupoDePromo(tx, { id: operacion.cupo.id });
+    await auditarCupo(tx, actorId, datos, operacion.cupo, operacion.cupo, null);
+    return operacion.cupo.id;
+  }
+  if (operacion.op === "CAMBIAR") {
+    const { estaba, queda } = operacion;
+    await cambiarCupoDePromo(tx, { id: estaba.id, nombre: queda.nombre, cantidadMinima: queda.cantidadMinima, cantidadMaxima: queda.cantidadMaxima, orden: queda.orden });
+    await auditarCupo(tx, actorId, datos, { id: estaba.id, ...queda }, estaba.activo ? estaba : null, queda);
+    return estaba.id;
+  }
+  const { id } = await crearCupoDePromo(tx, { promoCartaId: datos.promoCartaId, ...operacion.cupo });
+  await auditarCupo(tx, actorId, datos, { id, ...operacion.cupo }, null, operacion.cupo);
+  return id;
 }
 
 /**

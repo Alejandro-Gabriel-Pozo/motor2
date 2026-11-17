@@ -271,6 +271,8 @@ export interface EntradaDeLugarAdmin {
   nombre: string;
   /** `A_ELEGIR`: las opciones de la entrada son las PERMITIDAS y el mozo elige entre ellas (no es una configuración fija). */
   modoDeOpciones: "FIJAS" | "A_ELEGIR";
+  /** Las opciones de la entrada (la configuración fija, o las permitidas con su tope): lo que hace falta para volver a mandarla tal cual al guardar una parte (E2b). */
+  opciones: { opcionId: string; cantidad: number }[];
 }
 
 /** Un lugar de entradas de una promo: LISTA («Bebida»: se elige de una lista; con una sola entrada y mínimo = máximo, viene FIJO). */

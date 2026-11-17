@@ -23,6 +23,8 @@ export const MAXIMO_SUSTITUTOS_POR_INGREDIENTE = 20;
 export const MAXIMO_PRODUCTOS_POR_ITEM_AGRUPADO = 100;
 /** S-52: cupos (secciones) de una promo combo. Una promo real tiene 2 a 5; la lista que llega del cliente no puede ser un arreglo de miles. */
 export const MAXIMO_CUPOS_POR_PROMO = 50;
+/** E2a: platos que una sola parte «Solo estos platos» de una promo puede llevar en un guardado (una sección real tiene decenas; un arreglo de miles no es un pedido). */
+export const MAXIMO_ENTRADAS_POR_PARTE_DE_PROMO = 200;
 export const MAXIMO_DESTINOS_RECLASIFICACION = 100;
 
 /** `Int` de Postgres es de 32 bits; este tope queda muy por debajo y basta para el uso real (minutos, días, raciones, orden). */

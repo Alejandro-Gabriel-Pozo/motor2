@@ -137,6 +137,13 @@ const completos: Record<string, Valor> = {
       intento(c, ["promoCartaId"], [k.promoCartaId, [{ seccionCartaId: c.propio.seccionCartaId, cantidadMaxima: 2 }]]),
       intento(c, ["seccionCartaId"], [c.propio.promoCartaId, [{ seccionCartaId: k.seccionCartaId, cantidadMaxima: 2 }]]),
     ),
+  // E2a: UNA parte de la promo (cupo y platos); con lo AJENO (la promo, la sección o el plato del otro mundo) no se encuentra y no se toca; con lo propio se escribe de verdad.
+  "accion|actions/carta/promos.ts|guardarParteDePromo": (k, c) =>
+    conVariantes(
+      intento(c, ["promoCartaId"], [{ promoCartaId: k.promoCartaId, lugar: { tipo: "SECCION", seccionCartaId: c.propio.seccionCartaId }, modo: "TODA", cantidadMinima: 1, cantidadMaxima: 2 }]),
+      intento(c, ["seccionCartaId"], [{ promoCartaId: c.propio.promoCartaId, lugar: { tipo: "SECCION", seccionCartaId: k.seccionCartaId }, modo: "TODA", cantidadMinima: 1, cantidadMaxima: 2 }]),
+      intento(c, ["productoPv2Id"], [{ promoCartaId: c.propio.promoCartaId, lugar: { tipo: "LISTA", nombre: "Parte nueva" }, modo: "SOLO_ESTOS", cantidadMinima: 1, cantidadMaxima: 1, entradas: [{ productoId: k.productoPv2Id }] }]),
+    ),
   // GO-3b (ADR-032): las opciones de un lugar LISTA (el `pv2`, con receta, todavía no es opción: con lo propio se agrega de verdad) y la vigencia del combo (versión 1, la sembrada).
   "accion|actions/carta/combos.ts|agregarEntradaDeCupo": (k, c) =>
     conVariantes(

@@ -33,6 +33,8 @@ const IMPORTADOS_PUROS: Record<string, string> = {
   admisionDelFormulario: "./admision-del-formulario",
   // GO-3b (U1): arma los lugares de entradas (lista y del día) desde el FormData del formulario de cupos de una promo; no valida ni escribe.
   lugaresDelFormulario: "./lugares-del-formulario",
+  // Cantidad exacta de una parte de promo (2026-11-17): elige entre el campo de cantidad y mín./máx. del FormData de un cupo; no valida ni escribe (lo hace el guard).
+  cantidadesDelFormulario: "@/core/carta/public",
 };
 /** Abrir/cerrar sesión: solo en estos archivos (el login y los dos shells). */
 const SESION: Record<string, string[]> = {
