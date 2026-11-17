@@ -38,6 +38,11 @@ export interface EntradaDeCobrarCuenta {
   renglones: readonly { medioDePagoId: string; importe: string }[];
 }
 
+/** Lo que manda la pantalla para iniciar o cancelar el cierre de una sesión (C1b): solo cuál sesión. */
+export interface EntradaDeCierreDeSesion {
+  sesionId: string;
+}
+
 export interface EntradaDeCerrarSesion {
   sesionId: string;
   /** Cantidad de billetes por denominación en pesos («20000», «10000»… «10»); las que faltan valen 0. */
