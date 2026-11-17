@@ -146,6 +146,13 @@ const CONGELADAS: Record<string, Congelada> = {
           "Parte P1, operador como Pedernal (pedido del dueño 2026-11-16, «como pedernal,»; CAMBIA COMPORTAMIENTO, deliberado): la semilla de `partes_ver` y `partes_editar` pasa de [admin] a [admin, operador] (`partes_desactivar` NO cambia: piso administrador). El operador pasa de no tener esas dos claves a tenerlas (ok en ver y editar) en la matriz de acceso. Revisado con `git diff -U0`: cambia SOLO lo de `partes_ver`/`partes_editar` y el rol operador; ningún otro permiso ni rol cambia.",
       },
       {
+        blob: "22b61bd08eeb8349a96cd72a5c4a36cdbbaa7cf9",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `f17172aa` (la fusión de `caja-c1-pr-a` en `caja-c1-pr-b`, antes de las claves de la caja).
+        commit: "f17172aa",
+        motivo:
+          "Caja y cobro C1, PR-B (ADITIVO; seis claves nuevas, semilla solo `admin`, todo nace cerrado): `caja_ver`, `caja_abrir_sesion`, `caja_cerrar_sesion`, `caja_mover_efectivo`, `caja_anular_movimiento_ajeno` y `cobrar_cuenta` (de sucursal, módulo provisorio `salon`). Se suman a las listas de claves de cada bloque de la matriz de acceso (una línea por lista, mismas listas de antes con las seis claves de más; 224 líneas). Ninguna otra respuesta del guard ni ningún otro permiso cambia: el operador no recibe ninguna (todas «ver=false editar=false»).",
+      },
+      {
         blob: "5ee380617dc513cd0afd4eb9f0b741599b0c4cf5",
         // El commit PADRE de la regeneración es `39fc9233` (la punta de `origin/main` integrada por merge en la rama de Compras N3).
         commit: "39fc9233",
@@ -293,6 +300,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "72fe9640",
         motivo:
           "Parte P1, operador como Pedernal (pedido del dueño 2026-11-16, «como pedernal,»; CAMBIA COMPORTAMIENTO, deliberado): la semilla de `partes_ver` y `partes_editar` pasa de [admin] a [admin, operador] (`partes_desactivar` NO cambia: piso administrador). Las filas `PERMISO operador:partes_ver` y `operador:partes_editar` pasan de ver=false editar=false a ver=true editar=true en las dos fotos. Revisado con `git diff -U0`: cambia SOLO lo de `partes_ver`/`partes_editar` y el rol operador; ningún otro permiso ni rol cambia.",
+      },
+      {
+        blob: "30eb8c0f3e1cd2ebba1151189a35d412c72905e0",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `f17172aa` (la fusión de `caja-c1-pr-a` en `caja-c1-pr-b`, antes de las claves de la caja).
+        commit: "f17172aa",
+        motivo:
+          "Caja y cobro C1, PR-B (ADITIVO; seis claves nuevas, semilla solo `admin`, todo nace cerrado): `caja_ver`, `caja_abrir_sesion`, `caja_cerrar_sesion`, `caja_mover_efectivo`, `caja_anular_movimiento_ajeno` y `cobrar_cuenta` (de sucursal, módulo provisorio `salon`). `ACCIONES 133 a 139` (en las dos fotos) y las doce filas `PERMISO` por foto de las seis claves (admin ver=true editar=true; operador ver=false editar=false). Revisado con `git diff -U0`. Ninguna otra respuesta del guard ni ningún otro permiso cambia: el operador no recibe ninguna (todas «ver=false editar=false»).",
       },
       {
         blob: "22f3ad5659d6daf834e82fc6152b4afc993c6944",

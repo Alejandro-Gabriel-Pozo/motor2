@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { Prisma } from "@prisma/client";
 import { intento, variantes, type ContextoDeArgumentos, type Generadores, type Kit, type Valor } from "./argumentos";
 import { ZONA_ARGENTINA, diaDeCalendario } from "../../../src/core/tiempo/zona-horaria";
 import { nroFacturaDePrueba } from "../../setup/comprobante-de-prueba";
@@ -417,6 +418,24 @@ const completos: Record<string, Valor> = {
       intento(c, ["productoPvId"], [c.propio.sucursalId, [k.productoPvId], 1, false, { [k.productoPvId]: 1234 }]),
     ),
 
+  // --- caja (C1; GT-3b) ---
+  // Las claves de reintento son UUID fijos (v4) y distintos por puerta. Abrir: no lleva ids (la sucursal es la activa), así que solo se ejerce sin sesión, sin empresa y como control positivo; el control se ejerce parado en la sucursal
+  // vacía (`EN_LA_SUCURSAL_VACIA`: S1 ya tiene su caja abierta y rechazaría con «ya tiene una sesión abierta»).
+  "accion|actions/caja/caja.ts|abrirSesionDeCaja": () => [{ claveIdempotencia: "00000000-0000-4000-8000-00000000ca01", fondo: "0" }],
+  "accion|actions/caja/caja.ts|registrarMovimientoDeCaja": (k, c) =>
+    conVariantes(intento(c, ["sesionDeCajaId"], [{ claveIdempotencia: "00000000-0000-4000-8000-00000000ca02", sesionId: k.sesionDeCajaId, sentido: "INGRESO", importe: "10", motivo: "Ingreso de prueba" }])),
+  "accion|actions/caja/caja.ts|anularMovimientoDeCaja": (k, c) =>
+    conVariantes(intento(c, ["movimientoManualId"], [{ claveIdempotencia: "00000000-0000-4000-8000-00000000ca03", movimientoId: k.movimientoManualId, motivo: "Anulación de prueba" }])),
+  // Cerrar con un conteo cualquiera: cerrar con diferencia se permite (el control positivo termina en `ok: true` aunque no cuadre con lo esperado).
+  "accion|actions/caja/caja.ts|cerrarSesionDeCaja": (k, c) =>
+    conVariantes(intento(c, ["sesionDeCajaId"], [{ sesionId: k.sesionDeCajaId, billetes: { "1000": 1 }, monedas: "0", conformeDeLosDemasMedios: false, observacion: null }])),
+  // Cobrar la cuenta cerrada con venta y sin cobrar del mundo (el ticket vigente suma 1000 + 500) en efectivo: la cuenta ajena se «no encuentra» (de otra empresa, o de otra sucursal de la misma).
+  "accion|actions/caja/caja.ts|cobrarCuenta": (k, c) =>
+    conVariantes(intento(c, ["cuentaCerradaId"], [{ claveIdempotencia: "00000000-0000-4000-8000-00000000ca04", cuentaId: k.cuentaCerradaId, totalVisto: "1500", renglones: [{ medioDePagoId: k.medioEfectivoId, importe: "1500" }] }])),
+
+  // Un ayudante PURO de la lectura de caja (un `Decimal` de una columna a centavos): no lee la base ni recibe ids, así que se ejerce con un importe cualquiera (no escribe nada y no devuelve filas de nadie).
+  "lectura|lecturas/caja/centavos-de-decimal.ts|centavosDeDecimal": () => [new Prisma.Decimal("12.34")],
+
   // --- POS ---
   // Mezclar una cuenta PROPIA con ítems de OTRA sucursal: el envío tiene que acotar los ítems por la cuenta, no solo mirar que la cuenta sea de la sucursal.
   "accion|actions/pos/cuenta-pedido.ts|enviarACocina": (k, c) =>
@@ -467,6 +486,10 @@ const parametros: Record<string, Record<string, Valor>> = {
   "accion|actions/catalogo/precio-local.ts|setPrecioLocalProducto": { esperado: () => ({ precio: 1234, habilitado: true }) },
   "accion|actions/catalogo/receta-sucursal.ts|copiarRecetaPropiaDeOtraSucursal": { sucursalOrigenId: (k, c) => (c.escenario === "controlMutacion" ? c.mundo.s4Id : k.sucursalId) },
   "accion|actions/carta/registro-publico.ts|agregarSucursalAlPortal": { sucursalId: (k, c) => (c.escenario === "controlMutacion" ? c.mundo.s4Id : k.sucursalId) },
+  // Caja (C1): la sesión cuyas cobranzas se leen; la lectura de `server/lecturas` recibe además la sucursal y la empresa (del contexto de quien la llama; en la matriz, la del escenario).
+  "accion|actions/caja/lecturas-de-caja.ts|leerCobranzasDeSesion": { sesionId: (k) => k.sesionDeCajaId },
+  "lectura|lecturas/caja/cobranzas-de-sesion.ts|listarCobranzasDeSesion": { args: (k) => ({ sucursalId: k.sucursalId, sesionId: k.sesionDeCajaId }) },
+  "lectura|lecturas/caja/cuentas-sin-cobrar.ts|listarCuentasSinCobrar": { args: (k) => ({ empresaId: k.empresaId, sucursalId: k.sucursalId, ahora: new Date() }) },
   "accion|actions/pos/cuenta-anulacion.ts|anularItemEnviado": { cuentaItemId: (k) => k.cuentaItemEnviadoId, restanteVisto: () => 2 },
   "accion|actions/pos/cuenta-anulacion.ts|anularPromoEnviada": { promoCuentaId: (k) => k.promoCuentaEnviadaId },
   "accion|actions/pos/cuenta-apertura.ts|liberarMesa": { cuentaId: (k) => k.cuentaVaciaId },

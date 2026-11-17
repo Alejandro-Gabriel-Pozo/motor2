@@ -154,7 +154,7 @@ describe("la reclasificación del gobierno (ADR-027 §3, 3.4-4)", () => {
     for (const a of ACCIONES.filter((x) => (ACCIONES_DE_EMPRESA_DE_D15 as readonly string[]).includes(x.clave))) expect([...a.rolesEditarSemilla], a.clave).toEqual(["admin"]);
   });
 
-  it("el conteo del catálogo: 55 operario, 60 administrador, 12 administrador de sistema, 2 gerente", () => {
+  it("el conteo del catálogo: 61 operario, 64 administrador, 12 administrador de sistema, 2 gerente", () => {
     // 61 → 60 administrador: se retira `notificar_alertas` (decisión del dueño, limpieza paquete A paso 3; clase A).
     // 56 → 55 operario: se retira `pos_limite_mesas_abiertas` (el límite de mesas abiertas por sucursal; decisión del dueño 2026-10-29; clase O).
     // 55 → 56 operario y 62 → 61 administrador: E3a baja `compra_repartir` a piso operario (decisión del dueño P3, 2026-10-28; clase A → O, semilla sigue solo `admin`).
@@ -169,7 +169,8 @@ describe("la reclasificación del gobierno (ADR-027 §3, 3.4-4)", () => {
     // 56 → 58 operario y 60 → 61 administrador: Parte P1 suma `partes_ver` y `partes_editar` (clase O) y `partes_desactivar` (clase A).
     // 58 → 57 operario y 61 → 62 administrador: Compras N3-a (2026-11-16) sube `compra_recibir` de piso operario (clase O) a administrador (clase A): confirman el gerente y el administrador, no el operador.
     // 57 → 58 operario: Compras N3-b (2026-11-16) suma `compra_controlar_recepcion` (clase L: piso operario, semilla admin y operador).
+    // +3 operario y +3 administrador: Caja y cobro C1 PR-B suma `caja_ver`, `caja_abrir_sesion` y `cobrar_cuenta` (clase O) y `caja_cerrar_sesion`, `caja_mover_efectivo` y `caja_anular_movimiento_ajeno` (clase A).
     // 51 → 52: M.2 P1 suma `producto_campos_sensibles` (piso operario, clase O); los otros pisos no se mueven.
-    expect(["operario", "administrador", "administrador_sistema", "gerente"].map((p) => conPiso(p as NivelDeAccion).length)).toEqual([58, 62, 12, 2]);
+    expect(["operario", "administrador", "administrador_sistema", "gerente"].map((p) => conPiso(p as NivelDeAccion).length)).toEqual([61, 65, 12, 2]);
   });
 });

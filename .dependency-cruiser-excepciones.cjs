@@ -161,6 +161,11 @@ const ACCIONES_CON_CASO_DE_USO = [
       "Parte P1 (b): altaDeParte → partes/casos-de-uso/alta-de-parte.ts, editarParte → editar-parte.ts y cambiarEstadoDeParte → cambiar-estado-de-parte.ts (transacción serializable, clave de alta única por empresa, control de versión, persistencia y auditoría sin valores personales viven en el caso de uso); la búsqueda es una lectura.",
   },
   {
+    ruta: "src/server/actions/caja/caja.ts",
+    motivo:
+      "Caja y cobro C1, PR-B: abrirSesionDeCaja → caja/casos-de-uso/abrir-sesion.ts, registrarMovimientoDeCaja → registrar-movimiento-manual.ts, anularMovimientoDeCaja → anular-movimiento.ts, cerrarSesionDeCaja → cerrar-sesion.ts y cobrarCuenta → cobrar-cuenta.ts (transacción serializable, clave de reintento con huella, persistencia en server/persistencia/caja y auditoría viven en el caso de uso). La acción solo pide el permiso de sucursal, valida el formato y traduce el resultado. El archivo nace migrado: no tiene ninguna otra función.",
+  },
+  {
     ruta: "src/server/actions/movimientos/pagos-factura-proveedor.ts",
     motivo:
       "Pagos X0: declararPagoDeFacturaProveedor → movimientos/casos-de-uso/declarar-pago-de-factura-proveedor.ts y anularPagoDeFacturaProveedor → anular-pago-de-factura-proveedor.ts (transacción serializable, idempotencia, candado de la cabecera, persistencia en server/persistencia/compras y auditoría viven en el caso de uso). La acción solo pide el permiso de empresa `declarar_pago_compra`, valida el formato y delega.",

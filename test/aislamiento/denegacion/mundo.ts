@@ -73,6 +73,8 @@ export interface KitDeEmpresa {
    * `basesDeUnEjeEnLaCarta`. Grupo y opción propios a propósito: así ningún control positivo de los escritores de opciones (que no dejan a una base sin su precio final) se cruza con él.
    */
   productoBaseId: string;
+  /** Caja (C1): el medio de pago EFECTIVO de la empresa (uno solo; su nombre lleva el marcador, así `leerMediosDeCobro` devuelve algo propio). */
+  medioEfectivoId: string;
 }
 
 export interface KitDeSucursal {
@@ -145,6 +147,9 @@ export interface KitDeSucursal {
   invitacionDeSucursalId: string;
   /** GO-3b: el plato del día de MAÑANA (`DIA_DEL_PLATO_DEL_MUNDO`) del lugar DEL_DIA del combo de la empresa, en esta sucursal (el `pv`). */
   platoDelDiaId: string;
+  /** Caja (C1): la sesión de caja ABIERTA de la sucursal (la única sin cerrar: hay otra, cerrada, para `ultimaSesionDeLaCaja`) y un ingreso manual suyo, hecho por u1 (el que anula `anularMovimientoDeCaja`). */
+  sesionDeCajaId: string;
+  movimientoManualId: string;
 }
 
 /** GO-3b: el día del plato del día que siembra el mundo (mañana en la zona de las empresas del mundo: siempre se puede quitar o copiar). */
@@ -201,6 +206,8 @@ const CAMPOS_DE_SUCURSAL_REGISTRO: Record<keyof KitDeSucursal, true> = {
   invitacionId: true,
   invitacionDeSucursalId: true,
   platoDelDiaId: true,
+  sesionDeCajaId: true,
+  movimientoManualId: true,
 };
 export const CAMPOS_DE_SUCURSAL: ReadonlySet<string> = new Set(Object.keys(CAMPOS_DE_SUCURSAL_REGISTRO));
 
@@ -301,6 +308,8 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
   await db.productoAdmiteOpcion.create({ data: { id: id("admite-entera"), empresaId, productoId: pvBase.id, opcionId: opcionMedidaBase.id, precioAbsoluto: 2500 } });
   const entradaDeCupo = await db.entradaDeCupo.create({ data: { id: id("entrada-de-cupo"), empresaId, cupoId: cupoLista.id, productoId: pv.id } });
   await db.registroAuditoria.create({ data: { id: id("auditoria-empresa"), empresaId, entidad: "Producto", entidadId: mp.id, descripcion: `Auditoría de empresa ${marca}`, campo: "nombre", valorAnterior: "a", valorNuevo: "b", actorId: usuarioId } });
+  // Caja (C1): el medio EFECTIVO de la empresa (el único que existe antes de abrir una caja). El nombre lleva el marcador: `leerMediosDeCobro` y los `esperadoPorMedio` lo devuelven.
+  const medioEfectivo = await db.medioDePago.create({ data: { id: randomUUID(), empresaId, tipo: "EFECTIVO", nombre: `Efectivo ${marca}` } });
   return {
     marca,
     empresaId,
@@ -337,6 +346,7 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
     entradaDeCupoId: entradaDeCupo.id,
     cupoDelDiaId: cupoDelDia.id,
     productoBaseId: pvBase.id,
+    medioEfectivoId: medioEfectivo.id,
   };
 }
 
@@ -555,6 +565,41 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   const invitacionSucursal = await db.invitacionSucursal.create({ data: { id: id("invitacion-sucursal"), empresaId, invitacionId: invitacion.id, sucursalId, rolId: miembro.rolId, notas: `Notas de invitación ${marca}`, invitadoPorId: miembro.id } });
   await db.registroAuditoria.create({ data: { id: id("auditoria"), empresaId, entidad: "Operacion", entidadId: compra.id, descripcion: `Auditoría de sucursal ${marca}`, campo: "detalleLibre", valorAnterior: "a", valorNuevo: "b", actorId: miembro.id, sucursalId } });
 
+  // CAJA (C1; GT-3b): la caja de la sucursal con DOS sesiones —una CERRADA con su arqueo (la que lee `ultimaSesionDeLaCaja`) y una ABIERTA con su fondo y un ingreso manual de u1 (lo que leen y escriben las acciones de caja)—
+  // y una cuenta ya COBRADA en efectivo (lo que lee `leerCobranzasDeSesion`; la cuenta cerrada del ticket queda SIN cobrar: es la que cobra el control positivo de `cobrarCuenta`). Los ids de estas tablas son UUID: el marcador
+  // va en los textos (la observación del cierre, el motivo del ingreso, el nombre del efectivo y el id de la cuenta cobrada). Cada sesión sella la zona de la empresa, el corte de la sucursal y la fecha de negocio que
+  // calcula la MISMA función de la base que el disparador exige, y la jornada de esa fecha nace abierta (una por día).
+  const caja = await db.caja.create({ data: { id: randomUUID(), empresaId, sucursalId, nombre: "Caja 1" } });
+  const selloDeLaSesion = async (instante: Date) => {
+    const [fila] = await db.$queryRaw<Array<{ fecha: string; zona: string }>>`SELECT caja_fecha_de_negocio(${instante}::timestamptz, e."zonaHoraria", s."horaDeCorte")::text AS fecha, e."zonaHoraria" AS zona FROM "Empresa" e JOIN "Sucursal" s ON s."empresaId" = e."id" WHERE e."id" = ${empresaId} AND s."id" = ${sucursalId}`;
+    const fechaDeNegocio = fechaDeColumnaDate(fila.fecha);
+    await db.jornadaDeSucursal.createMany({ data: [{ id: randomUUID(), empresaId, sucursalId, fechaDeNegocio }], skipDuplicates: true });
+    return { fechaDeNegocio, zonaHoraria: fila.zona, horaDeCorte: new Date("1970-01-01T00:00:00.000Z") };
+  };
+  const abrirSesionDeCaja = async (abiertaEn: Date) =>
+    db.sesionCaja.create({ data: { id: randomUUID(), empresaId, sucursalId, cajaId: caja.id, estado: "ABIERTA", ...(await selloDeLaSesion(abiertaEn)), abiertaEn, abiertaPorId: miembro.id, claveIdempotencia: randomUUID(), huella: "a".repeat(64) } });
+  const fondoDeCaja = (sesionId: string, importe: string) => db.movimientoCaja.create({ data: { id: randomUUID(), empresaId, sucursalId, sesionId, clase: "FONDO_INICIAL", medioDePagoId: k.medioEfectivoId, importe, creadoPorId: miembro.id } });
+  const sesionCerrada = await abrirSesionDeCaja(enElPasado(3 * HORA_MS));
+  await fondoDeCaja(sesionCerrada.id, "3000.00");
+  await db.arqueoCaja.create({ data: { id: randomUUID(), empresaId, sucursalId, sesionId: sesionCerrada.id, medioDePagoId: k.medioEfectivoId, esperado: "3000.00", contado: "3000.00", contadoMonedas: "0.00", conforme: false } });
+  await db.arqueoBillete.create({ data: { id: randomUUID(), empresaId, sucursalId, sesionId: sesionCerrada.id, denominacion: 1000, cantidad: 3 } });
+  await db.sesionCaja.update({ where: { id: sesionCerrada.id }, data: { estado: "CERRADA", cerradaEn: enElPasado(2 * HORA_MS), cerradaPorId: miembro.id, observacion: `Cierre ${marca}` } });
+  const sesionDeCaja = await abrirSesionDeCaja(enElPasado(HORA_MS / 2));
+  await fondoDeCaja(sesionDeCaja.id, "5000.00");
+  const movimientoManual = await db.movimientoCaja.create({
+    data: { id: randomUUID(), empresaId, sucursalId, sesionId: sesionDeCaja.id, clase: "INGRESO_MANUAL", medioDePagoId: k.medioEfectivoId, importe: "200.00", motivo: `Ingreso manual ${marca}`, creadoPorId: k.usuarioId },
+  });
+  const mesaCobrada = await db.mesa.create({ data: { id: id("mesa-e"), empresaId, sucursalId, numero: 6 } });
+  const cuentaCobrada = await db.cuenta.create({ data: { id: id("cuenta-cobrada"), empresaId, mesaId: mesaCobrada.id, abiertaPorId: miembro.id, cerradaEn: enElPasado(HORA_MS), cerradaPorId: miembro.id } });
+  // La cobranza, su movimiento COBRO y su renglón van en UNA transacción: la base verifica al confirmar que lo cobrado suma el total.
+  await db.$transaction(async (tx) => {
+    const cobranzaId = randomUUID();
+    const movimientoId = randomUUID();
+    await tx.cobranza.create({ data: { id: cobranzaId, empresaId, sucursalId, cuentaId: cuentaCobrada.id, sesionId: sesionDeCaja.id, total: "100.00", claveIdempotencia: randomUUID(), huella: "b".repeat(64), creadoPorId: miembro.id } });
+    await tx.movimientoCaja.create({ data: { id: movimientoId, empresaId, sucursalId, sesionId: sesionDeCaja.id, clase: "COBRO", medioDePagoId: k.medioEfectivoId, importe: "100.00", creadoPorId: miembro.id } });
+    await tx.cobro.create({ data: { id: randomUUID(), empresaId, sucursalId, cobranzaId, orden: 1, medioDePagoId: k.medioEfectivoId, movimientoId, importe: "100.00" } });
+  });
+
   return {
     marca,
     sucursalId,
@@ -605,6 +650,8 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
     invitacionId: invitacion.id,
     invitacionDeSucursalId: invitacionSucursal.id,
     platoDelDiaId: platoDelDia.id,
+    sesionDeCajaId: sesionDeCaja.id,
+    movimientoManualId: movimientoManual.id,
   };
 }
 

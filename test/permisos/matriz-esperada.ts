@@ -136,6 +136,13 @@ export const MATRIZ_ESPERADA: Readonly<Record<AccionClave, FilaEsperada>> = {
   partes_ver: { modulo: "proveedores_basico", contexto: "empresa", nivelMinimo: "operario", roles: ["admin", "operador"] }, // Parte P1, D10 (2026-11-12): piso como Pedernal (el operario puede buscar, dar de alta y editar fichas); semilla solo `admin` (todo nace cerrado).
   partes_editar: { modulo: "proveedores_basico", contexto: "empresa", nivelMinimo: "operario", roles: ["admin", "operador"] },
   partes_desactivar: { modulo: "proveedores_basico", contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] }, // solo el administrador o el gerente desactiva.
+  // Caja y cobro C1, PR-B (2026-11-16): seis claves de SUCURSAL, todas con la semilla solo `admin` (nacen cerradas). Piso operario: ver, abrir la caja y cobrar; piso administrador: cerrar la caja, mover efectivo a mano y anular lo ajeno. Módulo provisorio `salon` (el catálogo de módulos del Frente 4 no tiene `caja` todavía).
+  caja_ver: { modulo: "salon", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin"] },
+  caja_abrir_sesion: { modulo: "salon", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin"] },
+  caja_cerrar_sesion: { modulo: "salon", contexto: "sucursal", nivelMinimo: "administrador", roles: ["admin"] },
+  caja_mover_efectivo: { modulo: "salon", contexto: "sucursal", nivelMinimo: "administrador", roles: ["admin"] },
+  caja_anular_movimiento_ajeno: { modulo: "salon", contexto: "sucursal", nivelMinimo: "administrador", roles: ["admin"] },
+  cobrar_cuenta: { modulo: "salon", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin"] },
   producto_disponibilidad: { modulo: "catalogo_basico", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin", "operador"] },
   pos_alta_mesa: { modulo: "salon", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin"] },
   pos_abrir_cuenta: { modulo: "salon", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin"] },
