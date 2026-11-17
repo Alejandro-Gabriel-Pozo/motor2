@@ -28,15 +28,16 @@ import { crearMembresia } from "../setup/membresia";
  *
  * Los roles son de ejemplo: «admin» es nivel administrador; «operador» y los personalizados (acá «mozo») son nivel operario.
  */
-const DE_ADMIN_SUCURSAL = "secciones"; // piso administrador, contexto sucursal
-const DE_ADMIN_EMPRESA = "unidades"; // piso administrador, contexto empresa
+// PISOS-65 (2026-11-17): las 65 acciones de piso administrador bajaron a operario; el piso más alto que queda para estos ejemplos es el de gobierno (administrador de sistema).
+const DE_ADMIN_SUCURSAL = "ver_auditoria"; // piso administrador de sistema, contexto sucursal
+const DE_ADMIN_EMPRESA = "renombrar_rol"; // piso administrador de sistema, contexto empresa
 const DE_OPERARIO_SUCURSAL = "producto_disponibilidad"; // piso operario, contexto sucursal
 const DE_OPERARIO_EMPRESA = "alta_producto"; // piso operario, contexto empresa
 
 describe("el catálogo y los niveles (puro)", () => {
   it("los ejemplos de este test son del piso y contexto que dicen ser", () => {
-    expect(nivelMinimoDeAccion(DE_ADMIN_SUCURSAL)).toBe("administrador");
-    expect(nivelMinimoDeAccion(DE_ADMIN_EMPRESA)).toBe("administrador");
+    expect(nivelMinimoDeAccion(DE_ADMIN_SUCURSAL)).toBe("administrador_sistema");
+    expect(nivelMinimoDeAccion(DE_ADMIN_EMPRESA)).toBe("administrador_sistema");
     expect(nivelMinimoDeAccion(DE_OPERARIO_SUCURSAL)).toBe("operario");
     expect(nivelMinimoDeAccion(DE_OPERARIO_EMPRESA)).toBe("operario");
   });
@@ -101,8 +102,7 @@ describe("anti-escalada: un rol por debajo del piso no llega a la acción", () =
     ])("rechaza darle %s de una acción de administrador a un rol personalizado (y no guarda nada)", async (_cual, nuevo) => {
       const r = await pedir(mozoRolId, DE_ADMIN_SUCURSAL, nuevo);
       expect(r.ok).toBe(false);
-      expect(r.mensaje).toContain("no puede tener");
-      expect(r.mensaje).toContain("No se guardó nada");
+      expect(r.mensaje).toBe("Esta acción es de gobierno de la empresa y no se delega.");
       expect(await prisma.permisoRol.count({ where: { rolId: mozoRolId } })).toBe(0);
       expect(await prisma.registroAuditoria.count({ where: { entidad: "PermisoRol" } })).toBe(0);
     });

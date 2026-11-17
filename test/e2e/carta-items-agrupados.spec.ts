@@ -3,6 +3,7 @@ import { prisma } from "./fixtures/db";
 import { menuCartaPublicado } from "./fixtures/carta-menu";
 import { GENERO_E_ITEM_AGRUPADO_VISIBLE } from "../../src/core/carta/genero-e-item-agrupado";
 
+import { crearCategoriaDeTest, limpiarCategoriasDeTest } from "../setup/categoria-de-prueba";
 // Interruptor de género e ítem agrupado: mientras esté apagado, este spec no corre (encendido vuelve a correr entero).
 test.skip(!GENERO_E_ITEM_AGRUPADO_VISIBLE, "género e ítem agrupado ocultos (GENERO_E_ITEM_AGRUPADO_VISIBLE = false en src/core/carta/genero-e-item-agrupado.ts): la carta y el POS no arman agrupados ni carpetas de género");
 
@@ -17,7 +18,7 @@ test("crear un ítem agrupado, bloquear una opción de otro precio y publicarlo 
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
   const nombreItem = `E2E Gaseosa 500 CC ${marca}`;
   const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
-  const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E Gaseosa 500 CC Cat ${marca}` } });
+  const categoria = await crearCategoriaDeTest(prisma, { nombre: `E2E Gaseosa 500 CC Cat ${marca}` });
   const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E Bebidas sin alcohol ${marca}`, orden: 1 } });
   const crear = (q: string, precioVenta: number) =>
     prisma.producto.create({ data: { codigo: `E2E_AGR_UI_${q}_${marca}`, nombre: `E2E ${q} 500cc ${marca}`, tipo: "PV", categoriaId: categoria.id, precioVenta, unidadStockId: unidad.id } });
@@ -105,7 +106,7 @@ test("crear un ítem agrupado, bloquear una opción de otro precio y publicarlo 
     await prisma.seccionCarta.deleteMany({ where: { id: seccion.id } });
     await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: productoIds } } });
     await prisma.producto.deleteMany({ where: { id: { in: productoIds } } });
-    await prisma.categoriaProducto.deleteMany({ where: { id: categoria.id } });
+    await limpiarCategoriasDeTest(prisma, { id: categoria.id });
   }
 });
 

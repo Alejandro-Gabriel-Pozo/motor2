@@ -10,7 +10,7 @@ import { EMPRESA_POR_DEFECTO_ID as A, crearUsuarioConMembresia, limpiarBaseDeTes
 
 /**
  * Parte P1 — el rol de fábrica `operador` (como Pedernal; pedido del dueño 2026-11-16: «como pedernal,»): busca (`partes_ver`), da de alta y edita (`partes_editar`) fichas de personas y empresas, y NO desactiva
- * (`partes_desactivar` es de piso administrador: se rechaza en el servidor y la base queda intacta). Una empresa nueva sembrada nace con esa matriz.
+ * (`partes_desactivar` es de piso operario desde PISOS-65 pero de fábrica solo `admin`: se rechaza en el servidor y la base queda intacta). Una empresa nueva sembrada nace con esa matriz.
  * Mutación demostrada (anotada en el PR): dar `partes_desactivar` al operador en `rolesEditarSemilla` de `acciones.ts` deja en rojo «la matriz de fábrica» y «NO desactiva»; sacar `operador` de `partes_editar` deja en rojo el alta y la edición.
  */
 const datos = { naturaleza: "HUMANA", nombre: "Persona Nueva" };
@@ -55,18 +55,22 @@ describe("el operador de fábrica y las fichas de Parte", () => {
     expect((await prismaAdmin.parte.findUniqueOrThrow({ where: { id: parteId } })).nombre).toBe("Ana Gómez");
   });
 
-  it("NO desactiva: el servidor lo rechaza (piso administrador) y la base queda intacta", async () => {
+  it("NO desactiva: el servidor lo rechaza (sin la fila: de fábrica solo `admin`) y la base queda intacta", async () => {
     const antes = { parte: await prismaAdmin.parte.findUniqueOrThrow({ where: { id: parteId } }), auditoria: await prismaAdmin.registroAuditoria.count() };
     const r = await cambiarEstadoDeParte(parteId, false).catch((e: unknown) => ({ ok: false, mensaje: e instanceof Error ? e.message : String(e) }));
     expect(r).toMatchObject({ ok: false, mensaje: expect.stringMatching(/permiso|acceso|No tenés|no tiene/i) });
     expect({ parte: await prismaAdmin.parte.findUniqueOrThrow({ where: { id: parteId } }), auditoria: await prismaAdmin.registroAuditoria.count() }).toEqual(antes);
   });
 
-  it("no se le puede dar partes_desactivar al operador por el piso: la fila a mano tampoco lo habilita", async () => {
+  it("PISOS-65: con la fila de partes_desactivar (que le da el gerente) el operador SÍ desactiva: el piso ya no la cierra, la cierra la falta de fila", async () => {
     const rol = await prismaAdmin.rol.findFirstOrThrow({ where: { clave: "operador" } });
-    await prismaAdmin.permisoRol.updateMany({ where: { rolId: rol.id, accionClave: "partes_desactivar" }, data: { puedeVer: true, puedeEditar: true } });
-    const r = await cambiarEstadoDeParte(parteId, false).catch((e: unknown) => ({ ok: false, mensaje: e instanceof Error ? e.message : String(e) }));
-    expect(r).toMatchObject({ ok: false, mensaje: expect.stringMatching(/permiso|acceso|No tenés|no tiene|nivel/i) });
-    expect((await prismaAdmin.parte.findUniqueOrThrow({ where: { id: parteId } })).estado).toBe("ACTIVA");
+    await prismaAdmin.permisoRol.upsert({
+      where: { rolId_accionClave: { rolId: rol.id, accionClave: "partes_desactivar" } },
+      update: { puedeVer: true, puedeEditar: true },
+      create: { empresaId: A, rolId: rol.id, accionClave: "partes_desactivar", puedeVer: true, puedeEditar: true },
+    });
+    const r = await cambiarEstadoDeParte(parteId, false);
+    expect(r).toMatchObject({ ok: true });
+    expect((await prismaAdmin.parte.findUniqueOrThrow({ where: { id: parteId } })).estado).not.toBe("ACTIVA");
   });
 });

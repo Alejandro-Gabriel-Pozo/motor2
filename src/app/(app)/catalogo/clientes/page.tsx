@@ -11,6 +11,9 @@ import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { Campo } from "@/ui/primitivas/campo";
 import { formatearPorcentaje } from "@/core/formato-de-numero";
+import { BuscadorDelDirectorio } from "@/components/catalogo/buscador-del-directorio";
+import { DIRECTORIO_AL_ESTILO_DE_PEDERNAL, filasDelDirectorio, hayBusquedaDelDirectorio, leerBusquedaDelDirectorio } from "@/core/catalogo/public";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 /**
  * Catálogo de Clientes con descuento (Task #14, docs/plan-clientes-descuento-2026-09-26.md): un único % fijo por cliente (D1, no
@@ -21,7 +24,7 @@ import { formatearPorcentaje } from "@/core/formato-de-numero";
  *
  * Ver ≠ escribir (DEC-33, Fase 7): «Editar», «Activar/Desactivar» y el alta se dibujan con el «Editar» de `clientes` (la clave de sus tres comandos); quien solo ve lee la lista con el aviso.
  */
-export default async function ClientesPage() {
+export default async function ClientesPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"q" | "desactivados">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
@@ -32,6 +35,10 @@ export default async function ClientesPage() {
 
   const [clientes, { editar: puedeEditar }] = await Promise.all([listarClientes(), obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "clientes", ctx.db)]);
 
+  // Paso 8 del plan de pantallas (dueño, 2026-11-17: «4a»): buscador y desactivados ocultos, como el directorio de Pedernal (interruptor `DIRECTORIO_AL_ESTILO_DE_PEDERNAL`).
+  const busqueda = leerBusquedaDelDirectorio(unicosDeUrl(await searchParams));
+  const visibles = filasDelDirectorio(clientes, busqueda, (c) => [c.nombre]);
+
   return (
     <div className="space-y-8">
       <div>
@@ -39,6 +46,8 @@ export default async function ClientesPage() {
         <p className="text-sm text-tinta-tenue">Un % fijo de descuento por cliente, que un mozo asigna a la cuenta de una mesa desde el salón.</p>
       </div>
       {!puedeEditar && <AvisoSoloLecturaDeCatalogo que="los clientes con descuento" />}
+
+      {DIRECTORIO_AL_ESTILO_DE_PEDERNAL && <BuscadorDelDirectorio accion="/catalogo/clientes" busqueda={busqueda} etiqueta="Buscar por nombre" marcador="Nombre del cliente…" />}
 
       <CajaDesplazable etiqueta="Tabla de clientes con descuento">
         <table className="w-full text-sm">
@@ -53,7 +62,7 @@ export default async function ClientesPage() {
             </tr>
           </thead>
           <tbody>
-            {clientes.map((c) => (
+            {visibles.map((c) => (
               <tr key={c.id} className="border-b align-top">
                 <td className="py-2">{c.nombre}</td>
                 <td className="text-right tabular-nums">{formatearPorcentaje(Number(c.descuentoPorcentaje))}</td>
@@ -95,10 +104,10 @@ export default async function ClientesPage() {
                 </td>
               </tr>
             ))}
-            {!clientes.length && (
+            {!visibles.length && (
               <tr>
                 <td className="py-2 text-tinta-tenue" colSpan={4}>
-                  Sin clientes.
+                  {clientes.length > 0 && DIRECTORIO_AL_ESTILO_DE_PEDERNAL ? (hayBusquedaDelDirectorio(busqueda) ? "Sin resultados." : "Sin clientes activos.") : "Sin clientes."}
                 </td>
               </tr>
             )}
