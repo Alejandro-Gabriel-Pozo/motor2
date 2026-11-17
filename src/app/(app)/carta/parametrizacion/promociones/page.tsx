@@ -21,7 +21,7 @@ import { AgregarEntradaDeLugar } from "../../agregar-entrada-de-lugar";
 import { DondeSeVe } from "./donde-se-ve";
 import { lugaresDelFormulario } from "./lugares-del-formulario";
 import { FilaDeCarta } from "@/components/fila-de-carta";
-import { ARMADO_DE_PROMO_COMO_PEDERNAL, PESTANAS_DE_PROMOCIONES, comoLoVeElCliente, estadoDeLaPromo, loQueLlevaLaPromo, type ParteDeLaPromoParaLeer } from "@/core/carta/public";
+import { ARMADO_DE_PROMO_COMO_PEDERNAL, PESTANAS_DE_PROMOCIONES, cantidadesDelFormulario, comoLoVeElCliente, estadoDeLaPromo, loQueLlevaLaPromo, type ParteDeLaPromoParaLeer } from "@/core/carta/public";
 import { EncabezadoDeCarta } from "../../encabezado-de-carta";
 import estilos from "../../carta-mant.module.css";
 import { CamposCupos, CamposLugares, CamposPromo, esFijo } from "../formularios";
@@ -208,7 +208,7 @@ export default async function PromocionesDeCartaPage() {
                         "use server";
                         const cupos = datos.secciones.flatMap((s) => {
                           if (!fd.get(`incluir_${s.id}`)) return [];
-                          return [{ seccionCartaId: s.id, cantidadMinima: campo(fd, `min_${s.id}`), cantidadMaxima: campo(fd, `max_${s.id}`) }];
+                          return [{ seccionCartaId: s.id, ...cantidadesDelFormulario((nombre) => (fd.get(nombre) === null ? null : String(fd.get(nombre))), `cantidad_${s.id}`, `min_${s.id}`, `max_${s.id}`) }];
                         });
                         // GO-3b (D3): la lista que se guarda es la FINAL, de todos los tipos: los lugares de entradas que siguen tildados van también (si no, se darían de baja).
                         const deEntradas = lugaresDelFormulario(fd);
@@ -218,7 +218,7 @@ export default async function PromocionesDeCartaPage() {
                     >
                       <p className="text-sm text-tinta-tenue">
                         {ARMADO_DE_PROMO_COMO_PEDERNAL
-                          ? "Cada componente es una sección de la carta (o un lugar con su propia lista de productos): el mozo elige entre «mín.» y «máx.» productos de cada una. Para que elija más, subí el «máx.»."
+                          ? "Cada componente es una sección de la carta (o un lugar con su propia lista de productos) y lleva una cantidad exacta: el mozo elige justo esa cantidad de productos de cada una. Los que se cargaron con un rango «de mín. a máx.» se siguen leyendo así hasta que les pongas una cantidad exacta."
                           : "Las partes de la promo se arman tildando secciones de la carta: de cada sección tildada el mozo elige entre «mín.» y «máx.» productos (para que elija más, subí el «máx.»). Para un grupo propio, como «Bebida», creá la sección en Carta › Secciones y géneros y tildala acá, o sumá abajo un lugar con su propia lista de productos."}
                       </p>
                       {/* Paso 13 (opcional, no bloqueante): con los cupos YA guardados, cuánta holgura hay hoy antes de tocar el piso de

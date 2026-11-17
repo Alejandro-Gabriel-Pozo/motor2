@@ -49,3 +49,22 @@ export function renglonDeLaLista(titulo: string, precio: number, partes: readonl
 export function comoLoVeElCliente(titulo: string, precio: number, partes: readonly ParteDeLaPromoParaLeer[]): string {
   return `${titulo} ${formatearMonto(precio)} — ${loQueLlevaLaPromo(partes)}`;
 }
+
+/**
+ * CANTIDAD EXACTA por componente (dueño 2026-11-17, vía el orquestador: «Sobre promociones, igual a Pedernal, la diferencia también», opción A del orquestador = cantidad exacta N, como Pedernal NOV 230 / E8 §11.1).
+ * Con el interruptor encendido la pantalla pide UNA cantidad N y la guarda como mín = máx = N con el mismo comando de siempre: no hay migración ni campo nuevo en la base. Lo ya guardado como rango («de 0 a 2») NO se convierte: se
+ * sigue mostrando con «mín.» y «máx.» hasta que alguien lo reemplace por una cantidad exacta.
+ */
+export function esCantidadExacta(cantidadMinima: number, cantidadMaxima: number): boolean {
+  return cantidadMinima === cantidadMaxima;
+}
+
+/**
+ * Lo que manda el formulario para UNA parte, como texto (lo valida el servidor): si vino el campo de cantidad exacta, mín y máx son esa cantidad; si no (pantalla de siempre, o una parte heredada con rango), salen de «mín.» y «máx.».
+ * `leer` devuelve el valor del campo o `null` si el campo no se dibujó.
+ */
+export function cantidadesDelFormulario(leer: (campo: string) => string | null, campoCantidad: string, campoMinimo: string, campoMaximo: string): { cantidadMinima: string; cantidadMaxima: string } {
+  const exacta = leer(campoCantidad);
+  if (exacta !== null) return { cantidadMinima: exacta, cantidadMaxima: exacta };
+  return { cantidadMinima: leer(campoMinimo) ?? "", cantidadMaxima: leer(campoMaximo) ?? "" };
+}
