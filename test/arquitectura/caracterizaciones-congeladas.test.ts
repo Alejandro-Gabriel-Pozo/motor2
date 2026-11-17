@@ -1389,6 +1389,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Frente 6, ayudas de la ficha del producto ocultas (cambio de texto de ADMINISTRACIÓN, no de la carta pública; dueño, 2026-11-16: «Sí, ese orden (Recomendada)», paso 2 «textos de la ficha del producto»; interruptor `FICHA_AYUDAS_VISIBLES`; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). En las opciones de venta del producto «Pizzas» (a 1280 y a 375 px) salen tres líneas: «Qué se elige al venderlo y cómo cambia el precio… Biblioteca de opciones», «No se borra nada: lo que admite de cada opción queda guardado.» y «Con el precio de lista de «…», sin descuentos. Es la forma que le da la carta pública…». 6 líneas quitadas, ninguna agregada, todas de esa pantalla (revisado con git diff); la carta pública y el resto quedan idénticos.",
       },
+      {
+        blob: "e3e113d8a8600ed05e6fc703ef926ca141fe326e",
+        // El commit PADRE de este es 132f760c (el libro con los tests ajustados, justo antes de regenerar la línea de base del navegador).
+        commit: "132f760c",
+        motivo:
+          "Libro de la carta al estilo de la maqueta de Pedernal (Frente 6, PR #391; SOLO PRESENTACIÓN, interruptor LIBRO_ESTILO_MAQUETA; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1): cambian SOLO líneas de presentación de la carta pública sin tema cargado: el rótulo «← PORTAL» del botón de volver, el tamaño de nombre y precio (19 px → 21,6 px) y de los títulos del índice y de la banda, el peso 700 del precio del renglón, la tinta base (`--carta-ink`) y los colores de las líneas. Dueño, 2026-11-17: «Portal con una flechita…», «si» (letra), «blanco y negrita». Ningún texto de producto, precio ni dato cambia.",
+      },
     ],
   },
 };
