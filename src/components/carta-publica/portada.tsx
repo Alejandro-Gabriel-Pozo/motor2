@@ -33,7 +33,7 @@ export function Portada({ estilo, restauranteNombre, estiloLibro = false, redes 
       }}
     >
       {conAire && (
-        <div data-portada-arco aria-hidden className="pointer-events-none absolute -z-10 aspect-square rounded-full" style={{ left: "-25%", bottom: "-45%", width: "160%", border: "4.5rem solid var(--carta-primary)", opacity: 0.5 }} />
+        <div data-portada-arco aria-hidden className="pointer-events-none absolute -z-10 aspect-square rounded-full" style={{ left: "-25%", top: "7%", width: "160%", border: "4.5rem solid var(--carta-primary)", opacity: 0.5 }} />
       )}
       {/* eslint-disable-next-line @next/next/no-img-element -- fondo full-bleed de tamaño desconocido, no candidato de next/image */}
       {bgUrl && <img src={bgUrl} alt="" aria-hidden loading="eager" className="absolute inset-0 -z-10 h-full w-full object-cover" />}
