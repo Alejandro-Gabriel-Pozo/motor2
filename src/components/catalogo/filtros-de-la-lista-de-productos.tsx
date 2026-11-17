@@ -60,16 +60,18 @@ export function FiltrosDeLaListaDeProductos({ accion, filtros, clases, estados, 
           <Opciones opciones={estados} />
         </Selector>
       </div>
-      <details open={hayMasFiltros} className="text-sm">
-        <summary className="inline-flex min-h-11 cursor-pointer items-center text-tinta-suave underline md:min-h-0">Más filtros</summary>
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {masFiltros.map((f) => (
-            <Selector key={f.nombre} etiqueta={f.etiqueta} name={f.nombre} defaultValue={f.valor}>
-              <Opciones opciones={f.opciones} />
-            </Selector>
-          ))}
-        </div>
-      </details>
+      {masFiltros.length > 0 && (
+        <details open={hayMasFiltros} className="text-sm">
+          <summary className="inline-flex min-h-11 cursor-pointer items-center text-tinta-suave underline md:min-h-0">Más filtros</summary>
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {masFiltros.map((f) => (
+              <Selector key={f.nombre} etiqueta={f.etiqueta} name={f.nombre} defaultValue={f.valor}>
+                <Opciones opciones={f.opciones} />
+              </Selector>
+            ))}
+          </div>
+        </details>
+      )}
       <div className="flex flex-wrap items-center gap-3">
         <BotonDeServidor type="submit" tamano="tactil">
           Aplicar filtros
