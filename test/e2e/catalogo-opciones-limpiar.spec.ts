@@ -28,7 +28,9 @@ for (const pantalla of PANTALLAS) {
 
     await page.setViewportSize({ width: pantalla.ancho, height: pantalla.alto });
     await page.goto("/catalogo/opciones");
-    await page.locator("[data-enlace-limpiar]").click();
+    // Frente 6, paso 4: el botón «Limpiar opciones» está oculto (`CANDIDATAS_A_BAJA_VISIBLES` apagado); la pantalla sigue abriéndose por su dirección.
+    await expect(page.locator("[data-enlace-limpiar]")).toHaveCount(0);
+    await page.goto("/catalogo/opciones/limpiar");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Limpiar opciones");
 
     // «Sin productos» (el de entrada): el grupo sin uso entero y, del grupo usado, solo la opción que nadie admite.

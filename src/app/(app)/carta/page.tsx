@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { pestanasOfrecidas } from "@/core/navegacion/candidatas-a-baja";
 import { redirect } from "next/navigation";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
@@ -57,7 +58,7 @@ export default async function CartaPage({ searchParams }: { searchParams: Promis
   const gate = await requierePermisoVerDeAlguna(ctx.usuarioId, ctx.sucursalId, ["carta_ver", "opcion_apagar_en_sucursal", "carta_items_agrupados"], ctx.db);
   if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
   if (!gate.visibles.has("carta_ver")) {
-    const otra = primeraPantallaVisible(PESTANAS_DE_CARTA, gate.visibles);
+    const otra = primeraPantallaVisible(pestanasOfrecidas(PESTANAS_DE_CARTA), gate.visibles);
     if (otra && otra !== "/carta") redirect(otra);
     return <p className="text-error">No tenés permiso para ver esta sección.</p>;
   }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { rutaOfrecida } from "@/core/navegacion/candidatas-a-baja";
 import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { CajaDesplazable } from "@/components/catalogo/caja-desplazable";
@@ -171,11 +172,13 @@ export default async function FichaProveedorPage({
       <section>
         <h2 className="mb-2 text-sm font-medium">Ver en los reportes</h2>
         <ul className="flex flex-col gap-1 text-sm">
-          <li>
-            <EnlaceInterno href="/catalogo/proveedores/comparativa" className="underline">
-              Comparativa de precios por proveedor
-            </EnlaceInterno>
-          </li>
+          {rutaOfrecida("/catalogo/proveedores/comparativa") && (
+            <li>
+              <EnlaceInterno href="/catalogo/proveedores/comparativa" className="underline">
+                Comparativa de precios por proveedor
+              </EnlaceInterno>
+            </li>
+          )}
           <li>
             <EnlaceInterno href={`/reportes/compras?proveedorId=${p.id}`} className="underline">
               Compras registradas de este proveedor
