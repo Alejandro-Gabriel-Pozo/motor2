@@ -1,5 +1,6 @@
 import { prisma } from "../../setup/test-db";
 
+import { crearCategoriaDeTest } from "../../setup/categoria-de-prueba";
 /**
  * El escenario de la caracterización de los reportes (`reportes-c0.test.ts`): UNA secuencia de datos, sembrada directo por Prisma (sin acciones ni sesión), con fechas
  * FIJAS en febrero-marzo de 2026 y el reloj del test congelado en 2026-03-15 15:00 UTC.
@@ -156,9 +157,9 @@ export async function sembrarEscenarioDeReportes() {
   const CAT_PIZZAS = nuevoId();
   const CAT_BEBIDAS = nuevoId();
   const CAT_POSTRES = nuevoId();
-  await prisma.categoriaProducto.create({ data: { id: CAT_PIZZAS, nombre: "Pizzas" } });
-  await prisma.categoriaProducto.create({ data: { id: CAT_BEBIDAS, nombre: "Bebidas" } });
-  await prisma.categoriaProducto.create({ data: { id: CAT_POSTRES, nombre: "Postres" } });
+  await crearCategoriaDeTest(prisma, { id: CAT_PIZZAS, nombre: "Pizzas" });
+  await crearCategoriaDeTest(prisma, { id: CAT_BEBIDAS, nombre: "Bebidas" });
+  await crearCategoriaDeTest(prisma, { id: CAT_POSTRES, nombre: "Postres" });
   await prisma.margenObjetivo.create({ data: { id: nuevoId(), categoriaId: null, foodCostObjetivoPct: 35 } });
   await prisma.margenObjetivo.create({ data: { id: nuevoId(), categoriaId: CAT_PIZZAS, foodCostObjetivoPct: 30 } });
 

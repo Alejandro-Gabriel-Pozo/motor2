@@ -33,6 +33,7 @@ import { actualizarDecimalesUnidad, crearUnidad } from "../../../src/server/acti
 import { actualizarCliente, altaCliente } from "../../../src/server/actions/clientes/cliente";
 import { guardarMargenObjetivo } from "../../../src/server/actions/reportes/margen-objetivo";
 
+import { crearCategoriaDeTest } from "../../setup/categoria-de-prueba";
 /**
  * HUELLA DE DINERO del tramo C (Hito 4, paso H4C-0.3 de `docs/plan-hito-4-pureza.md` §3): las Server Actions que mueven plata en la pieza «carta, catálogo y
  * stock», recorridas por las acciones públicas con la sesión de un admin de dos sucursales, ANTES de mudarlas a casos de uso. Cubre las 11 de 4.2 (descuento de
@@ -212,7 +213,7 @@ describe("Huella de dinero del tramo C", () => {
     const u = await prisma.unidad.create({ data: { nombre: "unidad", magnitud: "CANTIDAD", decimales: 0 } });
     const kg = await prisma.unidad.create({ data: { nombre: "kg", magnitud: "PESO", decimales: 2 } });
     const caja = await prisma.unidad.create({ data: { nombre: "caja", magnitud: "CANTIDAD", decimales: 0 } });
-    const categoria = await prisma.categoriaProducto.create({ data: { nombre: "Pastas" } });
+    const categoria = await crearCategoriaDeTest(prisma, { nombre: "Pastas" });
     const insumo = await prisma.insumo.create({ data: { nombre: "Harina" } });
     const harina = await sembrarProductoDisponible({ codigo: "MP_H000", nombre: "Harina 000", tipo: "MP", unidadStockId: kg.id, insumoId: insumo.id }, central);
     const pizza = await sembrarProductoDisponible({ codigo: "PV_PIZZA", nombre: "Pizza", tipo: "PV", unidadStockId: u.id, precioVenta: 12000 }, central);

@@ -2,6 +2,7 @@ import { test, expect } from "./fixtures/auth";
 import { abrirTodosLosDetails } from "./fixtures/movil";
 import { prisma } from "./fixtures/db";
 
+import { limpiarCategoriasDeTest } from "../setup/categoria-de-prueba";
 /**
  * El resultado de una acción tiene que VERSE. Estas pantallas usaban `<form action={async () => { "use server"; await accion(...) }}>`, que hace el
  * `await` y descarta el `ResultadoAccion`: si la acción devolvía `error(...)` (validación, duplicado, permiso), la persona no veía nada y la
@@ -170,7 +171,7 @@ test("categorías: tras un error el texto tipeado se conserva; tras un éxito el
     await expect(page.getByRole("status").filter({ hasText: "creada" })).toBeVisible();
     await expect(campo, "tras un éxito el formulario queda limpio").toHaveValue("");
   } finally {
-    await prisma.categoriaProducto.deleteMany({ where: { nombre: valido } });
+    await limpiarCategoriasDeTest(prisma, { nombre: valido });
   }
 });
 

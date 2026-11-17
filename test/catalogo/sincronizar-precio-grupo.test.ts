@@ -9,6 +9,7 @@ import { setPrecioLocalProducto, sincronizarPrecioLocalGrupoCarta } from "../../
 import { resolverMenuCartaConDiagnostico } from "../../src/server/lecturas/carta/menu";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
+import { crearCategoriaDeTest } from "../setup/categoria-de-prueba";
 /**
  * Sincronizar el precio de un producto agrupado (docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8): al cambiar el precio en
  * Catálogo (`actualizarProducto`) o en Precio Local (`setPrecioLocalProducto`) de un producto que está en un ítem agrupado de la
@@ -37,7 +38,7 @@ describe("sincronizar el precio de un grupo de la carta", () => {
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
 
     unidadId = (await prisma.unidad.create({ data: { nombre: "u", magnitud: "CANTIDAD", decimales: 0 } })).id;
-    const cat = (await prisma.categoriaProducto.create({ data: { nombre: "Gaseosa 500 CC" } })).id;
+    const cat = (await crearCategoriaDeTest(prisma, { nombre: "Gaseosa 500 CC" })).id;
     const seccion = await prisma.seccionCarta.create({ data: { nombre: "Bebidas sin alcohol" } });
     const pv = async (codigo: string, nombre: string, precioVenta: number) =>
       (await sembrarProductoDisponible({ codigo, nombre, tipo: "PV", categoriaId: cat, precioVenta, unidadStockId: unidadId }, sucursalId)).id;

@@ -10,7 +10,7 @@ import { CLAVES_DE_PR_B, CLAVES_DEL_CIERRE, PUERTA_ESPERADA, type ActorDelCierre
  * Además fija el catálogo (`ACCIONES`) contra el oráculo: contexto sucursal, módulo provisorio `salon`, piso, solo ver y semilla SOLO `admin`; y un GUARDIÁN de dimensiones: toda clave `caja_*` del catálogo está declarada en el oráculo
  * (o es una de las seis de PR-B, con su cobertura propia); una clave nueva sin declarar pone esto en rojo.
  *
- * Mutaciones (rojo/verde, comprobadas a mano al escribirlo): bajar el piso de `caja_registrar_ajuste` a «operario» en `acciones.ts` → rojo en «combinaciones» (operador con fila y rol propio con fila pasarían) y en «el catálogo declara…»;
+ * Mutaciones (rojo/verde, comprobadas a mano al escribirlo): subir el piso de `caja_registrar_ajuste` a «administrador» en `acciones.ts` → rojo en «el catálogo declara…» y en el conteo de pisos;
  * quitar una clave de `acciones.ts` → rojo en «el catálogo declara…» y en «ninguna clave del oráculo…»; sacar una clave de la semilla de la migración → rojo en `migracion-permisos-cierre-del-dia.test.ts`; agregar `caja_x` al catálogo sin declararla → rojo en el guardián.
  */
 const FILA_PRENDIDA: PermisoLeido = { puedeVer: true, puedeEditar: true };
@@ -33,7 +33,7 @@ describe("oráculo de permisos del cierre del día: clave × actor × (ver | edi
     describe(clave, () => {
       for (const [actor, hechos] of Object.entries(ACTORES) as [ActorDelCierre, (typeof ACTORES)[ActorDelCierre]][]) {
         it(`${actor}`, () => {
-          const esperado = PUERTA_ESPERADA[CLAVES_DEL_CIERRE[clave].piso as "operario" | "administrador"][actor];
+          const esperado = PUERTA_ESPERADA[CLAVES_DEL_CIERRE[clave].piso as "operario"][actor];
           const accion = clave as AccionDeSucursal;
           const acceso = accesoDeSucursal({ membresia: hechos.membresia, filaDelRol: hechos.fila, sinModulo: null, tieneCapacidad: true }, accion);
           expect(decidirEnSucursal(acceso, accion, "editar").ok, `${clave} editar`).toBe(esperado);
@@ -69,7 +69,7 @@ describe("el catálogo (ACCIONES) coincide con el oráculo y el guardián de dim
 
   it("el oráculo es exhaustivo en sus propias dimensiones: cada piso declarado tiene la fila de los siete actores", () => {
     const pisos = new Set(CLAVES.map((c) => CLAVES_DEL_CIERRE[c].piso));
-    expect([...pisos].sort()).toEqual(["administrador", "operario"]);
-    for (const piso of pisos) expect(Object.keys(PUERTA_ESPERADA[piso as "operario" | "administrador"]).sort()).toEqual(Object.keys(ACTORES).sort());
+    expect([...pisos].sort()).toEqual(["operario"]);
+    for (const piso of pisos) expect(Object.keys(PUERTA_ESPERADA[piso as "operario"]).sort()).toEqual(Object.keys(ACTORES).sort());
   });
 });

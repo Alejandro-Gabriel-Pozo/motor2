@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { ACCIONES, ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE, nivelMinimoDeAccion, type AccionClave, type NivelDeAccion } from "../../src/core/permisos/acciones";
+import { ACCIONES, ACCIONES_QUE_DA_SOLO_EL_GERENTE, ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE, nivelMinimoDeAccion, type AccionClave, type NivelDeAccion } from "../../src/core/permisos/acciones";
 import { etiquetaDelPiso, nivelAlcanzaElPiso, nivelDelRolFrenteAlPiso, rolAlcanzaLaAccion } from "../../src/core/permisos/jerarquia";
-import { nivelesDeLaCelda } from "../../src/core/permisos/matriz";
+import { esCeldaFueraDeNivel } from "../../src/core/permisos/matriz";
 
 /**
  * ADR-027 (Hito 3, trabajo 3.4, F1 del RBAC): el piso «administrador de sistema» y la escalera de cuatro rangos de los pisos de una acción,
@@ -11,7 +11,7 @@ import { nivelesDeLaCelda } from "../../src/core/permisos/matriz";
  *  - la tabla 4×4 de `nivelAlcanzaElPiso` (quién llega a qué piso), escrita a mano y no derivada del código: invertir dos rangos la pone en rojo;
  *  - que el rango 2 («administrador», el futuro «encargado» de F3) NO alcanza el piso de gobierno: es la razón de ser del escalón nuevo (D16);
  *  - quién es administrador de sistema hoy: el rol de clave «admin», y nadie más (ningún rol tiene rango 2 hasta que exista `Rol.nivel`);
- *  - las etiquetas que muestran la matriz y el rechazo de `guardarPermisos`;
+ *  - las etiquetas que muestran la matriz;
  *  - (3.4-4) la reclasificación: las 12 claves de gobierno, escritas a mano, son EXACTAMENTE las de piso «administrador de sistema», y las 19 (16 desde S-10/D1) acciones de
  *    empresa de D15 quedan congeladas como blanco explícito de F3.
  */
@@ -47,10 +47,19 @@ describe("los rangos de los pisos (ADR-027): operario < administrador < administ
     expect(NIVELES.map(etiquetaDelPiso)).toEqual(["operario", "administrador", "administrador de sistema", "gerente"]);
   });
 
-  it("el mensaje de una celda fuera de nivel lleva las etiquetas, no los valores internos", () => {
-    expect(nivelesDeLaCelda({ clave: "operador" }, "anular_venta")).toEqual({ piso: "administrador", delRol: "operario" });
-    expect(nivelesDeLaCelda({ clave: "admin" }, "traspasar_gerencia")).toEqual({ piso: "gerente", delRol: "administrador de sistema" });
-    expect(nivelesDeLaCelda({ clave: "admin" }, "no_existe")).toBeNull();
+  it("PISOS-65: una celda fuera de nivel es EXACTAMENTE una de las 14 de gobierno y de gerente (las 65 bajaron a operario)", () => {
+    const las14 = new Set<string>(ACCIONES.filter((a) => (a.nivelMinimo as NivelDeAccion) === "administrador_sistema" || (a.nivelMinimo as NivelDeAccion) === "gerente").map((a) => a.clave));
+    expect(las14.size).toBe(14);
+    for (const rol of [{ clave: "admin" }, { clave: "operador" }, { clave: null }]) {
+      for (const a of ACCIONES) {
+        if (esCeldaFueraDeNivel(rol, a.clave)) expect(las14.has(a.clave), `${rol.clave}/${a.clave}`).toBe(true);
+      }
+    }
+    // el operador y un rol sin clave no pueden tener ninguna de las 14; ninguna de las 65 está cerrada para ellos
+    for (const rol of [{ clave: "operador" }, { clave: null }]) {
+      for (const a of ACCIONES) expect(esCeldaFueraDeNivel(rol, a.clave), `${rol.clave}/${a.clave}`).toBe(las14.has(a.clave));
+    }
+    for (const clave of ACCIONES_QUE_DA_SOLO_EL_GERENTE) expect(esCeldaFueraDeNivel({ clave: "operador" }, clave), clave).toBe(false);
   });
 });
 
@@ -145,16 +154,16 @@ describe("la reclasificación del gobierno (ADR-027 §3, 3.4-4)", () => {
     expect(nivelMinimoDeAccion("ver_auditoria")).toBe("administrador_sistema");
   });
 
-  it("(vii) D15: las 19 acciones de empresa de piso administrador (eran 19 antes de S-10/D1; 16 hasta M3a, que suma `compra_repartir`; 17 hasta GO-2a, que suma `opciones_definir` y `producto_opciones_admitidas`; 19 hasta GO-3b, que suma `grupos_de_precio_definir`; 20 hasta la Fase 3 de la ola «precio y carta», que la retira; 19 hasta E3a, que baja `compra_repartir` a piso operario por decisión del dueño), congeladas (blanco de F3); el rango 2 las alcanzaría por piso, pero ninguna se le da por defecto", () => {
+  it("(vii) D15 (PISOS-65): las 19 acciones de empresa de la lista que da solo el gerente son las congeladas, y de fábrica las tiene solo el rol «admin»", () => {
     expect(ACCIONES_DE_EMPRESA_DE_D15).toHaveLength(19);
-    const deEmpresaDePisoAdministrador = ACCIONES.filter((a) => a.contexto === "empresa" && (a.nivelMinimo as NivelDeAccion) === "administrador").map((a) => a.clave);
-    expect(ordenadas(deEmpresaDePisoAdministrador)).toEqual(ordenadas(ACCIONES_DE_EMPRESA_DE_D15));
-    for (const clave of ACCIONES_DE_EMPRESA_DE_D15) expect(nivelAlcanzaElPiso("administrador", nivelMinimoDeAccion(clave)), clave).toBe(true);
-    // «Ninguna por defecto»: de fábrica las tiene solo el rol «admin»; un rol de la empresa las recibe recién cuando alguien tilda su fila en la matriz.
+    const deEmpresaDeLaLista = ACCIONES.filter((a) => a.contexto === "empresa" && (ACCIONES_QUE_DA_SOLO_EL_GERENTE as readonly string[]).includes(a.clave)).map((a) => a.clave);
+    expect(ordenadas(deEmpresaDeLaLista)).toEqual(ordenadas(ACCIONES_DE_EMPRESA_DE_D15));
+    for (const clave of ACCIONES_DE_EMPRESA_DE_D15) expect(nivelMinimoDeAccion(clave), clave).toBe("operario");
+    // «Ninguna por defecto»: de fábrica las tiene solo el rol «admin»; un rol de la empresa las recibe recién cuando el gerente tilda su fila en la matriz.
     for (const a of ACCIONES.filter((x) => (ACCIONES_DE_EMPRESA_DE_D15 as readonly string[]).includes(x.clave))) expect([...a.rolesEditarSemilla], a.clave).toEqual(["admin"]);
   });
 
-  it("el conteo del catálogo: 67 operario, 66 administrador, 12 administrador de sistema, 2 gerente", () => {
+  it("el conteo del catálogo: 133 operario, 0 administrador, 12 administrador de sistema, 2 gerente (PISOS-65 y cierre del día)", () => {
     // 61 → 60 administrador: se retira `notificar_alertas` (decisión del dueño, limpieza paquete A paso 3; clase A).
     // 56 → 55 operario: se retira `pos_limite_mesas_abiertas` (el límite de mesas abiertas por sucursal; decisión del dueño 2026-10-29; clase O).
     // 55 → 56 operario y 62 → 61 administrador: E3a baja `compra_repartir` a piso operario (decisión del dueño P3, 2026-10-28; clase A → O, semilla sigue solo `admin`).
@@ -170,8 +179,10 @@ describe("la reclasificación del gobierno (ADR-027 §3, 3.4-4)", () => {
     // 58 → 57 operario y 61 → 62 administrador: Compras N3-a (2026-11-16) sube `compra_recibir` de piso operario (clase O) a administrador (clase A): confirman el gerente y el administrador, no el operador.
     // 57 → 58 operario: Compras N3-b (2026-11-16) suma `compra_controlar_recepcion` (clase L: piso operario, semilla admin y operador).
     // +3 operario y +3 administrador: Caja y cobro C1 PR-B suma `caja_ver`, `caja_abrir_sesion` y `cobrar_cuenta` (clase O) y `caja_cerrar_sesion`, `caja_mover_efectivo` y `caja_anular_movimiento_ajeno` (clase A).
-    // 61 → 67 operario y 65 → 66 administrador: Caja, cierre del día (etapa A) suma seis claves de piso operario (`caja_jornada_ver`, `caja_jornada_iniciar_auditoria`, `caja_jornada_cancelar_auditoria`, `caja_jornada_cerrar`, `caja_corregir_medio_de_cobro`, `caja_declarar_total`; clase O) y `caja_registrar_ajuste` (administrador; clase A).
+    // PISOS-65 (2026-11-17): las 65 de piso administrador bajan a operario: 61 → 126 operario, 65 → 0 administrador.
+    // +7 operario: Caja, cierre del día (etapa A) suma siete claves de piso operario (`caja_jornada_ver`, `caja_jornada_iniciar_auditoria`, `caja_jornada_cancelar_auditoria`, `caja_jornada_cerrar`, `caja_corregir_medio_de_cobro`, `caja_declarar_total` y `caja_registrar_ajuste`; clase O).
     // 51 → 52: M.2 P1 suma `producto_campos_sensibles` (piso operario, clase O); los otros pisos no se mueven.
-    expect(["operario", "administrador", "administrador_sistema", "gerente"].map((p) => conPiso(p as NivelDeAccion).length)).toEqual([67, 66, 12, 2]);
+    expect(["operario", "administrador", "administrador_sistema", "gerente"].map((p) => conPiso(p as NivelDeAccion).length)).toEqual([133, 0, 12, 2]);
+    expect(ACCIONES_QUE_DA_SOLO_EL_GERENTE).toHaveLength(65);
   });
 });

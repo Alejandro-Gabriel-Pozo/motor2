@@ -17,6 +17,9 @@ const NO_SON_TEXTO: ReadonlyArray<{ contiene: string; motivo: string }> = [
   { contiene: "backgroundColor: bgUrl ? undefined : (p.fondo", motivo: "fondo de la portada: la tinta derivada va encima" },
   { contiene: "backgroundColor: \"color-mix(in oklch, var(--carta-primary) 12%", motivo: "tinte de fondo de la pastilla (el texto va con --carta-primary-texto)" },
   { contiene: "var(--carta-flechas, var(--carta-primary))", motivo: "flechas de la navegación (elementos)" },
+  { contiene: "backgroundColor: bgUrl ? undefined : conAire", motivo: "fondo de la portada al estilo del libro (la tinta derivada va encima); con `conAire` el fondo es el de la carta" },
+  { contiene: "data-portada-arco", motivo: "arco decorativo de la portada del libro (borde de un círculo, no texto)" },
+  { contiene: "backgroundColor: conAire ? \"var(--carta-primary)\"", motivo: "fondo del sello de la portada del libro (el texto de adentro va con `--carta-bg`)" },
   { contiene: "//", motivo: "comentario" },
 ];
 

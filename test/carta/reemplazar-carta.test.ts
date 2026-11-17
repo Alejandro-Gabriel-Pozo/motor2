@@ -238,6 +238,8 @@ describe("reemplazar la carta con la de otra sucursal", () => {
     expect(await reemplazarCartaDeSucursal(ajena.id, "Sucursal B")).toEqual({ ok: false, mensaje: "No se encontró esa sucursal." });
     expect(await cartaDe(destinoId)).toEqual(antes);
     await prismaAdmin.sucursal.deleteMany({ where: { id: ajena.id } });
+    // Otros tests (guarda de apagado de Compras) dejan filas de módulos en la empresa testigo (limpiarBaseDeTest la conserva): sin borrarlas antes, el borrado de la empresa viola la FK `ModuloEmpresa_empresaId_fkey` según el orden de los archivos del shard.
+    await prismaAdmin.moduloEmpresa.deleteMany({ where: { empresaId: EMPRESA_TESTIGO_ID } });
     await prismaAdmin.empresa.deleteMany({ where: { id: EMPRESA_TESTIGO_ID } });
   });
 
