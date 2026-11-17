@@ -171,3 +171,11 @@ Una fila por modelo de `prisma/schema.prisma` (113 modelos, 18 primitivas o grup
 | `ArqueoBillete` | Caja y cobro (C1) |
 | `CuentaDeCobro` | Caja y cobro (C3) |
 | `ValorDeLista` | Caja y cobro (C3) |
+| `JornadaDeSucursal` | Caja y cobro (C2) |
+| `ControlDeJornadaCerrada` | Caja y cobro (C2) |
+| `CorreccionDeMedio` | Caja y cobro (C2) |
+| `DeclaracionDeTotal` | Caja y cobro (C2) |
+| `ConformeDeJornada` | Caja y cobro (C2) |
+| `CierreDeCajaDeJornada` | Caja y cobro (C2b) |
+| `ConciliacionDeJornada` | Caja y cobro (C2b) |
+| `ConciliacionDeCobroPorOrigen` | Caja y cobro (C2b) |

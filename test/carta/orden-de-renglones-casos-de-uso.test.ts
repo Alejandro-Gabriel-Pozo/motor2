@@ -8,7 +8,7 @@ vi.mock("../../src/server/persistencia/carta/orden-de-renglones", async (importa
 });
 
 import { DATOS_EMPRESA_TESTIGO, EMPRESA_TESTIGO_ID } from "../setup/empresa-de-prueba";
-import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarProductoDisponible } from "../setup/test-db";
+import { crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarProductoDisponible } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 import { actorDePrueba } from "../setup/opciones-de-venta";
@@ -324,6 +324,20 @@ describe("orden de los renglones de una sección de carta (etapa O1)", () => {
       expect(await enOrden()).toEqual(["Soda:0", "Agua:1"]);
       expect(await fijarModoDeOrdenDeSeccion({ seccionCartaId: bebidas, modo: "ALFABETICO", versionVista: 0 })).toMatchObject({ ok: true });
       expect(await filasDeModo()).toMatchObject([{ modo: "ALFABETICO", version: 1 }]);
+    });
+
+    it("el GERENTE de la empresa puede aunque su rol en la sucursal sea de operador (el gerente es administrador efectivo en todo su alcance); escribe y audita una vez", async () => {
+      await producto("Agua", 0);
+      await producto("Soda", 1);
+      const gerente = await crearUsuarioConMembresia({ email: "gerente@test.com", sucursalId: sucursalA, rolId: (await prisma.rol.findFirstOrThrow({ where: { id: (await prisma.membresia.findFirstOrThrow({ where: { usuarioId: operadorId } })).rolId } })).id });
+      await prismaAdmin.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId: gerente.id, empresaId: EMPRESA_POR_DEFECTO_ID } }, data: { rolEmpresa: "gerente" } });
+      const orden = await pedido(["Soda", "Agua"]);
+      await mockearUsuarioActual({ id: gerente.id, email: "gerente@test.com", nombre: null });
+      expect(await reordenarRenglonesDeSeccion({ seccionCartaId: bebidas, renglones: orden })).toMatchObject({ ok: true });
+      expect(await enOrden()).toEqual(["Soda:0", "Agua:1"]);
+      expect(await fijarModoDeOrdenDeSeccion({ seccionCartaId: bebidas, modo: "ALFABETICO", versionVista: 0 })).toMatchObject({ ok: true });
+      expect(await filasDeModo()).toMatchObject([{ modo: "ALFABETICO", version: 1 }]);
+      expect(await auditoriasDeOrden()).toBe(2);
     });
 
     it("la sucursal sale del contexto del servidor, no del pedido: un `sucursalId` que mande el navegador se ignora", async () => {

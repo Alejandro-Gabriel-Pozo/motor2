@@ -66,6 +66,14 @@ export const EMPRESA_POR_DEFECTO_ID = EMPRESA_DE_PRUEBA_ID;
  * rol de ejecución solo vería la empresa por defecto y las filas de una segunda empresa sobrevivirían a la limpieza.
  */
 export async function limpiarBaseDeTest() {
+  // Caja y cobro C2 (jornada y cierre del día): lo que cuelga de la jornada y de un cobro, antes que lo de C1 (referencian a Cobro, MedioDePago y JornadaDeSucursal).
+  await prismaAdmin.conciliacionDeCobroPorOrigen.deleteMany();
+  await prismaAdmin.conciliacionDeJornada.deleteMany();
+  await prismaAdmin.cierreDeCajaDeJornada.deleteMany();
+  await prismaAdmin.controlDeJornadaCerrada.deleteMany();
+  await prismaAdmin.correccionDeMedio.deleteMany();
+  await prismaAdmin.declaracionDeTotal.deleteMany();
+  await prismaAdmin.conformeDeJornada.deleteMany();
   // Caja y cobro C1 (etapa C1): lo que cuelga de una sesión, antes que nada (referencian Cuenta, Sucursal, User y entre sí). Las anulaciones primero: apuntan a su movimiento original.
   await prismaAdmin.arqueoBillete.deleteMany();
   await prismaAdmin.arqueoCaja.deleteMany();
@@ -75,6 +83,7 @@ export async function limpiarBaseDeTest() {
   await prismaAdmin.movimientoCaja.deleteMany();
   await prismaAdmin.sesionCaja.deleteMany();
   await prismaAdmin.caja.deleteMany();
+  await prismaAdmin.jornadaDeSucursal.deleteMany();
   await prismaAdmin.medioDePago.deleteMany();
   await prismaAdmin.cuentaDeCobro.deleteMany(); // C3: después de lo que la referencia (movimientos, cobros, arqueos). `ValorDeLista` es global y sembrada: no se limpia.
   // Carta antes que nada: sus tablas referencian Producto y Sucursal (RESTRICT), que se borran más abajo.

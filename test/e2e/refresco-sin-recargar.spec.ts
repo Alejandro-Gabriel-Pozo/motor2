@@ -1,4 +1,5 @@
 import { test, expect } from "./fixtures/auth";
+import { abrirTodosLosDetails } from "./fixtures/movil";
 import { crearMembresia } from "../setup/membresia";
 import { prisma } from "./fixtures/db";
 import { prismaAdmin } from "../setup/cliente-duenio";
@@ -219,6 +220,7 @@ test("capacidades por sucursal: el ✅/⛔ cambia sin recargar la página (y sol
     await page.goto("/administracion/capacidades-sucursal");
     await expect(page.getByRole("heading", { name: /Capacidades por sucursal/ })).toBeVisible();
     await ponerMarca(page);
+    await abrirTodosLosDetails(page);
 
     // La columna de la sucursal propia: el índice de su <th> es el del <td> de cada fila.
     const columnas = await page.locator("thead th").allTextContents();

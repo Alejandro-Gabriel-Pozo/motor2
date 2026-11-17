@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 // Es un componente de cliente: fuera de Next no hay router ni se llama a ninguna acción de servidor. Esta prueba mide solo lo que DIBUJA (la interacción va en los e2e `catalogo-producto-opciones.spec.ts`,
 // `catalogo-opciones-grupo.spec.ts` y `medicion-tareas-del-producto.spec.ts`).
@@ -164,9 +164,24 @@ describe("AdmisionDeGrupo: «Mostrar este grupo en la carta» (2026-10-29, decis
     for (const g of [extras, incluidas]) {
       const html = dibujar(g);
       expect(texto(html)).toContain("Mostrar este grupo en la carta");
-      expect(texto(html)).toContain("el mozo lo sigue eligiendo al vender y los reportes lo siguen separando");
+      // La ayuda está OCULTA con el interruptor apagado (Frente 6, paso 2: `FICHA_AYUDAS_VISIBLES`); vuelve encendido (test de abajo).
+      expect(texto(html)).not.toContain("el mozo lo sigue eligiendo al vender y los reportes lo siguen separando");
       expect(casilla(html)).toContain("checked");
     }
+  });
+
+  describe("con el interruptor FICHA_AYUDAS_VISIBLES encendido (reversibilidad)", () => {
+    afterEach(() => {
+      vi.doUnmock("../../src/core/catalogo/ficha-ayudas-visibles");
+      vi.resetModules();
+    });
+    it("vuelve la ayuda de «Mostrar este grupo en la carta»", async () => {
+      vi.resetModules();
+      vi.doMock("../../src/core/catalogo/ficha-ayudas-visibles", () => ({ FICHA_AYUDAS_VISIBLES: true }));
+      const { AdmisionDeGrupo: Encendida } = await import("../../src/app/(app)/catalogo/productos/[id]/opciones/admision-de-grupo");
+      const html = renderToStaticMarkup(<Encendida grupo={extras} accion={accion} referencia={null} precioDeLista={null} />);
+      expect(texto(html)).toContain("el mozo lo sigue eligiendo al vender y los reportes lo siguen separando");
+    });
   });
 
   it("un tamaño no la tiene (cambia el precio) y un adicional tampoco", () => {

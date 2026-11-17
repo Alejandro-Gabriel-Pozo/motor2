@@ -32,7 +32,7 @@ export interface ContextoDelCatalogo {
 }
 
 const FORMA_DE_CLAVE = /^(?:rechazo\.[A-Z][A-Z0-9_]*|(?:rotulo|accion|aviso|ayuda|titulo|columna)\.[a-z][a-z0-9_]*)$/;
-const TIPOS_DE_MARCADOR = ["texto", "causa"] as const;
+const TIPOS_DE_MARCADOR = ["texto", "causa", "entidad"] as const;
 const ESTADOS_QUE_AUTORIZAN = ["ACEPTADA", "CORREGIDA"];
 const LARGO_MINIMO_DEL_MOTIVO = 10;
 
@@ -123,7 +123,7 @@ export function revisarCatalogo(catalogo: Readonly<Record<string, EntradaDelCata
     for (const [nombre, tipo] of Object.entries(e.marcadores ?? {})) {
       if (!(TIPOS_DE_MARCADOR as readonly string[]).includes(tipo)) falla(clave, `el marcador «${nombre}» tiene un tipo que no existe: «${tipo}» (C5).`);
     }
-    if (/[{}]/.test(e.porDefecto.replace(/\{[a-z][a-zA-Z0-9]*\}/g, ""))) falla(clave, "tiene una llave `{` o `}` suelta o un hueco mal escrito (el nombre va en minúscula inicial, sin espacios) (C5).");
+    if (/[{}]/.test(e.porDefecto.replace(/\{[a-z][a-zA-Z0-9]*(?::un)?\}/g, ""))) falla(clave, "tiene una llave `{` o `}` suelta o un hueco mal escrito (el nombre va en minúscula inicial, sin espacios) (C5).");
   }
   return problemas;
 }
