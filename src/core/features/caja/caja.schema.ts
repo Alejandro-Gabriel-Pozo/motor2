@@ -125,6 +125,7 @@ export type CodigoDeFalloDeCobro =
   | "CUENTA_DE_COBRO_DE_OTRA_SUCURSAL"
   | "CUENTA_DE_COBRO_INACTIVA"
   | "CUENTA_DE_COBRO_INCOMPATIBLE"
+  | "CUENTA_DE_COBRO_A_ELEGIR"
   | "DATO_DE_COBRO_NO_HABILITADO"
   | "DATO_DE_COBRO_INVALIDO";
 /** `totalActualEnCentavos` con `TOTAL_CAMBIO`; `falta` y `sobra` (centavos) con `COBRO_NO_CUADRA`; `dato` con los dos `DATO_DE_COBRO_*` (y `motivo` con `_INVALIDO`); `sesionId` con `CAJA_EN_CIERRE`. */
