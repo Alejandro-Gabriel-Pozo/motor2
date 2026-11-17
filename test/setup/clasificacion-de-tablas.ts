@@ -34,7 +34,7 @@ const DE_EMPRESA_ESCRITA_POR_LA_PLATAFORMA = ["Invitacion", "ModuloEmpresa", "Pl
 
 const GLOBALES = ["Account", "Accion", "CotizacionDolar", "IndicePrecio", "Session", "User", "ValorDeLista", "VerificationToken"] as const;
 
-const CONSOLA = ["AdminPlataforma", "AuditoriaPlataforma", "CodigoDeIngresoPlataforma", "CodigoDeRecuperacionPlataforma", "Plan", "SesionPlataforma", "VersionDePlan"] as const;
+const CONSOLA = ["AccionIntroducida", "AdminPlataforma", "AuditoriaPlataforma", "CodigoDeIngresoPlataforma", "CodigoDeRecuperacionPlataforma", "PisoDePlataforma", "Plan", "PlantillaDeRol", "SesionPlataforma", "VersionDePlan", "VersionDePlantilla"] as const;
 
 /** Las políticas de las tablas que NO tienen la política única `aislamiento_empresa` (por nombre, ordenadas). */
 const POLITICAS_ESPECIALES: Readonly<Record<string, readonly string[]>> = {
@@ -184,8 +184,8 @@ const ALCANCE_DE_EMPRESA = [
 
 /** Declarada a mano (no derivada de `GLOBALES`/`CONSOLA`) a propósito: el guard cruza las dos listas y se pone en rojo si no coinciden. */
 const ALCANCE_SIN_EMPRESA = [
-  "Account", "Accion", "AdminPlataforma", "AuditoriaPlataforma", "CodigoDeIngresoPlataforma", "CodigoDeRecuperacionPlataforma", "CotizacionDolar", "Empresa", "IndicePrecio", "Plan", "SesionPlataforma",
-  "Session", "User", "ValorDeLista", "VerificationToken", "VersionDePlan",
+  "Account", "Accion", "AccionIntroducida", "AdminPlataforma", "AuditoriaPlataforma", "CodigoDeIngresoPlataforma", "CodigoDeRecuperacionPlataforma", "CotizacionDolar", "Empresa", "IndicePrecio", "PisoDePlataforma", "Plan", "PlantillaDeRol", "SesionPlataforma",
+  "Session", "User", "ValorDeLista", "VerificationToken", "VersionDePlan", "VersionDePlantilla",
 ] as const;
 
 export const ALCANCE_DE_TABLAS: Readonly<Record<string, DeclaracionDeAlcance>> = Object.freeze({

@@ -39,6 +39,7 @@ const NO_SON_SECRETOS: Readonly<Record<string, string>> = {
   "Plan.payloadHash": "Huella del pedido para la idempotencia (planes versionados, M1): no abre nada.",
   "VersionDePlan.payloadHash": "Huella del pedido para la idempotencia (planes versionados, M1): no abre nada.",
   "PlanDeEmpresa.payloadHash": "Huella del pedido para la idempotencia (planes versionados, M1): no abre nada.",
+  "VersionDePlantilla.payloadHash": "Huella del pedido para la idempotencia (plantillas, EB-1): no abre nada.",
   "Parte.payloadHash": "Huella del pedido de alta para la idempotencia (Parte P1): no abre nada.",
   "PagoConsignante.payloadHash": "Huella del pedido para la idempotencia: no abre nada.",
   "AgregadoDeCuenta.payloadHash": "Huella del pedido para la idempotencia: no abre nada.",

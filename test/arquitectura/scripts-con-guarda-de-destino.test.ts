@@ -37,6 +37,7 @@ describe("GT-22: ningún script de plataforma cae en DATABASE_URL", () => {
     "scripts/contexto-de-plataforma.ts",
     "scripts/politica-empresa.ts",
     "scripts/modulos-empresa.ts",
+    "scripts/plantillas-y-pisos.ts",
     "scripts/plataforma/crear-primer-admin.ts",
   ])(
     "%s no lee DATABASE_URL (la conexión de la app o del dueño)",
@@ -125,6 +126,7 @@ describe("GT-22: los scripts de plataforma exigen un administrador de plataforma
   it.each([
     ["scripts/politica-empresa.ts", "cambiarPoliticaDeEmpresa("],
     ["scripts/modulos-empresa.ts", "cambiarModulosDeEmpresa("],
+    ["scripts/plantillas-y-pisos.ts", "publicarVersionDePlantilla("],
   ])("%s abre el contexto de plataforma (conexión, rol y actor) con --actor ANTES de %s, y le pasa a la operación el autor verificado", (ruta, operacion) => {
     const fuente = leer(ruta);
     const llamada = fuente.indexOf("await abrirContextoDePlataforma(process.env, { instalacion: values.instalacion, actor: values.actor })");

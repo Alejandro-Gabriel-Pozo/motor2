@@ -61,8 +61,8 @@ describe("paridad de la semilla con el catálogo", () => {
 
   it("introducidas = todas las claves del catálogo; las cuentas salen del catálogo (nada de 133 a mano)", () => {
     expect(semilla.introducidas).toEqual(ACCIONES.map((a) => a.clave).sort());
-    expect(semilla.versiones.ADMINISTRADOR.ver).toHaveLength(ACCIONES.filter((a) => a.rolesEditarSemilla.includes("admin")).length);
-    expect(semilla.versiones.OPERADOR.ver).toHaveLength(ACCIONES.filter((a) => a.rolesEditarSemilla.includes("operador")).length);
+    expect(semilla.versiones.ADMINISTRADOR.ver).toHaveLength(ACCIONES.filter((a) => (a.rolesEditarSemilla as readonly string[]).includes("admin")).length);
+    expect(semilla.versiones.OPERADOR.ver).toHaveLength(ACCIONES.filter((a) => (a.rolesEditarSemilla as readonly string[]).includes("operador")).length);
     expect(semilla.versiones.ADMINISTRADOR.editar).toEqual(semilla.versiones.ADMINISTRADOR.ver);
     expect(semilla.versiones.OPERADOR.editar).toEqual(semilla.versiones.OPERADOR.ver);
   });

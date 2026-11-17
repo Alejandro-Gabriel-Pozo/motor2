@@ -39,7 +39,7 @@ Convenciones que valen para TODAS (verificadas, anexo A §cabecera): `empresaId`
 
 ## Modelos por primitiva
 
-Una fila por modelo de `prisma/schema.prisma` (113 modelos, 18 primitivas o grupos). Es la tabla que lee el guardián: la primera columna es el nombre exacto del modelo entre comillas invertidas.
+Una fila por modelo de `prisma/schema.prisma` (117 modelos, 18 primitivas o grupos). Es la tabla que lee el guardián: la primera columna es el nombre exacto del modelo entre comillas invertidas.
 
 | Modelo | Primitiva |
 |---|---|
@@ -116,6 +116,10 @@ Una fila por modelo de `prisma/schema.prisma` (113 modelos, 18 primitivas o grup
 | `Rol` | Usuarios, roles y permisos |
 | `Accion` | Usuarios, roles y permisos |
 | `PermisoRol` | Usuarios, roles y permisos |
+| `PlantillaDeRol` | Usuarios, roles y permisos |
+| `VersionDePlantilla` | Usuarios, roles y permisos |
+| `PisoDePlataforma` | Usuarios, roles y permisos |
+| `AccionIntroducida` | Usuarios, roles y permisos |
 | `CapacidadSucursal` | Usuarios, roles y permisos |
 | `Invitacion` | Usuarios, roles y permisos |
 | `InvitacionSucursal` | Usuarios, roles y permisos |
