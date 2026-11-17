@@ -69,11 +69,12 @@ describe("la migración deja las columnas, las reglas, el disparador y los privi
     expect(t[0]!.def).toMatch(/BEFORE UPDATE OF "estadoRecepcion", "recibidaEn", "recibidaPorId" ON/);
   });
 
-  it("motor2_app tiene UPDATE por columna SOLO de la recepción en la parte (nunca DELETE ni UPDATE de tabla)", async (ctx) => {
+  it("motor2_app tiene UPDATE por columna SOLO de la recepción en la parte (estado, fecha, persona y, desde Compras N3-a, la compra `operacionId`; nunca DELETE ni UPDATE de tabla)", async (ctx) => {
     if (!(await hayRol("motor2_app"))) return ctx.skip();
     const r = await prismaAdmin.$queryRaw<Array<{ columna: string }>>`
       SELECT a.attname::text AS columna FROM pg_attribute a WHERE a.attrelid = '"FacturaProveedorSucursal"'::regclass AND a.attnum > 0 AND NOT a.attisdropped AND has_column_privilege('motor2_app', a.attrelid, a.attnum, 'UPDATE') ORDER BY 1`;
-    expect(r.map((x) => x.columna)).toEqual(["estadoRecepcion", "recibidaEn", "recibidaPorId"]);
+    // Compras N3-a (migración 20261117120000): la confirmación de la recepción fija la compra de la parte, así que `operacionId` entra a la lista (la única columna sumada).
+    expect(r.map((x) => x.columna)).toEqual(["estadoRecepcion", "operacionId", "recibidaEn", "recibidaPorId"]);
     const t = await prismaAdmin.$queryRaw<Array<{ upd: boolean; del: boolean }>>`SELECT has_table_privilege('motor2_app', '"FacturaProveedorSucursal"', 'UPDATE') AS upd, has_table_privilege('motor2_app', '"FacturaProveedorSucursal"', 'DELETE') AS del`;
     expect(t).toEqual([{ upd: false, del: false }]);
   });

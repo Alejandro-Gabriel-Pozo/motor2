@@ -1,18 +1,21 @@
 "use server";
 
-import { guardComandoAceptarParteDeFactura, guardComandoAnularFacturaProveedor, guardComandoCorregirFacturaProveedor, guardComandoRegistrarFacturaProveedor } from "@/core/features/compras/factura-proveedor.guard";
+import { guardComandoAceptarParteDeFactura, guardComandoAnularFacturaProveedor, guardComandoConfirmarRecepcionDeFactura, guardComandoCorregirFacturaProveedor, guardComandoRegistrarControlDeRecepcion, guardComandoRegistrarFacturaProveedor } from "@/core/features/compras/factura-proveedor.guard";
 import type { CabeceraVista as CabeceraVistaSchema, CorreccionCompraInput as CorreccionCompraInputSchema } from "@/core/features/compras/compra.schema";
-import type { DatosFacturaProveedorInput } from "@/core/features/compras/factura-proveedor.schema";
+import type { ControlDeLineaInput, DatosFacturaProveedorInput, EntradaDeRecepcionInput } from "@/core/features/compras/factura-proveedor.schema";
 import { aResultadoAccion } from "@/core/resultado-caso";
+import { azarDelProceso } from "@/lib/azar";
 import { conPermiso, exigirTambienPermisoDeEmpresa } from "../con-permiso";
-import { error, type ResultadoAccion } from "../tipos";
+import { error, type ResultadoAccion, type ResultadoConfirmarRecepcion } from "../tipos";
 import { aceptarPropuestaDeFacturaCasoDeUso } from "./casos-de-uso/aceptar-propuesta-de-factura";
 import { anularFacturaProveedorCasoDeUso } from "./casos-de-uso/anular-factura-proveedor";
+import { confirmarRecepcionDeFacturaCasoDeUso } from "./casos-de-uso/confirmar-recepcion-de-factura";
 import { corregirFacturaProveedorCasoDeUso } from "./casos-de-uso/corregir-factura-proveedor";
+import { registrarControlDeRecepcionCasoDeUso } from "./casos-de-uso/registrar-control-de-recepcion";
 import { registrarFacturaProveedorCasoDeUso } from "./casos-de-uso/registrar-factura-proveedor";
 
 /**
- * E3a (ADR-041; docs/diseno-factura-de-proveedor-e3a-2026-10-27.md): las tres Server Actions de la factura de proveedor repartida entre sucursales por PROPUESTA y ACEPTACIÓN. Adaptadores finos: permiso →
+ * E3a (ADR-041; docs/diseno-factura-de-proveedor-e3a-2026-10-27.md): las Server Actions de la factura de proveedor repartida entre sucursales por PROPUESTA y ACEPTACIÓN. Adaptadores finos: permiso →
  * formato → caso de uso → `aResultadoAccion`. Ninguna refresca la vista: quien llama es un componente de cliente que pide el `router.refresh()` él mismo.
  */
 
@@ -38,6 +41,32 @@ export async function aceptarPropuestaDeFactura(propuestaId: string, seccionId: 
     const comando = guardComandoAceptarParteDeFactura({ propuestaId, seccionId, fechaStock, claveIdempotencia }, ctx.ahora);
     if (!comando.ok) return error(comando.mensaje);
     return aResultadoAccion(await aceptarPropuestaDeFacturaCasoDeUso(ctx, comando.valor));
+  });
+}
+
+/**
+ * Compras, recepción separada (N3-a y N3-b): «Confirmar recepción» de una compra cargada «pendiente de recibir». Permiso `compra_recibir` en la sucursal activa (módulo `recepcion_de_compras`, piso administrador: gerente y administrador, no el
+ * operador); la parte tiene que ser de esa sucursal (lo verifica el caso de uso). El actor y la hora salen del servidor; el cliente solo manda la factura y la sección de cada renglón (un solo destino por renglón, con su cantidad total) y la
+ * fecha del stock es la de la confirmación. Idempotente por estado: confirmar de nuevo devuelve éxito con `yaExistia` y no carga stock de nuevo.
+ */
+export async function confirmarRecepcionDeFactura(facturaId: string, entradas: EntradaDeRecepcionInput[]): Promise<ResultadoConfirmarRecepcion> {
+  return conPermiso("compra_recibir", async (ctx): Promise<ResultadoConfirmarRecepcion> => {
+    const comando = guardComandoConfirmarRecepcionDeFactura({ facturaId, entradas });
+    if (!comando.ok) return error(comando.mensaje);
+    const r = await confirmarRecepcionDeFacturaCasoDeUso(ctx, comando.valor);
+    return r.ok ? { ok: true, mensaje: r.mensaje, yaExistia: r.datos.yaExistia } : { ok: false, mensaje: r.mensaje };
+  });
+}
+
+/**
+ * Compras, recepción separada (N3-b): «Registrar el control» de las líneas de una compra pendiente de recibir (conforme, con observaciones o rechazada). Permiso `compra_controlar_recepcion` en la sucursal activa (módulo `recepcion_de_compras`,
+ * piso operario: lo registra «quien recibe», también el operador; confirmar sigue siendo del gerente y el administrador). Todo o nada; un renglón se controla una vez.
+ */
+export async function registrarControlDeRecepcion(facturaId: string, controles: ControlDeLineaInput[]): Promise<ResultadoAccion> {
+  return conPermiso("compra_controlar_recepcion", async (ctx) => {
+    const comando = guardComandoRegistrarControlDeRecepcion({ facturaId, controles });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await registrarControlDeRecepcionCasoDeUso(ctx, comando.valor, azarDelProceso));
   });
 }
 

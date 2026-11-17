@@ -80,7 +80,6 @@ const O = [
   "pos_enviar_a_cocina",
   "pos_liberar_mesa",
   "producto_campos_sensibles",
-  "compra_recibir",
   // E3a (decisión del dueño, 2026-10-27): proponer el reparto de una factura entre sucursales (de empresa, piso operario, semilla solo admin; el gerente la asigna en la matriz a quien reparte).
   "compra_repartir",
   // Pagos X0 (2026-11-04): declarar y anular el pago de una factura de proveedor (dinero; de empresa, piso operario, semilla solo admin; el gerente la asigna a quien confirme los pagos).
@@ -132,9 +131,13 @@ const L = [
   "producto_disponibilidad",
   // GO-2a: apagar una opción de venta en la sucursal (piso operario). Nació en la clase O (semilla solo admin); pasa a L en las empresas NUEVAS (semilla admin y operador, decisión del dueño, limpieza paquete A paso 3b; las bases existentes no cambian, sin migración).
   "opcion_apagar_en_sucursal",
+  // Compras N3-b (2026-11-16, «Como Pedernal: también el operador»): registrar el control por línea de una compra pendiente de recibir (piso operario, semilla admin y operador, como `proceso_compra`).
+  "compra_controlar_recepcion",
 ] as const satisfies readonly AccionClave[];
 
 const A = [
+  // Compras N3-a (2026-11-16): confirmar la recepción de una compra pendiente pasa de O a A (piso administrador, semilla admin): confirman el gerente y el administrador, no el operador (dueño: «un gerente o administrador la confirma»).
+  "compra_recibir",
   // Caja y cobro C1, PR-B (2026-11-16): cerrar la caja con arqueo, mover efectivo a mano y anular lo ajeno (de sucursal, piso administrador, semilla admin).
   "caja_cerrar_sesion",
   "caja_mover_efectivo",
@@ -232,8 +235,10 @@ describe("GT-26 — las clases de claves (G gobierno, O operativas sensibles, L 
     // O 21 → 22: Pagos X0 suma `declarar_pago_compra`.
     // O 22 → 24 y A 60 → 61: Parte P1 suma `partes_ver` y `partes_editar` (O: piso operario, semilla solo admin) y `partes_desactivar` (A).
     // O 24 → 22 y L 34 → 36: `partes_ver` y `partes_editar` suman `operador` a su semilla (pedido del dueño 2026-11-16): pasan de O a L.
-    // O 22 → 25 y A 61 → 64: Caja y cobro C1 PR-B suma `caja_ver`, `caja_abrir_sesion` y `cobrar_cuenta` (O) y `caja_cerrar_sesion`, `caja_mover_efectivo` y `caja_anular_movimiento_ajeno` (A).
-    expect([G.length, O.length, L.length, A.length]).toEqual([14, 25, 36, 64]);
+    // L 36 → 37: Compras N3-b (2026-11-16) suma `compra_controlar_recepcion` (piso operario, semilla admin y operador).
+    // O 22 → 21 y A 61 → 62: Compras N3-a (2026-11-16) sube `compra_recibir` de O a A (piso administrador).
+    // O +3 y A +3: Caja y cobro C1 PR-B suma `caja_ver`, `caja_abrir_sesion` y `cobrar_cuenta` (O) y `caja_cerrar_sesion`, `caja_mover_efectivo` y `caja_anular_movimiento_ajeno` (A).
+    expect([G.length, O.length, L.length, A.length]).toEqual([14, 24, 37, 65]);
   });
 
   it("toda clave del catálogo declara su clase, y toda clase declarada existe en el catálogo (las dos direcciones)", () => {

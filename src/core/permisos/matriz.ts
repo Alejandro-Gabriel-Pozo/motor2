@@ -20,8 +20,7 @@ export interface EstadoPermiso {
 export const SIN_PERMISO: EstadoPermiso = { puedeVer: false, puedeEditar: false };
 
 /**
- * Las acciones que muestra la matriz de permisos: las del catálogo vigente (los restos de la base no) menos las RESERVADAS (`compra_recibir`, sin consumidores hasta que exista
- * su bandeja; poda del 2026-11-06). Solo cambia qué filas se listan: no toca la base ni la decisión de acceso.
+ * Las acciones que muestra la matriz de permisos: las del catálogo vigente (los restos de la base no) menos las RESERVADAS (las claves sin consumidores; poda del 2026-11-06; hoy no hay ninguna: `compra_recibir`, la única, tiene su bandeja «Por recibir» desde Compras N3-a). Solo cambia qué filas se listan: no toca la base ni la decisión de acceso.
  */
 export function accionesDeLaMatrizDePermisos<T extends { clave: string }>(acciones: readonly T[]): T[] {
   return acciones.filter((a) => claveEnCatalogo(a.clave) && !esAccionReservada(a.clave));

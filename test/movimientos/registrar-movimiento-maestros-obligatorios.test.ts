@@ -35,6 +35,8 @@ function dbFalso(m: Maestros): Prisma.TransactionClient {
     // Una COMPRA busca su número en la empresa antes de seguir (cerrojo, facturas y compras): el cliente falso responde que no hay nada.
     // La carga de una COMPRA (una factura de una parte) lee primero si esa clave de reintento ya tiene una factura.
     facturaProveedor: { count: async () => 0, findUnique: async () => null },
+    // Compras N3-a: la carga de una factura lee si la empresa tiene el módulo `recepcion_de_compras`; el cliente falso responde que no tiene ninguno (la compra entra al stock al cargar, como siempre).
+    moduloEmpresa: { findMany: async () => [] },
     $queryRaw: async () => [],
   } as unknown as Prisma.TransactionClient;
 }

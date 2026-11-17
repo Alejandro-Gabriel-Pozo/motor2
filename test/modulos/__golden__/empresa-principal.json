@@ -201,6 +201,7 @@
       "acciones": [
         "alta_producto",
         "categoria_alta",
+        "compra_controlar_recepcion",
         "conteo_frecuencia",
         "conteo_resolver_pendiente",
         "insumo_alta",
@@ -1486,9 +1487,18 @@
     {
       "clave": "compra_recibir",
       "contexto": "sucursal",
-      "nivelMinimo": "operario",
+      "nivelMinimo": "administrador",
       "rolesEditarSemilla": [
         "admin"
+      ]
+    },
+    {
+      "clave": "compra_controlar_recepcion",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
       ]
     },
     {
