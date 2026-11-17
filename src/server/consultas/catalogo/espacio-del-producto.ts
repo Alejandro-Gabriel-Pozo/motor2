@@ -24,6 +24,8 @@ export interface ProductoDelEspacio {
   precioVenta: number;
   /** Solo una materia prima con `seProduce` tiene receta propia. */
   seProduce: boolean;
+  /** La clase de uso guardada (solo `REVENTA` cambia si el producto se compra: E4-2). */
+  claseDeUso: string | null;
   /** El producto interno que respalda el stock de un adicional (ADR-030): no se maneja con los pasos de venta. */
   esAnclaDeAdicional: boolean;
   /** La unidad de stock (la base en la que se expresan las presentaciones de compra). */
@@ -34,7 +36,7 @@ export interface ProductoDelEspacio {
 export async function leerProductoDelEspacio(db: Db, productoId: string): Promise<ProductoDelEspacio | null> {
   const p = await db.producto.findFirst({
     where: { id: productoId },
-    select: { id: true, nombre: true, codigo: true, tipo: true, modoDeVenta: true, precioVenta: true, seProduce: true, unidadStock: { select: { nombre: true } }, opcionQueRespalda: { select: { id: true } } },
+    select: { id: true, nombre: true, codigo: true, tipo: true, modoDeVenta: true, precioVenta: true, seProduce: true, claseDeUso: true, unidadStock: { select: { nombre: true } }, opcionQueRespalda: { select: { id: true } } },
   });
   if (!p) return null;
   return {
@@ -45,6 +47,7 @@ export async function leerProductoDelEspacio(db: Db, productoId: string): Promis
     modoDeVenta: modoDeVentaDe(p.modoDeVenta),
     precioVenta: Number(p.precioVenta),
     seProduce: p.seProduce,
+    claseDeUso: p.claseDeUso,
     esAnclaDeAdicional: p.opcionQueRespalda !== null,
     unidadStockNombre: p.unidadStock.nombre,
   };

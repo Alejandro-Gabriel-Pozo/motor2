@@ -131,12 +131,12 @@ export function tieneStockReal(tipo: TipoProducto, seProduce: boolean): boolean 
  */
 export function productoValidoParaProceso(
   proceso: Proceso,
-  producto: { tipo: TipoProducto; seProduce: boolean; esConsignacion: boolean }
+  producto: { tipo: TipoProducto; seProduce: boolean; esConsignacion: boolean; claseDeUso?: string | null }
 ): boolean {
   const t = TRANSICIONES[proceso];
 
-  // Uso 1:1 Tipo (porción Catálogo): comprar siempre es de una MP.
-  if (proceso === "COMPRA" && producto.tipo !== "MP") return false;
+  // Qué se puede comprar lo decide `capacidadesDelProducto` (E4-2): una MP, y una Reventa coherente; un PV común o un tipo desconocido no.
+  if (proceso === "COMPRA" && !capacidadesDelProducto({ tipo: producto.tipo, seProduce: producto.seProduce, claseDeUso: producto.claseDeUso }).seCompra) return false;
 
   if (proceso === "PRODUCCION") return producto.seProduce;
 

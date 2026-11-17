@@ -27,7 +27,7 @@ describe("PROCESOS_UI.exigeSeccion", () => {
 
 describe("PROCESOS_UI.filtroProducto (hallazgo de la auditoría: el selector no filtraba por proceso)", () => {
   it("Compra solo deja elegir Materias Primas", () => {
-    expect(obtenerConfigProceso("compra")?.filtroProducto).toEqual({ soloDisponibles: true, tipo: "MP" });
+    expect(obtenerConfigProceso("compra")?.filtroProducto).toEqual({ soloDisponibles: true, soloSeCompra: true });
   });
 
   it("Dev. consignación solo deja elegir productos en consignación", () => {

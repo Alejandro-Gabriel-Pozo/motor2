@@ -1,5 +1,6 @@
 import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
 import { esBaseConfigurable, type ModoDeVenta } from "@/core/opciones/public";
+import { capacidadesDelProducto } from "./capacidades-del-producto";
 import { PRESENTACIONES_VISIBLES } from "./presentaciones-visibles";
 
 /**
@@ -59,6 +60,8 @@ export interface FormaDelProducto {
   seProduce: boolean;
   /** El producto interno que respalda el stock de un adicional (ADR-030): se vende solo como adicional y no se maneja con los pasos de venta. */
   esAnclaDeAdicional: boolean;
+  /** La clase de uso guardada: solo `REVENTA` cambia si el producto se compra (E4-2). */
+  claseDeUso?: string | null;
 }
 
 /**
@@ -89,7 +92,7 @@ const SIN_DATO: EstadoDelPaso = { tipo: "sin-dato" };
 function pasoCorrespondeAlProducto(forma: FormaDelProducto, paso: PasoDelEspacio): boolean {
   if (paso === "datos") return true;
   if (forma.esAnclaDeAdicional) return false;
-  if (paso === "compra") return forma.tipo === "MP" && PRESENTACIONES_VISIBLES;
+  if (paso === "compra") return capacidadesDelProducto({ tipo: forma.tipo, seProduce: forma.seProduce, claseDeUso: forma.claseDeUso }).seCompra && PRESENTACIONES_VISIBLES;
   if (forma.tipo === "MP") return paso === "receta" && forma.seProduce;
   return true; // PV
 }
