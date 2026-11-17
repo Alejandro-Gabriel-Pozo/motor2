@@ -5,6 +5,13 @@
 > **Estados:** CONFIRMADA (dicha por el dueño) · PROPUESTA · PENDIENTE · NO VERIFICADO (†).
 > **Pedernal no tiene el portal en código** (`ZuluHub-ERP` main #370): solo especificación y SQL 0077/0078/0083 propuestos. Se reproduce el diseño, no código probado.
 
+## Respuestas del dueño a la pregunta única (2026-11-17, literales, registradas en `motor2-docs`)
+
+| Punto | Respuesta | Efecto |
+|---|---|---|
+| Recuadro al borde del mapa | «Recortar al borde y mostrarte la lista» | **CONFIRMADA.** Se recorta y se muestra la lista de recuadros recortados, con capturas antes y después, **antes de tocar nada real** (no se frena la migración) |
+| QR impreso | «Las dos funcionan; la vieja la cortás vos» | **CONFIRMADA.** El slug actual NO se corta hasta decisión del dueño; el código nuevo convive |
+
 ## 0. Hallazgos que cambian el diseño (verificados en el código real)
 
 1. **«El portal se oculta si la empresa baja de plan» (fila 235) YA existe en Motor2.** `src/server/carta-publica/sin-sesion.ts` pregunta `modulosEfectivosDeEmpresa(...).has("carta")` antes de publicar nada «ni la carta de una sucursal, ni el portal, ni la apariencia del portal» (T9 del endurecimiento, decisión S-23/D2 del dueño). **Etapa C1 del documento anterior: cerrada, sin trabajo.** Queda solo una prueba que lo fije con el nombre «portal» (†: puede existir ya; buscar antes de escribirla).
