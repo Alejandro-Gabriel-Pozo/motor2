@@ -18,6 +18,7 @@ const consumo = (efecto: "SUMA" | "REEMPLAZA", insumo: string, reemplaza: string
   cantidad: 1,
   unidadStockId: "u1",
   mermaPorcentaje: 0,
+  baseDeCantidad: "NETA",
   escalaConLaMedida: false,
 });
 

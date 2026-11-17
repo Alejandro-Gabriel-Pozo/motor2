@@ -7,8 +7,8 @@ import type { GrupoParaVender, OpcionParaVender } from "../../../src/core/pos/li
  * opción OFRECIDA (grupo y opción activos y admitidos; el apagado temporal de la sucursal no cuenta). Solo las SUMA de las opciones del precio: el REEMPLAZA no (con la base vacía no tiene qué
  * reemplazar), la «ninguna» aporta cero y los ADICIONALES no entran.
  */
-const suma = (insumoProductoId: string) => ({ efecto: "SUMA" as const, insumoProductoId, reemplazaAProductoId: null, cantidad: 1, unidadStockId: "u", mermaPorcentaje: 0, escalaConLaMedida: false });
-const reemplaza = (de: string, por: string) => ({ efecto: "REEMPLAZA" as const, insumoProductoId: por, reemplazaAProductoId: de, cantidad: 1, unidadStockId: "u", mermaPorcentaje: 0, escalaConLaMedida: false });
+const suma = (insumoProductoId: string) => ({ efecto: "SUMA" as const, insumoProductoId, reemplazaAProductoId: null, cantidad: 1, unidadStockId: "u", mermaPorcentaje: 0, baseDeCantidad: "NETA" as const, escalaConLaMedida: false });
+const reemplaza = (de: string, por: string) => ({ efecto: "REEMPLAZA" as const, insumoProductoId: por, reemplazaAProductoId: de, cantidad: 1, unidadStockId: "u", mermaPorcentaje: 0, baseDeCantidad: "NETA" as const, escalaConLaMedida: false });
 
 function opcion(id: string, consumos: OpcionParaVender["consumos"], extra: Partial<OpcionParaVender> = {}): OpcionParaVender {
   return {

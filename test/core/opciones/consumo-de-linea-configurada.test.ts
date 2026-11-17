@@ -230,11 +230,11 @@ describe("consumoDeLineaConfigurada: reemplazos", () => {
 });
 
 function reemplazo(reemplazaAProductoId: string, insumoProductoId: string, cantidad: number, escalaConLaMedida = false): ConsumoDeOpcionParaVender {
-  return { efecto: "REEMPLAZA", insumoProductoId, reemplazaAProductoId, cantidad, unidadStockId: "u-g", mermaPorcentaje: 0, escalaConLaMedida };
+  return { efecto: "REEMPLAZA", insumoProductoId, reemplazaAProductoId, cantidad, unidadStockId: "u-g", mermaPorcentaje: 0, baseDeCantidad: "NETA", escalaConLaMedida };
 }
 
 function suma(insumoProductoId: string, cantidad: number, mermaPorcentaje = 0, escalaConLaMedida = false): ConsumoDeOpcionParaVender {
-  return { efecto: "SUMA", insumoProductoId, reemplazaAProductoId: null, cantidad, unidadStockId: "u-g", mermaPorcentaje, escalaConLaMedida };
+  return { efecto: "SUMA", insumoProductoId, reemplazaAProductoId: null, cantidad, unidadStockId: "u-g", mermaPorcentaje, baseDeCantidad: "NETA", escalaConLaMedida };
 }
 
 describe("consumoDeLineaConfigurada: hotel", () => {
@@ -304,6 +304,7 @@ describe("consumoDeLineaConfigurada: factor de la MEDIDA y rendimiento de la suc
         insumoProductoId: "mp-x",
         cantidad: 10,
         mermaPorcentaje: 3,
+        baseDeCantidad: "NETA",
         insumoSustitutoIds: ["mp-y"],
         rendimientosLocales: [
           { sucursalId: SUCURSAL, cantidad: 12, mermaPorcentaje: null },
@@ -406,6 +407,7 @@ const ingredienteArb: fc.Arbitrary<IngredienteDeBase> = fc.record({
     insumoProductoId: fc.constantFrom("mp-1", "mp-2", "mp-3"),
     cantidad: numeroArb,
     mermaPorcentaje: mermaArb,
+    baseDeCantidad: fc.constant("NETA" as const), // M3a: estas propiedades fijan la base NETA (la de todo lo ya cargado)
     insumoSustitutoIds: fc.array(fc.constantFrom("ins-1", "ins-2"), { maxLength: 2 }),
     rendimientosLocales: fc.array(
       fc.record({ sucursalId: fc.constantFrom(...SUCURSALES), cantidad: fc.option(numeroArb, { nil: null }), mermaPorcentaje: fc.option(mermaArb, { nil: null }) }),
@@ -451,7 +453,7 @@ describe("consumoDeLineaConfigurada (propiedades)", () => {
     fc.assert(
       fc.property(numeroArb, fc.integer({ min: 1, max: 10 }), fc.integer({ min: 5_000, max: 30_000 }), consumoArb, consumoArb, (vendida, unidades, m, s, r) => {
         const factor = m / 10_000;
-        const base: IngredienteDeBase[] = [{ unidadStockId: "u-g", ingrediente: { insumoProductoId: "mp-base", cantidad: 5, mermaPorcentaje: 0, insumoSustitutoIds: [], rendimientosLocales: [] } }];
+        const base: IngredienteDeBase[] = [{ unidadStockId: "u-g", ingrediente: { insumoProductoId: "mp-base", cantidad: 5, mermaPorcentaje: 0, baseDeCantidad: "NETA", insumoSustitutoIds: [], rendimientosLocales: [] } }];
         const medida: OpcionConConsumo = { opcionId: "m", nombre: "M", tipo: "MEDIDA", ordenDeGrupo: 0, ordenDeOpcion: 0, cantidad: 1, factorEscala: factor, consumos: [] };
         const variante: OpcionConConsumo = {
           opcionId: "v",

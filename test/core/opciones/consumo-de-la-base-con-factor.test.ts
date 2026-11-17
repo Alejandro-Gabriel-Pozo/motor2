@@ -12,7 +12,7 @@ import { SUCURSAL } from "./escenarios";
  */
 
 function ing(insumoProductoId: string, cantidad: number, mermaPorcentaje = 0, rendimientosLocales: IngredienteDeBase["ingrediente"]["rendimientosLocales"] = []): IngredienteDeBase {
-  return { ingrediente: { insumoProductoId, cantidad, mermaPorcentaje, rendimientosLocales, insumoSustitutoIds: [] }, unidadStockId: `u-${insumoProductoId}` };
+  return { ingrediente: { insumoProductoId, cantidad, mermaPorcentaje, baseDeCantidad: "NETA", rendimientosLocales, insumoSustitutoIds: [] }, unidadStockId: `u-${insumoProductoId}` };
 }
 
 /** La pizza del dueño: 0,25 kg de harina y 0,10 kg de queso por unidad. */
