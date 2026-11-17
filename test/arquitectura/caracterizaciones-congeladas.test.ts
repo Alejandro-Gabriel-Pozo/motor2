@@ -863,6 +863,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Libro de la carta al estilo de la maqueta de Pedernal (Frente 6, PR #391; SOLO PRESENTACIÓN, interruptor LIBRO_ESTILO_MAQUETA; regenerado con REGENERAR_CARACTERIZACION_TRAMO_A=1): cambian SOLO las líneas del tema de la carta pública que la sucursal no cargó (`carta.resolverEmpresaCarta`, `carta.resolverCartaPublica` central y norte): fondo y marca por defecto de la maqueta, tipografía geist, tamaños de letra de nombre, precio y títulos, rótulo «← Portal» del botón de volver, y las variables CSS que de ahí salen. Dueño, 2026-11-16: «Sí, igualar al de la maqueta»; 2026-11-17: «Portal con una flechita…», «si» (letra), «blanco y negrita». Ningún dato guardado, permiso ni dinero cambia.",
       },
+      {
+        blob: "627569a7d0606b2257cde02456139080ff92655d",
+        // El commit PADRE de este es a2476b85 (la rama con la migración y la prueba de E1 de clases), el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "a2476b85",
+        motivo:
+          "Clase de uso del producto (ADITIVO; migración 20261117180000_clase_de_uso_del_producto, E1 de clases de producto como Pedernal; regenerado con REGENERAR_CARACTERIZACION_TRAMO_A=1): la fila PRODUCTO de la lectura del estado de la receta propia suma `claseDeUso: null` (nadie tiene clase todavía: la migración no escribe nada y nada la lee). 1 línea agregada, 0 quitadas; ningún número, orden ni conteo de consultas cambia.",
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {
@@ -1113,6 +1120,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "a3b0efff",
         motivo:
           "M2 de la merma sobre el bruto (migración 20261117140000_base_de_cantidad_en_versiones; ADITIVA, nada la lee todavía; regenerado con REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1): las tres filas RECETA_VERSION suman `baseDeCantidad=NETA` (el valor por defecto de todo lo ya cargado). Ninguna otra línea cambia: precios, descuentos, promos y costos siguen idénticos.",
+      },
+      {
+        blob: "7f7727488f89bb7b46de4c8c8b23561b42cb81cf",
+        // El commit PADRE de este es a2476b85 (la rama con la migración y la prueba de E1 de clases), el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "a2476b85",
+        motivo:
+          "Clase de uso del producto (ADITIVO; migración 20261117180000_clase_de_uso_del_producto, E1 de clases de producto como Pedernal; regenerado con REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1): las filas PRODUCTO suman `claseDeUso=null` (nadie tiene clase todavía). Cambia SOLO esas 13 líneas (cada una igual a la anterior más `claseDeUso=null`); ningún dinero, stock ni orden cambia.",
       },
     ],
   },
