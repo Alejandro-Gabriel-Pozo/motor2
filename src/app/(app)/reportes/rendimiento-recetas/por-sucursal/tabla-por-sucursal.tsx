@@ -2,6 +2,7 @@
 
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import { desvioEsNotable } from "@/core/reportes/public";
+import { textoDe } from "@/core/textos/texto-de";
 
 export interface ValorPorSucursalPlano {
   cantidad: number;
@@ -48,7 +49,7 @@ export function TablaPorSucursal({ filas, sucursales }: { filas: FilaComparacion
     },
     {
       clave: "insumo",
-      etiqueta: "Insumo",
+      etiqueta: textoDe("columna.insumo"),
       valor: (f) => f.insumoNombre,
       render: (f) => f.insumoNombre,
     },

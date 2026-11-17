@@ -193,15 +193,18 @@ describe("Caracterización de la línea de venta (armarLinea y la deuda de redon
   it("C7: la misma MP dos veces en la receta, con los ids insertados al revés, se consume por ORDEN DE ID (no de inserción) y el arrastre de redondeo lo sigue", async () => {
     const bollo = await producto("MP_BOLLO", "MP");
     const combo = await producto("PV_COMBO", "PV", { precioVenta: 100 });
-    // Se inserta primero «ing-2» (0,3) y después «ing-1» (0,2): leída por id, la receta es 0,2 → 0,3.
+    // A1b 2026-11-16: stock con 4 decimales fijos y cuenta exacta; antes la receta era 0,2 y 0,3 (con unidad de 0 decimales el arrastre actuaba
+    // con eso). Ahora 0,2 y 0,3 se escriben exactos, así que para seguir probando que el arrastre sigue el ORDEN DE ID se usan consumos de
+    // más de 4 decimales: receta 0,0003 (ing-1) y 0,0001 (ing-2) y 0,5 vendido → 0,00015 y 0,00005.
+    // Se inserta primero «ing-2» (0,0001) y después «ing-1» (0,0003): leída por id, la receta es 0,0003 → 0,0001.
     await receta(combo, [
-      { id: "ing-2", insumoProductoId: bollo, cantidad: 0.3 },
-      { id: "ing-1", insumoProductoId: bollo, cantidad: 0.2 },
+      { id: "ing-2", insumoProductoId: bollo, cantidad: 0.0001 },
+      { id: "ing-1", insumoProductoId: bollo, cantidad: 0.0003 },
     ]);
-    // Dos lotes de vencimiento distinto: el que vence antes (FEFO) se consume primero y alcanza justo para 0,25.
-    await stock(bollo, 0.25, "2026-11-01");
+    // Dos lotes de vencimiento distinto: el que vence antes (FEFO) se consume primero y alcanza justo para 0,0002 (0,00015 + 0,00005).
+    await stock(bollo, 0.0002, "2026-11-01");
     await stock(bollo, 1, "2026-12-01");
-    const visto = await correr([{ productoId: combo, cantidadVendida: 1 }]);
+    const visto = await correr([{ productoId: combo, cantidadVendida: 0.5 }]);
     expect(visto).toEqual(ESPERADO.C7);
     expect(await consumos()).toEqual(ESPERADO.C7_CONSUMOS);
   });
@@ -217,19 +220,21 @@ describe("Caracterización de la línea de venta (armarLinea y la deuda de redon
   it("C9: el resto de redondeo del mismo insumo en OTRA sucursal no entra en la deuda de Central", async () => {
     const bollo = await producto("MP_BOLLO", "MP");
     const pan = await producto("PV_PAN", "PV", { precioVenta: 100 });
-    await receta(pan, [{ id: "ing-1", insumoProductoId: bollo, cantidad: 0.5 }]);
+    // A1b 2026-11-16: stock con 4 decimales fijos; antes receta 0,5 y Norte con 0,4 → 1 (deuda −0,6). Ahora, para que haya resto de redondeo, se
+    // usan consumos de más de 4 decimales: receta 0,00005 de bollo por pan y Norte con 0,00004 escrito como 0,0001 (deuda −0,00006).
+    await receta(pan, [{ id: "ing-1", insumoProductoId: bollo, cantidad: 0.0001 }]);
     await stock(bollo, 3);
-    // Norte consumió 0,4 de bollo y escribió 1: SU deuda es −0,6. Si la deuda de Central la incluyera, la media unidad de Central (0,5 − 0,6) se escribiría en 0 y no en 1.
+    // Norte consumió 0,00004 de bollo y escribió 0,0001: SU deuda es −0,00006. Si la deuda de Central la incluyera, el consumo de Central (0,00005 − 0,00006) se escribiría en 0 y no en 0,0001.
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
     const seccionNorte = (await sembrarSeccion(norte.id, "Cocina Norte")).id;
     const operacion = await prisma.operacion.create({ data: { sucursalId: norte.id, proceso: "VENTA", fecha: new Date("2026-09-20"), usuarioId } });
     await prisma.movimientoStock.create({
       data: {
-        operacionId: operacion.id, productoId: bollo, seccionId: seccionNorte, proceso: "CONSUMO", cantidad: -1, cantidadExacta: -0.4,
+        operacionId: operacion.id, productoId: bollo, seccionId: seccionNorte, proceso: "CONSUMO", cantidad: -0.0001, cantidadExacta: -0.00004,
         detalle: "Consumo previo de Norte", precioTotal: 0, precioPorUnidadStock: 0,
       },
     });
-    const visto = await correr([{ productoId: pan, cantidadVendida: 1 }]);
+    const visto = await correr([{ productoId: pan, cantidadVendida: 0.5 }]);
     expect(visto).toEqual(ESPERADO.C9);
     expect(await consumos()).toEqual(ESPERADO.C9_CONSUMOS);
   });
@@ -296,12 +301,12 @@ const ESPERADO = {
     },
     escrituras: ["operacion.create", "movimientoStock.createMany"],
   },
-  // Por orden de id la receta es 0,2 → 0,3: la primera sale entera del lote que vence antes (0,2 → se escribe 0, deuda 0,2); la segunda toma lo que le queda a ese lote (0,05 → 0, deuda 0,25)
-  // y el resto del segundo (0,25 → 0,25 + 0,25 = 0,5 → se escribe 1). Con la receta en orden de inserción (0,3 → 0,2) las cantidades exactas y los lotes de cada fila serían otros.
+  // A1b 2026-11-16: ver el comentario del caso C7 (consumos de 5 decimales: antes 0,2 y 0,3 con unidad entera). Por orden de id la receta es 0,0003 → 0,0001 (× 0,5 = 0,00015 → 0,00005):
+  // la primera (0,00015) se escribe 0,0002 (el empate se aleja del cero; deuda de 0,00005 de más) y la segunda (0,00005) se compensa con esa deuda y se escribe 0; las dos salen del lote que vence antes.
+  // Con la receta en orden de inserción (0,0001 → 0,0003) las cantidades exactas de cada fila serían otras (0,00005 → 0,0001 primero).
   C7_CONSUMOS: [
-    { producto: "MP_BOLLO", cantidad: "0", cantidadExacta: "-0.2", lote: "2026-11-01" },
-    { producto: "MP_BOLLO", cantidad: "0", cantidadExacta: "-0.05", lote: "2026-11-01" },
-    { producto: "MP_BOLLO", cantidad: "-1", cantidadExacta: "-0.25", lote: "2026-12-01" },
+    { producto: "MP_BOLLO", cantidad: "-0.0002", cantidadExacta: "-0.00015", lote: "2026-11-01" },
+    { producto: "MP_BOLLO", cantidad: "0", cantidadExacta: "-0.00005", lote: "2026-11-01" },
   ],
   C8: {
     resultado: { ok: true, mensaje: "Se registraron 1 venta(s) correctamente.", operaciones: 1, avisos: 0 },
@@ -319,6 +324,7 @@ const ESPERADO = {
     },
     escrituras: ["operacion.create", "movimientoStock.createMany"],
   },
-  // Sin la deuda de Norte (−0,6) la media unidad de Central se escribe en 1 (Math.round(0,5)); con ella se escribiría 0.
-  C9_CONSUMOS: [{ producto: "MP_BOLLO", cantidad: "-1", cantidadExacta: "-0.5", lote: null }],
+  // A1b 2026-11-16: antes −1 con cantidadExacta −0,5 (receta de 0,5 y deuda de Norte de −0,6). Sin la deuda de Norte (−0,00006) el consumo de Central (0,00005) se escribe en 0,0001
+  // (el empate se aleja del cero); con ella se escribiría 0.
+  C9_CONSUMOS: [{ producto: "MP_BOLLO", cantidad: "-0.0001", cantidadExacta: "-0.00005", lote: null }],
 };

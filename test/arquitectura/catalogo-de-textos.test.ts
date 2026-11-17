@@ -68,6 +68,8 @@ describe("catálogo de textos: cada regla con su violación inyectada", () => {
   it("C1: clave mal formada, y dos claves que solo difieren en mayúsculas", () => {
     expect(dicen({ ...base(), "rechazo.no_hay": base()["rechazo.NO_HAY_STOCK"]! })).toContain("C1");
     expect(dicen({ ...base(), "Aviso.saludo": base()["aviso.saludo"]! })).toContain("C1");
+    expect(dicen({ ...base(), "columna.Producto": { ...base()["aviso.saludo"]!, porDefecto: "Chau {nombre}" } })).toContain("C1");
+    expect(revisarCatalogo({ ...base(), "columna.producto": { ...base()["aviso.saludo"]!, porDefecto: "Chau {nombre}" } }, contexto()).filter((p) => p.includes("C1"))).toEqual([]);
     expect(dicen({ ...base(), "aviso.Saludo": { ...base()["aviso.saludo"]!, porDefecto: "Chau {nombre}" } })).toContain("C1");
     // una clave bien formada y distinta no dispara C1
     expect(revisarCatalogo({ ...base(), "aviso.otro": { ...base()["aviso.saludo"]!, porDefecto: "Chau {nombre}" } }, contexto()).filter((p) => p.includes("C1"))).toEqual([]);
@@ -118,6 +120,7 @@ describe("catálogo de textos: cada regla con su violación inyectada", () => {
     expect(dicen(con("aviso.saludo", { porDefecto: "Hola {nombre} {apellido}" }))).toContain("{apellido}");
     expect(dicen(con("aviso.saludo", { porDefecto: "Hola" }))).toContain("no lo usa");
     expect(dicen(con("aviso.saludo", { marcadores: { nombre: "dinero" } }))).toContain("tipo que no existe");
+    expect(revisarCatalogo(con("aviso.saludo", { marcadores: { nombre: "entidad" } }), contexto())).toEqual([]);
     expect(dicen(con("aviso.saludo", { porDefecto: "Hola {nombre} }" }))).toContain("suelta");
     expect(dicen(con("aviso.saludo", { porDefecto: "Hola {Nombre}", marcadores: { nombre: "texto" } }))).toContain("C5");
     expect(dicen(con("rechazo.NO_HAY_STOCK", { porDefecto: " " }))).toContain("vacío");

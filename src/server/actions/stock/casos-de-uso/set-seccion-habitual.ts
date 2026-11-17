@@ -2,6 +2,7 @@ import "server-only";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoSeccionHabitual, ResultadoSetSeccionHabitual } from "@/core/features/seccion-habitual/seccion-habitual.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
+import { textoDe } from "@/core/textos/texto-de";
 import { guardarSeccionHabitual } from "@/server/persistencia/stock/seccion-habitual";
 
 /**
@@ -22,7 +23,7 @@ import { guardarSeccionHabitual } from "@/server/persistencia/stock/seccion-habi
  */
 export async function setSeccionHabitualCasoDeUso(actor: Pick<ContextoUsuario, "db" | "sucursalId">, comando: ComandoSeccionHabitual): Promise<ResultadoSetSeccionHabitual> {
   const producto = await actor.db.producto.findUnique({ where: { id: comando.productoId } });
-  if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró el producto.");
+  if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", textoDe("rechazo.PRODUCTO_NO_ENCONTRADO"));
   if (producto.tipo !== "PV") return fracaso("NO_ES_PV", `Solo un producto de venta (PV) tiene depósito habitual: «${producto.nombre}» es una materia prima.`);
 
   const seccion = await actor.db.seccion.findUnique({ where: { id: comando.seccionId } });

@@ -132,15 +132,15 @@ export interface ComandoCambiarEstadoDeMedioDePago {
 
 type CodigoComunDeConfiguracion = "VERSION_DESACTUALIZADA" | "SUCURSAL_NO_ENCONTRADA" | "SUCURSAL_FUERA_DE_ALCANCE";
 
-export type CodigoDeFalloDeCrearCuenta = "TIPO_DE_CUENTA_INVALIDO" | "NOMBRE_DE_CUENTA_INVALIDO" | "IDENTIFICADOR_EXTERNO_INVALIDO" | "CUENTA_DUPLICADA" | Exclude<CodigoComunDeConfiguracion, "VERSION_DESACTUALIZADA">;
+export type CodigoDeFalloDeCrearCuenta = "TIPO_DE_CUENTA_INVALIDO" | "NOMBRE_DE_CUENTA_INVALIDO" | "IDENTIFICADOR_EXTERNO_INVALIDO" | "CUENTA_DUPLICADA" | "SUCURSAL_YA_TIENE_CUENTA_ACTIVA" | Exclude<CodigoComunDeConfiguracion, "VERSION_DESACTUALIZADA">;
 export type ResultadoCrearCuentaDeCobro = Exito<{ cuentaDeCobroId: string; yaExistia: boolean }> | Fracaso<CodigoDeFalloDeCrearCuenta>;
 
-export type CodigoDeFalloDeEditarCuenta = "NOMBRE_DE_CUENTA_INVALIDO" | "IDENTIFICADOR_EXTERNO_INVALIDO" | "CUENTA_DE_COBRO_NO_ENCONTRADA" | "CUENTA_DUPLICADA" | CodigoComunDeConfiguracion;
+export type CodigoDeFalloDeEditarCuenta = "NOMBRE_DE_CUENTA_INVALIDO" | "IDENTIFICADOR_EXTERNO_INVALIDO" | "CUENTA_DE_COBRO_NO_ENCONTRADA" | "CUENTA_DUPLICADA" | "SUCURSAL_YA_TIENE_CUENTA_ACTIVA" | CodigoComunDeConfiguracion;
 export type ResultadoEditarCuentaDeCobro = Exito<{ version: number }> | Fracaso<CodigoDeFalloDeEditarCuenta>;
 
 export type CodigoDeFalloDeEstadoDeCuenta = "CUENTA_DE_COBRO_NO_ENCONTRADA" | "SUCURSAL_FUERA_DE_ALCANCE";
 export type ResultadoDesactivarCuentaDeCobro = Exito<{ yaEstabaInactiva: boolean }> | Fracaso<CodigoDeFalloDeEstadoDeCuenta>;
-export type ResultadoReactivarCuentaDeCobro = Exito<{ yaEstabaActiva: boolean }> | Fracaso<CodigoDeFalloDeEstadoDeCuenta>;
+export type ResultadoReactivarCuentaDeCobro = Exito<{ yaEstabaActiva: boolean }> | Fracaso<CodigoDeFalloDeEstadoDeCuenta | "SUCURSAL_YA_TIENE_CUENTA_ACTIVA">;
 
 export type CodigoDeFalloDeCrearMedio = "TIPO_DE_MEDIO_INVALIDO" | "NOMBRE_DE_MEDIO_INVALIDO" | "MEDIO_DUPLICADO" | "MEDIO_INACTIVO_CON_ESE_NOMBRE" | "EFECTIVO_YA_EXISTE";
 export type ResultadoCrearMedioDePago = Exito<{ medioDePagoId: string; yaExistia: boolean }> | Fracaso<CodigoDeFalloDeCrearMedio>;
