@@ -33,6 +33,8 @@ const IMPORTADOS_PUROS: Record<string, string> = {
   admisionDelFormulario: "./admision-del-formulario",
   // GO-3b (U1): arma los lugares de entradas (lista y del día) desde el FormData del formulario de cupos de una promo; no valida ni escribe.
   lugaresDelFormulario: "./lugares-del-formulario",
+  // Frente 6 (cantidad exacta): los cupos de sección tildados del mismo formulario; igual que el anterior, solo arma datos (no valida ni escribe).
+  cuposDeSeccionDelFormulario: "./lugares-del-formulario",
 };
 /** Abrir/cerrar sesión: solo en estos archivos (el login y los dos shells). */
 const SESION: Record<string, string[]> = {

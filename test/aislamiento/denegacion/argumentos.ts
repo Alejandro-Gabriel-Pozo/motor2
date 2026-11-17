@@ -128,6 +128,8 @@ const VALORES: Readonly<Record<string, Valor>> = {
   soloActivos: () => false,
   nombre: () => "Nombre nuevo",
   nombreNuevo: () => "Nombre nuevo",
+  // C2c: la hora de corte de una sucursal («HH:MM» válida; el control positivo la escribe).
+  horaDeCorte: () => "06:00",
   descripcion: () => "descripción de prueba",
   motivo: () => "motivo de prueba",
   notas: () => "notas de prueba",

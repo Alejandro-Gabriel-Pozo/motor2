@@ -212,8 +212,9 @@ const existente = (extra: Partial<ProductoExistente> = {}): ProductoExistente =>
   precioVenta: 0,
   ...extra,
 });
+// Estas pruebas fijan la pantalla ANTERIOR del alta (los controles de siempre): con el interruptor `ALTA_DE_PRODUCTO_COMO_PEDERNAL` apagado. La nueva está en `alta-como-pedernal.test.tsx`.
 const dibujar = (puede: boolean, productoExistente?: ProductoExistente) =>
-  renderToStaticMarkup(<ProductoForm {...comunes} puedeEditarCamposSensibles={puede} productoExistente={productoExistente} presentacionesIniciales={[]} cantidadSucursales={1} nombreSucursalActual="Central" />);
+  renderToStaticMarkup(<ProductoForm {...comunes} altaComoPedernal={false} puedeEditarCamposSensibles={puede} productoExistente={productoExistente} presentacionesIniciales={[]} cantidadSucursales={1} nombreSucursalActual="Central" />);
 /** El desplegable «Unidad de stock» lleva su etiqueta (visible solo para el lector) atada por `for`/`id`: ya no es un `aria-label`. */
 const UNIDAD_DE_STOCK = /<label[^>]*class="sr-only"[^>]*>Unidad de stock/;
 const soloLectura = (html: string, campo: string) => html.match(new RegExp(`data-solo-lectura="${campo}"[^>]*>([\\s\\S]*?)</dl>`))?.[1] ?? null;

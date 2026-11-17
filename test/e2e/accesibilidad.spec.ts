@@ -24,6 +24,7 @@ import {
 import { activarEmpresaB, crearUsuarioEn, paginaConSesion, suspenderEmpresaB, type EmpresasDeLaPrueba } from "./fixtures/multiempresa";
 
 import { crearCategoriaDeTest, limpiarCategoriasDeTest } from "../setup/categoria-de-prueba";
+import { elegirClaseDelAlta } from "./fixtures/alta";
 /**
  * Accesibilidad (WCAG 2.1 A/AA vía axe-core) sobre pantallas puntuales: la pública (login, sin sesión), dos reportes (Costos y márgenes,
  * Promociones), la matriz de permisos, las seis pantallas de catálogo/administración con formularios sueltos (categorías, unidades,
@@ -457,7 +458,7 @@ testAutenticado("catalogo/productos/nuevo: el formulario de alta (materia prima,
   expect((await new AxeBuilder({ page }).analyze()).violations, "alta en consignación").toEqual([]);
 
   // Producto de venta: sin insumo ni unidad de compra, con precio de venta.
-  await page.getByLabel("Producto de venta (PV)").check();
+  await elegirClaseDelAlta(page, "Producto vendible");
   await expect(page.getByLabel("Precio de venta")).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations, "alta de producto de venta").toEqual([]);
 });

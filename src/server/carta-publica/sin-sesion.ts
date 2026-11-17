@@ -6,7 +6,7 @@ import { VERSION_DE_LA_CARTA_EN_CACHE, etiquetaDeCacheDeCartasPublicas, proyecta
 import { modulosEfectivosDeEmpresa } from "@/server/acceso/modulos-de-empresa";
 import type { Db } from "@/lib/db-tipos";
 import { resolverEmpresaCarta, type EmpresaCarta } from "@/server/lecturas/carta/empresa";
-import { resolverCartaPublica, resolverConfigPortal, resolverPortalCarta } from "@/server/lecturas/carta/publica";
+import { resolverCartaPublica, resolverConfigPortalDual, resolverPortalCartaDual } from "@/server/lecturas/carta/publica";
 
 /**
  * Resolución de la carta para los consumidores SIN sesión (páginas `(carta-publica)`): no hay `ContextoUsuario` de donde sacar
@@ -66,14 +66,14 @@ export const portalCartaPublico = (empresa: EmpresaCarta) =>
   conRolVerificado(async () => {
     const db = dbDeEmpresa(empresa.id);
     if (!(await modulosQueLaCartaPublica(empresa, db)).carta) return [];
-    return resolverPortalCarta(empresa, db);
+    return resolverPortalCartaDual(empresa, db);
   });
 /** La apariencia del portal. Sin el módulo Carta, la de fábrica: lo que la empresa cargó no sale. */
 export const configPortalPublica = (empresa: EmpresaCarta) =>
   conRolVerificado(async () => {
     const db = dbDeEmpresa(empresa.id);
     if (!(await modulosQueLaCartaPublica(empresa, db)).carta) return resolverEstiloPortal(undefined);
-    return resolverConfigPortal(empresa, db);
+    return resolverConfigPortalDual(empresa, db);
   });
 /**
  * `ahora` obligatorio (O.22-c): lo fija la página pública, en el borde; este módulo no lee el reloj (lo vigila `SIN_RELOJ_FUERA_DE_CONSULTAS`).

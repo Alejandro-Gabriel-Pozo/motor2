@@ -70,6 +70,7 @@ const IMPORTE_DE_NOTA = "Importe con IVA incluido de un comprobante de proveedor
 export const DECLARACIONES: Readonly<Record<string, Declaracion>> = {
   // Producto y disponibilidad
   "Producto.nombreDeCocina": d("visibilidad", "Cómo nombra la cocina al producto de venta en la comanda (2026-11-15; NULL = usa el nombre interno): cambia lo que lee la cocina; no toca precio, stock ni ticket del cliente."),
+  "Producto.claseDeUso": d("stock", "Qué es el producto (MATERIA_PRIMA, INSUMO, REVENTA, ELABORADO o VENDIBLE; E1 de clases, 2026-11-17; NULL = sin clase): hoy nada la lee; desde E2 decide qué datos lleva el producto y qué puede hacer (receta, compra, venta, stock). Se escribe una vez."),
   "Producto.seProduce": d("stock", "Elegibilidad de receta: una materia prima solo se puede producir si seProduce = true (decide qué se fabrica y qué insumos se descuentan)."),
   "Producto.esConsignacion": d("dinero", "Marca el producto como de consignación: cambia el significado de la deuda con el consignante (columna de significado en escrituras-auditadas)."),
   "Producto.modoDeVenta": d("dinero", "Decide si se cobra el precio guardado del producto (DIRECTO) o el de cada opción (BASE_CONFIGURABLE), ADR-035."),
