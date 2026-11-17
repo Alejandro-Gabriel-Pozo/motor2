@@ -11,6 +11,9 @@
 --                                                                     invitación y lo incorpora la app. UsuarioSucursal: ningún privilegio. S-33: el actor de un cambio ya no es un User)
 --   Plan, VersionDePlan                    SELECT, INSERT, UPDATE   (planes versionados, M1: el borrador se edita; sin DELETE. La versión publicada la congela un trigger)
 --   PlanDeEmpresa                          SELECT, INSERT           (la asignación de plan solo se agrega)
+--   PisoDePlataforma                       SELECT, INSERT, UPDATE   (pisos de plataforma, EB-1: cambia de tipo, sin DELETE; el trigger sube la versión)
+--   VersionDePlantilla, AccionIntroducida  SELECT, INSERT           (versiones de plantilla y acciones introducidas: solo se agregan)
+--   PlantillaDeRol                         SELECT                   (las tres plantillas las siembra la migración; publicar una versión las lee)
 --   Accion, Rol, PermisoRol, Unidad, MotivoMerma, DestinoConsumo, Sucursal
 --                                          SELECT, INSERT           (siembra del alta)
 --   AuditoriaPlataforma                    SELECT, INSERT           (append-only; S-33: aquí quedan los cambios de módulos y de política hechos por script, a nombre del administrador.
@@ -92,7 +95,7 @@ $$;
 DO $$
 DECLARE t text;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['AdminPlataforma', 'CodigoDeIngresoPlataforma', 'CodigoDeRecuperacionPlataforma', 'SesionPlataforma', 'Invitacion', 'Plan', 'VersionDePlan'] LOOP
+  FOREACH t IN ARRAY ARRAY['AdminPlataforma', 'CodigoDeIngresoPlataforma', 'CodigoDeRecuperacionPlataforma', 'SesionPlataforma', 'Invitacion', 'Plan', 'VersionDePlan', 'PisoDePlataforma'] LOOP
     IF to_regclass(format('public.%I', t)) IS NOT NULL THEN
       EXECUTE format('GRANT SELECT, INSERT, UPDATE ON public.%I TO motor2_plataforma', t);
     END IF;
@@ -103,6 +106,16 @@ BEGIN
   -- Planes versionados (M1): `Plan` y `VersionDePlan` van en la lista de arriba; la asignación solo se agrega.
   IF to_regclass('public."PlanDeEmpresa"') IS NOT NULL THEN
     GRANT SELECT, INSERT ON "PlanDeEmpresa" TO motor2_plataforma;
+  END IF;
+  -- Plantillas y pisos (EB-1): `PisoDePlataforma` va en la lista de arriba; las versiones y las acciones introducidas solo se agregan; las plantillas solo se leen.
+  IF to_regclass('public."VersionDePlantilla"') IS NOT NULL THEN
+    GRANT SELECT, INSERT ON "VersionDePlantilla" TO motor2_plataforma;
+  END IF;
+  IF to_regclass('public."AccionIntroducida"') IS NOT NULL THEN
+    GRANT SELECT, INSERT ON "AccionIntroducida" TO motor2_plataforma;
+  END IF;
+  IF to_regclass('public."PlantillaDeRol"') IS NOT NULL THEN
+    GRANT SELECT ON "PlantillaDeRol" TO motor2_plataforma;
   END IF;
 END
 $$;

@@ -2883,6 +2883,54 @@ model PlanDeEmpresa {
   @@index([versionDePlanId])
 }
 
+/// Plantilla de rol de la plataforma (EB-1 de roles propios, 2026-11-17): GERENTE, ADMINISTRADOR u OPERADOR (CHECK). Global, sin empresa; solo la escribe la migración (la plataforma no crea ni cambia plantillas: solo les publica versiones). GERENTE existe como fila pero NO lleva versiones: el gerente no pasa por la matriz (`UsuarioEmpresa.rolEmpresa`). EB-1 NO la conecta al guard ni a las pantallas.
+model PlantillaDeRol {
+  id        String               @id @db.Uuid
+  /// `GERENTE` | `ADMINISTRADOR` | `OPERADOR` (CHECK). Clave natural única: la referencian las versiones.
+  clave     String               @unique
+  creadoEn  DateTime             @default(dbgenerated("now()")) @db.Timestamptz(3)
+  versiones VersionDePlantilla[]
+}
+
+/// Una versión de una plantilla (ADMINISTRADOR u OPERADOR): qué acciones puede VER y cuáles EDITAR (Editar ⊆ Ver, CHECK). INMUTABLE: solo se agrega (ningún UPDATE ni DELETE, ni del dueño, por trigger); el `numero` es el siguiente al mayor de la plantilla (lo exige la base) y la vigente es la de número mayor. La base rechaza una versión que viole los pisos de plataforma (la regla transitoria de nivel y la de «administrador siempre» las revisa la aplicación antes de escribir). `claveIdempotencia`/`payloadHash`: un reintento con la misma clave y el mismo pedido devuelve lo ya hecho.
+model VersionDePlantilla {
+  id                String         @id @db.Uuid
+  plantillaClave    String
+  plantilla         PlantillaDeRol @relation(fields: [plantillaClave], references: [clave], onDelete: Restrict, onUpdate: Restrict)
+  numero            Int
+  accionesVer       String[]
+  /// Subconjunto de `accionesVer` (CHECK).
+  accionesEditar    String[]
+  /// Quién la publicó: el email del administrador de plataforma (texto, sin FK: no es un `User`) o `migracion:plantillas_y_pisos`.
+  autor             String
+  claveIdempotencia String         @unique @db.Uuid
+  payloadHash       String
+  creadoEn          DateTime       @default(dbgenerated("now()")) @db.Timestamptz(3)
+
+  @@unique([plantillaClave, numero])
+}
+
+/// Piso de plataforma de una acción: `SOLO_GERENTE` (solo el gerente la tiene; ninguna plantilla de rol la puede llevar en OPERADOR) o `TODOS_LOS_ROLES` (toda plantilla la tiene en Ver). SIN FILA = sin piso: la decide la plantilla. Cambia de tipo (el trigger sube `version` y `actualizadoEn`), nunca de acción, y no se borra. Global, sin empresa.
+model PisoDePlataforma {
+  id            String   @id @db.Uuid
+  /// Clave de la acción. Sin FK a `Accion` a propósito: en una base nueva `Accion` está vacía hasta el seed.
+  accionClave   String   @unique
+  /// `SOLO_GERENTE` | `TODOS_LOS_ROLES` (CHECK).
+  tipo          String
+  autor         String
+  version       Int      @default(1)
+  creadoEn      DateTime @default(dbgenerated("now()")) @db.Timestamptz(3)
+  actualizadoEn DateTime @default(dbgenerated("now()")) @db.Timestamptz(3)
+}
+
+/// Qué acciones del catálogo la plataforma ya «conoce» (ya las sumó a las plantillas y les dio piso). SOLO SE AGREGA. La sincronización compara el catálogo del código contra esta tabla: una acción nueva se suma a las plantillas que su semilla indica y nunca se repone una que la plataforma sacó. Global, sin empresa.
+model AccionIntroducida {
+  id          String   @id @db.Uuid
+  /// Clave de la acción (sin FK a `Accion`, ver `PisoDePlataforma`).
+  accionClave String   @unique
+  creadoEn    DateTime @default(dbgenerated("now()")) @db.Timestamptz(3)
+}
+
 enum EstadoInvitacion {
   PENDIENTE
   ACEPTADA
