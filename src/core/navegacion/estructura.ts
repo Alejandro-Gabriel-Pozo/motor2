@@ -10,6 +10,8 @@ interface ItemNavBase {
   label: string;
   /** En qué panel del menú aparece (ADR-010). Se declara en CADA ítem a propósito: un ítem nuevo sin panel no compila. */
   panel: PanelNav;
+  /** Solo en el menú por áreas (`armarMenuPorAreas`): el grupo dentro del área, que el menú dibuja como subencabezado. */
+  subgrupo?: string;
 }
 
 /**

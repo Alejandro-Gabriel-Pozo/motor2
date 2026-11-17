@@ -1,6 +1,7 @@
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { signOut } from "@/lib/auth";
 import { GRUPOS_NAV, accionesDeNavegacion, filtrarMenuPorPermiso, hrefsDelMenu, rutasDeUnaEntradaVisibles } from "@/core/navegacion/estructura";
+import { MENU_POR_AREAS, armarMenuPorAreas } from "@/core/navegacion/menu-por-areas";
 import { accionesDelMenuQueElUsuarioPuedeVer } from "@/server/acceso/gate";
 import { situacionDelRegistroDeModulos } from "@/server/acceso/modulos-de-empresa";
 import { politicaDeEmpresa } from "@/server/acceso/politica-de-empresa";
@@ -39,7 +40,8 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
   // El menú solo muestra las pantallas que el rol puede ver (la página igual se protege por su cuenta: esto evita enlaces a «no tenés
   // permiso»). Lo mismo vale para los enlaces entre pantallas (`EnlaceInterno`), que reciben este conjunto por contexto.
   const puedeVer = await accionesDelMenuQueElUsuarioPuedeVer(ctx.usuarioId, ctx.empresaId, ctx.sucursalId, accionesDeNavegacion(), ctx.db);
-  const grupos = filtrarMenuPorPermiso(GRUPOS_NAV, puedeVer);
+  // Menú por áreas (`MENU_POR_AREAS`): los mismos ítems, ya filtrados por permiso, reagrupados en áreas (solo presentación).
+  const grupos = MENU_POR_AREAS ? armarMenuPorAreas(filtrarMenuPorPermiso(GRUPOS_NAV, puedeVer)) : filtrarMenuPorPermiso(GRUPOS_NAV, puedeVer);
   const politica = await politicaDeEmpresa(ctx.empresaId, ctx.db);
   // El dólar del encabezado es informativo: si no se puede leer (tabla sin migrar, base lenta), la pantalla sigue igual.
   const cotizacion = await obtenerUltimaCotizacionSinRomper(ctx.db);
@@ -61,7 +63,7 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
       <Suspense fallback={null}>
         <RecordarPantallaDeGestion sucursalId={ctx.sucursalId} />
       </Suspense>
-      <SidebarColapsable grupos={grupos} hrefsDelMenu={hrefsDelMenu()} dosPaneles={politica.dosPaneles} sucursalNombre={ctx.sucursalNombre} />
+      <SidebarColapsable grupos={grupos} hrefsDelMenu={hrefsDelMenu()} dosPaneles={politica.dosPaneles} sucursalNombre={ctx.sucursalNombre} porAreas={MENU_POR_AREAS} />
       {/* min-w-0: un ítem flex tiene `min-width: auto` (el ancho mínimo de su contenido) y, sin esto, una tabla ancha, aunque esté dentro de su propio
           `overflow-x-auto`, ensancha esta columna y con ella la PÁGINA entera (la matriz de permisos con varios roles llegaba a 1700 px). Con min-w-0 la
           columna se queda del ancho que sobra junto al menú y el scroll es el de la tabla. */}
@@ -69,7 +71,7 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
         {/* Celular (defecto 4 del ensayo del 2026-11-13): el menú ☰ y el dólar arriba; quién sos (correo que se achica con «…», sucursal y rol) en su propio renglón y «Salir» al final,
             sin «·» sueltos: el separador es parte del texto que sigue. Desde `md:` todo en una línea, como siempre. */}
         <header className="flex flex-shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-borde bg-superficie px-4 py-2 text-sm text-tinta-suave md:justify-end md:px-6 md:py-3">
-          <MenuCelular grupos={grupos} hrefsDelMenu={hrefsDelMenu()} rutasDeUnaEntrada={rutasDeUnaEntradaVisibles(puedeVer)} />
+          <MenuCelular grupos={grupos} hrefsDelMenu={hrefsDelMenu()} rutasDeUnaEntrada={rutasDeUnaEntradaVisibles(puedeVer)} porAreas={MENU_POR_AREAS} />
           <CotizacionEncabezado cotizacion={cotizacion} />
           <div className="flex min-w-0 basis-full items-center justify-between gap-3 md:basis-auto md:justify-end md:gap-4">
             <div className="flex min-w-0 flex-1 flex-col gap-y-1 md:flex-none md:flex-row md:flex-wrap md:items-center md:gap-x-2">

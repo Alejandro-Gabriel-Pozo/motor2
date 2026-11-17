@@ -1,4 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
+import { MENU_POR_AREAS } from "./fixtures/menu";
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
 import { abrirComoRol } from "./fixtures/rol-pos";
@@ -20,6 +21,11 @@ async function elegirPanel(page: Page, nombre: "Empresa" | "Sucursal") {
     await expect(boton(page, nombre)).toHaveAttribute("aria-pressed", "true", { timeout: 1000 });
   }).toPass();
 }
+
+// Estos casos son del menú en DOS PANELES (Empresa/Sucursal). Con el menú por áreas (`MENU_POR_AREAS`, Frente 6, paso 5) no hay paneles: lo suyo lo cubre `menu-por-areas.spec.ts`. Con el interruptor apagado corren como siempre.
+test.beforeEach(() => {
+  test.skip(MENU_POR_AREAS, "menú por áreas: no hay paneles Empresa/Sucursal");
+});
 
 test("admin: ve el selector de paneles, arranca en Sucursal y cada panel muestra solo lo suyo", async ({ paginaAutenticada: page }) => {
   await page.goto("/inicio");

@@ -29,11 +29,13 @@ export function SidebarColapsable({
   hrefsDelMenu,
   dosPaneles,
   sucursalNombre,
+  porAreas = false,
 }: {
   grupos: GrupoNav[];
   hrefsDelMenu: readonly string[];
   dosPaneles: boolean;
   sucursalNombre: string;
+  porAreas?: boolean;
 }) {
   const [colapsado, setColapsado] = useState(false);
 
@@ -75,7 +77,7 @@ export function SidebarColapsable({
           </Link>
         </div>
         <div className="min-h-0 w-56 flex-1 overflow-y-auto">
-          <SidebarNav grupos={grupos} hrefsDelMenu={hrefsDelMenu} dosPaneles={dosPaneles} sucursalNombre={sucursalNombre} />
+          <SidebarNav grupos={grupos} hrefsDelMenu={hrefsDelMenu} dosPaneles={dosPaneles} sucursalNombre={sucursalNombre} porAreas={porAreas} />
         </div>
       </aside>
       <button
