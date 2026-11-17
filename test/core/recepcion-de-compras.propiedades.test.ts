@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 import fc from "fast-check";
 import { prorratearPrecioDeRenglon } from "../../src/core/compras/public";
 
