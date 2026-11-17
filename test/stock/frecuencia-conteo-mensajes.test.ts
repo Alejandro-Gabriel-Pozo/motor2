@@ -48,7 +48,10 @@ describe("frecuencia de conteo: mensajes y orden de los chequeos", () => {
     await setFrecuenciaConteo(mpId, 7);
     const propia = await prisma.frecuenciaConteoProducto.findFirstOrThrow({ where: { NOT: { id: ajena.id } } });
     expect(await eliminarFrecuenciaConteo(propia.id)).toEqual({ ok: true, mensaje: "Fila de Frecuencia de conteo eliminada." });
-    expect(await prisma.frecuenciaConteoProducto.count()).toBe(1);
+    // E-4(2): no se borra, se quita con rastro (quién y cuándo); solo cuenta la vigente.
+    expect(await prisma.frecuenciaConteoProducto.count({ where: { quitadoEn: null } })).toBe(1);
+    expect(await prisma.frecuenciaConteoProducto.count()).toBe(2);
+    expect(await prisma.frecuenciaConteoProducto.findUniqueOrThrow({ where: { id: propia.id } })).toMatchObject({ quitadoPorId: expect.any(String), quitadoEn: expect.any(Date) });
     expect(vi.mocked(refresh)).not.toHaveBeenCalled();
   });
 });

@@ -109,7 +109,7 @@ async function resumirAlertasDeSucursales(sucursalIds: string[], catalogo: Catal
   const seccionIds = Array.from(new Set(saldos.map((s) => s.seccionId)));
   const [secciones, minimos] = await Promise.all([
     db.seccion.findMany({ where: { id: { in: seccionIds } }, select: { id: true, nombre: true, sucursalId: true } }),
-    db.stockMinimoProducto.findMany({ where: { sucursalId: { in: sucursalIds }, productoId: { in: productoIds } }, select: { sucursalId: true, productoId: true, seccionId: true, minimo: true } }),
+    db.stockMinimoProducto.findMany({ where: { sucursalId: { in: sucursalIds }, productoId: { in: productoIds }, quitadoEn: null }, select: { sucursalId: true, productoId: true, seccionId: true, minimo: true } }),
   ]);
   const sucursalDeSeccion = new Map(secciones.map((s) => [s.id, s.sucursalId]));
 

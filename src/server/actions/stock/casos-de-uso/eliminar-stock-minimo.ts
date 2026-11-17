@@ -1,14 +1,14 @@
 import "server-only";
-import type { ContextoUsuario } from "@/server/sesion/contexto";
+import type { ContextoDeAccion } from "@/server/actions/tipos";
 import type { ComandoEliminarStockMinimo, ResultadoEliminarStockMinimo } from "@/core/features/stock/stock-minimo.schema";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
-import { borrarStockMinimo } from "@/server/persistencia/stock/stock-minimo";
+import { quitarStockMinimo } from "@/server/persistencia/stock/stock-minimo";
 import { textoDe } from "@/core/textos/texto-de";
 import { ENTIDADES } from "@/core/textos/entidades";
 
 /**
- * Caso de uso «borrar una fila de stock mínimo» (Hito 4 de la pureza, bloque C de la pieza carta/catálogo/stock, paso H4C-21 — `docs/plan-hito-4-pureza.md` §3). Es
+ * Caso de uso «quitar una fila de stock mínimo» (E-4(2): ya no se borra, queda marcada con quién y cuándo) (Hito 4 de la pureza, bloque C de la pieza carta/catálogo/stock, paso H4C-21 — `docs/plan-hito-4-pureza.md` §3). Es
  * el cuerpo que antes vivía en línea en la Server Action `eliminarStockMinimo` (`src/server/actions/stock/stock-minimo.ts`): la fila tiene que ser de ESTA
  * sucursal («No se encontró esa fila de Stock Mínimo.»), leída con la base del contexto. La Server Action quedó como adaptador (`conPermiso("stock_minimo")` → este
  * caso de uso → `aResultadoAccion`).
@@ -26,17 +26,18 @@ import { ENTIDADES } from "@/core/textos/entidades";
  * @ficha permiso=stock_minimo transaccion=SIMPLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function eliminarStockMinimoCasoDeUso(
-  actor: Pick<ContextoUsuario, "db" | "sucursalId" | "transaccion" | "usuarioId">,
+  actor: Pick<ContextoDeAccion, "db" | "sucursalId" | "transaccion" | "usuarioId" | "ahora">,
   comando: ComandoEliminarStockMinimo,
 ): Promise<ResultadoEliminarStockMinimo> {
   const { id } = comando;
-  const fila = await actor.db.stockMinimoProducto.findUnique({
-    where: { id },
+  const fila = await actor.db.stockMinimoProducto.findFirst({
+    where: { id, quitadoEn: null },
     include: { producto: { select: { nombre: true } }, seccion: { select: { nombre: true } } },
   });
   if (!fila || fila.sucursalId !== actor.sucursalId) return fracaso("NO_ENCONTRADA", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.fila_de_stock_minimo }));
-  await actor.transaccion(async (tx) => {
-    await borrarStockMinimo(tx, { id });
+  const quitada = await actor.transaccion(async (tx) => {
+    // E-4(2): no se borra, se quita con rastro. Si otro la quitó entre la lectura y acá, no quedó nada por quitar: no se audita dos veces.
+    if ((await quitarStockMinimo(tx, { id, quitadoPorId: actor.usuarioId, quitadoEn: actor.ahora })) === 0) return false;
     await registrarCambioAuditado(tx, {
       entidad: "StockMinimoProducto",
       entidadId: id,
@@ -47,6 +48,8 @@ export async function eliminarStockMinimoCasoDeUso(
       actorId: actor.usuarioId,
       sucursalId: actor.sucursalId,
     });
+    return true;
   });
+  if (!quitada) return fracaso("NO_ENCONTRADA", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.fila_de_stock_minimo }));
   return exito("Stock mínimo eliminado.", null);
 }

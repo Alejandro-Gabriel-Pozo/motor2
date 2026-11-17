@@ -33,6 +33,9 @@ model User {
   operaciones                Operacion[]
   operacionesAnuladas        Operacion[]          @relation("OperacionAnuladaPor")
   conteosFisicos             ConteoFisico[]
+  stockMinimosQuitados       StockMinimoProducto[]       @relation("QuitadaStockMinimoProducto")
+  seccionesHabitualesQuitadas SeccionHabitualProducto[]  @relation("QuitadaSeccionHabitualProducto")
+  frecuenciasConteoQuitadas  FrecuenciaConteoProducto[]  @relation("QuitadaFrecuenciaConteoProducto")
   invitacionesAceptadas      Invitacion[]         @relation("InvitacionAceptadaPor")
   invitacionesHechas         Invitacion[]         @relation("InvitacionInvitadoPor")
   invitacionesSucursalHechas InvitacionSucursal[]
@@ -1749,6 +1752,10 @@ model FrecuenciaConteoProducto {
   productoId     String
   producto       Producto @relation(fields: [empresaId, productoId], references: [empresaId, id])
   frecuenciaDias Int
+  /// «Quitada» sin borrar (frente 3, E-4(2)): quién y cuándo. Una fila quitada no cuenta (las lecturas filtran `quitadoEn: null`); volver a fijarla la reactiva en el mismo lugar.
+  quitadoEn      DateTime? @db.Timestamptz(3)
+  quitadoPorId   String?
+  quitadoPor     User?     @relation("QuitadaFrecuenciaConteoProducto", fields: [quitadoPorId], references: [id])
 
   @@unique([sucursalId, productoId])
   @@unique([empresaId, id])
@@ -1791,6 +1798,10 @@ model StockMinimoProducto {
   seccionId  String?
   seccion    Seccion? @relation(fields: [empresaId, seccionId], references: [empresaId, id])
   minimo     Decimal  @db.Decimal(14, 4)
+  /// «Quitada» sin borrar (frente 3, E-4(2)): quién y cuándo. Una fila quitada no cuenta (las lecturas filtran `quitadoEn: null`); volver a fijarla la reactiva en el mismo lugar.
+  quitadoEn      DateTime? @db.Timestamptz(3)
+  quitadoPorId   String?
+  quitadoPor     User?     @relation("QuitadaStockMinimoProducto", fields: [quitadoPorId], references: [id])
 
   @@unique([productoId, seccionId])
   @@unique([empresaId, id])
@@ -1810,6 +1821,10 @@ model SeccionHabitualProducto {
   producto   Producto @relation(fields: [empresaId, productoId], references: [empresaId, id])
   seccionId  String
   seccion    Seccion  @relation(fields: [empresaId, seccionId], references: [empresaId, id])
+  /// «Quitada» sin borrar (frente 3, E-4(2)): quién y cuándo. Una fila quitada no cuenta (las lecturas filtran `quitadoEn: null`); volver a fijarla la reactiva en el mismo lugar.
+  quitadoEn      DateTime? @db.Timestamptz(3)
+  quitadoPorId   String?
+  quitadoPor     User?     @relation("QuitadaSeccionHabitualProducto", fields: [quitadoPorId], references: [id])
 
   @@unique([sucursalId, productoId])
   @@unique([empresaId, id])

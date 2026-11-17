@@ -28,7 +28,7 @@ export async function calcularAlertasStock(
   const [productos, secciones, minimos] = await Promise.all([
     cargado.productos ? Promise.resolve(cargado.productos) : db.producto.findMany({ where: { id: { in: productoIds } } }),
     cargado.secciones ? Promise.resolve(cargado.secciones) : db.seccion.findMany({ where: { sucursalId } }),
-    db.stockMinimoProducto.findMany({ where: { sucursalId, productoId: { in: productoIds } } }),
+    db.stockMinimoProducto.findMany({ where: { sucursalId, productoId: { in: productoIds }, quitadoEn: null } }),
   ]);
 
   return armarAlertasStock({

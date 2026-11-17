@@ -24,13 +24,13 @@ export async function guardarMinimoDeSeccion(
   db: Prisma.TransactionClient,
   args: { sucursalId: string; productoId: string; seccionId: string; minimo: number },
 ): Promise<MinimoEscrito> {
-  const previa = await db.stockMinimoProducto.findUnique({ where: { productoId_seccionId: { productoId: args.productoId, seccionId: args.seccionId } }, select: { minimo: true } });
+  const previa = await db.stockMinimoProducto.findUnique({ where: { productoId_seccionId: { productoId: args.productoId, seccionId: args.seccionId } }, select: { minimo: true, quitadoEn: true } });
   const fila = await db.stockMinimoProducto.upsert({
     where: { productoId_seccionId: { productoId: args.productoId, seccionId: args.seccionId } },
-    update: { minimo: args.minimo },
+    update: { minimo: args.minimo, quitadoEn: null, quitadoPorId: null },
     create: { sucursalId: args.sucursalId, productoId: args.productoId, seccionId: args.seccionId, minimo: args.minimo },
   });
-  return { id: fila.id, anterior: previa ? Number(previa.minimo) : null };
+  return { id: fila.id, anterior: previa && !previa.quitadoEn ? Number(previa.minimo) : null };
 }
 
 /**
@@ -41,24 +41,30 @@ export async function guardarMinimoDeSeccion(
 export async function guardarMinimoGlobal(db: Prisma.TransactionClient, args: { sucursalId: string; productoId: string; minimo: number }): Promise<MinimoEscrito> {
   const existente = await db.stockMinimoProducto.findFirst({ where: { sucursalId: args.sucursalId, productoId: args.productoId, seccionId: null } });
   if (existente) {
-    await db.stockMinimoProducto.update({ where: { id: existente.id }, data: { minimo: args.minimo } });
-    return { id: existente.id, anterior: Number(existente.minimo) };
+    // Una fila quitada se reactiva en su lugar (el índice único parcial la sigue viendo): su mínimo anterior ya no cuenta.
+    await db.stockMinimoProducto.update({ where: { id: existente.id }, data: { minimo: args.minimo, quitadoEn: null, quitadoPorId: null } });
+    return { id: existente.id, anterior: existente.quitadoEn ? null : Number(existente.minimo) };
   }
   const creada = await db.stockMinimoProducto.create({ data: { sucursalId: args.sucursalId, productoId: args.productoId, minimo: args.minimo } });
   return { id: creada.id, anterior: null };
 }
 
-/** Borra la fila de stock mínimo. */
-export async function borrarStockMinimo(db: Prisma.TransactionClient, args: { id: string }): Promise<void> {
-  await db.stockMinimoProducto.delete({ where: { id: args.id } });
+/**
+ * Quita la fila de stock mínimo SIN borrarla (E-4(2)): queda marcada con quién y cuándo. Devuelve cuántas filas quitó (0 = ya estaba quitada o no existe: el `UPDATE` exige `quitadoEn` nulo, así que de dos
+ * pedidos simultáneos gana uno solo y el otro ve 0).
+ */
+export async function quitarStockMinimo(db: Prisma.TransactionClient, args: { id: string; quitadoPorId: string; quitadoEn: Date }): Promise<number> {
+  const { count } = await db.stockMinimoProducto.updateMany({ where: { id: args.id, quitadoEn: null }, data: { quitadoEn: args.quitadoEn, quitadoPorId: args.quitadoPorId } });
+  return count;
 }
 
 /**
+ * Una fila quitada (`quitadoEn`) no cuenta: se lee como «sin fila».
  * Fase 7 («Cambiar mínimo», I8 del diseño del módulo Stock): la fila de mínimo de un producto en la sucursal, global (`seccionId` null) o de un depósito, con su valor; `null` si no hay. La lee el caso de uso
  * DENTRO de su transacción, para decidir con `decidirCambioDeMinimo` (core/stock).
  */
 export async function leerMinimo(db: Prisma.TransactionClient, args: { sucursalId: string; productoId: string; seccionId: string | null }): Promise<{ id: string; minimo: number } | null> {
-  const fila = await db.stockMinimoProducto.findFirst({ where: { sucursalId: args.sucursalId, productoId: args.productoId, seccionId: args.seccionId }, select: { id: true, minimo: true } });
+  const fila = await db.stockMinimoProducto.findFirst({ where: { sucursalId: args.sucursalId, productoId: args.productoId, seccionId: args.seccionId, quitadoEn: null }, select: { id: true, minimo: true } });
   return fila ? { id: fila.id, minimo: Number(fila.minimo) } : null;
 }
 
@@ -67,6 +73,6 @@ export async function leerMinimo(db: Prisma.TransactionClient, args: { sucursalI
  * escritura). En READ COMMITTED el `UPDATE` espera a la transacción que tiene la fila y reevalúa la condición sobre su valor nuevo: de dos cambios simultáneos con el mismo valor visto, gana uno solo.
  */
 export async function cambiarMinimoSiSigueComoSeVio(db: Prisma.TransactionClient, args: { id: string; visto: number; minimo: number }): Promise<number> {
-  const { count } = await db.stockMinimoProducto.updateMany({ where: { id: args.id, minimo: args.visto }, data: { minimo: args.minimo } });
+  const { count } = await db.stockMinimoProducto.updateMany({ where: { id: args.id, minimo: args.visto, quitadoEn: null }, data: { minimo: args.minimo } });
   return count;
 }

@@ -38,7 +38,9 @@ describe("Sección habitual (server actions)", () => {
 
     expect(await eliminarSeccionHabitual(filas[0].id)).toEqual({ ok: true, mensaje: "«Pizza» ya no tiene depósito habitual." });
     expect(await listarSeccionesHabituales(sucursalId)).toEqual([]);
-    expect(await prisma.seccionHabitualProducto.count()).toBe(0);
+    // E-4(2): no se borra, se quita con rastro (quién y cuándo).
+    expect(await prisma.seccionHabitualProducto.count({ where: { quitadoEn: null } })).toBe(0);
+    expect(await prisma.seccionHabitualProducto.findUniqueOrThrow({ where: { id: filas[0].id } })).toMatchObject({ quitadoPorId: expect.any(String), quitadoEn: expect.any(Date) });
   });
 
   it("rechaza una MP, sin escribir nada", async () => {

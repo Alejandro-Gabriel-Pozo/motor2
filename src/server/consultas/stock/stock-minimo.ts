@@ -8,7 +8,7 @@ import type { Db } from "@/lib/db-tipos";
  * La regla de prioridad es pura y vive en `core/stock/stock-minimo.ts` (`elegirMinimo`); acá solo está la lectura (Pureza Fase 3).
  */
 export async function resolverStockMinimo(sucursalId: string, productoId: string, seccionId: string | null, db: Db): Promise<number | null> {
-  const porSeccion = seccionId ? await db.stockMinimoProducto.findUnique({ where: { productoId_seccionId: { productoId, seccionId } } }) : null;
-  const global = porSeccion ? null : await db.stockMinimoProducto.findFirst({ where: { sucursalId, productoId, seccionId: null } });
+  const porSeccion = seccionId ? await db.stockMinimoProducto.findFirst({ where: { productoId, seccionId, quitadoEn: null } }) : null;
+  const global = porSeccion ? null : await db.stockMinimoProducto.findFirst({ where: { sucursalId, productoId, seccionId: null, quitadoEn: null } });
   return elegirMinimo(porSeccion ? Number(porSeccion.minimo) : null, global ? Number(global.minimo) : null);
 }

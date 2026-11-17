@@ -33,7 +33,7 @@ export async function generarReporteDiferenciasAjustes(
 ): Promise<FilaDiferenciaAjuste[]> {
   const productos = productosCargados ?? (await construirMapaProductos(sucursalId, db));
   const { recetaPorProducto, mpsEnRecetas } = await construirIndiceRecetas(db, sucursalId);
-  const frecuencias = await db.frecuenciaConteoProducto.findMany({ where: { sucursalId }, select: { productoId: true, frecuenciaDias: true } });
+  const frecuencias = await db.frecuenciaConteoProducto.findMany({ where: { sucursalId, quitadoEn: null }, select: { productoId: true, frecuenciaDias: true } });
   const frecuenciaPorProducto = new Map(frecuencias.map((f) => [f.productoId, f.frecuenciaDias]));
 
   // Índice inverso: por cada insumo (MP), en qué recetas (PV) aparece y con

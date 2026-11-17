@@ -71,7 +71,7 @@ export async function obtenerResumenOperativo(sucursalId: string, db: Db, ahora:
   const [productos, secciones, minimos] = await Promise.all([
     db.producto.findMany({ where: { id: { in: productoIds } } }),
     db.seccion.findMany({ where: { id: { in: seccionIds } } }),
-    db.stockMinimoProducto.findMany({ where: { sucursalId, productoId: { in: productoIds } } }),
+    db.stockMinimoProducto.findMany({ where: { sucursalId, productoId: { in: productoIds }, quitadoEn: null } }),
   ]);
   // Las alertas se arman con los saldos que esta misma función ya leyó (antes: una segunda lectura de TODO el Kardex agrupado solo para las alertas).
   const alertas = resumirAlertasStock(

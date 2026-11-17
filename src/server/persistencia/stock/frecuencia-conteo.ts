@@ -12,12 +12,13 @@ import type { Prisma } from "@prisma/client";
 export async function guardarFrecuenciaConteo(db: Prisma.TransactionClient, args: { sucursalId: string; productoId: string; frecuenciaDias: number }): Promise<void> {
   await db.frecuenciaConteoProducto.upsert({
     where: { sucursalId_productoId: { sucursalId: args.sucursalId, productoId: args.productoId } },
-    update: { frecuenciaDias: args.frecuenciaDias },
+    update: { frecuenciaDias: args.frecuenciaDias, quitadoEn: null, quitadoPorId: null },
     create: { sucursalId: args.sucursalId, productoId: args.productoId, frecuenciaDias: args.frecuenciaDias },
   });
 }
 
-/** Borra la fila de la agenda. */
-export async function borrarFrecuenciaConteo(db: Prisma.TransactionClient, args: { id: string }): Promise<void> {
-  await db.frecuenciaConteoProducto.delete({ where: { id: args.id } });
+/** Quita la fila de la agenda SIN borrarla (E-4(2)): queda marcada con quién y cuándo. Devuelve cuántas filas quitó (0 = ya estaba quitada o no existe: de dos pedidos simultáneos gana uno solo). */
+export async function quitarFrecuenciaConteo(db: Prisma.TransactionClient, args: { id: string; quitadoPorId: string; quitadoEn: Date }): Promise<number> {
+  const { count } = await db.frecuenciaConteoProducto.updateMany({ where: { id: args.id, quitadoEn: null }, data: { quitadoEn: args.quitadoEn, quitadoPorId: args.quitadoPorId } });
+  return count;
 }

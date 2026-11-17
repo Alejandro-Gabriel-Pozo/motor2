@@ -63,7 +63,10 @@ describe("stock mínimo: mensajes, orden de los chequeos y filas", () => {
     await setStockMinimoProducto(mpId, 5);
     const propia = await prisma.stockMinimoProducto.findFirstOrThrow({ where: { sucursalId } });
     expect(await eliminarStockMinimo(propia.id)).toEqual({ ok: true, mensaje: "Stock mínimo eliminado." });
-    expect(await prisma.stockMinimoProducto.count()).toBe(1);
+    // E-4(2): no se borra, se quita con rastro (quién y cuándo); solo cuenta la vigente.
+    expect(await prisma.stockMinimoProducto.count({ where: { quitadoEn: null } })).toBe(1);
+    expect(await prisma.stockMinimoProducto.count()).toBe(2);
+    expect(await prisma.stockMinimoProducto.findUniqueOrThrow({ where: { id: propia.id } })).toMatchObject({ quitadoPorId: expect.any(String), quitadoEn: expect.any(Date) });
     expect(vi.mocked(refresh)).not.toHaveBeenCalled();
   });
 });

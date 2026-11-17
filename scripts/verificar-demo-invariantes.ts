@@ -103,7 +103,7 @@ describe("Invariantes de dominio — demo de 6 meses de La Cuadra", () => {
     // alguna alerta, que sea consistente con un mínimo de verdad configurado y con el saldo real.
     const alertas = await calcularAlertasStock(sucursalId, prisma);
     for (const a of alertas) {
-      const minimo = await prisma.stockMinimoProducto.findFirst({ where: { sucursalId, productoId: a.productoId, OR: [{ seccionId: a.seccionId }, { seccionId: null }] } });
+      const minimo = await prisma.stockMinimoProducto.findFirst({ where: { sucursalId, productoId: a.productoId, quitadoEn: null, OR: [{ seccionId: a.seccionId }, { seccionId: null }] } });
       expect(minimo, `${a.productoCodigo}/${a.seccionNombre}: alertó sin tener un mínimo configurado`).toBeTruthy();
       const estadoEsperado = a.saldoActual <= 0 ? "CRITICO" : a.saldoActual <= a.stockMinimo ? "BAJO" : null;
       expect(estadoEsperado, `${a.productoCodigo}: saldo ${a.saldoActual} vs mínimo ${a.stockMinimo} no debería alertar`).not.toBeNull();

@@ -1,8 +1,8 @@
 import "server-only";
-import type { ContextoUsuario } from "@/server/sesion/contexto";
+import type { ContextoDeAccion } from "@/server/actions/tipos";
 import type { ComandoEliminarSeccionHabitual, ResultadoEliminarSeccionHabitual } from "@/core/features/seccion-habitual/seccion-habitual.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
-import { borrarSeccionHabitual } from "@/server/persistencia/stock/seccion-habitual";
+import { quitarSeccionHabitual } from "@/server/persistencia/stock/seccion-habitual";
 import { textoDe } from "@/core/textos/texto-de";
 import { ENTIDADES } from "@/core/textos/entidades";
 
@@ -15,18 +15,21 @@ import { ENTIDADES } from "@/core/textos/entidades";
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos ni que el id sea un texto (el guard).
  *
- * @contract Borra la sección habitual de la sucursal activa, salvo que la fila no exista.
+ * @contract Quita (sin borrar: queda marcada con quién y cuándo, E-4(2)) la sección habitual de la sucursal activa, salvo que la fila no exista.
  * @idempotency Por estado — repetir el pedido no encuentra la fila y se rechaza: no borra nada más.
- * @transaction Ninguna: una lectura y un borrado con `actor.db`, como antes.
+ * @transaction Ninguna: una lectura y un `UPDATE` condicionado con `actor.db`, como antes.
  * @sideEffects Ninguno (sin auditoría: no es plata).
  * @ficha permiso=stock_seccion_habitual transaccion=NINGUNA idempotencia=POR_ESTADO auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
  */
 export async function eliminarSeccionHabitualCasoDeUso(
-  actor: Pick<ContextoUsuario, "db" | "sucursalId">,
+  actor: Pick<ContextoDeAccion, "db" | "sucursalId" | "usuarioId" | "ahora">,
   comando: ComandoEliminarSeccionHabitual,
 ): Promise<ResultadoEliminarSeccionHabitual> {
-  const fila = await actor.db.seccionHabitualProducto.findUnique({ where: { id: comando.id }, include: { producto: { select: { nombre: true } } } });
+  const fila = await actor.db.seccionHabitualProducto.findFirst({ where: { id: comando.id, quitadoEn: null }, include: { producto: { select: { nombre: true } } } });
   if (!fila || fila.sucursalId !== actor.sucursalId) return fracaso("NO_ENCONTRADA", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.deposito_habitual }));
-  await borrarSeccionHabitual(actor.db, { id: fila.id });
+  // E-4(2): no se borra, se quita con rastro; si otro la quitó entre la lectura y acá, 0 filas = ya no está.
+  if ((await quitarSeccionHabitual(actor.db, { id: fila.id, quitadoPorId: actor.usuarioId, quitadoEn: actor.ahora })) === 0) {
+    return fracaso("NO_ENCONTRADA", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.deposito_habitual }));
+  }
   return exito(`«${fila.producto.nombre}» ya no tiene depósito habitual.`, null);
 }
