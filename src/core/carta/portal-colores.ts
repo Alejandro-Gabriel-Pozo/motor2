@@ -25,8 +25,7 @@ export const PALETAS_DEL_PORTAL = [
   { nombre: "Violeta", hex: "#4b2e83" },
 ] as const;
 
-/** Rótulo y mensaje del «Otro color» (los textos de Pedernal, `carta.html` 09/11/2026: un `#` y seis caracteres). */
-export const ROTULO_DE_OTRO_COLOR_DEL_PORTAL = "Color (por ejemplo #0e7490)";
+/** Mensaje del «Otro color» (el texto de Pedernal, `carta.html` 09/11/2026: un `#` y seis caracteres). */
 export const MENSAJE_FORMATO_DEL_COLOR_DEL_PORTAL = "Escribí el color como #0e7490";
 
 const FORMA_DEL_COLOR = /^#[0-9a-f]{6}$/;

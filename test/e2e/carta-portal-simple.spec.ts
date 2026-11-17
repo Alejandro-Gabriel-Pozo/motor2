@@ -41,8 +41,13 @@ for (const ancho of [375, 1366]) {
       await page.goto("/carta/portal");
       const pantalla = page.locator("[data-portal-simple]");
       await expect(pantalla).toBeVisible();
-      await expect(page.getByRole("heading", { name: "Colores del portal", level: 2 })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Portal", level: 1 })).toBeVisible();
+      const solapa = (nombre: string) => page.getByRole("group", { name: "Solapas" }).getByRole("button", { name: nombre, exact: true });
+      // La vista previa es una solapa: el portal real, con el listado en tarjetas y «Ver carta».
+      await solapa("Vista previa").click();
       await expect(page.locator("[data-vista-previa-colores-portal]")).toBeVisible();
+      await expect(page.locator("[data-vista-previa-colores-portal]").getByText("Ver carta").first()).toBeVisible();
+      await solapa("Colores").click();
 
       const encabezado = page.locator('[data-fondo-portal="encabezado"]');
       const pagina = page.locator('[data-fondo-portal="pagina"]');
@@ -51,23 +56,28 @@ for (const ancho of [375, 1366]) {
       await azul.check();
       await expect(page.locator('[data-aviso-fondo-ajustado="encabezado"]')).toHaveCount(0); // el azul de Pedernal se lee con texto blanco
       // Un gris medio no llega a 7:1 con ningún texto: la pantalla avisa cuál se usa en su lugar y que se guarda el elegido.
-      await pagina.getByLabel("Otro color").check();
-      await pagina.getByLabel("Color (por ejemplo #0e7490)").fill("#777777");
+      await pagina.locator("summary").click();
+      await pagina.getByRole("radio", { name: "Otro color" }).check();
+      await pagina.getByRole("textbox", { name: "Otro color" }).fill("#777777");
       const aviso = page.locator('[data-aviso-fondo-ajustado="pagina"]');
       await expect(aviso).toContainText("El texto no se lee bien sobre este color");
       await expect(aviso).toContainText("del mismo tono, más oscuro. Contraste");
       // Mal escrito: el campo lo marca.
-      await pagina.getByLabel("Color (por ejemplo #0e7490)").fill("gris");
+      await pagina.getByRole("textbox", { name: "Otro color" }).fill("gris");
       await expect(page.getByText("Escribí el color como #0e7490")).toBeVisible();
-      await pagina.getByLabel("Color (por ejemplo #0e7490)").fill("#777777");
+      await pagina.getByRole("textbox", { name: "Otro color" }).fill("#777777");
+      await solapa("Portal").click();
       await pantalla.getByLabel("Título", { exact: true }).fill("Nuestros hoteles");
+      await solapa("Colores").click();
 
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "sin desborde horizontal").toBe(true);
       expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
       expect(await prisma.portalDeEmpresa.count(), "nada se guardó hasta el clic").toBe(0);
 
       const guardar = page.getByRole("button", { name: "Guardar", exact: true });
-      expect((await guardar.boundingBox())?.height ?? 0, "objetivo táctil de 44 px").toBeGreaterThanOrEqual(ancho === 375 ? 44 : 32);
+      const caja = await guardar.boundingBox();
+      expect(caja?.height ?? 0, "objetivo táctil de 44 px").toBeGreaterThanOrEqual(44);
+      expect(caja?.width ?? 0, "Guardar de ancho completo").toBeGreaterThanOrEqual(ancho * 0.8);
       await guardar.click();
       await expect(page.getByRole("status").filter({ hasText: "guardados" })).toBeVisible();
 
@@ -80,8 +90,10 @@ for (const ancho of [375, 1366]) {
       await expect(page.getByRole("link", { name: new RegExp(`Colores ${marca}`) })).toBeVisible();
 
       await page.goto("/carta/portal");
+      await page.getByRole("group", { name: "Solapas" }).getByRole("button", { name: "Colores", exact: true }).click();
       await expect(page.locator('[data-fondo-portal="encabezado"]').getByLabel("Azul")).toBeChecked();
-      await expect(page.locator('[data-fondo-portal="pagina"]').getByLabel("Otro color")).toBeChecked();
+      await expect(page.locator('[data-fondo-portal="pagina"]').getByRole("radio", { name: "Otro color" })).toBeChecked();
+      await page.getByRole("group", { name: "Solapas" }).getByRole("button", { name: "Portal", exact: true }).click();
       await expect(page.getByLabel("Título", { exact: true })).toHaveValue("Nuestros hoteles");
       expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     } finally {

@@ -324,6 +324,6 @@ export interface EntradaPortalCarta {
   subtitulo: string | null;
   /** Lugar de la tarjeta sobre el mapa del portal; `null` si `posX`/`posY`/`posW` no están los tres. */
   posicion: PosicionPortal | null;
-  /** Teléfono de la tarjeta (`PortalTarjeta.telefono`, solo dígitos). Presente solo con la pantalla simple y si la tarjeta lo tiene; ausente = como hoy. */
+  /** Teléfono de la tarjeta (`PortalTarjeta.telefono`, solo dígitos). Hoy NO se lee en la carta pública (el teléfono no está en la lista cerrada de `carta-publica-lista-cerrada.test.ts`: pregunta abierta al dueño); la vista y la lectura pura ya lo soportan. */
   telefono?: string;
 }

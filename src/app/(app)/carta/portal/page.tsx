@@ -90,6 +90,12 @@ export default async function PortalSucursalesPage() {
   return (
     <div className="flex flex-col gap-6">
       <FilaDeCarta ctx={ctx} etiqueta="Apariencia y publicación" pestanas={PESTANAS_DE_APARIENCIA} ruta="/carta/portal" />
+      {portalSimple !== null ? (
+        <div>
+          <h1 className="mb-1 text-xl font-semibold">Portal</h1>
+          {!puedeEditar && <AvisoSoloLectura />}
+        </div>
+      ) : (
       <div>
         <h1 className="mb-1 text-xl font-semibold">Portal de sucursales</h1>
         <p className="text-sm text-tinta-tenue">
@@ -103,15 +109,10 @@ export default async function PortalSucursalesPage() {
         </div>
         {!puedeEditar && <AvisoSoloLectura />}
       </div>
+      )}
 
       {portalSimple !== null ? (
-        <section aria-labelledby="titulo-apariencia-portal" className="flex flex-col gap-2">
-          <h2 id="titulo-apariencia-portal" className="text-lg font-medium">
-            Colores del portal
-          </h2>
-          <p className="text-sm text-tinta-tenue">
-            Los tres fondos del portal, la línea sobre el título, el título, el logo y la imagen. Los textos se calculan solos para que se lean. Sin elegir un color, el portal usa el que ya tenía. El portal toma los cambios al recargarlo.
-          </p>
+        <section aria-label="Editor del portal" className="flex flex-col gap-2">
           <EditorColoresDelPortal
             iniciales={{
               colorEncabezado: portalSimple.colorEncabezado,

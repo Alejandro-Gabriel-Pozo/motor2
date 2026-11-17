@@ -140,7 +140,7 @@ export type { DatosDelPortal, TarjetaDePortal, ZonaDePortal } from "./portal-de-
 export { entradasDelPortalNuevo, valoresDelPortalDual } from "./portal-de-empresa-lectura";
 export type { SucursalDelPortal } from "./portal-de-empresa-lectura";
 // Colores del portal como Pedernal (paso «Colores del portal», 2026-11-17): los tres fondos con texto derivado y contraste 7:1 al mostrar, y el sembrado del portal nuevo desde lo ya cargado.
-export { CONTRASTE_MINIMO_DEL_PORTAL, MENSAJE_FORMATO_DEL_COLOR_DEL_PORTAL, PALETAS_DEL_PORTAL, ROTULO_DE_OTRO_COLOR_DEL_PORTAL, colorDelPortal, textoDelContraste, eleccionDeFondo, fondoDeLaEleccion, conFondosDelPortal, estiloDelPortalSimple } from "./portal-colores";
+export { CONTRASTE_MINIMO_DEL_PORTAL, MENSAJE_FORMATO_DEL_COLOR_DEL_PORTAL, PALETAS_DEL_PORTAL, colorDelPortal, textoDelContraste, eleccionDeFondo, fondoDeLaEleccion, conFondosDelPortal, estiloDelPortalSimple } from "./portal-colores";
 export type { FondosDelPortal } from "./portal-colores";
 export { sembrarTarjetasDelPortal } from "./portal-sembrar";
 export type { RegistroPublicoParaSembrar } from "./portal-sembrar";
