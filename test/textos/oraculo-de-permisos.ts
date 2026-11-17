@@ -151,4 +151,12 @@ export const ORACULO_DE_PERMISOS: Readonly<Record<string, string>> = {
   "caja_corregir_medio_de_cobro": "Corregir el medio de pago de un cobro durante el cierre del día",
   "caja_declarar_total": "Declarar el total de un medio de pago y dar el conforme general del día",
   "caja_registrar_ajuste": "Registrar un ajuste sobre un día ya cerrado",
+  "caja_medio_de_pago_crear": "Dar de alta un medio de pago",
+  "caja_medio_de_pago_editar": "Editar un medio de pago: su nombre y qué datos pide al cobrar",
+  "caja_medio_de_pago_reactivar": "Reactivar un medio de pago desactivado",
+  "caja_medio_de_pago_desactivar": "Desactivar un medio de pago (el efectivo no se desactiva)",
+  "caja_cuenta_de_cobro_crear": "Dar de alta una cuenta de cobro",
+  "caja_cuenta_de_cobro_editar": "Editar una cuenta de cobro: su nombre, su identificador y su sucursal",
+  "caja_cuenta_de_cobro_reactivar": "Reactivar una cuenta de cobro desactivada",
+  "caja_cuenta_de_cobro_desactivar": "Desactivar una cuenta de cobro",
 };

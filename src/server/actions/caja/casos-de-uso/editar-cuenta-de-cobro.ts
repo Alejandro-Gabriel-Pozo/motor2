@@ -18,7 +18,7 @@ import { cargarCuentaDeCobro, cargarCuentaPorNombre, editarCuentaEnBase, esChoqu
  * @idempotency Por estado y por versión: repetir la edición ya aplicada devuelve la versión vigente sin escribir; dos ediciones a la vez con la misma versión: una gana y la otra ve `VERSION_DESACTUALIZADA`.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento, también ante el choque de índice único).
  * @sideEffects registrarCambioAuditado (un registro por campo que cambió).
- * @ficha permiso=cuentas_de_cobro_editar transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
+ * @ficha permiso=caja_cuenta_de_cobro_editar transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function editarCuentaDeCobroCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "empresaId" | "transaccion" | "ahora" | "alcance">,

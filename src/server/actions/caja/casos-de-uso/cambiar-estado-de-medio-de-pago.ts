@@ -45,7 +45,7 @@ async function cambiarEstado(actor: Actor, comando: ComandoCambiarEstadoDeMedioD
  * @idempotency Por estado: repetirlo devuelve `yaEstabaInactivo` sin escribir ni auditar de nuevo.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento, también ante el choque de índice único).
  * @sideEffects registrarCambioAuditado (el cambio de estado).
- * @ficha permiso=medios_de_pago_desactivar transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
+ * @ficha permiso=caja_medio_de_pago_desactivar|caja_medio_de_pago_reactivar transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function desactivarMedioDePagoCasoDeUso(actor: Actor, comando: ComandoCambiarEstadoDeMedioDePago): Promise<ResultadoDesactivarMedioDePago> {
   const r = await cambiarEstado(actor, comando, false);
@@ -60,7 +60,6 @@ export async function desactivarMedioDePagoCasoDeUso(actor: Actor, comando: Coma
  * @idempotency Por estado: repetirlo devuelve `yaEstabaActivo` sin escribir ni auditar de nuevo.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento, también ante el choque de índice único).
  * @sideEffects registrarCambioAuditado (el cambio de estado).
- * @ficha permiso=medios_de_pago_reactivar transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function reactivarMedioDePagoCasoDeUso(actor: Actor, comando: ComandoCambiarEstadoDeMedioDePago): Promise<ResultadoReactivarMedioDePago> {
   const r = await cambiarEstado(actor, comando, true);

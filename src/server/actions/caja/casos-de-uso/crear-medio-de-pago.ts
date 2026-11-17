@@ -20,7 +20,7 @@ import { cargarEfectivoDeLaEmpresa, cargarMedioPorNombre, cargarMedioSinNombre, 
  * @idempotency Por estado (como Pedernal): el mismo medio activo ya creado devuelve `yaExistia`; dos altas iguales a la vez dejan uno (la perdedora, tras el reintento serializable, ve el primero).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento, también ante el choque de índice único).
  * @sideEffects registrarCambioAuditado (el alta con su tipo y nombre).
- * @ficha permiso=medios_de_pago_crear transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
+ * @ficha permiso=caja_medio_de_pago_crear transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function crearMedioDePagoCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "empresaId" | "transaccion" | "ahora">,

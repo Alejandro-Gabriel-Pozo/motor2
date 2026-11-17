@@ -51,7 +51,7 @@ async function cambiarEstado(actor: Actor, comando: ComandoCambiarEstadoDeCuenta
  * @idempotency Por estado: repetirlo devuelve `yaEstabaInactiva` sin escribir ni auditar de nuevo.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento, también ante el choque de índice único).
  * @sideEffects registrarCambioAuditado (el cambio de estado).
- * @ficha permiso=cuentas_de_cobro_desactivar transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
+ * @ficha permiso=caja_cuenta_de_cobro_desactivar|caja_cuenta_de_cobro_reactivar transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function desactivarCuentaDeCobroCasoDeUso(actor: Actor, comando: ComandoCambiarEstadoDeCuentaDeCobro): Promise<ResultadoDesactivarCuentaDeCobro> {
   const r = await cambiarEstado(actor, comando, false);
@@ -70,7 +70,6 @@ export async function desactivarCuentaDeCobroCasoDeUso(actor: Actor, comando: Co
  * @idempotency Por estado: repetirlo devuelve `yaEstabaActiva` sin escribir ni auditar de nuevo.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento, también ante el choque de índice único).
  * @sideEffects registrarCambioAuditado (el cambio de estado).
- * @ficha permiso=cuentas_de_cobro_reactivar transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function reactivarCuentaDeCobroCasoDeUso(actor: Actor, comando: ComandoCambiarEstadoDeCuentaDeCobro): Promise<ResultadoReactivarCuentaDeCobro> {
   const r = await cambiarEstado(actor, comando, true);

@@ -460,6 +460,25 @@ const completos: Record<string, Valor> = {
   "accion|actions/caja/caja.ts|cobrarCuenta": (k, c) =>
     conVariantes(intento(c, ["cuentaCerradaId"], [{ claveIdempotencia: "00000000-0000-4000-8000-00000000ca04", cuentaId: k.cuentaCerradaId, totalVisto: "1500", renglones: [{ medioDePagoId: k.medioEfectivoId, importe: "1500" }] }])),
 
+  // --- caja, etapa B: administración de cuentas de cobro y medios de pago (GT-3b) ---
+  // La cuenta de cobro es de UNA sucursal (`cuentaDeCobroId`, y la sucursal que llega como entrada); el medio es de la EMPRESA (`medioQrId`: ajeno solo en el escenario de otra empresa). Crear una cuenta y editarla llevan la sucursal
+  // como dato del cliente (ajena: fuera del alcance o de otra empresa); el control positivo de crear se ejerce parado en la sucursal vacía (S4: S1 ya tiene su cuenta activa y rechazaría con «ya tiene una cuenta activa»). Crear un medio
+  // no lleva ids: solo se ejerce sin sesión, sin empresa y como control positivo.
+  "accion|actions/caja/cuentas-y-medios.ts|crearCuentaDeCobroDeCaja": (k, c) =>
+    conVariantes(intento(c, ["sucursalId"], [{ tipo: "TERMINAL", nombre: "Terminal nueva", identificadorExterno: null, sucursalId: c.escenario === "controlMutacion" ? c.mundo.s4Id : k.sucursalId }])),
+  "accion|actions/caja/cuentas-y-medios.ts|editarCuentaDeCobroDeCaja": (k, c) =>
+    conVariantes(
+      intento(c, ["cuentaDeCobroId"], [{ cuentaDeCobroId: k.cuentaDeCobroId, versionEsperada: 1, nombre: "Terminal renombrada", identificadorExterno: null, sucursalId: c.propio.sucursalId }]),
+      intento(c, ["sucursalId"], [{ cuentaDeCobroId: c.propio.cuentaDeCobroId, versionEsperada: 1, nombre: "Terminal renombrada", identificadorExterno: null, sucursalId: k.sucursalId }]),
+    ),
+  "accion|actions/caja/cuentas-y-medios.ts|desactivarCuentaDeCobroDeCaja": (k, c) => conVariantes(intento(c, ["cuentaDeCobroId"], [{ cuentaDeCobroId: k.cuentaDeCobroId }])),
+  "accion|actions/caja/cuentas-y-medios.ts|reactivarCuentaDeCobroDeCaja": (k, c) => conVariantes(intento(c, ["cuentaDeCobroId"], [{ cuentaDeCobroId: k.cuentaDeCobroId }])),
+  "accion|actions/caja/cuentas-y-medios.ts|crearMedioDePagoDeCaja": () => [{ tipo: "TARJETA_DEBITO", nombre: "Débito nuevo" }],
+  "accion|actions/caja/cuentas-y-medios.ts|editarMedioDePagoDeCaja": (k, c) =>
+    conVariantes(intento(c, ["medioQrId"], [{ medioDePagoId: k.medioQrId, versionEsperada: 1, nombre: "QR renombrado", datos: { cupon: false, ultimos4: false, marca: false, cuotas: false, dni: false } }])),
+  "accion|actions/caja/cuentas-y-medios.ts|desactivarMedioDePagoDeCaja": (k, c) => conVariantes(intento(c, ["medioQrId"], [{ medioDePagoId: k.medioQrId }])),
+  "accion|actions/caja/cuentas-y-medios.ts|reactivarMedioDePagoDeCaja": (k, c) => conVariantes(intento(c, ["medioQrId"], [{ medioDePagoId: k.medioQrId }])),
+
   // Un ayudante PURO de la lectura de caja (un `Decimal` de una columna a centavos): no lee la base ni recibe ids, así que se ejerce con un importe cualquiera (no escribe nada y no devuelve filas de nadie).
   "lectura|lecturas/caja/centavos-de-decimal.ts|centavosDeDecimal": () => [new Prisma.Decimal("12.34")],
 

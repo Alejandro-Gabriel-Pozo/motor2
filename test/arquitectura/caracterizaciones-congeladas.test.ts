@@ -180,6 +180,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Caja y cobro, cierre del día, etapa A, permisos (ADITIVO; siete claves nuevas, semilla solo `admin`, todo nace cerrado; tabla confirmada por el dueño 2026-11-17, «ok pedernal»): `caja_jornada_ver`, `caja_jornada_iniciar_auditoria`, `caja_jornada_cancelar_auditoria`, `caja_jornada_cerrar`, `caja_corregir_medio_de_cobro`, `caja_declarar_total` y `caja_registrar_ajuste` (de sucursal, módulo provisorio `salon`). Se suman a las listas de claves de cada bloque de la matriz de acceso. Verificado quitando las siete claves del archivo nuevo: queda IDÉNTICO al anterior (mismas líneas, cero líneas agregadas o quitadas). Ninguna otra respuesta del guard ni ningún otro permiso cambia: el operador no recibe ninguna. INTEGRACIÓN con PISOS-65 (lote A): el archivo es el del lote A más las siete claves del cierre del día; regenerado sobre el merge, sin tocar ningún piso. Verificado con `git diff origin/lote/2026-11-17-a`: cambian SOLO 224 líneas, las listas de claves de cada bloque; ningún piso ni otro permiso cambia.",
       },
+      {
+        blob: "1bb5e380b8c4e80e2ed9c61e3ed1459746794957",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `a526140f` (la punta de `caja-permisos-cierre` con el lote A integrado, antes de las ocho claves de administración de la caja).
+        commit: "a526140f",
+        motivo:
+          "Caja y cobro, etapa B, permisos (ADITIVO; ocho claves nuevas de sucursal, piso operario por PISOS-65, semilla solo `admin`, todo nace cerrado; decisiones Q-B1 y Q-B3 confirmadas por delegación del dueño en Pedernal, 2026-11-17): `caja_medio_de_pago_crear`, `caja_medio_de_pago_editar`, `caja_medio_de_pago_reactivar`, `caja_medio_de_pago_desactivar`, `caja_cuenta_de_cobro_crear`, `caja_cuenta_de_cobro_editar`, `caja_cuenta_de_cobro_reactivar` y `caja_cuenta_de_cobro_desactivar`. Se suman a las listas de claves de cada bloque de la matriz de acceso. Verificado quitando las ocho claves del archivo nuevo: queda IDÉNTICO al anterior (1904 líneas en los dos, mismas listas salvo las ocho claves). Ninguna otra respuesta del guard ni ningún otro permiso cambia: el operador no recibe ninguna.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
@@ -356,6 +363,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "9e5c9fe9",
         motivo:
           "Caja y cobro, cierre del día, etapa A, permisos (ADITIVO; siete claves nuevas, semilla solo `admin`, todo nace cerrado; tabla confirmada por el dueño 2026-11-17, «ok pedernal»): `caja_jornada_ver`, `caja_jornada_iniciar_auditoria`, `caja_jornada_cancelar_auditoria`, `caja_jornada_cerrar`, `caja_corregir_medio_de_cobro`, `caja_declarar_total` y `caja_registrar_ajuste`. `ACCIONES 140 a 147` (en las dos fotos) y las catorce filas `PERMISO` por foto de las siete claves (admin ver=true editar=true; operador ver=false editar=false). Revisado con `git diff -U0`: son 30 líneas agregadas (28 filas PERMISO y las dos de ACCIONES 147) y 2 quitadas (las dos de ACCIONES 140), nada más.",
+      },
+      {
+        blob: "78e4a1a4ea3512e7a672da3faca4f883775a661a",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `a526140f` (la punta de `caja-permisos-cierre` con el lote A integrado, antes de las ocho claves de administración de la caja).
+        commit: "a526140f",
+        motivo:
+          "Caja y cobro, etapa B, permisos (ADITIVO; ocho claves nuevas, semilla solo `admin`, todo nace cerrado; decisiones Q-B1 y Q-B3 confirmadas por delegación del dueño en Pedernal, 2026-11-17): `ACCIONES 147 a 155` (en las dos fotos) y las 32 filas `PERMISO` por foto de las ocho claves (admin ver=true editar=true; operador ver=false editar=false). Revisado con `git diff -U0`: solo líneas agregadas (las filas PERMISO de las ocho claves) y la de ACCIONES, nada más.",
       },
     ],
   },

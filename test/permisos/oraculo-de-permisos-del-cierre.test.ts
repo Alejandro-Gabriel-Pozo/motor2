@@ -2,13 +2,14 @@ import { describe, expect, it } from "vitest";
 import { ACCIONES, contextoDeAccion, esAccionSoloVer, moduloDeAccion, nivelMinimoDeAccion, type AccionDeSucursal } from "../../src/core/permisos/acciones";
 import { accesoDeSucursal, decidirEnSucursal, nivelEnSucursal, type PermisoLeido } from "../../src/core/permisos/decision-de-acceso";
 import { CLAVES_DE_PR_B, CLAVES_DEL_CIERRE, PUERTA_ESPERADA, type ActorDelCierre } from "./oraculo-de-permisos-del-cierre";
+import { CLAVES_DE_CUENTAS_Y_MEDIOS } from "./oraculo-de-permisos-de-cuentas-y-medios";
 
 /**
  * Oráculo rol × piso × clave de los siete permisos del cierre del día (etapa A; tabla confirmada por el dueño 2026-11-17, «ok pedernal»). La tabla de reglas esperadas está APARTE del código, en `oraculo-de-permisos-del-cierre.ts`;
  * este test recorre TODAS las combinaciones (7 claves × 7 actores × ver/editar = 98) contra la decisión de acceso REAL (`accesoDeSucursal` + `decidirEnSucursal`, funciones puras: sin base) y compara con esa tabla.
  *
  * Además fija el catálogo (`ACCIONES`) contra el oráculo: contexto sucursal, módulo provisorio `salon`, piso, solo ver y semilla SOLO `admin`; y un GUARDIÁN de dimensiones: toda clave `caja_*` del catálogo está declarada en el oráculo
- * (o es una de las seis de PR-B, con su cobertura propia); una clave nueva sin declarar pone esto en rojo.
+ * (o es una de las seis de PR-B, o una de administración de cuentas y medios de la etapa B, con su cobertura propia); una clave nueva sin declarar pone esto en rojo.
  *
  * Mutaciones (rojo/verde, comprobadas a mano al escribirlo): subir el piso de `caja_registrar_ajuste` a «administrador» en `acciones.ts` → rojo en «el catálogo declara…» y en el conteo de pisos;
  * quitar una clave de `acciones.ts` → rojo en «el catálogo declara…» y en «ninguna clave del oráculo…»; sacar una clave de la semilla de la migración → rojo en `migracion-permisos-cierre-del-dia.test.ts`; agregar `caja_x` al catálogo sin declararla → rojo en el guardián.
@@ -61,8 +62,8 @@ describe("el catálogo (ACCIONES) coincide con el oráculo y el guardián de dim
     }
   });
 
-  it("GUARDIÁN: toda clave `caja_*` del catálogo está declarada en el oráculo (o es una de las seis de PR-B, con su cobertura propia); una nueva sin declarar falla", () => {
-    const declaradas = new Set<string>([...CLAVES, ...CLAVES_DE_PR_B]);
+  it("GUARDIÁN: toda clave `caja_*` del catálogo está declarada en el oráculo (o es una de las seis de PR-B, o una de administración de cuentas y medios de la etapa B, con su cobertura propia); una nueva sin declarar falla", () => {
+    const declaradas = new Set<string>([...CLAVES, ...Object.keys(CLAVES_DE_CUENTAS_Y_MEDIOS), ...CLAVES_DE_PR_B]);
     const sinDeclarar = ACCIONES.map((a) => a.clave as string).filter((c) => c.startsWith("caja_") && !declaradas.has(c));
     expect(sinDeclarar, "agregá la clave a CLAVES_DEL_CIERRE con su piso y sus actores, o declarala de otra etapa").toEqual([]);
   });

@@ -22,7 +22,7 @@ const lista = (datos: Readonly<Record<DatoDelCobro, boolean>>) => DATOS_DEL_COBR
  * @idempotency Por estado y por versión: repetir la edición ya aplicada devuelve la versión vigente sin escribir; dos ediciones a la vez con la misma versión: una gana y la otra ve `VERSION_DESACTUALIZADA`.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento, también ante el choque de índice único).
  * @sideEffects registrarCambioAuditado (un registro por campo que cambió).
- * @ficha permiso=medios_de_pago_editar transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
+ * @ficha permiso=caja_medio_de_pago_editar transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function editarMedioDePagoCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "empresaId" | "transaccion" | "ahora">,

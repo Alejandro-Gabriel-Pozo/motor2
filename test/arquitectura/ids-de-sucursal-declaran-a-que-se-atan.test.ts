@@ -128,6 +128,8 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
     ata: "SUCURSAL_ACTIVA",
     motivo: "`entrada.sucursalId` es la sucursal que vio la pantalla: el guard la compara con la activa (`sucursalActivaId: ctx.sucursalId`) y rechaza otra; la disponibilidad se escribe SOLO en `ctx.sucursalId` (y la RLS por sucursal, por debajo)",
   },
+  "caja/cuentas-y-medios.ts|crearCuentaDeCobroDeCaja": { ata: "SUCURSAL_ACTIVA", motivo: "`caja_cuenta_de_cobro_crear` en la sucursal activa; el guard exige que `entrada.sucursalId` sea la activa (`sucursalActivaId: ctx.sucursalId`) y el caso de uso la vuelve a medir contra el alcance de escritura" },
+  "caja/cuentas-y-medios.ts|editarCuentaDeCobroDeCaja": { ata: "SUCURSAL_ACTIVA", motivo: "`caja_cuenta_de_cobro_editar` en la sucursal activa; el guard exige que `entrada.sucursalId` (adonde se deja la cuenta) sea la activa (`sucursalActivaId: ctx.sucursalId`) y el caso de uso la vuelve a medir contra el alcance de escritura" },
   "carta/tema.ts|guardarTemaCarta": { ata: "SUCURSAL_ACTIVA", motivo: "`carta_tema` en la sucursal activa; el guard rechaza un id distinto de `ctx.sucursalId`" },
   "catalogo/receta-sucursal.ts|copiarRecetaPropiaDeOtraSucursal": {
     ata: "MEMBRESIA_EN_ORIGEN",

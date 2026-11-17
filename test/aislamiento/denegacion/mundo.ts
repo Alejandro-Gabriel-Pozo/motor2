@@ -78,6 +78,8 @@ export interface KitDeEmpresa {
   familiaId: string;
   /** Caja (C1): el medio de pago EFECTIVO de la empresa (uno solo; su nombre lleva el marcador, así `leerMediosDeCobro` devuelve algo propio). */
   medioEfectivoId: string;
+  /** Caja, etapa B: un medio de pago QR de la empresa (activo, versión 1, sin pedir datos; su nombre lleva el marcador): lo que editan, desactivan y reactivan las acciones de administración de medios (el efectivo no se desactiva). */
+  medioQrId: string;
 }
 
 export interface KitDeSucursal {
@@ -153,6 +155,8 @@ export interface KitDeSucursal {
   /** Caja (C1): la sesión de caja ABIERTA de la sucursal (la única sin cerrar: hay otra, cerrada, para `ultimaSesionDeLaCaja`) y un ingreso manual suyo, hecho por u1 (el que anula `anularMovimientoDeCaja`). */
   sesionDeCajaId: string;
   movimientoManualId: string;
+  /** Caja, etapa B: la cuenta de cobro ACTIVA de la sucursal (una sola por sucursal; su nombre lleva el marcador): lo que editan, desactivan y reactivan las acciones de administración de cuentas. */
+  cuentaDeCobroId: string;
 }
 
 /** GO-3b: el día del plato del día que siembra el mundo (mañana en la zona de las empresas del mundo: siempre se puede quitar o copiar). */
@@ -211,6 +215,7 @@ const CAMPOS_DE_SUCURSAL_REGISTRO: Record<keyof KitDeSucursal, true> = {
   platoDelDiaId: true,
   sesionDeCajaId: true,
   movimientoManualId: true,
+  cuentaDeCobroId: true,
 };
 export const CAMPOS_DE_SUCURSAL: ReadonlySet<string> = new Set(Object.keys(CAMPOS_DE_SUCURSAL_REGISTRO));
 
@@ -316,6 +321,8 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
   await db.registroAuditoria.create({ data: { id: id("auditoria-empresa"), empresaId, entidad: "Producto", entidadId: mp.id, descripcion: `Auditoría de empresa ${marca}`, campo: "nombre", valorAnterior: "a", valorNuevo: "b", actorId: usuarioId } });
   // Caja (C1): el medio EFECTIVO de la empresa (el único que existe antes de abrir una caja). El nombre lleva el marcador: `leerMediosDeCobro` y los `esperadoPorMedio` lo devuelven.
   const medioEfectivo = await db.medioDePago.create({ data: { id: randomUUID(), empresaId, tipo: "EFECTIVO", nombre: `Efectivo ${marca}` } });
+  // Caja, etapa B: un medio QR de la empresa (lo editan, desactivan y reactivan las acciones de administración; la lectura de administración lo devuelve con el marcador).
+  const medioQr = await db.medioDePago.create({ data: { id: randomUUID(), empresaId, tipo: "QR", nombre: `QR ${marca}` } });
   return {
     marca,
     empresaId,
@@ -353,6 +360,7 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
     cupoDelDiaId: cupoDelDia.id,
     productoBaseId: pvBase.id,
     medioEfectivoId: medioEfectivo.id,
+    medioQrId: medioQr.id,
     familiaId: familia.id,
   };
 }
@@ -579,6 +587,8 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   // va en los textos (la observación del cierre, el motivo del ingreso, el nombre del efectivo y el id de la cuenta cobrada). Cada sesión sella la zona de la empresa, el corte de la sucursal y la fecha de negocio que
   // calcula la MISMA función de la base que el disparador exige, y la jornada de esa fecha nace abierta (una por día).
   const caja = await db.caja.create({ data: { id: randomUUID(), empresaId, sucursalId, nombre: "Caja 1" } });
+  // Caja, etapa B: la cuenta de cobro ACTIVA de la sucursal (una sola activa por sucursal), con el marcador en el nombre.
+  const cuentaDeCobro = await db.cuentaDeCobro.create({ data: { id: randomUUID(), empresaId, sucursalId, tipo: "TERMINAL", nombre: `Terminal ${marca}` } });
   const selloDeLaSesion = async (instante: Date) => {
     const [fila] = await db.$queryRaw<Array<{ fecha: string; zona: string }>>`SELECT caja_fecha_de_negocio(${instante}::timestamptz, e."zonaHoraria", s."horaDeCorte")::text AS fecha, e."zonaHoraria" AS zona FROM "Empresa" e JOIN "Sucursal" s ON s."empresaId" = e."id" WHERE e."id" = ${empresaId} AND s."id" = ${sucursalId}`;
     const fechaDeNegocio = fechaDeColumnaDate(fila.fecha);
@@ -663,6 +673,7 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
     platoDelDiaId: platoDelDia.id,
     sesionDeCajaId: sesionDeCaja.id,
     movimientoManualId: movimientoManual.id,
+    cuentaDeCobroId: cuentaDeCobro.id,
   };
 }
 

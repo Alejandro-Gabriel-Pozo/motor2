@@ -23,7 +23,7 @@ import { cargarCuentaPorNombre, esChoqueDeUnaActivaPorSucursal, existeSucursal, 
  * @idempotency Por estado (como Pedernal): la misma cuenta activa ya creada devuelve `yaExistia`; dos altas iguales a la vez dejan una (la perdedora, tras el reintento serializable, ve la primera).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento, también ante el choque de índice único).
  * @sideEffects registrarCambioAuditado (el alta, sin el identificador externo).
- * @ficha permiso=cuentas_de_cobro_crear transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
+ * @ficha permiso=caja_cuenta_de_cobro_crear transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function crearCuentaDeCobroCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "empresaId" | "transaccion" | "ahora" | "alcance">,
