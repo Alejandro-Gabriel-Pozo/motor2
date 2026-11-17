@@ -301,6 +301,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Caja y cobro C1, PR-B (ADITIVO; seis claves nuevas, semilla solo `admin`, todo nace cerrado): `caja_ver`, `caja_abrir_sesion`, `caja_cerrar_sesion`, `caja_mover_efectivo`, `caja_anular_movimiento_ajeno` y `cobrar_cuenta` (de sucursal, módulo provisorio `salon`). `ACCIONES 133 a 139` (en las dos fotos) y las doce filas `PERMISO` por foto de las seis claves (admin ver=true editar=true; operador ver=false editar=false). Revisado con `git diff -U0`. Ninguna otra respuesta del guard ni ningún otro permiso cambia: el operador no recibe ninguna (todas «ver=false editar=false»).",
       },
+      {
+        blob: "d2cf938879b39888f5fac6ade93629421e30ec5a",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `8102cb4c` (Roles propios (P2): guardianes al día).
+        commit: "8102cb4c",
+        motivo:
+          "Roles propios, P2 (ADITIVO; la perilla `rolesPropiosMax` nace en 0; NO cambia comportamiento de acceso): `Empresa.rolesPropiosMax` (migración 20261117100100) aparece en las 28 filas EMPRESA de la huella y en 2 líneas `resultado:` de `cambiar-politica` (las que vuelcan la política de empresa), en 0. Revisado con `git diff`: solo se suma `rolesPropiosMax=0` (la huella ya incluía las acciones de caja de #368); ningún permiso, rol, resultado ni mensaje cambia. Aprobada por el dueño el 2026-11-17: «Sí, aprobada (Recomendada)» (motor2-docs, seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md).",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-aceptacion.golden.txt": {
