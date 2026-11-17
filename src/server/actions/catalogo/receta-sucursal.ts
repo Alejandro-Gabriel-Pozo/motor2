@@ -3,7 +3,7 @@
 import { INCLUDE_RECETA_COMPLETA, mapCabeceraAInput, mapIngredientesAInput, mapPasosAInput, type RecetaCompleta } from "@/core/catalogo/public-servidor";
 import { ALCANCE_CENTRAL } from "@/core/catalogo/public";
 import { cargarRecetaVigente } from "@/server/lecturas/catalogo/recetas-vigentes";
-import { type IngredienteInput, type PasoInput } from "@/core/catalogo/public";
+import { leerBaseDeCantidad, type IngredienteInput, type PasoInput } from "@/core/catalogo/public";
 import { obtenerEstadoDeRecetaPropia } from "@/server/lecturas/catalogo/receta-propia";
 import {
   guardComandoActualizarIngredienteDeReceta,
@@ -100,7 +100,7 @@ export async function crearRecetaPropiaDesdeLaCentral(productoId: string, versio
     if (estado.habilitada) return error("Esta sucursal ya tiene receta propia para este producto.");
     const central = await cargarRecetaVigente(ctx.db, ALCANCE_CENTRAL, productoId, { include: INCLUDE_RECETA_COMPLETA });
     if (!central) return error("Este producto no tiene receta central de la que partir: agregá el primer ingrediente para armar la receta de la sucursal desde cero.");
-    return guardarEnLaPropia(ctx, productoId, mapIngredientesAInput(central), central, versionVista, habilitadaVista, { basadaEnVersionId: central.id, omitirGuardiaDeUnidad: true });
+    return guardarEnLaPropia(ctx, productoId, mapIngredientesAInput(central), central, versionVista, habilitadaVista, { basadaEnVersionId: central.id, omitirGuardiaDeUnidad: true, baseDeCantidad: leerBaseDeCantidad(central.baseDeCantidad) });
   });
 }
 
@@ -202,6 +202,7 @@ export async function copiarRecetaPropiaDeOtraSucursal(
       basadaEnVersionId: estadoOrigen.propia.basadaEnVersionId,
       copiadaDeSucursal: origen.nombre,
       omitirGuardiaDeUnidad: true,
+      baseDeCantidad: leerBaseDeCantidad(estadoOrigen.propia.baseDeCantidad),
     });
   });
 }

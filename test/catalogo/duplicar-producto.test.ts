@@ -69,6 +69,21 @@ describe("duplicarProducto: el bife con chimichurri", () => {
     await mockearUsuarioActual({ id: e.adminId, email: "admin@test.com", nombre: null });
   });
 
+  // M3a (2026-11-17, «la marca viaja con la copia»): el duplicado conserva la marca (NETA/BRUTA) de la versión que copia. Hoy ningún camino de la aplicación escribe BRUTA: la versión de origen se
+  // marca directo en la base (superusuario) para probar que la copia NO la pisa con el DEFAULT NETA.
+  it("el duplicado conserva la marca de la versión de origen: BRUTA queda BRUTA y NETA queda NETA", async () => {
+    const origenNeta = await entre(duplicar({ nombre: "Copia de la neta" }));
+    expect((await prisma.recetaVersion.findFirstOrThrow({ where: { productoId: origenNeta.id } })).baseDeCantidad).toBe("NETA");
+
+    await prismaAdmin.recetaVersion.updateMany({ where: { productoId: e.bifeId }, data: { baseDeCantidad: "BRUTA" } });
+    const copiaBruta = await entre(duplicar({ nombre: "Copia de la bruta" }));
+    expect((await prisma.recetaVersion.findFirstOrThrow({ where: { productoId: copiaBruta.id } })).baseDeCantidad).toBe("BRUTA");
+    expect((await prisma.recetaVersion.findFirstOrThrow({ where: { productoId: e.bifeId } })).baseDeCantidad).toBe("BRUTA"); // el original no cambia
+    // La copia de una copia BRUTA sigue BRUTA (la marca no se pierde al encadenar).
+    const nieta = await entre(duplicarProducto({ duplicadoId: nuevoDuplicadoId(), origenId: copiaBruta.id, nombre: "Copia de la copia", copiarReceta: true, copiarOpciones: false, sucursalDeLaRecetaId: null }));
+    expect((await prisma.recetaVersion.findFirstOrThrow({ where: { productoId: nieta.id } })).baseDeCantidad).toBe("BRUTA");
+  });
+
   it("copia la ficha, el precio, las opciones y la receta como versión 1, con el nombre y el código propios", async () => {
     // El nombre de cocina (2026-11-15) es una columna «se copia»: con valor en el original, el duplicado nace con el mismo.
     await prisma.producto.update({ where: { id: e.bifeId }, data: { nombreDeCocina: "Medallón de bife" } });
