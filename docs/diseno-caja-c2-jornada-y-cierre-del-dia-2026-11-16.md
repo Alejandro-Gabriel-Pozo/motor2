@@ -130,13 +130,9 @@ Respondidas por el dueño, con sus palabras (CONFIRMADAS): **P-CORTE** «00:00; 
 Sigue abierta:
 
 - **P-SECUENCIA-CONCURRENTE (pendiente con nombre, 2026-11-17; estado: PENDIENTE).** La concurrencia REAL de dos transacciones sobre los únicos de `secuencia` de `CorreccionDeMedio` y `DeclaracionDeTotal` no está probada: la prueba de la base (`test/caja/reglas-de-la-base-de-cierre.test.ts`) ejerce el índice aislado apagando el disparador de secuencia sin huecos en una transacción propia; en operación el disparador y la transacción SERIALIZABLE ya serializan, y el índice es la segunda barrera. Falta una prueba con dos transacciones simultáneas contra los casos de uso reales.
-- **P-CORTE-ESCRIBE (hallazgo de la verificación independiente de #365, 2026-11-17; estado: PENDIENTE, NO implementada).** NINGÚN camino del sistema (ni pantalla ni acción ni script) ESCRIBE `Sucursal.horaDeCorte`: el código solo la LEE (`abrir-sesion.ts`, `controles-de-la-jornada.ts`, `cobrar-cuenta.ts`) y la columna vale 00:00 en toda sucursal por su valor por defecto. Por eso la parte de P-CORTE «la cambia el gerente o administrador» **no se puede verificar**: no hay nada que cambiarla ni nada que chequear el permiso. Hoy es inocuo (el corte 00:00 es el que ya usaba C1 y es el que pidió el dueño como valor por defecto), pero el cierre del día con otra hora de corte quedaría sin forma de configurarse. Opciones, de la más barata (regla del 2026-10-27, «primero la opción más barata»):
-  1. **No hacer nada todavía** y dejarlo como etapa posterior con nombre, **«C2c — hora de corte de la sucursal»** (la pantalla que el propio P-CORTE ya difirió: «cambiarla es una pantalla de otro turno»). La base ya exige el CHECK (minutos exactos, menor que 24:00), la fórmula de la fecha de negocio y el sello por sesión; C2c solo agrega la escritura. Es la forma que se propone mientras el dueño no pida cambiar la hora; con la referencia de Pedernal del punto 2 como forma de hacerlo cuando la pida.
-  2. **Referencia de Pedernal (contrastada por el orquestador con el repositorio real, 2026-11-17).** En Pedernal la hora de corte SÍ se edita: `src/modulos/empresas/casos-de-uso/editar-sucursal.ts`, con el validador `horaDeCorteValida` en `src/modulos/empresas/dominio/sucursal.ts`, bajo la MISMA acción/permiso que el resto de la edición de la sucursal (`DECLARACIONES.editarSucursal`) y auditando el valor anterior y el nuevo cuando cambia. En Motor2 hoy no existe el camino equivalente. Igualar a Pedernal sería EXTENDER la edición de sucursal que ya existe con ese campo, **sin permiso nuevo** (diferencia a declarar si no se hace).
-  NO se implementa en este PR: nadie la pidió todavía (regla «Lo que el dueño no pidió no entra»; el orquestador lo prohibió expresamente). Queda como **etapa posterior con nombre, «C2c — hora de corte de la sucursal»**.
-  **PREGUNTA ABIERTA para el dueño (estado: PENDIENTE):** ¿quién cambia la hora de corte y desde qué pantalla? (P-CORTE dijo «gerente o administrador» y «una pantalla de otro turno», pero no cuál.)
-
-  Mientras tanto, lo que SÍ está verificado de la hora de corte es todo lo que la usa: la fórmula de la fecha de negocio (oráculo, incluido `05:59:59.999` contra `06:00:00.000`) y el sello de la sesión.
+- **P-CORTE-ESCRIBE — CONFIRMADA (2026-11-17).** Respuesta del dueño, chat con el orquestador general (registrada en `motor2-docs`), literal: «5.- recomendado» = la hora de corte de la sucursal se cambia desde la **EDICIÓN DE SUCURSAL que ya existe**, con el **MISMO permiso** que el resto de esa edición (gerente y administrador, P-CORTE), **auditando el valor anterior y el nuevo**, como Pedernal (`editar-sucursal.ts` + `horaDeCorteValida`), **SIN permiso nuevo**; valor por defecto 00:00 (ya confirmado en P-CORTE). Origen del hallazgo: la verificación independiente de #365 (2026-11-17): hasta ahora NINGÚN camino escribía `Sucursal.horaDeCorte` (el código solo la LEE: `abrir-sesion.ts`, `controles-de-la-jornada.ts`, `cobrar-cuenta.ts`). Esto define la etapa **«C2c — hora de corte de la sucursal»**, diseñada en el apartado «C2c» más abajo (niveles 6 a 10). **Estado de C2c: DISEÑO (PR de documentos); NO se escribe código ni migración hasta la confirmación del orquestador.** La pregunta abierta «¿quién y desde qué pantalla?» queda **cerrada** con esa respuesta.
+  Referencia de Pedernal (contrastada con el repositorio real, 2026-11-17): `src/modulos/empresas/casos-de-uso/editar-sucursal.ts` con el validador `horaDeCorteValida` (`src/modulos/empresas/dominio/sucursal.ts`), bajo la misma acción que el resto de la edición de la sucursal (`DECLARACIONES.editarSucursal`), auditando valor anterior y nuevo SOLO cuando cambia.
+  Lo que SÍ está verificado de la hora de corte, mientras C2c no exista: todo lo que la usa: la fórmula de la fecha de negocio (oráculo, incluido `05:59:59.999` contra `06:00:00.000`) y el sello de la sesión.
 
 - **P-POS.** «Mientras la jornada está en cierre no se abre cuenta» (ficha de Pedernal): no se toca el POS en esta etapa. ¿Se pide en el frente del POS?
 
@@ -180,3 +176,62 @@ Necesidad (nivel 1): el dueño pidió «También la conciliación por medio, com
 ### 7.4 Orden de migraciones
 
 C2b va después de C2 y C3 usa 112000 y 113000: al rebasar sobre C3, la función `"MovimientoCaja_validar"` la reemplazan C3 y C2 (ver `114000`); lo resuelve quien integra, no esta etapa.
+
+## C2c — hora de corte de la sucursal (diseño, 2026-11-17; PROPUESTA salvo lo marcado CONFIRMADA)
+
+Escalera de diseño de 10 niveles (AGENTS.md). Esta etapa solo agrega la ESCRITURA de `Sucursal.horaDeCorte`; la columna, su CHECK, la fórmula de la fecha de negocio y el sello por sesión ya existen (C2, migración `20261117114000`).
+
+### Niveles 1 a 5 (compuerta: sin ellos no se tocan tablas)
+
+| Nivel | Contenido | Estado |
+|---|---|---|
+| 1 Propósito y alcance | Que quien administra la sucursal pueda cambiar la hora a partir de la cual empieza el día de negocio (p. ej. 06:00 para un local nocturno). NO cambia el pasado: cada sesión conserva el sello con que se abrió. | CONFIRMADA (P-CORTE y «5.- recomendado», 2026-11-17) |
+| 2 Actores | Gerente y administrador (P-CORTE), mediante el MISMO permiso que la edición de sucursal existente: `renombrar_sucursal` (contexto empresa, piso `administrador_sistema`, semilla `admin`; leído en `src/core/permisos/acciones.ts`). El operario no. | CONFIRMADA (mismo permiso, sin permiso nuevo) |
+| 3 Casos de uso | UN caso nuevo, «cambiar la hora de corte de una sucursal», dentro de la edición de sucursal. Sin pantalla de caja nueva: se suma el campo a la edición de sucursal (pantalla del Frente 6; contrato del servidor abajo). | PROPUESTA (forma) / CONFIRMADA (dónde) |
+| 4 Conceptos y ciclo de vida | `Sucursal.horaDeCorte` (`TIME(0)`, por defecto `00:00`, CHECK `< 24:00` y segundos en cero). Cada `SesionCaja` sella la hora vigente al abrirse y esa columna no tiene `UPDATE` para la app (verificado en la base local: `has_column_privilege('motor2_app','"SesionCaja"','horaDeCorte','UPDATE')` = falso). La jornada (`JornadaDeSucursal`) se identifica por su fecha de negocio, ya calculada: cambiar la hora no mueve ninguna jornada existente. | VERIFICADA lectura de la base local; el resto es el modelo vigente de C2 |
+| 5 Invariantes y políticas | (I1) la hora es `HH:MM` estricta, 00:00 a 23:59 (lista de permitidos, validador `horaDeCorteValida` equivalente al de Pedernal; en Motor2 `fechaDeNegocio` de `core/tiempo` ya valida la forma y el CHECK de la base es la segunda barrera). (I2) solo cambia el valor si es distinto (si es el mismo: resultado ok sin escribir ni auditar). (I3) cambia SOLO hacia adelante: sesiones y jornadas ya selladas no se tocan. (I4) se audita valor anterior y nuevo. (I5) sin permiso nuevo. | PROPUESTA (I3 e I4 siguen a Pedernal) |
+
+### Nivel 6 — historia y persistencia
+
+- **Sin tablas nuevas ni migración de esquema:** la columna y el CHECK existen y la app ya tiene `UPDATE` sobre `Sucursal.horaDeCorte` (verificado en la base local: `has_column_privilege('motor2_app','"Sucursal"','horaDeCorte','UPDATE')` = verdadero; `NO VERIFICADO` contra una base real). Historia: el valor anterior y el nuevo quedan en `RegistroAuditoria` (`registrarCambioAuditado`, campo `horaDeCorte`), que solo agrega. La hora que rigió cada sesión queda en el sello de la propia sesión (`SesionCaja.horaDeCorte`), que es la prueba de «qué hora se usó ese día».
+- **Punto de extensión previsto, no se migra:** si el dueño pidiera «cambiar la hora a partir de mañana» (vigencia programada), se haría una tabla de vigencias con historial que solo agrega; hoy NO se pide (regla «Lo que el dueño no pidió no entra»).
+
+### Nivel 7 — atomicidad y concurrencia
+
+Un comando, una transacción `SERIALIZABLE` con reintento (`conTransaccionSerializable`, con el `true` final): lee la sucursal, compara, escribe y audita todo junto; todo o nada. Sin clave de reintento: la idempotencia es **por estado** (mismo valor = ok sin escribir). La regla de convivencia con la apertura de sesión: abrir una sesión lee `Sucursal.horaDeCorte` y la sella dentro de SU transacción SERIALIZABLE, y el disparador `SesionCaja_validar` exige que el sello coincida con el valor vigente (`sesion_caja_sello_invalido`); si el cambio y la apertura corren a la vez, una de las dos aborta y reintenta (la apertura relee la hora nueva y sella la nueva; o el cambio relee y compara con la sesión recién abierta). Nunca queda una sesión sellada con una hora distinta de la vigente al abrirse.
+
+### Nivel 8 — acceso e interfaces
+
+- **Server Action** nueva en la edición de sucursal: `cambiarHoraDeCorteDeSucursal({ sucursalId, horaDeCorte })` con `conPermisoDeEmpresa("renombrar_sucursal")` (mismo permiso que `renombrarSucursal`), formato en el guard (lista de permitidos: forma `HH:MM`) DENTRO del envoltorio, caso de uso, refresco de la vista y resultado cerrado. NO se agrega permiso ni se toca `acciones.ts`.
+- **Contrato para el Frente 6:** campo «Hora de corte del día» en la ficha/edición de la sucursal (texto `HH:MM`, por defecto 00:00); texto de ayuda a fijar por la sesión de Textos. Los códigos de resultado se fijan al construir (propuestos: `SUCURSAL_NO_ENCONTRADA`, `HORA_DE_CORTE_INVALIDA`).
+- Diferencia con Pedernal: ninguna en la ubicación (edición de sucursal, mismo permiso, auditoría de anterior y nuevo); a declarar al construir cualquier diferencia de forma (nombres de código, orden de pasos).
+
+### Nivel 9 — consultas y experiencia
+
+La edición muestra la hora vigente; la lectura de la sucursal ya la trae (`horaDeCorte`). El cierre del día y las pantallas de caja siguen mostrando la fecha de negocio de la sesión (sellada), no la de «ahora»: por eso cambiar la hora no desacomoda lo ya abierto. Una sesión abierta antes del cambio sigue en su jornada hasta cerrarse (`jornadaVencida` ya avisa si pasó su hora de corte sellada).
+
+### Nivel 10 — pruebas, migración y operación
+
+- **Migración:** ninguna. **Operación:** sin cambios de datos; valor por defecto 00:00.
+- **Tabla «¿qué pasa si…?» del comando «cambiar la hora de corte»:**
+
+| ¿Qué pasa si…? | Resultado esperado | Barrera |
+|---|---|---|
+| Repetición (mismo valor otra vez, doble clic) | Ok sin escribir ni auditar (idempotente por estado) | caso de uso (compara antes) |
+| Dos cambios a la vez a valores distintos | Uno gana; el otro aborta (SERIALIZABLE), reintenta, relee y escribe el suyo o lo deja si es igual; queda auditada cada escritura real, sin error crudo | `conTransaccionSerializable` + reintento |
+| Cambio a la vez que se abre una sesión | La sesión sella la hora vigente en su propia transacción; si choca, una reintenta; nunca sello distinto del vigente | SERIALIZABLE + `SesionCaja_validar` (sello coincidente) |
+| Con sesiones abiertas | La sesión abierta conserva su hora sellada y su jornada; la hora nueva rige para las sesiones que se abran después | sello inmutable (sin `UPDATE` de `SesionCaja.horaDeCorte` para la app) |
+| Con la jornada ABIERTA, EN_AUDITORIA o CERRADA | Ninguna se mueve ni se recalcula: la jornada se identifica por su fecha ya calculada; la cerrada es inmutable | identidad de la jornada + inmutabilidad del cierre |
+| Cambio que cae «en el medio» de un día de negocio (de 00:00 a 06:00 con la sesión abierta pasadas las 02:00) | Se aplica solo a sesiones futuras: puede haber un día de negocio más corto o más largo en la transición (efecto declarado, no error) | sello por sesión |
+| Hora inválida (`24:00`, `6:00`, `06:00:00`, vacío, no texto) | Rechazo de regla `HORA_DE_CORTE_INVALIDA`, sin escribir | guard (lista de permitidos) + CHECK de la base |
+| Sucursal inexistente o de otra empresa | `SUCURSAL_NO_ENCONTRADA`, sin escribir | RLS por empresa + el caso de uso |
+| Permisos revocados a mitad (el usuario pierde `renombrar_sucursal` entre la pantalla y el envío) | Rechazo por permiso; la base no cambia | `conPermisoDeEmpresa` (se relee en la transacción) |
+| Quien no es gerente/administrador | Rechazo por permiso | `renombrar_sucursal` (piso `administrador_sistema`) |
+| Error parcial (falla la auditoría) | No se cambia la hora (todo o nada) | misma transacción |
+| Dato faltante (sin `horaDeCorte`) | Rechazo de formato en el guard | guard |
+| Reintento tras un corte de red | Mismo valor ya escrito → ok sin escribir | idempotencia por estado |
+
+- **Pruebas previstas** (nivel 10, cuando se autorice el código): caso de uso contra Postgres real (concurrencia: dos cambios simultáneos y cambio vs apertura de sesión; idempotencia: doble clic; sesión abierta conserva el sello; jornada cerrada intacta); oráculo aparte de la hora en `HH:MM` (válidas e inválidas, exhaustivo: 1440 minutos del día + inválidas típicas); guardián de dimensiones (una dimensión nueva de la hora de corte sin declarar si afecta o no); matriz de denegación por defecto (control positivo del nuevo comando); mutaciones: quitar la comparación «mismo valor» (debe ponerse en rojo la prueba de idempotencia), quitar la auditoría, quitar el chequeo de permiso.
+- **Combinaciones (oráculo, regla del 2026-10-28):** dimensiones cuyas combinaciones cambian el resultado: (hora de corte vigente) × (instante de apertura) × (zona) → fecha de negocio sellada: ya cubierta por el oráculo de `fechaDeNegocio` (`test/tiempo/fecha-de-negocio.test.ts` y el cruce con la base `caja_fecha_de_negocio`); la dimensión nueva es el CAMBIO de la hora, cuyo resultado solo cambia las sesiones futuras.
+- **Necesidad que resuelve (regla de Poda):** P-CORTE (2026-11-16) la pidió con sus palabras («la cambia el gerente o administrador») y «5.- recomendado» (2026-11-17) fijó dónde; antecedente en Pedernal (`editar-sucursal.ts`). No agrega opciones nuevas ni permisos.
+- **Qué NO entra:** vigencia programada («a partir de mañana»), historial de horas en una tabla propia, aviso a los usuarios, permiso nuevo. Sugerencias, no implementadas.
