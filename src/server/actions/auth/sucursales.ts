@@ -1,6 +1,6 @@
 "use server";
 
-import { guardComandoCrearSucursal, guardComandoRenombrarSucursal } from "@/core/features/sucursales/sucursal.guard";
+import { guardComandoCambiarHoraDeCorteDeSucursal, guardComandoCrearSucursal, guardComandoRenombrarSucursal } from "@/core/features/sucursales/sucursal.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
@@ -10,6 +10,8 @@ import { requerirVerAlguna } from "../con-sesion";
 import { crearSucursalConAdminCasoDeUso } from "./casos-de-uso/crear-sucursal-con-admin";
 import { actualizarActivoSucursalCasoDeUso } from "./casos-de-uso/actualizar-activo-sucursal";
 import { renombrarSucursalCasoDeUso } from "./casos-de-uso/renombrar-sucursal";
+import { horaDeCorteDeColumnaTime } from "@/core/tiempo/fecha-de-negocio";
+import { cambiarHoraDeCorteDeSucursalCasoDeUso } from "./casos-de-uso/cambiar-hora-de-corte-de-sucursal";
 
 /**
  * Todas las sucursales de la empresa (activas o no). H8 (decisión D-3 del dueño): exige el «Ver» de alguna de sus dos pantallas, Usuarios
@@ -19,7 +21,9 @@ import { renombrarSucursalCasoDeUso } from "./casos-de-uso/renombrar-sucursal";
 export async function listarSucursales() {
   const ctx = await requerirVerAlguna(["gestion_usuarios", "alta_sucursal"]);
   // S-15 (plan de endurecimiento, T7): solo lo que las dos pantallas dibujan (GT-25: toda lectura `listar*` declara su `select`; más campos: se AGREGAN acá).
-  return ctx.db.sucursal.findMany({ select: { id: true, nombre: true, activo: true }, orderBy: { nombre: "asc" } });
+  const filas = await ctx.db.sucursal.findMany({ select: { id: true, nombre: true, activo: true, horaDeCorte: true }, orderBy: { nombre: "asc" } });
+  // `horaDeCorte` (C2c) se lee de la columna `TIME(0)` y sale como «HH:MM» (un texto: pasa a las pantallas cliente sin `Date`).
+  return filas.map((f) => ({ ...f, horaDeCorte: horaDeCorteDeColumnaTime(f.horaDeCorte) }));
 }
 
 /**
@@ -82,6 +86,21 @@ export async function renombrarSucursal(sucursalId: string, nombreNuevo: string)
       revalidarCartasPublicas(ctx.empresaSlug);
       refrescarVistaSiHaceFalta(); // ver crearSucursalConAdmin
     }
+    return aResultadoAccion(resultado);
+  });
+}
+
+/**
+ * Cambiar la hora de corte de una sucursal (etapa C2c): hermana de `renombrarSucursal`, con el MISMO permiso (`renombrar_sucursal`, decisión del dueño 2026-11-17, «5.- recomendado»; sin permiso nuevo). Adaptador:
+ * `conPermisoDeEmpresa("renombrar_sucursal")` → formato (`guardComandoCambiarHoraDeCorteDeSucursal`, DENTRO del envoltorio) → caso de uso (`casos-de-uso/cambiar-hora-de-corte-de-sucursal.ts`) → refresco de la vista
+ * si salió bien → `aResultadoAccion`. Solo rige para las sesiones de caja que se abran después: las abiertas conservan la hora que sellaron.
+ */
+export async function cambiarHoraDeCorteDeSucursal(sucursalId: string, horaDeCorte: string): Promise<ResultadoAccion> {
+  return conPermisoDeEmpresa("renombrar_sucursal", async (ctx) => {
+    const comando = guardComandoCambiarHoraDeCorteDeSucursal(horaDeCorte);
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await cambiarHoraDeCorteDeSucursalCasoDeUso(ctx, { sucursalId, horaDeCorte: comando.valor.horaDeCorte });
+    if (resultado.ok) refrescarVistaSiHaceFalta(); // ver crearSucursalConAdmin
     return aResultadoAccion(resultado);
   });
 }
