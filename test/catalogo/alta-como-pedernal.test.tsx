@@ -13,6 +13,7 @@ vi.mock("../../src/server/actions/catalogo/proveedores", () => ({ altaProveedor:
 
 import { ProductoForm, type ProductoExistente } from "../../src/app/(app)/catalogo/productos/producto-form";
 import { ALTA_DE_PRODUCTO_COMO_PEDERNAL, CLASES_DE_ALTA, CLAVES_DE_CLASE_DE_ALTA, claseDeAltaDe } from "../../src/core/catalogo/public";
+import { CampoAlicuotaIva } from "../../src/app/(app)/catalogo/productos/campo-alicuota-iva";
 import { CLASES_DE_ALTA_ESPERADAS } from "./alta-como-pedernal.reglas";
 
 /**
@@ -42,7 +43,7 @@ describe("alta de producto como Pedernal (M3 de la pantalla «Producto nuevo»)"
     expect(ALTA_DE_PRODUCTO_COMO_PEDERNAL).toBe(true);
   });
 
-  it("pide «¿Qué es?» con las cuatro clases que hoy se guardan, en el orden de Pedernal, y la descripción literal de la elegida", () => {
+  it("pide «¿Qué es?» con las cinco clases de Pedernal, en el orden de Pedernal, y la descripción literal de la elegida", () => {
     const html = alta();
     expect(html).toContain("¿Qué es?");
     expect(CLAVES_DE_CLASE_DE_ALTA).toEqual(CLASES_DE_ALTA_ESPERADAS.map((c) => c.clave));
@@ -62,14 +63,39 @@ describe("alta de producto como Pedernal (M3 de la pantalla «Producto nuevo»)"
   it("el alta no pide categoría, insumo, unidad de compra, factor, paso de venta ni consignación, y tiene UNA «Unidad» (decisión del dueño, 2026-11-17); la edición los conserva (detalle en alta-como-pedernal-campos.test.tsx)", () => {
     const html = alta({ puedeGestionarConsignacion: true, puedeCrear: { categoria: true, insumo: true, proveedor: true } });
     for (const sacado of ["Sin categoría", "Sin insumo", "+ Nueva categoría", "+ Nuevo insumo", 'name="unidadCompraId"', 'name="factorConversion"', "Es consignación", "Unidad de stock"]) expect(html, sacado).not.toContain(sacado);
-    expect(html).toMatch(/<label[^>]*>Unidad<span/);
+    expect(html).toMatch(/<label[^>]*>Unidad<\/label>/);
     expect(renderToStaticMarkup(<ProductoForm {...comunes} productoExistente={existente({})} />)).toContain('name="factorConversion"');
   });
 
-  it("Insumo se ofrece (E2); Reventa NO (el CHECK de la base no la admite hasta E4): no se inventa", () => {
+  it("Insumo (E2) y Reventa (E4-5) se ofrecen, entre Insumo y Elaborado, como en Pedernal", () => {
     const html = alta();
     expect(html).toContain(">Insumo</option>");
-    expect(html).not.toContain("Reventa</option>");
+    expect(html).toContain(">Reventa</option>");
+    expect(html.indexOf(">Insumo</option>")).toBeLessThan(html.indexOf(">Reventa</option>"));
+    expect(html.indexOf(">Reventa</option>")).toBeLessThan(html.indexOf(">Elaborado</option>"));
+  });
+
+  it("textos del alta aprobados en la maqueta de Pedernal: «Código interno», «Guardar», sin asterisco; la edición queda como estaba", () => {
+    const html = alta();
+    expect(html).toContain("Código interno");
+    expect(html).not.toContain("Código (opcional");
+    expect(html).toMatch(/>Guardar<\/button>/);
+    expect(html).not.toContain("Crear producto");
+    expect(html).not.toContain("<span aria-hidden=\"true\"> *</span>");
+    expect(html).toMatch(/<input(?=[^>]*name="nombre")(?=[^>]*required)[^>]*>/); // la obligatoriedad sigue: solo desaparece el asterisco visible
+    const editando = renderToStaticMarkup(<ProductoForm {...comunes} productoExistente={existente({})} />);
+    expect(editando).toContain("Guardar cambios");
+  });
+
+  it("el IVA del alta dice «Alícuota de IVA» y «Sin elegir» (maqueta de Pedernal); la edición sigue con «IVA de venta» y «Sin declarar»", () => {
+    const enAlta = renderToStaticMarkup(<CampoAlicuotaIva tipo="PV" existente={undefined} puedeEditar sinAyudas />);
+    expect(enAlta).toContain(">Alícuota de IVA<");
+    expect(enAlta).toContain(">Sin elegir</option>");
+    expect(enAlta).not.toContain("IVA de venta");
+    expect(enAlta).not.toContain("Sin declarar");
+    const enEdicion = renderToStaticMarkup(<CampoAlicuotaIva tipo="PV" existente={undefined} puedeEditar />);
+    expect(enEdicion).toContain(">IVA de venta<");
+    expect(enEdicion).toContain(">Sin declarar</option>");
   });
 
   it("con el interruptor apagado vuelve la pantalla anterior", () => {
@@ -83,7 +109,7 @@ describe("alta de producto como Pedernal (M3 de la pantalla «Producto nuevo»)"
 
   it("en la edición se ve qué es el producto (con su clase y su descripción), sin casillas ni botones", () => {
     for (const c of CLASES_DE_ALTA_ESPERADAS) {
-      const html = renderToStaticMarkup(<ProductoForm {...comunes} productoExistente={existente({ tipo: c.tipo, seProduce: c.seProduce })} />);
+      const html = renderToStaticMarkup(<ProductoForm {...comunes} productoExistente={existente({ tipo: c.tipo, seProduce: c.seProduce, claseDeUso: c.clave })} />);
       expect(html, c.nombre).toContain(c.nombre);
       expect(html).not.toContain('name="queEs"');
       expect(html).not.toContain('name="seProduce"');
@@ -100,8 +126,9 @@ describe("alta de producto como Pedernal (M3 de la pantalla «Producto nuevo»)"
     expect(claseDeAltaDe({ tipo: "MP" })).toBe("MATERIA_PRIMA");
     // La clase ESCRITA manda sobre lo deducido (un Insumo es una MP que no se produce: sin la clase escrita se leería como Materia prima).
     expect(claseDeAltaDe({ tipo: "MP", seProduce: false, claseDeUso: "INSUMO" })).toBe("INSUMO");
-    // Una clase que no se ofrece (Reventa) o ilegible cae en lo deducido: nunca se muestra una clase inventada.
-    expect(claseDeAltaDe({ tipo: "MP", seProduce: false, claseDeUso: "REVENTA" })).toBe("MATERIA_PRIMA");
+    expect(claseDeAltaDe({ tipo: "PV", seProduce: false, claseDeUso: "REVENTA" })).toBe("REVENTA");
+    // Una clase ilegible cae en lo deducido: nunca se muestra una clase inventada.
+    expect(claseDeAltaDe({ tipo: "MP", seProduce: false, claseDeUso: "SERVICIO" })).toBe("MATERIA_PRIMA");
     expect(claseDeAltaDe({ tipo: "PV", claseDeUso: "no-es-una-clase" })).toBe("VENDIBLE");
   });
 });

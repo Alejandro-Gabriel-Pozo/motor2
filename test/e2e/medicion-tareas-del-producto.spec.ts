@@ -271,7 +271,7 @@ test.describe("medición de las tareas del producto (el espacio) contra el umbra
     }).toPass({ timeout: 20_000 });
     await m.llenar(page.locator('input[name="nombre"]'), nombre, "escribir el nombre");
     await m.elegir(page.getByRole("combobox", { name: "Unidad", exact: true }), "unidad", "elegir la unidad");
-    await m.clic(page.getByRole("button", { name: "Crear producto" }), "tocar «Crear producto»");
+    await m.clic(page.getByRole("button", { name: "Guardar", exact: true }), "tocar «Guardar»");
     await m.ver("se llega a la ficha del producto creado", () => expect(page).toHaveURL(/\/catalogo\/productos\/[^/?]+\?guardado=alta/));
     // Frente 2: el alta ya no pide precio, así que el producto nace SIN precio y NO disponible (A1) hasta que se le cargue el precio en «Precios» y se active.
     await m.ver("la ficha dice que no está disponible en la sucursal (nace sin precio)", () => expect(page.getByText(/No disponible en «/)).toBeVisible());
@@ -320,7 +320,7 @@ test.describe("medición de las tareas del producto (el espacio) contra el umbra
     }).toPass({ timeout: 20_000 });
     await m.llenar(page.locator('input[name="nombre"]'), producto, "escribir el nombre del producto");
     await m.elegir(page.getByRole("combobox", { name: "Unidad", exact: true }), "unidad", "elegir la unidad");
-    await m.clic(page.getByRole("button", { name: "Crear producto" }), "tocar «Crear producto»");
+    await m.clic(page.getByRole("button", { name: "Guardar", exact: true }), "tocar «Guardar»");
     await m.ver("se llega a la ficha del producto", () => expect(page).toHaveURL(/\/catalogo\/productos\/[^/?]+\?guardado=alta/));
 
     // 2) Los grupos, desde el paso 2: el de tamaños con el precio final de cada opción, y el de lo incluido.

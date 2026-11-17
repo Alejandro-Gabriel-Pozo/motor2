@@ -120,6 +120,8 @@ export type NombreDeCampo =
 export interface PropsBaseDeCampo extends Omit<InputHTMLAttributes<HTMLInputElement>, "id" | "aria-label"> {
   /** Texto fijo bajo el campo (no desaparece al tipear, a diferencia de un placeholder). */
   ayuda?: ReactNode;
+  /** Oculta el asterisco de «obligatorio» de la etiqueta (el control sigue llevando `required`: la obligatoriedad no cambia). Por defecto se ve. */
+  sinAsterisco?: boolean;
   /** Mensaje de error ya redactado para el usuario; si viene, el campo queda marcado como inválido. */
   error?: ReactNode;
   /** Marca el campo como inválido (`aria-invalid` y borde de error) SIN mensaje ni `role="alert"`: para quien ya muestra o frena el problema por otro lado. Con `error` sobra. */
@@ -139,11 +141,11 @@ export type PropsDeCampo = PropsBaseDeCampo & NombreDeCampo;
 const SIMBOLO_DEL_PREFIJO = "pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-sm text-tinta-suave";
 
 // @contrato primitiva-campo
-export function Campo({ etiqueta, etiquetaOculta, nombradoPorFuera, ayuda, error, invalido, alinear = "inicio", prefijo, tamano = "normal", id, className, required, ref, ...resto }: PropsDeCampo) {
+export function Campo({ etiqueta, etiquetaOculta, nombradoPorFuera, ayuda, error, invalido, alinear = "inicio", prefijo, tamano = "normal", id, className, required, sinAsterisco = false, ref, ...resto }: PropsDeCampo) {
   // `nombradoPorFuera` solo le dice al tipo que el nombre lo pone otro: no es un atributo del `<input>`, no tiene que llegar al DOM.
   void nombradoPorFuera;
   return (
-    <EnvolturaDeCampo id={id} etiqueta={etiqueta} etiquetaOculta={etiquetaOculta} requerido={required} ayuda={ayuda} error={error} invalido={invalido}>
+    <EnvolturaDeCampo id={id} etiqueta={etiqueta} etiquetaOculta={etiquetaOculta} requerido={required && !sinAsterisco} ayuda={ayuda} error={error} invalido={invalido}>
       {(control) => {
         const clases = [control.className, ALTURA_DEL_CAMPO[tamano], alinear === "fin" ? "text-right" : null, prefijo ? "pl-5" : null, className].filter(Boolean).join(" ");
         const entrada = <input {...resto} {...control} ref={ref} required={required} className={clases} />;

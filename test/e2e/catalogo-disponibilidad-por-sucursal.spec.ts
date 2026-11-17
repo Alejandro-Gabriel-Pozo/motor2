@@ -67,7 +67,7 @@ async function darDeAltaPV(page: import("@playwright/test").Page, nombre: string
   await page.getByRole("combobox", { name: "Unidad", exact: true }).selectOption({ label: "kg" });
   // Como Pedernal, el alta ya no ofrece «Activo en todas las sucursales». Frente 2: tampoco pide precio, así que el producto de venta nace NO disponible (A1) en todas hasta que se le cargue el precio y se active.
   await expect(page.getByRole("checkbox", { name: "Activo en todas las sucursales" })).toHaveCount(0);
-  await page.getByRole("button", { name: "Crear producto" }).click();
+  await page.getByRole("button", { name: "Guardar", exact: true }).click();
   await page.waitForURL(/\/catalogo\/productos\/[^/]+\?guardado=alta/);
 }
 

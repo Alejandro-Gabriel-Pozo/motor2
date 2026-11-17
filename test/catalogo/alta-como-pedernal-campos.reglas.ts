@@ -19,7 +19,7 @@ export const MARCADOR: Record<CampoDelFormulario, RegExp> = {
   pasoDeVenta: /name="pasoVenta"/,
   consignacion: /Es consignación/,
   iva: /name="alicuotaIva"/,
-  rotuloUnidad: /<label[^>]*>Unidad<span/,
+  rotuloUnidad: /<label[^>]*>Unidad<\/label>/, // sin asterisco (maqueta de Pedernal): el rótulo es solo «Unidad»
   rotuloUnidadDeStock: />Unidad de stock</,
 };
 

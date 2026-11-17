@@ -212,8 +212,8 @@ export function ProductoForm({
       )}
 
       {!editando && !rotulos && <Campo name="codigo" {...nombreDelCampo(false, "Código (opcional, se autogenera)")} />}
-      <Campo name="nombre" {...nombreDelCampo(rotulos, "Nombre")} defaultValue={productoExistente?.nombre} required /><CampoNombreDeCocina rotuloVisible={rotulos} tipo={tipo} valorInicial={productoExistente?.nombreDeCocina} />
-      {rotulos && <Campo name="codigo" {...nombreDelCampo(true, "Código (opcional, se autogenera)")} />}{/* orden de la maqueta de Pedernal: Nombre, Nombre de cocina, Código */}
+      <Campo name="nombre" {...nombreDelCampo(rotulos, "Nombre")} defaultValue={productoExistente?.nombre} required sinAsterisco={rotulos} /><CampoNombreDeCocina rotuloVisible={rotulos} tipo={tipo} valorInicial={productoExistente?.nombreDeCocina} />
+      {rotulos && <Campo name="codigo" {...nombreDelCampo(true, "Código interno")} />}{/* orden de la maqueta de Pedernal: Nombre, Nombre de cocina, Código */}
 
       {!rotulos && (
         <CampoCategoria categorias={categorias} categoriaId={categoriaId} alElegir={setCategoriaId} alCrear={(item) => { setCategorias((prev) => [...prev, item]); setCategoriaId(item.id); }} puedeCrear={puedeCrear.categoria} />
@@ -343,7 +343,7 @@ export function ProductoForm({
           } alTerminar={() => irALaFicha(productoExistente.id)} />
       )}
 
-      {soloLectura ? null : <Boton type="submit" disabled={pending}>{pending ? "Guardando..." : editando ? "Guardar cambios" : "Crear producto"}</Boton>}
+      {soloLectura ? null : <Boton type="submit" disabled={pending}>{pending ? "Guardando..." : editando ? "Guardar cambios" : rotulos ? "Guardar" : "Crear producto"}</Boton>}
     </form>
   );
 }

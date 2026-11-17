@@ -15,6 +15,8 @@ interface PropsDeSelector extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 
   /** Obligatoria. */
   etiqueta: ReactNode;
   etiquetaOculta?: boolean;
+  /** Oculta el asterisco de «obligatorio» de la etiqueta (el control sigue llevando `required`). Por defecto se ve. */
+  sinAsterisco?: boolean;
   /** Texto fijo bajo el selector. */
   ayuda?: ReactNode;
   /** Mensaje de error ya redactado para el usuario; si viene, el selector queda marcado como inválido. */
@@ -26,9 +28,9 @@ interface PropsDeSelector extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 
 }
 
 // @contrato primitiva-selector
-export function Selector({ etiqueta, etiquetaOculta, ayuda, error, tamano = "normal", id, className, required, ref, children, ...resto }: PropsDeSelector) {
+export function Selector({ etiqueta, etiquetaOculta, ayuda, error, tamano = "normal", id, className, required, sinAsterisco = false, ref, children, ...resto }: PropsDeSelector) {
   return (
-    <EnvolturaDeCampo id={id} etiqueta={etiqueta} etiquetaOculta={etiquetaOculta} requerido={required} ayuda={ayuda} error={error}>
+    <EnvolturaDeCampo id={id} etiqueta={etiqueta} etiquetaOculta={etiquetaOculta} requerido={required && !sinAsterisco} ayuda={ayuda} error={error}>
       {(control) => (
         <select {...resto} {...control} ref={ref} required={required} className={`${control.className} ${ALTURA_DEL_CAMPO[tamano]}${className ? ` ${className}` : ""}`}>
           {children}

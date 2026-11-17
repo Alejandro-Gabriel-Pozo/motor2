@@ -14,8 +14,6 @@ import { NOMBRE_DE_CLASE } from "./clases-de-producto";
 /** De qué clase es el producto, en palabras. «Producto de venta» no incluye al producto interno de un adicional (que se ve aparte como «respaldo»). */
 export const TIPOS_FILTRABLES = ["venta", "materia-prima", "se-produce", "reventa", "respaldo"] as const;
 export type TipoFiltrable = (typeof TIPOS_FILTRABLES)[number];
-/** El chip «Reventa» de la lista se muestra recién cuando el alta la ofrece (E4-5): antes se vería vacío (todo nace cerrado). La FILA de un producto sigue diciendo su clase real. */
-export const CHIP_REVENTA_VISIBLE = false;
 
 /** Cómo se vende un producto de venta: con su precio, o por opción (el precio final está en cada opción). */
 export const MODOS_FILTRABLES = ["directo", "por-opcion"] as const;

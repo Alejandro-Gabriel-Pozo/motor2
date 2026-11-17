@@ -5,7 +5,7 @@
  * Una fila por combinación. `disponible`: lo que queda escrito en `DisponibilidadProducto` de la sucursal; `null` = el alta se rechaza y no se crea nada.
  */
 export interface FilaDelAlta {
-  clase: "MATERIA_PRIMA" | "INSUMO" | "ELABORADO" | "VENDIBLE";
+  clase: "MATERIA_PRIMA" | "INSUMO" | "REVENTA" | "ELABORADO" | "VENDIBLE";
   conClave: boolean;
   traePrecio: boolean;
   disponible: boolean | null;
@@ -27,4 +27,9 @@ export const ALTAS_ESPERADAS: readonly FilaDelAlta[] = [
   { clase: "VENDIBLE", conClave: true, traePrecio: false, disponible: false },
   { clase: "VENDIBLE", conClave: false, traePrecio: true, disponible: null },
   { clase: "VENDIBLE", conClave: true, traePrecio: true, disponible: true },
+  // La Reventa es un producto de venta (E4-5): se comporta igual que el vendible.
+  { clase: "REVENTA", conClave: false, traePrecio: false, disponible: false },
+  { clase: "REVENTA", conClave: true, traePrecio: false, disponible: false },
+  { clase: "REVENTA", conClave: false, traePrecio: true, disponible: null },
+  { clase: "REVENTA", conClave: true, traePrecio: true, disponible: true },
 ];

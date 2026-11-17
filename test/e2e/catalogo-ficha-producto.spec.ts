@@ -135,7 +135,7 @@ test("crear un producto lleva a su ficha con el aviso de que se creó", async ({
 
   await page.locator('input[name="nombre"]').fill(nombre);
   await page.locator("select[required]").selectOption({ label: "kg" });
-  await page.getByRole("button", { name: "Crear producto" }).click();
+  await page.getByRole("button", { name: "Guardar", exact: true }).click();
 
   await page.waitForURL(/\/catalogo\/productos\/[^/]+\?guardado=alta$/);
   await expect(page.getByRole("status")).toHaveText("Producto creado.");

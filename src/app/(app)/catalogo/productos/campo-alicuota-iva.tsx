@@ -56,12 +56,12 @@ export function alicuotasDelFormulario(
 export function CampoAlicuotaIva({ tipo, existente, puedeEditar, sinAyudas = false }: { tipo: TipoProducto; existente: AlicuotasGuardadas | undefined; puedeEditar: boolean; sinAyudas?: boolean }) {
   const guardada = alicuotaGuardadaDe(tipo, existente);
   const [alicuota, setAlicuota] = useState<string>(guardada ?? "");
-  const etiqueta = tipo === "PV" ? "IVA de venta" : "IVA de compra";
+  const etiqueta = sinAyudas ? "Alícuota de IVA" : tipo === "PV" ? "IVA de venta" : "IVA de compra"; // alta como Pedernal (`sinAyudas`): el rótulo de la maqueta aprobada
   return (
     <div className="flex flex-col gap-1" data-alicuota-iva={tipo === "PV" ? "venta" : "compra"}>
       {puedeEditar ? (
         <Selector etiqueta={etiqueta} name="alicuotaIva" value={alicuota} onChange={(e) => setAlicuota(e.target.value)}>
-          <option value="">Sin declarar</option>
+          <option value="">{sinAyudas ? "Sin elegir" : "Sin declarar"}</option>
           {ALICUOTAS_IVA.map((a) => (
             <option key={a} value={a}>
               {ETIQUETA_DE_ALICUOTA[a]}

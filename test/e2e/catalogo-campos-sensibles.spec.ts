@@ -217,7 +217,7 @@ test("sin la clave, el alta se ve como la crea el servidor (precio 0, factor 1, 
 
     await page.locator('input[name="nombre"]').fill(nombre);
     await page.getByRole("combobox", { name: "Unidad", exact: true }).selectOption({ label: "unidad" });
-    await page.getByRole("button", { name: "Crear producto" }).click();
+    await page.getByRole("button", { name: "Guardar", exact: true }).click();
     await page.waitForURL(/\/catalogo\/productos\/[^/?]+\?guardado=alta$/);
     const creado = await prisma.producto.findFirstOrThrow({ where: { nombre } });
     expect([Number(creado.precioVenta), Number(creado.factorConversion), creado.unidadCompraId]).toEqual([0, 1, null]);
@@ -315,7 +315,7 @@ test("M.2-A2: un rol con alta_producto pero SIN producto_editar ni la clave fina
     await expect(page.getByLabel("Activo en todas las sucursales")).toHaveCount(0);
     await page.locator('input[name="nombre"]').fill(nombre);
     await page.getByRole("combobox", { name: "Unidad", exact: true }).selectOption({ label: "unidad" });
-    await page.getByRole("button", { name: "Crear producto" }).click();
+    await page.getByRole("button", { name: "Guardar", exact: true }).click();
     await page.waitForURL(/\/catalogo\/productos\/[^/?]+\?guardado=alta$/);
 
     const creado = await prisma.producto.findFirstOrThrow({ where: { nombre } });

@@ -11,8 +11,8 @@ import { CLASES_DE_ALTA_ESPERADAS } from "./alta-como-pedernal.reglas";
 /**
  * Clases de producto como Pedernal, etapa E2 (2026-11-17): el alta GUARDA la clase elegida («¿Qué es?») en `Producto.claseDeUso` (columna de E1), junto con el tipo y «se produce» de siempre. Contra Postgres real.
  *
- * Qué fija: (a) cada una de las cuatro clases que se ofrecen queda escrita con su tipo y «se produce» (oráculo escrito aparte: `alta-como-pedernal.reglas.ts`); (b) un alta SIN clase (el cliente viejo, las
- * altas rápidas) queda con la clase en NULL, como hoy; (c) lista de permitidos: Reventa (todavía sin modelo), una clase inventada o una que no coincide con el tipo o con «se produce» se rechazan y NO se crea
+ * Qué fija: (a) cada una de las cinco clases que se ofrecen queda escrita con su tipo y «se produce» (oráculo escrito aparte: `alta-como-pedernal.reglas.ts`); (b) un alta SIN clase (el cliente viejo, las
+ * altas rápidas) queda con la clase en NULL, como hoy; (c) lista de permitidos: Reventa solo con tipo PV y que no se produce, una clase inventada o una que no coincide con el tipo o con «se produce» se rechazan y NO se crea
  * nada; (d) la clase no se cambia desde la edición (viene o no viene, el producto queda como estaba); (e) duplicar copia la clase; (f) idempotencia (repetir el alta no crea otro) y concurrencia (dos altas
  * simultáneas del mismo nombre dejan UNO); (g) aislamiento: el mismo nombre en otra empresa no choca y su clase es la suya.
  */
@@ -43,7 +43,10 @@ describe("darDeAltaProducto con clase de uso (E2)", () => {
   });
 
   it.each([
-    ["Reventa (todavía sin modelo, E4)", { tipo: "MP", claseDeUso: "REVENTA" }],
+    ["una Reventa con tipo MP", { tipo: "MP", claseDeUso: "REVENTA" }],
+    ["una Reventa que se produce", { tipo: "PV", seProduce: true, claseDeUso: "REVENTA" }],
+    ["una Reventa en minúsculas", { tipo: "PV", claseDeUso: "reventa" }],
+    ["un Vendible que se produce", { tipo: "PV", seProduce: true, claseDeUso: "VENDIBLE" }],
     ["una clase inventada", { tipo: "MP", claseDeUso: "SERVICIO" }],
     ["minúsculas", { tipo: "MP", claseDeUso: "insumo" }],
     ["vacía", { tipo: "MP", claseDeUso: "" }],

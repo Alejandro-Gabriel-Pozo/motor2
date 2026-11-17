@@ -75,7 +75,6 @@ export {
   FALTAS_FILTRABLES,
   MODOS_FILTRABLES,
   SIN_FILTROS,
-  CHIP_REVENTA_VISIBLE,
   TIPOS_FILTRABLES,
   claseDelProducto,
   consultaDeLosFiltros,

@@ -60,7 +60,7 @@ export function CamposDeUnidad({
         <div className="flex gap-2">
           {unidadDeStockEditable ? (
             <div className="flex-1">
-              <Selector etiqueta={soloUnidad ? "Unidad" : "Unidad de stock"} etiquetaOculta={!soloUnidad} value={unidadStockId} onChange={(e) => alElegirUnidadStock(e.target.value)} required>
+              <Selector etiqueta={soloUnidad ? "Unidad" : "Unidad de stock"} etiquetaOculta={!soloUnidad} value={unidadStockId} onChange={(e) => alElegirUnidadStock(e.target.value)} required sinAsterisco={soloUnidad}>
                 <option value="">{soloUnidad ? "Sin elegir" : "Unidad de stock"}</option>
                 {opciones}
               </Selector>

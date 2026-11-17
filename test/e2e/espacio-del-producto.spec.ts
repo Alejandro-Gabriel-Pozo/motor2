@@ -335,7 +335,7 @@ for (const { ancho, alto } of [
     }).toPass({ timeout: 20_000 });
     await page.locator('input[name="nombre"]').fill(nombre);
     await page.getByRole("combobox", { name: "Unidad", exact: true }).selectOption({ label: "unidad" });
-    await page.getByRole("button", { name: "Crear producto" }).click();
+    await page.getByRole("button", { name: "Guardar", exact: true }).click();
     await expect(page).toHaveURL(/\/catalogo\/productos\/[^/?]+\?guardado=alta/);
     await expect(page.getByRole("heading", { level: 1 })).toContainText(nombre);
     await expectSinDesborde(page, `${ancho} px: la portada recién creada`);
