@@ -24,7 +24,7 @@ Resumen por circuito (cada grupo con archivo:línea está en el informe de inven
 | **Ventas / POS / registro** (`linea-de-venta.ts:46`, `agregar-items.ts:150`, `registrar-venta-en-tx.ts:121-170`, selectores, combos, paso de venta, descuento, nombre de cocina) | Solo PV se vende; un PV con `seProduce=false` **exige receta** («sin receta no se vende», `origen-de-stock.ts:49`) | **No se puede vender** (≈45 puntos con filtro PV) | Se vende, pero hoy exigiría la receta 1:1 |
 | **Carta** (7 acciones `NO_ES_PV`, consultas `where tipo:'PV'`, `menu.ts`, familias) | Solo PV | Nunca aparece | **Encaja sin tocar** |
 | **Stock / conteo / traspasos** (`tieneStockReal = MP o (PV y seProduce)`, `transiciones.ts:113-114`; 17 llamadas) | Stock propio: MP o PV que se produce | Tiene stock propio sola | Solo con `seProduce=true`, que activa PRODUCCION y exige receta: **no corresponde** |
-| **Recetas / producción** (`receta-validacion.ts:151`, ingrediente solo MP; `PRODUCCION ⇔ seProduce`) | Ingrediente = MP; receta = PV, o MP que se produce | Entra como ingrediente | No entra como ingrediente |
+| **Recetas / producción** (`receta-validacion.ts:151`, ingrediente solo MP; `PRODUCCION ⇔ seProduce`) | Ingrediente = MP; receta = PV, o MP que se produce | Entra como ingrediente (hoy) | No entra como ingrediente (hoy); **con R7 SÍ entra: un cambio de E4-3/E4-4** |
 | **Costos y reportes** (`costos.ts:145,362` solo PV; valuación, diferencias, huecos solo MP; rótulo `PRODUCTO_DE_REVENTA` del par) | Costo/margen solo de PV (con receta); compras/valuación solo de MP | Fuera de costos y margen | Entra al margen, pero sin receta cae en «sin receta / costo incompleto» |
 | **Catálogo** (alta, ficha, duplicar, precios, vocabulario hardcodeado «materia prima (MP)» / «producto de venta (PV)», `Producto_nombre_de_cocina_chk` solo PV, `Producto_modoDeVenta_base_check`) | Ficha por tipo | `nombreDeCocina` **prohibido** por el CHECK | Encaja (precio, carta, nombre de cocina, opciones) |
 | **Base** | enum `TipoProducto {MP, PV}` excluyente, `tipo` inmutable (`TIPO_DISTINTO`), `claseDeUso` inmutable (disparador) | — | — |
@@ -41,7 +41,7 @@ Resumen por circuito (cada grupo con archivo:línea está en el informe de inven
 
 **Propuesta: R-A.** Se corresponde con Pedernal en resultado (un solo producto con su propio stock, que vende y se compra; `ERP: explosion.ts:23`, `clase-comprable.ts:5`, `vendeLaClase`). Diferencia declarada con Pedernal (motivo): Motor2 mantiene `tipo` y no lo reemplaza; la capacidad «se compra» pasa a leerse de una función única, no del `tipo` solo (Prisma + datos ya cargados).
 
-**Núcleo único de capacidades** (PROPUESTA): una función pura `capacidadesDelProducto({ tipo, seProduce, claseDeUso })` → `{ seCompra, seVende, tieneStockPropio, esIngrediente, tieneReceta }` en `core/catalogo/clases-de-producto.ts`. Para todo lo que existe hoy devuelve **exactamente** lo que hoy deciden los literales; solo `REVENTA` es nueva. Los puntos de decisión pasan a usarla **de a un circuito por PR**, no todos juntos.
+**Núcleo único de capacidades** (PROPUESTA): una función pura `capacidadesDelProducto({ tipo, seProduce, claseDeUso })` → `{ seCompra, seVende, tieneStockPropio, sePuedeProducir, llevaReceta, esIngredienteDeReceta, loConsumeUnaOpcion }` en `core/catalogo/clases-de-producto.ts`. Para todo lo que existe hoy devuelve **exactamente** lo que hoy deciden los literales; solo `REVENTA` es nueva. Los puntos de decisión pasan a usarla **de a un circuito por PR**, no todos juntos.
 
 ## 4. Invariantes y políticas (nivel 5)
 
@@ -53,7 +53,7 @@ Resumen por circuito (cada grupo con archivo:línea está en el informe de inven
 | R4 | La clase **no cambia** después de crear (disparador ya existente) | CONFIRMADA (2026-11-13) |
 | R5 | **Solo para altas nuevas**: no se rellena `REVENTA` en productos existentes; los pares MP+PV siguen igual y no se unen en E4 | CONFIRMADA (2026-11-15, opción C) |
 | R6 | Una Reventa se **vende solo si tiene alícuota** (como un vendible) y precio cargado en «Precios» (ver `docs/diseno-precio-fuera-del-alta-2026-11-17.md`) | PROPUESTA |
-| R7 | **No es ingrediente de receta en E4.** Pedernal lo permite (oráculo §10.1: «Es ingrediente: Sí»); Motor2 **no lo construye** hasta que el dueño lo pida | **PREGUNTA ABIERTA** (ver §9) |
+| R7 | **Una Reventa SÍ es ingrediente de receta y SÍ la consume una opción**, como Pedernal: la receta lleva materia prima, elaborado y reventa (el insumo no entra); una opción consume materia prima, insumo, reventa y elaborado (`ERP: composiciones.ts:125-130`, `clases.ts:20-29`). Se construye dentro de E4-3/E4-4 (receta, opción y consumo de stock), no en E4-0 a E4-2 | **CONFIRMADA** (2026-11-17, el dueño delegó los casos abiertos en Pedernal: «Preguntale a Pedernal, según sus reglas, cómo definirían esos casos»; Pedernal respondió con su código; decisión citada por el orquestador) |
 | R8 | Todo nace cerrado: la alta ofrece Reventa **al final**, cuando ya funcionan compra, stock y venta | PROPUESTA |
 | R9 | Los reportes no cambian de resultado: lo que hoy sale de MP o PV sigue igual; la Reventa nueva aparece en compras/valuación y en ventas/margen con su costo de compra | PROPUESTA; costo/margen de REVENTA: NO VERIFICADO |
 
@@ -95,7 +95,7 @@ Resumen por circuito (cada grupo con archivo:línea está en el informe de inven
 | **E4-0** | `capacidadesDelProducto` en el núcleo + prueba de **equivalencia**: para todo `(tipo, seProduce, claseDeUso ≠ REVENTA)` da lo que hoy deciden los literales; oráculo escrito aparte; el guardián falla si aparece una dimensión sin declarar. Sin cambio de comportamiento | No |
 | **E4-1** | Migración de §6 + pruebas de base (REVENTA admitida con PV, rechazada con MP o con `seProduce`; `down`) | No (nadie escribe REVENTA todavía) |
 | **E4-2** | **Compra** lee la función: selector, `transiciones`, alícuotas (venta y compra), «Cómo se compra», proveedor, presentaciones | No (no existen Reventas) |
-| **E4-3** | **Stock y venta**: `tieneStockReal` y las 17 llamadas; venta descuenta stock propio sin receta; anulación, conteo, traspaso. Pruebas de concurrencia e idempotencia con una Reventa sembrada en la base de prueba | No |
+| **E4-3** | **Stock, venta y receta**: `tieneStockReal` y las 17 llamadas; venta descuenta stock propio sin receta; anulación, conteo, traspaso; **la Reventa entra como ingrediente de receta y la consume una opción (R7)**; `capacidadesDelProducto` y su oráculo pasan a `esIngredienteDeReceta` y `loConsumeUnaOpcion` verdaderos para REVENTA. Pruebas de concurrencia e idempotencia con una Reventa sembrada en la base de prueba | No |
 | **E4-4** | **Reportes, lista, ficha, duplicar**: costos/margen con costo de compra, chips, textos | No |
 | **E4-5** | **El alta (y la alta rápida desde compra) ofrece «Reventa»**; `motivoDeClaseDeAltaInvalida` la admite; e2e completo (alta → compra → venta → anulación → reporte) | **Sí: aparece Reventa** |
 
@@ -103,20 +103,20 @@ Antes de cada paso: inventariar de nuevo los puntos del circuito contra el códi
 
 ## 8. Pruebas, combinaciones y operación (nivel 10)
 
-- **Dimensiones** (cambian dinero, permisos, visibilidad o stock): clase (5) × tipo × `seProduce` × circuito (compra / venta / stock / receta / carta / costo) × permiso de campos sensibles. **Oráculo** en el diseño de clases §10.1, fila `REVENTA` (con R7 en pregunta); el test recorre todas las combinaciones contra él.
+- **Dimensiones** (cambian dinero, permisos, visibilidad o stock): clase (5) × tipo × `seProduce` × circuito (compra / venta / stock / receta / carta / costo) × permiso de campos sensibles. **Oráculo** en el diseño de clases §10.1, fila `REVENTA` (con R7 confirmada: ingrediente y consumida por opción); el test recorre todas las combinaciones contra él.
 - **Equivalencia:** antes de que un circuito lea la función, una prueba compara el resultado nuevo y el viejo sobre todos los datos de prueba: **idéntico** (los reportes no cambian).
 - **Concurrencia e idempotencia:** dos ventas simultáneas del último saldo; compra y venta a la vez; repetir alta, compra y venta (E4-3 y E4-5).
 - **Pruebas locales** acotadas; la compuerta es el CI de GitHub (tsc, lint, arquitectura, knip, tests, build, plataforma:build, e2e).
 - **Operación:** al terminar E4-5 se pide al dueño probar: crear «Reventa» → comprarla → venderla → anular la venta → ver el stock.
 - **Capturas** (pantalla real, datos reales de la empresa, fuera del repositorio público): al construir E4-5.
 
-## 9. Pregunta abierta para el dueño (una; no frena E4-0 a E4-4)
+## 9. Pregunta abierta (RESUELTA, 2026-11-17)
 
-En Pedernal una **Reventa también se puede usar como ingrediente de una receta** (por ejemplo, un sándwich que lleva una lata de gaseosa). ¿Lo querés en Motor2? **Recomendada: no ahora**: E4 la deja comprar, vender y llevar stock; usarla de ingrediente es un cambio aparte, chico, cuando lo pidas (hoy ese uso se hace con el par).
+La pregunta era si una Reventa también se puede usar como ingrediente de una receta. El dueño delegó en Pedernal los casos abiertos («Preguntale a Pedernal, según sus reglas, cómo definirían esos casos») y Pedernal respondió con su código: **sí** (receta: materia prima, elaborado y reventa; opción: materia prima, insumo, reventa y elaborado). Pasa a R7 CONFIRMADA y se construye dentro de E4-3 y E4-4. Para la venta de una Reventa se sigue `ERP: explosion.ts:22-30`: una Reventa con artículo propio descuenta su propio artículo; sin artículo no es «falta receta»; un Vendible sin receta ni artículo no descuenta y avisa `FALTA_RECETA` (la venta pasa).
 
 ## 10. Qué NO entra
 
-Unir pares MP+PV (E6), rellenar `REVENTA` en lo ya cargado, reglas de Insumo (E3), Reventa como ingrediente (R7), precio abierto, cambiar `tipo`, tocar reportes existentes, cualquier cambio en las ≈45 zonas de carta/POS que ya funcionan con PV.
+Unir pares MP+PV (E6), rellenar `REVENTA` en lo ya cargado, reglas de Insumo (E3), precio abierto, cambiar `tipo`, tocar reportes existentes, cualquier cambio en las ≈45 zonas de carta/POS que ya funcionan con PV.
 
 ## 11. Riesgos
 
