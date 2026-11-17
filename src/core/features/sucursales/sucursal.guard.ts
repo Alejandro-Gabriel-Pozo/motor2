@@ -1,6 +1,7 @@
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { nombreDeFicha } from "@/core/datos/nombre-de-ficha";
 import { texto } from "@/core/texto";
+import { horaDeCorteValida } from "@/core/tiempo/fecha-de-negocio";
 
 /** El comando «dar de alta una sucursal con su primer admin» ya validado: el nombre recortado y el email recortado en minúsculas. */
 export interface ComandoCrearSucursal {
@@ -35,4 +36,14 @@ export function guardComandoRenombrarSucursal(nombreNuevo: string): ResultadoDat
   const nombre = nombreDeFicha(nombreNuevo, "NOMBRE_DE_SUCURSAL", "El nombre no puede estar vacío.");
   if (!nombre.ok) return rechazar(nombre.codigo === "vacio" ? "vacio" : "formato", nombre.mensaje);
   return aceptar({ nombre: nombre.valor });
+}
+
+/**
+ * Guard del comando «cambiar la hora de corte de una sucursal» (etapa C2c de `docs/diseno-caja-c2-jornada-y-cierre-del-dia-2026-11-16.md`). Lista de permitidos: un texto `HH:MM` estricto, 00:00 a 23:59
+ * (`horaDeCorteValida`); todo lo demás (vacío, no texto, `24:00`, `6:00`, `06:00:00`) se rechaza antes de tocar la base. Lo llama la Server Action DENTRO de `conPermisoDeEmpresa("renombrar_sucursal", …)`.
+ * Acepta `unknown`: el dato llega de afuera y los tipos solo protegen en compilación.
+ */
+export function guardComandoCambiarHoraDeCorteDeSucursal(horaDeCorte: unknown): ResultadoDato<{ horaDeCorte: string }> {
+  if (!horaDeCorteValida(horaDeCorte)) return rechazar("formato", "La hora de corte tiene que ser una hora válida con formato HH:MM, de 00:00 a 23:59.");
+  return aceptar({ horaDeCorte });
 }
