@@ -88,7 +88,8 @@ function problemasDelWorkflow(workflow: string): string[] {
   const todos = idsDeLosJobs(workflow).filter((id) => id !== "gate");
   for (const id of todos) {
     if (!necesita.includes(id)) p.push(`el Gate no espera al job ${id} (needs)`);
-    if (!new RegExp(`test .*"\\$\\{\\{ needs\\.${id}\\.result \\}\\}" = "success"`).test(gate)) p.push(`el Gate no exige ${id} en success`);
+    // El job `alcance` (el filtro) NO se exige en success: si falla, Build y E2E corren igual (falla cerrado) y el gate los exige en verde. Su veredicto lo pesa `ci-alcance-del-cambio.test.ts`.
+    if (id !== "alcance" && !new RegExp(`test .*"\\$\\{\\{ needs\\.${id}\\.result \\}\\}" = "success"`).test(gate)) p.push(`el Gate no exige ${id} en success`);
   }
   // `always() && !(perilla apagada)`: corre siempre salvo en un push a main con la perilla CI_EN_MAIN apagada (lo fija `ci-perilla-en-main.test.ts`).
   if (!/^    if: \$\{\{ always\(\) && !\(.*vars\.CI_EN_MAIN != 'si'\) \}\}\s*$/m.test(gate)) p.push("el Gate no corre siempre (`if: always()`): un job rojo lo dejaría omitido");
@@ -105,7 +106,7 @@ describe("CI: el E2E repartido en partes (workflow)", () => {
   });
 
   it("el E2E tiene más de una parte y los jobs del workflow son los esperados (el Gate cubre a todos)", () => {
-    expect(idsDeLosJobs(real).sort()).toEqual(["build", "e2e", "estatico", "gate", "integracion"]);
+    expect(idsDeLosJobs(real).sort()).toEqual(["alcance", "build", "e2e", "estatico", "gate", "integracion"]);
   });
 
   it("la premisa del reparto: playwright.config.ts reparte por ARCHIVO (fullyParallel falso) y corre un worker por parte", () => {
@@ -195,7 +196,7 @@ describe("CI: el E2E repartido en partes (workflow)", () => {
       expect(problemas).toContain("el Gate no exige conteo-e2e en success");
     });
     it("el Gate sin esperar a e2e", () => {
-      expect(muta(/needs: \[estatico, build, integracion, e2e\]/, "needs: [estatico, build, integracion]")).toContain("el Gate no espera al job e2e (needs)");
+      expect(muta(/needs: \[alcance, estatico, build, integracion, e2e\]/, "needs: [alcance, estatico, build, integracion]")).toContain("el Gate no espera al job e2e (needs)");
     });
     it("el Gate sin exigir e2e en success", () => {
       expect(muta(/ -a "\$\{\{ needs\.e2e\.result \}\}" = "success"/, "")).toContain("el Gate no exige e2e en success");

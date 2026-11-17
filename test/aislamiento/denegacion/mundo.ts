@@ -2,10 +2,11 @@ import { createHash, randomUUID } from "node:crypto";
 import { limpiarBaseDeTest, prismaAdmin, prismaSinEmpresa, sembrarBase, EMPRESA_POR_DEFECTO_ID } from "../../setup/test-db";
 import { crearEmpresa } from "../../setup/crear-empresa";
 import { crearMembresia } from "../../setup/membresia";
-import { activarTodosLosModulos, fijarModulosActivos, MODULOS_VENDIBLES } from "../../setup/modulos";
+import { activarTodosLosModulos, encenderRecepcionDeCompras, fijarModulosActivos, MODULOS_VENDIBLES } from "../../setup/modulos";
 import { enElPasado, HORA_MS, DIA_MS } from "../../setup/tiempo";
 import { ZONA_ARGENTINA, diaDeCalendario, fechaDeColumnaDate, sumarDias } from "../../../src/core/tiempo/zona-horaria";
 
+import { crearCategoriaDeTest } from "../../setup/categoria-de-prueba";
 /**
  * El MUNDO de la matriz de denegación por defecto (GT-3b): lo que se siembra UNA vez por archivo de test (las puertas que se prueban no escriben nada, y la matriz lo verifica con la huella de toda la base)
  * y los ids que las puertas reciben en cada escenario.
@@ -73,6 +74,8 @@ export interface KitDeEmpresa {
    * `basesDeUnEjeEnLaCarta`. Grupo y opción propios a propósito: así ningún control positivo de los escritores de opciones (que no dejan a una base sin su precio final) se cruza con él.
    */
   productoBaseId: string;
+  /** F1 (familias de productos): una familia de la EMPRESA (su id es un UUID) con un producto de venta miembro (`productoBaseId`: no va en ningún ítem agrupado) y el nombre con el marcador. */
+  familiaId: string;
   /** Caja (C1): el medio de pago EFECTIVO de la empresa (uno solo; su nombre lleva el marcador, así `leerMediosDeCobro` devuelve algo propio). */
   medioEfectivoId: string;
 }
@@ -248,7 +251,7 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
   const g = await unidad("g", "PESO", 0);
   // Una unidad con el marcador en el nombre: las de fábrica (kg, g…) son iguales en todas las empresas y no delatarían de dónde salió una lista.
   await db.unidad.create({ data: { id: id("unidad"), empresaId, nombre: `Unidad ${marca}`, magnitud: "CANTIDAD", decimales: 0 } });
-  const categoria = await db.categoriaProducto.create({ data: { id: id("categoria"), empresaId, nombre: `Categoría ${marca}` } });
+  const categoria = await crearCategoriaDeTest(db, { id: id("categoria"), empresaId, nombre: `Categoría ${marca}` });
   const grupo = await db.grupo.create({ data: { id: id("grupo"), empresaId, nombre: `Grupo ${marca}` } });
   const insumo = await db.insumo.create({ data: { id: id("insumo"), empresaId, nombre: `Insumo ${marca}`, grupoId: grupo.id } });
   const producto = (sufijo: string, tipo: "MP" | "PV", extra: object = {}) =>
@@ -306,8 +309,13 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
   await db.versionDeOpcion.create({ data: { id: `${opcionMedidaBase.id}-v1`, empresaId, opcionId: opcionMedidaBase.id, numero: 1, tipoDeDiferencia: "MONTO", diferenciaPrecio: 0, creadoPorId: usuarioId } });
   await db.productoAdmiteGrupo.create({ data: { id: id("admite-medida-base"), empresaId, productoId: pvBase.id, grupoId: grupoMedidaBase.id, orden: 0, modoPrecio: "ABSOLUTO" } });
   await db.productoAdmiteOpcion.create({ data: { id: id("admite-entera"), empresaId, productoId: pvBase.id, opcionId: opcionMedidaBase.id, precioAbsoluto: 2500 } });
+  // F1 (familias de productos): una familia de la empresa con el producto base como miembro (la lectura de gestión devuelve el nombre de la familia y del producto, los dos con el marcador).
+  const familia = await db.familiaDeProducto.create({ data: { id: randomUUID(), empresaId, nombre: `Familia ${marca}`, nombreClave: `familia ${marca}`.toLowerCase(), creadoPorId: usuarioId, actualizadoEn: new Date() } });
+  await db.miembroDeFamilia.create({ data: { id: randomUUID(), empresaId, familiaId: familia.id, productoId: pvBase.id, posicion: 1, agregadoPorId: usuarioId, agregadoEn: new Date() } });
   const entradaDeCupo = await db.entradaDeCupo.create({ data: { id: id("entrada-de-cupo"), empresaId, cupoId: cupoLista.id, productoId: pv.id } });
   await db.registroAuditoria.create({ data: { id: id("auditoria-empresa"), empresaId, entidad: "Producto", entidadId: mp.id, descripcion: `Auditoría de empresa ${marca}`, campo: "nombre", valorAnterior: "a", valorNuevo: "b", actorId: usuarioId } });
+  // Historial de precios (Frente 6, paso 7): un CAMBIO del precio de lista del producto («de $1000 a $1200», la forma que escribe `guardarPrecioVenta`), para que la lectura PROPIA de `historialDePreciosDelProducto` devuelva algo y la matriz pueda probar que la ajena devuelve vacío. Solo números: la lectura no trae descripción ni actor.
+  await db.registroAuditoria.create({ data: { id: id("auditoria-precio-de-lista"), empresaId, entidad: "Producto", entidadId: mp.id, descripcion: `Cambio de precio de lista ${marca}`, campo: "precioVenta", valorAnterior: "1000", valorNuevo: "1200", actorId: usuarioId } });
   // Caja (C1): el medio EFECTIVO de la empresa (el único que existe antes de abrir una caja). El nombre lleva el marcador: `leerMediosDeCobro` y los `esperadoPorMedio` lo devuelven.
   const medioEfectivo = await db.medioDePago.create({ data: { id: randomUUID(), empresaId, tipo: "EFECTIVO", nombre: `Efectivo ${marca}` } });
   return {
@@ -347,6 +355,7 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
     cupoDelDiaId: cupoDelDia.id,
     productoBaseId: pvBase.id,
     medioEfectivoId: medioEfectivo.id,
+    familiaId: familia.id,
   };
 }
 
@@ -515,6 +524,8 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
     facturasPendientes[sufijo] = factura.id;
   }
   // Compras N3-a (recepción separada): la parte de ESTA sucursal de la factura «por recibir» nace PENDIENTE (el valor por defecto de la columna), sin compra ni stock.
+  // La base no deja nacer una parte pendiente con la recepción separada apagada (guarda de apagado, 20261117125000_compras_guarda_de_apagado): la empresa la tiene encendida (fila de dueño, como `activarTodosLosModulos`).
+  await encenderRecepcionDeCompras(empresaId);
   await db.facturaProveedorSucursal.create({ data: { id: id("factura-por-recibir-parte"), empresaId, facturaProveedorId: facturasPendientes["factura-por-recibir"]!, sucursalId, porcentajeDeclaradoBp: 10000 } });
   // …y un renglón de mercadería (el producto de la empresa, habilitado en la sucursal) para que la confirmación tenga qué recibir: sin renglones el caso de uso responde «no tiene mercadería para recibir».
   const renglonPorRecibir = await db.facturaProveedorRenglon.create({

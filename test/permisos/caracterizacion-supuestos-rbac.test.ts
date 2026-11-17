@@ -128,8 +128,9 @@ describe("caracterización de los supuestos del RBAC (lo que se puede HOY; F3 y 
     await actuarComo(admin);
 
     // Lo único que la base sabe de una acción es su clave y su descripción: el piso no puede cambiar dentro de una transacción.
-    expect(Object.keys(await prisma.accion.findUniqueOrThrow({ where: { clave: "anular_venta" } })).sort()).toEqual(["clave", "descripcion"]);
-    expect(nivelMinimoDeAccion("anular_venta")).toBe("administrador");
+    expect(Object.keys(await prisma.accion.findUniqueOrThrow({ where: { clave: "ver_auditoria" } })).sort()).toEqual(["clave", "descripcion"]);
+    // PISOS-65 (2026-11-17): `anular_venta` bajó a piso operario; el ejemplo de piso por encima del operario pasa a ser una de gobierno.
+    expect(nivelMinimoDeAccion("ver_auditoria")).toBe("administrador_sistema");
 
     // Renombrar los dos roles de sistema no les toca la clave, y el piso sigue decidiendo por ella.
     expect((await renombrarRol(base.admin.id, "jefatura")).ok).toBe(true);
@@ -137,9 +138,9 @@ describe("caracterización de los supuestos del RBAC (lo que se puede HOY; F3 y 
     const roles = await prismaAdmin.rol.findMany({ where: { id: { in: [base.admin.id, base.operador.id] } }, orderBy: { nombre: "asc" } });
     expect(roles.map((r) => [r.nombre, r.clave])).toEqual([["caja", "operador"], ["jefatura", "admin"]]);
 
-    const alAdmin = await guardarPermisos([{ rolId: base.admin.id, accionClave: "anular_venta", anterior: await celda(base.admin.id, "anular_venta"), nuevo: { puedeVer: true, puedeEditar: false } }]);
+    const alAdmin = await guardarPermisos([{ rolId: base.admin.id, accionClave: "ver_auditoria", anterior: await celda(base.admin.id, "ver_auditoria"), nuevo: { puedeVer: true, puedeEditar: false } }]);
     expect(alAdmin.ok, alAdmin.mensaje).toBe(true);
-    const alOperador = await guardarPermisos([{ rolId: base.operador.id, accionClave: "anular_venta", anterior: await celda(base.operador.id, "anular_venta"), nuevo: { puedeVer: true, puedeEditar: false } }]);
-    expect(alOperador).toEqual({ ok: false, mensaje: 'El rol «caja» (nivel operario) no puede tener "anular_venta": es una acción de nivel administrador. No se guardó nada.' });
+    const alOperador = await guardarPermisos([{ rolId: base.operador.id, accionClave: "ver_auditoria", anterior: await celda(base.operador.id, "ver_auditoria"), nuevo: { puedeVer: true, puedeEditar: false } }]);
+    expect(alOperador).toEqual({ ok: false, mensaje: "Esta acción es de gobierno de la empresa y no se delega." });
   });
 });

@@ -4,7 +4,7 @@ import { prisma } from "./fixtures/db";
 /**
  * Matriz de permisos con «Guardar»: se abre en solo lectura; el modo edición marca los cambios y no aplica nada hasta «Confirmar y guardar»,
  * que guarda todo junto; si otra persona cambió algo mientras tanto, no guarda nada. Se usa una acción del rol «operador» y se la deja como
- * estaba al terminar (una acción de piso operario: las de piso administrador no se le pueden dar al rol operador).
+ * estaba al terminar (una acción de piso operario; las de gobierno y de gerente no se le pueden dar al rol operador).
  * Tiene que ser una acción que SÍ lleva «Editar»: las de solo ver (`reporte_*`, marca `soloVer` del catálogo) no ofrecen esa casilla en la matriz.
  */
 const ACCION = "traspaso_solicitar";
@@ -112,4 +112,14 @@ test("si otra persona cambió el permiso mientras se editaba, no se guarda nada 
   } finally {
     await fijar(rol.id, false, false);
   }
+});
+
+// PISOS-65 (2026-11-17, DEC-0024): las 14 de gobierno y de gerente siguen cerradas para un rol de nivel operario, y la celda 🚫 dice por qué.
+test("la celda cerrada de una acción de gobierno dice «Esta acción es de gobierno de la empresa y no se delega.»", async ({ paginaAutenticada: page }) => {
+  await operador();
+  await page.goto("/administracion/permisos");
+  await page.getByRole("button", { name: "Editar permisos" }).click();
+  const cerrada = page.getByLabel("operador: ver_auditoria, ver: no aplica");
+  await expect(cerrada).toHaveAttribute("title", "Esta acción es de gobierno de la empresa y no se delega.");
+  await page.getByRole("button", { name: "Salir del modo edición" }).click();
 });

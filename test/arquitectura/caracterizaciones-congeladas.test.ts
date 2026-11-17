@@ -166,6 +166,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Compras N3 sobre el origin/main integrado (15f3399d): la matriz de la rama (compra_recibir y compra_controlar_recepcion, ya declaradas arriba) suma las seis claves de la caja de Caja y cobro C1 PR-B (`caja_ver`, `caja_abrir_sesion`, `caja_cerrar_sesion`, `caja_mover_efectivo`, `caja_anular_movimiento_ajeno`, `cobrar_cuenta`; ya declaradas arriba con el blob `22b61bd0`, ADITIVO, semilla solo admin). Fusión de dos regeneraciones declaradas, sin ningún cambio nuevo de comportamiento. Revisado con `git diff -U0` contra el commit `1107fdc8`: cambian SOLO 224 líneas, las listas de claves de cada bloque (una por lista, con las seis claves de la caja de más); ningún otro permiso ni rol cambia.",
       },
+      {
+        blob: "d3dd4b785845b66bdbe9526868c4e3cb40a17a45",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `859408c8` (la `main` sobre la que se armó el lote 2026-11-17 A).
+        commit: "859408c8",
+        motivo:
+          "PISOS-65 (CAMBIA COMPORTAMIENTO, decidido por el dueño el 2026-11-17: «Si bajamos las 65 acciones de piso administrador a operador, esas celdas dejan de estar cerradas y la empresa decide fila por fila…»; PR #421): las 65 acciones con piso administrador bajan a piso operario, así que las filas hoy dormidas dejan de ignorarse. Cambian SOLO los usuarios «especial» y «dos-sucursales» (pasan a ok `secciones` Ver/Editar y, de las primeras 6 acciones de empresa, `guardar_receta`, `grupos_familia`, `unidades`; `sucursalesDondeElUsuarioPuedeVer(secciones)` de «ninguna» a S1/S2) más una fila nueva de `ver_auditoria` (acción de gobierno: se sigue ignorando). El administrador, el gerente y el operador de fábrica no cambian. La semilla no cambia: todo sigue naciendo cerrado.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
@@ -724,6 +731,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Regla del dueño (2026-11-10, «si es dinero no puede quedar como deuda»: todo el dinero mostrado sale de `formatearMonto`; SOLO FORMATO, no cambia ningún valor, redondeo, fila ni auditoría): los avisos y alertas de texto del reporte de período («Cubre $125.700 de $234.700», «RECONSTRUIDO: $21.600…», «No se pudo costear $109.000», «+$3.405,01», «costo +$392») pasan a «$ 125.700,00», «$ 21.600,00», «$ 109.000,00», «+$ 3.405,01», «+$ 392,00» (espacio que no se parte). Cambian 10 líneas de mensajes; ninguna cifra de datos. Además una alerta se parte en 4 líneas por el ancho del serializador del golden (mismo contenido, verificado contra el golden anterior).",
       },
+      {
+        blob: "d9eebe702b33d451d7eb81e89dafca39bcf40243",
+        // El commit PADRE de este es 1f634b5c (main con M3c, #396), el último antes del cambio; el golden se regenera en el commit siguiente (M3d).
+        commit: "1f634b5c",
+        motivo:
+          "M3d (reporte de rendimiento según la base de la línea, docs/diseno-merma-m3d-rendimiento-y-calibracion-2026-11-17.md; regenerado con REGENERAR_CARACTERIZACION_DE_REPORTES=1; CAMBIA SOLO una línea nueva por fila de la entrada 29 (`rendimiento-por-sucursal.compararRendimientosPorSucursal`): `baseDeCantidad: \"NETA\"`, la base de la versión de cada línea (todas NETA hoy: ningún camino escribe BRUTA hasta M3b). Ningún número, orden ni conteo de consultas cambia: 15 líneas agregadas, 0 quitadas.",
+      },
     ],
   },
   "test/caracterizacion-tramo-a/lecturas-tramo-a.golden.json": {
@@ -848,6 +862,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "a3b0efff",
         motivo:
           "M2 de la merma sobre el bruto (migración 20261117140000_base_de_cantidad_en_versiones; ADITIVA, nada la lee todavía; regenerado con REGENERAR_CARACTERIZACION_TRAMO_A=1): la lectura `catalogo.obtenerEstadoDeRecetaPropia` devuelve la fila de RecetaVersion entera y suma `baseDeCantidad: \"NETA\"` (el valor por defecto de todo lo ya cargado). Ninguna otra lectura ni conteo de consultas cambia.",
+      },
+      {
+        blob: "fc93e82e75d4eee578cfb782b44a641433318a32",
+        // El commit PADRE de este es f7fa3bf6 (el libro de la carta integrado con main, justo antes de regenerar este golden).
+        commit: "f7fa3bf6",
+        motivo:
+          "Libro de la carta al estilo de la maqueta de Pedernal (Frente 6, PR #391; SOLO PRESENTACIÓN, interruptor LIBRO_ESTILO_MAQUETA; regenerado con REGENERAR_CARACTERIZACION_TRAMO_A=1): cambian SOLO las líneas del tema de la carta pública que la sucursal no cargó (`carta.resolverEmpresaCarta`, `carta.resolverCartaPublica` central y norte): fondo y marca por defecto de la maqueta, tipografía geist, tamaños de letra de nombre, precio y títulos, rótulo «← Portal» del botón de volver, y las variables CSS que de ahí salen. Dueño, 2026-11-16: «Sí, igualar al de la maqueta»; 2026-11-17: «Portal con una flechita…», «si» (letra), «blanco y negrita». Ningún dato guardado, permiso ni dinero cambia.",
       },
     ],
   },
@@ -1402,6 +1423,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "8e336b9f",
         motivo:
           "Frente 6, paso 4: pantallas candidatas a baja ocultas sin borrar (cambio de texto de ADMINISTRACIÓN, no de la carta pública; dueño, 2026-11-16: «Sí, ocultarlas sin borrar (Recomendada)»; interruptor `CANDIDATAS_A_BAJA_VISIBLES`; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). En las pantallas de «Carta › Parametrización» y de la ficha de contenido de la carta (a 1280 y a 375 px) salen cuatro líneas: dos veces «[enlace: Ítems agrupados]» y dos veces «[enlace: Géneros (carpetas del selector del POS) ›]». 4 líneas quitadas, ninguna agregada, todas de esas pantallas (revisado con git diff); la carta pública y el resto quedan idénticos.",
+      },
+      {
+        blob: "3fb599d69709bc2762339823ab836ad1bba3effc",
+        // El commit PADRE de este es f4770a5a (el libro con los tests ajustados, integrado con main a continuación; el blob es el del golden ya con la unión de los cambios del paso 4 y del libro).
+        commit: "f4770a5a",
+        motivo:
+          "Libro de la carta al estilo de la maqueta de Pedernal (Frente 6, PR #391; SOLO PRESENTACIÓN, interruptor LIBRO_ESTILO_MAQUETA; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1): cambian SOLO líneas de presentación de la carta pública sin tema cargado: el rótulo «← PORTAL» del botón de volver, el tamaño de nombre y precio (19 px → 21,6 px) y de los títulos del índice y de la banda, el peso 700 del precio del renglón, la tinta base (`--carta-ink`) y los colores de las líneas. Dueño, 2026-11-17: «Portal con una flechita…», «si» (letra), «blanco y negrita». Ningún texto de producto, precio ni dato cambia.",
       },
     ],
   },

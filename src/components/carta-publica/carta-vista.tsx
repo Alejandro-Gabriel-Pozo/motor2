@@ -1,4 +1,4 @@
-import { pieDeLaCartaImpresa, type CartaPublicaV1, type EstiloCarta } from "@/core/carta/public";
+import { LIBRO_ESTILO_MAQUETA, pieDeLaCartaImpresa, type CartaPublicaV1, type EstiloCarta } from "@/core/carta/public";
 import { MARCA_PARA_TEXTO } from "./colores-del-item";
 import { NavegacionCarta, type PaginaCarta, type RedSocial } from "./navegacion-carta";
 import { Portada } from "./portada";
@@ -44,6 +44,8 @@ export function CartaVista({
     variablesCss["--carta-ink-soft"] = `color-mix(in oklch, ${estilo.tintaBase} 70%, var(--carta-bg))`;
   }
   if (estilo.colores.navFlechas) variablesCss["--carta-flechas"] = estilo.colores.navFlechas;
+  // Estilo de la maqueta: las líneas siguen al fondo y a la tinta de la carta (tenues, no blancas sobre fondo oscuro).
+  if (LIBRO_ESTILO_MAQUETA) variablesCss["--carta-border"] = "color-mix(in oklch, var(--carta-ink) 22%, var(--carta-bg))";
   const c = estilo.colores;
 
   return (
@@ -55,8 +57,9 @@ export function CartaVista({
       variablesCss={variablesCss}
       volver={estilo.volver}
       colorIconos={c.navIconos}
+      precioFuerte={LIBRO_ESTILO_MAQUETA}
     >
-      <Portada estilo={estilo} restauranteNombre={restauranteNombre} />
+      <Portada estilo={estilo} restauranteNombre={restauranteNombre} estiloLibro={LIBRO_ESTILO_MAQUETA} />
 
       <div className="carta-pagina flex flex-col px-6 sm:px-10">
         {estilo.valores.carta_texto_indice_etiqueta && (
@@ -73,13 +76,15 @@ export function CartaVista({
               <button
                 type="button"
                 data-ir-a={paginaDeSeccion(i)}
-                className="group flex min-h-11 w-full items-baseline gap-2.5 py-3 text-left transition-opacity hover:opacity-80"
+                // El libro de la maqueta no baja la opacidad al pasar el mouse: sobre el fondo oscuro, el número de marca (11 px) a 80 % de opacidad queda en ~3,5:1 (axe, WCAG 1.4.3) y el CI lo vio cuando
+                // el mouse seguía sobre la entrada mientras la carta se deslizaba. En su lugar subraya el título (no toca ningún color).
+                className={`group flex min-h-11 w-full items-baseline gap-2.5 py-3 text-left${LIBRO_ESTILO_MAQUETA ? "" : " transition-opacity hover:opacity-80"}`}
               >
                 <span className="w-7 shrink-0 font-light tabular-nums" style={{ fontSize: estilo.valores.carta_fuente_indice_numero, color: c.indiceNumeros ?? MARCA_PARA_TEXTO }}>
                   {String(i + 1).padStart(2, "0")}
                 </span>
                 <span
-                  className="flex-1 carta-titulo font-medium leading-snug"
+                  className={`flex-1 carta-titulo font-medium leading-snug${LIBRO_ESTILO_MAQUETA ? " group-hover:underline" : ""}`}
                   style={{ fontSize: estilo.valores.carta_fuente_indice_item, color: c.indiceTitulos ?? undefined }}
                 >
                   {seccion.titulo ?? seccion.nombre}

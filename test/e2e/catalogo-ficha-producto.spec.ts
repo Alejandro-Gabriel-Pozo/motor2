@@ -5,13 +5,14 @@ import { crearMembresia } from "../setup/membresia";
 import { sembrarGrupo } from "./fixtures/opciones";
 import { expectObjetivosTactiles, expectSinDesborde } from "./fixtures/movil";
 
+import { crearCategoriaDeTest } from "../setup/categoria-de-prueba";
 /**
  * Productos con rutas separadas: la lista (`/catalogo/productos`), el alta (`/nuevo`), la ficha de solo lectura (`/[id]`) y la edición
  * (`/[id]/datos`, el paso 1 del espacio del producto; la ruta vieja `/[id]/editar` se borró el 2026-10-28, con el OK del dueño). Al guardar se vuelve a la ficha, que muestra el aviso (antes se volvía a la lista y el aviso se perdía).
  */
 async function crearProducto(sufijo: number) {
   const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
-  const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E Categoría Ficha ${sufijo}` } });
+  const categoria = await crearCategoriaDeTest(prisma, { nombre: `E2E Categoría Ficha ${sufijo}` });
   return prisma.producto.create({
     data: {
       codigo: `E2E-FI-${sufijo}`,

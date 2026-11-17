@@ -35,7 +35,7 @@ export type { PrecioLocalVigente } from "./precio-local";
 export { productosUniversales } from "./disponibilidad-producto";
 export type { FilaDisponibilidadEnSucursal } from "./disponibilidad-producto";
 export { describirCambioVersionReceta, describirCopiaDeRecetaPropia, describirRecetaPropiaGuardada, describirVueltaALaRecetaCentral } from "./describir-cambio-receta";
-export { describirCalibracion, describirDescarteArrastre, describirVueltaAlCentral, normalizarOrigen } from "./origen-cambio-receta";
+export { describirCalibracion, describirCalibracionDescartadaPorBase, describirDescarteArrastre, describirMotivoDeCambioDeBase, describirVueltaAlCentral, normalizarOrigen, unirEnCastellano } from "./origen-cambio-receta";
 // Hito 4, H4C-5: el comando de la calibración (`core/features/catalogo/rendimiento-local.schema.ts`) lleva el origen ya normalizado por su guard.
 export type { OrigenNormalizado } from "./origen-cambio-receta";
 export type { OrigenCalibracionInput } from "./origen-cambio-receta";
@@ -83,6 +83,14 @@ export {
   necesitaLaEmpresaEntera,
 } from "./filtros-de-productos";
 export type { EntradaDeFiltrosDeProductos, FaltaFiltrable, FiltrosDeProductos, TipoFiltrable } from "./filtros-de-productos";
+// Interruptor de los filtros extra de la lista de Productos (Frente 6, paso 6): «Cómo se vende», «En esta sucursal» y «Le falta algo» ocultos sin borrar.
+export { masFiltrosOfrecidos } from "./filtros-extra-de-la-lista";
+// Interruptor del estilo de Pedernal en las listas de Proveedores y Clientes (Frente 6, paso 8): buscador, desactivados ocultos y alta de proveedor solo con el nombre.
+export { DIRECTORIO_AL_ESTILO_DE_PEDERNAL, filasDelDirectorio, hayBusquedaDelDirectorio, leerBusquedaDelDirectorio } from "./directorio-de-la-lista";
+export type { BusquedaDelDirectorio } from "./directorio-de-la-lista";
+// Historial de precios de la ficha del producto (Frente 6, paso 7): puro, desde las filas de auditoría del precio.
+export { CAMBIOS_DE_PRECIO_A_MOSTRAR, armarHistorialDePrecios } from "./historial-de-precios";
+export type { LineaDelHistorialDePrecios } from "./historial-de-precios";
 // La lista de Productos (docs/diseno-productos-igual-a-pedernal-2026-11-13.md, D1): qué dice en el lugar del precio.
 export { textoDelPrecioEnLaLista } from "./precio-en-la-lista";
 // Fase 7 (DEC-13): el grupo Catálogo del menú, sus filas de pestañas y las rutas que cuelgan de cada entrada (puro; lo arma `core/navegacion/estructura.ts` y lo dibuja `FilaDeCatalogo`).

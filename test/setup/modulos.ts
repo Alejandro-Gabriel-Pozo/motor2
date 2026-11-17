@@ -29,3 +29,11 @@ export async function fijarModulosActivos(empresaId: string, modulos: readonly s
   await prismaAdmin.moduloEmpresa.deleteMany({ where: { empresaId } });
   if (modulos.length) await prismaAdmin.moduloEmpresa.createMany({ data: modulos.map((modulo) => ({ empresaId, modulo })) });
 }
+
+/**
+ * Enciende `recepcion_de_compras` en la empresa (fila ACTIVO, la crea si no está). Desde la guarda de apagado (20261117125000_compras_guarda_de_apagado) la BASE no deja nacer una parte de compra PENDIENTE con el módulo apagado: un fixture que siembra
+ * una parte pendiente a mano (el default de la columna) la tiene que pedir antes. No toca los demás módulos.
+ */
+export async function encenderRecepcionDeCompras(empresaId: string): Promise<void> {
+  await prismaAdmin.moduloEmpresa.upsert({ where: { empresaId_modulo: { empresaId, modulo: "recepcion_de_compras" } }, create: { empresaId, modulo: "recepcion_de_compras", estado: "ACTIVO" }, update: { estado: "ACTIVO" } });
+}

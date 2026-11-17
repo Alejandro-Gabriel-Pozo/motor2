@@ -32,6 +32,9 @@ const MODULOS = [...new Set(ACCIONES.map((a) => moduloDeAccion(a.clave)))];
 const accionDeSucursal = fc.constantFrom(...DE_SUCURSAL);
 const accionDeEmpresa = fc.constantFrom(...DE_EMPRESA);
 const claveDeRol = fc.constantFrom<string | null>("admin", "operador", null, "encargado", "otro");
+/** El rol `admin` alcanza todas las de sucursal; los demás (operador, propios) no alcanzan las de gobierno: solo las que ninguno alcanza. */
+const claveDeRolSinAdmin = fc.constantFrom<string | null>("operador", null, "encargado", "otro");
+const accionDeSucursalPorEncimaDelRol = fc.constantFrom(...DE_SUCURSAL.filter((a) => !rolAlcanzaLaAccion({ clave: null }, a)));
 const fila = fc.record({ puedeVer: fc.boolean(), puedeEditar: fc.boolean() });
 const filaODenada = fc.option(fila, { nil: null });
 const modulosEfectivos = fc.subarray(MODULOS).map((m) => new Set<string>(m));
@@ -73,8 +76,9 @@ describe("decisión de acceso en sucursal (propiedades)", () => {
 
   it("el PISO manda sobre la matriz: si el rol no alcanza la acción, ninguna fila (ni con Ver y Editar) da acceso", () => {
     fc.assert(
-      fc.property(accionDeSucursal, claveDeRol, (accion, clave) => {
-        fc.pre(!rolAlcanzaLaAccion({ clave }, accion));
+      fc.property(accionDeSucursalPorEncimaDelRol, claveDeRolSinAdmin, (accion, clave) => {
+        // PISOS-65: quedan pocas (las de gobierno de sucursal): se generan directo (con `fc.pre` el filtro saltaba demasiados casos).
+        expect(rolAlcanzaLaAccion({ clave }, accion)).toBe(false);
         const todoPermitido: PermisoLeido = { puedeVer: true, puedeEditar: true };
         const acceso = accesoDeSucursal({ membresia: membresiaDe(clave), filaDelRol: todoPermitido, sinModulo: null, tieneCapacidad: true }, accion);
         expect(decidirEnSucursal(acceso, accion, "ver").ok).toBe(false);

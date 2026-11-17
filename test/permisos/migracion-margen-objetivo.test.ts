@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { prismaAdmin } from "../setup/test-db";
 import { probarMigracionDeParticion } from "./particion-migracion-harness";
 
+import { crearCategoriaDeTest, limpiarCategoriasDeTest } from "../setup/categoria-de-prueba";
 /**
  * Migración 20261001220000_margen_objetivo: el food cost objetivo configurable (por empresa y por categoría). La parte de DATOS de permisos (la
  * clave nueva `margen_objetivo_editar` copia lo que cada rol ya tenía en `categorias`) usa el mismo banco de pruebas que las demás; la parte de
@@ -39,7 +40,7 @@ describe("migración 20261001220000_margen_objetivo: estado del schema", () => {
 
   it("el índice parcial no deja dos objetivos de empresa (categoriaId nulo), y sí uno por categoría", async () => {
     const { id: empresaId } = await prismaAdmin.empresa.findUniqueOrThrow({ where: { id: "empresa_principal" } });
-    const categoria = await prismaAdmin.categoriaProducto.create({ data: { nombre: "Cat índice parcial", empresaId } });
+    const categoria = await crearCategoriaDeTest(prismaAdmin, { nombre: "Cat índice parcial", empresaId });
     try {
       await prismaAdmin.$executeRawUnsafe(`INSERT INTO "MargenObjetivo" (id, "empresaId", "foodCostObjetivoPct") VALUES ('mo-emp-1', '${empresaId}', 30)`);
       await expect(prismaAdmin.$executeRawUnsafe(`INSERT INTO "MargenObjetivo" (id, "empresaId", "foodCostObjetivoPct") VALUES ('mo-emp-2', '${empresaId}', 31)`)).rejects.toThrow(/MargenObjetivo_empresaId_default_key/);
@@ -49,7 +50,7 @@ describe("migración 20261001220000_margen_objetivo: estado del schema", () => {
       ).rejects.toThrow(/MargenObjetivo_empresaId_categoriaId_key/);
     } finally {
       await prismaAdmin.$executeRawUnsafe(`DELETE FROM "MargenObjetivo"`);
-      await prismaAdmin.categoriaProducto.deleteMany({ where: { id: categoria.id } });
+      await limpiarCategoriasDeTest(prismaAdmin, { id: categoria.id });
     }
   });
 });
