@@ -4,6 +4,7 @@ import { test as base, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { test as testAutenticado } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
+import { abrirTodosLosDetails } from "./fixtures/movil";
 import { GENERO_E_ITEM_AGRUPADO_VISIBLE } from "../../src/core/carta/genero-e-item-agrupado";
 import { impresiones, interceptarImpresion } from "./fixtures/impresion";
 import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
@@ -201,6 +202,7 @@ testAutenticado("movimientos/destinos-consumo: sin violaciones de axe", async ({
 testAutenticado("administracion/capacidades-sucursal: sin violaciones de axe", async ({ paginaAutenticada: page }) => {
   await page.goto("/administracion/capacidades-sucursal");
   await conTitulo(page, /Capacidades por sucursal/);
+  await abrirTodosLosDetails(page); // Frente 6, paso 3: cada módulo viene plegado
   await expect(page.getByRole("cell", { name: "stock_minimo", exact: true })).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });

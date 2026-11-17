@@ -152,17 +152,21 @@ describe("base real: los disparadores dan lo mismo que el oráculo", () => {
     cuentaPosId = cuenta.id;
     const caja = await prismaAdmin.caja.create({ data: { id: randomUUID(), sucursalId: s.sucursalId, nombre: "Caja 1" } });
     sesionId = randomUUID();
-    await prismaAdmin.sesionCaja.create({ data: { id: sesionId, sucursalId: s.sucursalId, cajaId: caja.id, estado: "ABIERTA", fechaDeNegocio: new Date("2026-01-15"), zonaHoraria: "America/Argentina/Buenos_Aires", abiertaPorId: s.admin.id, claveIdempotencia: randomUUID(), huella: "a".repeat(64) } });
+    // C2: la sesión cuelga de la jornada ABIERTA de su sucursal y su fecha de negocio sale de `abiertaEn` (15:00Z = 12:00 en Argentina).
+    await prismaAdmin.jornadaDeSucursal.create({ data: { id: randomUUID(), sucursalId: s.sucursalId, fechaDeNegocio: new Date("2026-01-15") } });
+    await prismaAdmin.sesionCaja.create({ data: { id: sesionId, sucursalId: s.sucursalId, cajaId: caja.id, estado: "ABIERTA", fechaDeNegocio: new Date("2026-01-15"), abiertaEn: new Date("2026-01-15T15:00:00Z"), zonaHoraria: "America/Argentina/Buenos_Aires", abiertaPorId: s.admin.id, claveIdempotencia: randomUUID(), huella: "a".repeat(64) } });
     medios = {} as Record<Tipo, string>;
     for (const t of TIPOS) medios[t] = (await prismaAdmin.medioDePago.create({ data: { id: randomUUID(), tipo: t } })).id;
-    const crear = async (tipo: TipoDeCuenta, opciones: { activa?: boolean; sucursalId?: string }) =>
-      (await prismaAdmin.cuentaDeCobro.create({ data: { id: randomUUID(), sucursalId: opciones.sucursalId ?? s.sucursalId, tipo, nombre: `${tipo} ${randomUUID().slice(0, 8)}`, activa: opciones.activa ?? true } })).id;
+    // UNA sola cuenta activa por sucursal (índice `CuentaDeCobro_una_activa_por_sucursal_key`, decisión del dueño 2026-11-16): todas las cuentas del recorrido nacen inactivas y `intentar` deja activa, DENTRO de la
+    // transacción que se revierte, SOLO la del caso (salvo la del estado INACTIVA, que queda inactiva). Ninguna regla se relaja: cada combinación ve la cuenta en el estado que dice su nombre.
+    const crear = async (tipo: TipoDeCuenta, opciones: { sucursalId?: string }) =>
+      (await prismaAdmin.cuentaDeCobro.create({ data: { id: randomUUID(), sucursalId: opciones.sucursalId ?? s.sucursalId, tipo, nombre: `${tipo} ${randomUUID().slice(0, 8)}`, activa: false } })).id;
     const vacio = () => Object.fromEntries(TIPOS.map((t) => [t, null])) as Record<Tipo, string | null>;
     cuentas = { ok: vacio(), inactiva: vacio(), otraSucursal: vacio(), incompatible: vacio() };
     for (const t of TIPOS) {
       const admitido = CUENTAS_QUE_ADMITE[t][0] ?? CUENTAS_QUE_ADMITE.QR[0];
       cuentas.ok[t] = await crear(admitido, {});
-      cuentas.inactiva[t] = await crear(admitido, { activa: false });
+      cuentas.inactiva[t] = await crear(admitido, {});
       cuentas.otraSucursal[t] = await crear(admitido, { sucursalId: sucursalBId });
       const inc = t === "EFECTIVO" ? null : cuentaIncompatibleDe(t);
       cuentas.incompatible[t] = inc === null ? null : await crear(inc, {});
@@ -178,11 +182,12 @@ describe("base real: los disparadores dan lo mismo que el oráculo", () => {
   };
 
   /** Inserta cobranza + movimiento + cobro en una transacción que SIEMPRE se revierte y devuelve el mensaje del rechazo de la base, o «OK». */
-  async function intentar(tipo: Tipo, cuentaId: string | null, manda: readonly Dato[]): Promise<string> {
+  async function intentar(tipo: Tipo, cuentaId: string | null, manda: readonly Dato[], activarLaCuenta: boolean): Promise<string> {
     const cobranzaId = randomUUID();
     const movimientoId = randomUUID();
     try {
       await prismaAdmin.$transaction(async (tx) => {
+        if (cuentaId !== null && activarLaCuenta) await tx.cuentaDeCobro.update({ where: { id: cuentaId }, data: { activa: true } });
         await tx.cobranza.create({ data: { id: cobranzaId, sucursalId: s.sucursalId, cuentaId: cuentaPosId, sesionId, total: "1.00", claveIdempotencia: randomUUID(), huella: "a".repeat(64), creadoPorId: s.admin.id } });
         await tx.movimientoCaja.create({ data: { id: movimientoId, sucursalId: s.sucursalId, sesionId, clase: "COBRO", medioDePagoId: medios[tipo], cuentaDeCobroId: cuentaId, importe: "1.00", creadoPorId: s.admin.id } });
         const d = datosMandados(manda, marcaId);
@@ -208,7 +213,7 @@ describe("base real: los disparadores dan lo mismo que el oráculo", () => {
             // El efectivo no tiene cuentas propias: se prueba con las del QR para ver que no admite ninguna.
             const deQuien = tipo === "EFECTIVO" ? "QR" : tipo;
             const cuentaId = estado === "NINGUNA" ? null : estado === "COMPATIBLE" ? cuentas.ok[deQuien] : estado === "INACTIVA" ? cuentas.inactiva[deQuien] : estado === "OTRA_SUCURSAL" ? cuentas.otraSucursal[deQuien] : cuentas.incompatible[deQuien];
-            const resultado = await intentar(tipo, cuentaId, manda);
+            const resultado = await intentar(tipo, cuentaId, manda, estado !== "INACTIVA");
             const esperado = esperadoDeUnRenglon(tipo, estado, pide, manda);
             const [codigo] = esperado.split(":");
             if (esperado === "OK") expect(resultado, `${tipo} pide[${pide}] manda[${manda}] ${estado}`).toBe("OK");
