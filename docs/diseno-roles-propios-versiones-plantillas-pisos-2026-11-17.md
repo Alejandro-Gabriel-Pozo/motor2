@@ -5,6 +5,7 @@
 > **Qué leí.** Pedernal: `ZuluHub-docs` `11-especificaciones/sql-pendientes-otros-modulos/0061_permisos_configurables.sql` (759 líneas, completo en sus partes estructurales: cabecera, validadores, 6 tablas, disparadores, semilla; **no leí** las políticas de RLS ni los privilegios de las líneas 330-759 ni la reversión) y `h4b-permisos-configurables.md` (índice y lo citado por la auditoría previa). Motor2: `docs/auditoria-roles-y-permisos-vs-pedernal-2026-11-16.md` (base de la comparación; verificada contra el código de `main` e1a83d03 por su autor) y el catálogo `src/core/permisos/acciones.ts` (133 claves planas en `snake_case`, la más larga con 33 caracteres; cuenta mía por patrón, NO VERIFICADA contra el catálogo completo).
 > Estados: CONFIRMADA (cita del dueño) · PROPUESTA · PENDIENTE · NO VERIFICADA.
 > **Actualización (2026-11-17):** el dueño respondió la primera pregunta de §10: «Reemplazar los 4 niveles por pisos por acción (Recomendada)» (2026-11-17, AskUserQuestion, relatada por el orquestador general; fuente: chat del dueño con el orquestador, 2026-11-17). **CONFIRMADA:** los pisos pasan a ser por acción y los 4 niveles de ADR-027 se reemplazan **por etapas aditivas** (§7 bis). Se agregan §6 bis (equivalencia 1 a 1 de las 133 acciones) y §7 bis (transición con convivencia, ensayo y rollback).
+> **Actualización 2 (2026-11-17, respuestas del dueño por AskUserQuestion, relatadas por el orquestador general):** (1) las 12 acciones de gobierno: «Solo gerente y admin de sistema (Recomendada)» → piso `SOLO_GERENTE`, no cambia nada de hoy; (2) acciones de dinero: «Asignables a un rol propio, como Pedernal (Recomendada)» → sin piso, **nacen cerradas para todo rol nuevo**; (3) quién asigna roles: «Solo el gerente, como Pedernal (Recomendada)» → la asignación pasa a ser solo del gerente (hoy gerente y administrador): etapa propia aditiva **EB-5** (§7 ter). **Decisiones del orquestador, declaradas para que el dueño las corrija:** el rol propio REUTILIZA `Rol` (más barato); `TODOS_LOS_ROLES`: lista vacía por ahora; la edición de la matriz de los roles base por la empresa se quita en un paso aparte al final (EB-4).
 
 ## 0. Resumen
 
@@ -105,6 +106,7 @@ Rol (de sistema / propio / plantilla) × tipo de piso (sin piso / `SOLO_GERENTE`
 | **EB-2** | Roles propios con versiones: `VersionDeRol` + `Rol.plantillaOrigen/version` + casos de uso del gerente (crear, editar = versión, archivar, reactivar con cupo P2) | 1 nueva + columnas | PENDIENTE; 20261117100500+ |
 | **EB-3** | Conectar el guard al conjunto efectivo (plantilla vigente para roles base; versión vigente para propios; piso por encima), sin cambiar el resultado de hoy (I-10) | ninguna | PENDIENTE |
 | **Transición niveles → pisos** | Ver §7 bis (T0 a T5): convive con EB-1 a EB-3; T3 enciende pisos por empresa | — | CONFIRMADA en su dirección (2026-11-17); detalle PROPUESTA |
+| **EB-5** | La asignación de rol a una persona pasa a ser solo del gerente (§7 ter): clave `asignar_rol`, interruptor `rolSoloGerente`, aviso previo, ensayo, marcha atrás | 0 tablas; 1 columna de política en `Empresa` | CONFIRMADA en su dirección (2026-11-17); detalle PROPUESTA; migración 20261117100600+ |
 | **EB-4** | Retirar la edición directa de la matriz de los roles base por la empresa (Q2-A) | ninguna | PENDIENTE; **quita una capacidad que hoy existe: pregunta aparte** |
 
 ## 6 bis. Equivalencia 1 a 1: de los 4 niveles a los pisos por acción (PROPUESTA; la lista de pisos la confirma el dueño)
@@ -114,7 +116,7 @@ Cuenta real del catálogo de `main` (`ACCIONES`, 133 claves): **58 operario, 61 
 | Nivel de hoy | Cuántas | Piso por acción propuesto | Por qué (resultado) |
 |---|---|---|---|
 | gerente | 2: `ver_auditoria_empresa`, `traspasar_gerencia` | `SOLO_GERENTE` | Hoy solo las tiene quien es gerente de la empresa: igual |
-| administrador de sistema (gobierno de la empresa) | 12: `gestion_usuarios`, `activar_usuario_sucursal`, `notas_usuario_sucursal`, `apagar_cuenta_empresa`, `gestion_permisos`, `gestion_roles`, `renombrar_rol`, `capacidades_sucursal`, `alta_sucursal`, `activar_sucursal`, `renombrar_sucursal`, `ver_auditoria` | `SOLO_GERENTE` **para que un rol propio («Encargado») siga sin alcanzarlas**, como hoy (ADR-027: «un rango 2 nunca lo alcanza»). El rol de sistema `admin` las conserva por su plantilla (`ADMINISTRADOR`), no por el piso | Mantiene el resultado. **Pregunta al dueño:** en Pedernal el administrador de sistema no es gerente; si estas 12 pasaran a «sin piso», un Encargado podría gobernar la empresa |
+| administrador de sistema (gobierno de la empresa) | 12: `gestion_usuarios`, `activar_usuario_sucursal`, `notas_usuario_sucursal`, `apagar_cuenta_empresa`, `gestion_permisos`, `gestion_roles`, `renombrar_rol`, `capacidades_sucursal`, `alta_sucursal`, `activar_sucursal`, `renombrar_sucursal`, `ver_auditoria` | `SOLO_GERENTE` (**CONFIRMADA 2026-11-17**) **para que un rol propio («Encargado») siga sin alcanzarlas**, como hoy (ADR-027: «un rango 2 nunca lo alcanza»). El rol de sistema `admin` las conserva por su plantilla (`ADMINISTRADOR`), no por el piso | Mantiene el resultado. **Pregunta al dueño:** en Pedernal el administrador de sistema no es gerente; si estas 12 pasaran a «sin piso», un Encargado podría gobernar la empresa |
 | administrador | 61 (grupos abajo) | **sin piso** (asignables a roles propios dentro del plan) | Es lo que Pedernal permite («un rol propio recibe casi cualquier acción»); el rol `admin` las sigue teniendo por su plantilla |
 | operario | 58 | **sin piso** | Hoy cualquier rol las puede recibir: igual |
 | «de todos» (Pedernal: `TODOS_LOS_ROLES`, 4 acciones) | **0 identificadas** | Ninguna por ahora | En Motor2 no hay acciones que deban tener todos los roles hoy: `traspaso_*` y `partes_ver` se asignan por matriz. **NO VERIFICADA** la equivalencia de las 4 de Pedernal (`gerencia.aceptar/rechazar/ver_traspaso`, `permisos.ver_propios`); se pregunta al dueño si alguna de Motor2 debe serlo |
@@ -123,7 +125,7 @@ Cuenta real del catálogo de `main` (`ACCIONES`, 133 claves): **58 operario, 61 
 - *Catálogo, recetas y opciones (15):* `guardar_receta`, `grupos_familia`, `secciones`, `unidades`, `proveedores`, `categorias`, `margen_objetivo_editar`, `motivos_merma`, `motivos_destino_consumo`, `calibrar_rendimiento_local`, `receta_sucursal_copiar`, `receta_sucursal_volver_central`, `insumo_renombrar_fusionar`, `opciones_definir`, `producto_opciones_admitidas`.
 - *Carta y promociones (13):* `carta_ver`, `carta_secciones`, `carta_generos`, `carta_contenido_producto`, `carta_producto_descuento`, `carta_items_agrupados`, `carta_portal`, `carta_promo_definir`, `carta_promo_activar`, `carta_promo_precio_local`, `carta_tema`, `carta_copiar_de_sucursal`, `precio_local`.
 - *Stock y conteos (6):* `stock_minimo`, `comparar_precios`, `insumos_mezclados`, `proceso_ajuste`, `cancelar_conteo`, `stock_seccion_habitual`.
-- *Dinero: anular, corregir, pagar (5, **candidatas a `SOLO_GERENTE` según el dueño**):* `anular_venta`, `anular_compra`, `corregir_compra`, `pagar_consignante`, `clientes`.
+- *Dinero: anular, corregir, pagar (5, **sin piso: CONFIRMADA 2026-11-17, «Asignables a un rol propio, como Pedernal»; nacen cerradas para todo rol nuevo**):* `anular_venta`, `anular_compra`, `corregir_compra`, `pagar_consignante`, `clientes`.
 - *Reportes de solo ver (21):* `reporte_resumen`, `reporte_consolidado`, `reporte_periodo`, `reporte_categorias`, `reporte_ventas_por_seccion`, `reporte_costos`, `reporte_compras`, `reporte_rendimiento_recetas`, `reporte_rendimiento_sucursal`, `reporte_valuacion`, `reporte_tickets`, `reporte_descuentos_clientes`, `reporte_descuentos_productos`, `reporte_margen_promociones`, `reporte_historial_importes`, `reporte_perdidas`, `reporte_devoluciones`, `reporte_diferencias`, `reporte_sin_receta`, `reporte_insumos_sin_receta`, `reporte_huecos_catalogo`.
 - *Parte (1):* `partes_desactivar` (en Pedernal `partes.desactivar` es del gerente y el administrador, no del operador: hoy es nivel administrador; sin piso lo conserva el `admin`).
 Suma comprobada con un script contra `ACCIONES`: 15 + 13 + 6 + 5 + 21 + 1 = **61**, sin ninguna repetida ni suelta. La cuenta exacta la fija además la prueba de equivalencia (T1).
@@ -154,6 +156,32 @@ Principio del diseño de Pedernal que se conserva (§6.1 de H4b): **el comportam
 | Un actor intenta saltarse el piso con un pedido armado a mano | El servidor decide con pisos y plantillas; lo que manda el cliente no cuenta |
 | Una acción nueva del catálogo | Sin piso por defecto **y apagada para los roles propios** (todo nace cerrado); la sincronización aditiva la agrega a las plantillas del sistema |
 
+## 7 ter. EB-5: la asignación de rol a una persona pasa a ser solo del gerente (etapa propia, aditiva)
+
+**Decisión del dueño (2026-11-17):** «Solo el gerente, como Pedernal (Recomendada)». **Qué cambia de lo que existe:** hoy asigna o cambia el rol de una persona quien tiene `gestion_usuarios` (el gerente y el `admin`; `agregarOActualizarUsuario`, con el «techo de privilegio» de `gestion-de-usuarios.ts` y la regla de que solo el gerente reactiva a un administrador). Con EB-5 **solo el gerente** asigna o cambia roles. Es un permiso **que se quita a algo que existe**: por eso etapa propia, aviso previo, ensayo y marcha atrás.
+
+| Pieza | Diseño (PROPUESTA) |
+|---|---|
+| Clave nueva | `asignar_rol` (en el catálogo de acciones; **zona restringida, por turno**), piso `SOLO_GERENTE` (con el sistema de pisos por acción; antes de que exista, nivel gerente). Nace **cerrada**: nadie la tiene salvo el gerente de la empresa |
+| Qué corta | Solo la parte «rol» de `agregarOActualizarUsuario`: dar un rol a una persona o cambiárselo. `gestion_usuarios` sigue permitiendo invitar, activar, desactivar y las notas |
+| Interruptor por empresa | `rolSoloGerente` (política de plataforma, igual que `permisosEditables`): **nace apagado en las empresas existentes** (el comportamiento de hoy) y **encendido en las nuevas** («todo nace cerrado», como P4). La plataforma lo enciende empresa por empresa |
+| Aviso previo | Antes de encender en una empresa real: lista (de solo lectura, sin datos personales) de cuántos administradores asignaron roles en los últimos 90 días, para saber a quién afecta; y aviso al gerente de esa empresa. **El texto visible del aviso en pantalla**, si se pide, va por el catálogo de textos con aceptación del dueño |
+| Ensayo | Empresa de prueba primero; después una real con respaldo; después el resto |
+| Marcha atrás | Apagar el interruptor: vuelve a valer `gestion_usuarios` para asignar; **no se borra ni se cambia ningún rol ya asignado** |
+| Qué NO hace | No quita roles ya asignados, no cambia lo que cada rol puede (eso es la matriz), no toca las invariantes de gobierno (siempre queda un administrador efectivo) |
+
+### Qué pasa si… (EB-5)
+| Situación | Qué pasa |
+|---|---|
+| Un administrador intenta asignar un rol con el interruptor encendido | Rechazo claro en el servidor; no se escribe nada; queda registrado el intento denegado (como los demás rechazos de permiso) |
+| Un administrador invita a una persona nueva con un rol | **Pregunta abierta (§10, q6):** hoy la invitación lleva el rol; con EB-5 el administrador no puede elegirlo. Opciones: solo el gerente invita con rol, o el administrador invita y el gerente asigna el rol después |
+| Persona con un rol ya asignado por un administrador antes de encender | Conserva su rol: nada se toca |
+| El gerente cambia a alguien de rol a la vez que se enciende el interruptor | Se serializan; el que llega segundo ve el estado nuevo |
+| Se enciende y se arrepienten | Se apaga: vuelve a valer lo de antes |
+| Reactivar a un administrador | Sigue siendo solo del gerente (ya es así hoy) |
+| El gerente no está disponible (de vacaciones, sin acceso) | Nadie asigna roles hasta que vuelva; la transferencia de la gerencia (`traspasar_gerencia`) ya existe y es el camino: **riesgo operativo declarado** |
+| Repetición / reintento del mismo pedido | Idempotente por el estado (misma persona y mismo rol = sin cambios); la auditoría registra una sola vez |
+
 ## 8. Diferencias con Pedernal (declaradas con motivo)
 
 | # | Tema | Pedernal | Motor2 | Motivo | Estado |
@@ -180,16 +208,13 @@ Principio del diseño de Pedernal que se conserva (§6.1 de H4b): **el comportam
 
 ## 10. Preguntas al dueño (una por vez; solo permisos o modelo de datos)
 
-**Respondida (2026-11-17, AskUserQuestion, relatada por el orquestador general):** «Reemplazar los 4 niveles por pisos por acción (Recomendada)». Se diseña la transición de §7 bis.
+**Respondidas (2026-11-17, AskUserQuestion, relatadas por el orquestador general):** (a) «Reemplazar los 4 niveles por pisos por acción (Recomendada)»; (b) 12 acciones de gobierno: «Solo gerente y admin de sistema (Recomendada)»; (c) acciones de dinero: «Asignables a un rol propio, como Pedernal (Recomendada)»; (d) quién asigna roles: «Solo el gerente, como Pedernal (Recomendada)».
 
-**Siguiente (permisos), redactada para quien no programa:** «Hoy hay 12 acciones que gobiernan la empresa (dar de alta usuarios, crear y editar roles, cambiar permisos, crear y renombrar sucursales, ver la auditoría) que solo puede hacer el administrador de sistema, y un rol que armás a mano nunca las alcanza. Pedernal solo reserva al gerente un puñado fijo. Para que el nuevo "Encargado" no pueda, por ejemplo, cambiar permisos o dar de alta usuarios, ¿esas 12 quedan reservadas al gerente? (A, recomendada) Sí, quedan solo para el gerente y para el administrador del sistema, y un rol propio no las puede recibir: no cambia nada de lo de hoy. (B) No: pasan a poder asignarse a un rol propio como cualquier otra.»
+**Decisiones del orquestador, declaradas (el dueño las corrige):** el rol propio reutiliza `Rol`; `TODOS_LOS_ROLES` queda vacía por ahora; la edición de la matriz de los roles base por la empresa se quita al final (EB-4).
 
-**En cola, después (cada una con mi recomendación):**
-1. **Dinero:** `anular_venta`, `anular_compra`, `corregir_compra`, `pagar_consignante` y `clientes`: ¿pueden asignarse a un rol propio (recomendado: sí, como Pedernal, sin piso) o conviene reservarlas al gerente? (permisos)
-2. **Modelo de datos:** el rol propio ¿reutiliza la tabla de roles de hoy (recomendado: más barato, mismo resultado) o se crea una tabla aparte idéntica a Pedernal?
-3. **Acciones «de todos»:** ¿hay alguna acción de Motor2 que todos los roles deban tener siempre (en Pedernal son 4, como ver sus propios permisos)? (recomendado: dejar la lista vacía y sumarlas cuando alguien las pida)
-4. **EB-4:** ¿se le quita a la empresa la edición de la matriz de los roles base (Q2-A de Pedernal, «los roles base no los edita la empresa»)? Quita una capacidad que hoy existe. (recomendado: sí, pero como paso aparte al final)
-5. **Quién asigna roles** (Pedernal: solo el gerente; Motor2 hoy: quien tenga `gestion_usuarios`): ¿se iguala? NO VERIFICADO el alcance exacto en Pedernal; recomendado: preguntar cuando llegue EB-2.
+**Siguiente (permisos), redactada para quien no programa (q6):** «Cuando el administrador invita a una persona nueva, hoy elige también el rol que tendrá. Si desde ahora solo el gerente puede asignar roles: (A, recomendada) el administrador sigue pudiendo invitar y la persona queda **sin rol** hasta que el gerente se lo asigna (hasta entonces no puede hacer nada); (B) solo el gerente puede invitar a personas nuevas.»
+
+**En cola, después:** (q7) EB-4, cuando llegue su turno: ¿se le quita a la empresa la edición de la matriz de los roles base (Q2-A de Pedernal)? (quita algo que hoy existe; recomendado: sí, al final); (q8) en EB-5, ¿cuánto aviso previo se da antes de encender en una empresa real (recomendado: el que el dueño decida por empresa, con la lista de a quiénes afecta)?
 
 ## 11. Carril de escritura y dependencias
 
