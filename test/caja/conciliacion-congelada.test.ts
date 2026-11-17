@@ -8,6 +8,7 @@ import { azarDelProceso } from "../../src/lib/azar";
 import { abrirSesionCasoDeUso } from "../../src/server/actions/caja/casos-de-uso/abrir-sesion";
 import { cerrarJornadaCasoDeUso } from "../../src/server/actions/caja/casos-de-uso/cerrar-jornada";
 import { cerrarSesionCasoDeUso } from "../../src/server/actions/caja/casos-de-uso/cerrar-sesion";
+import { iniciarCierreDeSesion } from "../../src/server/actions/caja/casos-de-uso/iniciar-cierre";
 import { cobrarCuentaCasoDeUso } from "../../src/server/actions/caja/casos-de-uso/cobrar-cuenta";
 import { corregirMedioDeCobroCasoDeUso } from "../../src/server/actions/caja/casos-de-uso/corregir-medio-de-cobro";
 import { darConformeGeneralCasoDeUso } from "../../src/server/actions/caja/casos-de-uso/dar-conforme-general";
@@ -35,7 +36,11 @@ const col = fechaDeColumnaDate;
 
 const actor = () => ({ usuarioId: s.admin.id, empresaId: EMPRESA, sucursalId: s.sucursalId, ahora: AHORA, empresaZonaHoraria: ZONA, ...baseDeEmpresa(EMPRESA, { lectura: [s.sucursalId], escritura: [s.sucursalId] }) });
 const abrir = (fondo = 0) => abrirSesionCasoDeUso(actor(), { claveIdempotencia: randomUUID(), fondoEnCentavos: c(fondo) }, azarDelProceso);
-const cerrarSesion = (sesionId: string, billetes: Record<number, number> = {}) => cerrarSesionCasoDeUso(actor(), { sesionId, conteo: { billetes: billetes as never, monedasEnCentavos: c(0) }, conformeDeLosDemasMedios: true, observacion: null }, azarDelProceso);
+// C1b: la sesión se cierra desde EN_CIERRE; iniciar el cierre es idempotente.
+const cerrarSesion = async (sesionId: string, billetes: Record<number, number> = {}) => {
+  await iniciarCierreDeSesion(actor(), { sesionId });
+  return cerrarSesionCasoDeUso(actor(), { sesionId, conteo: { billetes: billetes as never, monedasEnCentavos: c(0) }, conformeDeLosDemasMedios: true, observacion: null }, azarDelProceso);
+};
 const efectivoId = async () => (await prismaAdmin.medioDePago.findFirstOrThrow({ where: { tipo: "EFECTIVO" } })).id;
 const medio = (tipo: "TARJETA_DEBITO" | "QR") => prismaAdmin.medioDePago.create({ data: { id: randomUUID(), empresaId: EMPRESA, tipo } });
 const cobrar = (cuentaId: string, medioDePagoId: string) => cobrarCuentaCasoDeUso(actor(), { claveIdempotencia: randomUUID(), cuentaId, totalVistoEnCentavos: c(3000_00), renglones: [{ medioDePagoId, importeEnCentavos: c(3000_00) }] }, azarDelProceso);
