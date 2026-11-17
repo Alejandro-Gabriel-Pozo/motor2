@@ -34,7 +34,6 @@ export default async function SucursalesPage() {
         <thead>
           <tr className="border-b text-left text-tinta-tenue">
             <th className="py-2">Nombre</th>
-            <th>Hora de corte del día</th>
             <th>Activo</th>
             <th><span className="sr-only">Acciones</span></th>
           </tr>
@@ -62,34 +61,35 @@ export default async function SucursalesPage() {
                 ) : (
                   s.nombre
                 )}
-              </td>
-              <td>
-                {renombrar.editar ? (
-                  <FormConResultado
-                    accion={async (formData: FormData) => {
-                      "use server";
-                      return cambiarHoraDeCorteDeSucursal(s.id, String(formData.get("horaDeCorte") ?? ""));
-                    }}
-                    className="flex items-center gap-1"
-                  >
-                    <div className="w-28">
-                      <Campo
-                        name="horaDeCorte"
-                        aria-label={`Hora de corte del día de la sucursal "${s.nombre}"`}
-                        defaultValue={s.horaDeCorte}
-                        ayuda="A esta hora empieza el día de negocio de la caja"
-                        placeholder="HH:MM"
-                        maxLength={5}
-                        tamano="compacto"
-                      />
-                    </div>
-                    <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
-                      Guardar
-                    </BotonDeServidor>
-                  </FormConResultado>
-                ) : (
-                  s.horaDeCorte
-                )}
+                <div className="mt-2 space-y-1">
+                  <p className="text-xs text-tinta-tenue">Hora de corte del día</p>
+                  {renombrar.editar ? (
+                    <FormConResultado
+                      accion={async (formData: FormData) => {
+                        "use server";
+                        return cambiarHoraDeCorteDeSucursal(s.id, String(formData.get("horaDeCorte") ?? ""));
+                      }}
+                      className="flex items-center gap-1"
+                    >
+                      <div className="w-28">
+                        <Campo
+                          name="horaDeCorte"
+                          aria-label={`Hora de corte del día de la sucursal "${s.nombre}"`}
+                          defaultValue={s.horaDeCorte}
+                          placeholder="HH:MM"
+                          maxLength={5}
+                          tamano="compacto"
+                        />
+                      </div>
+                      <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
+                        Guardar
+                      </BotonDeServidor>
+                    </FormConResultado>
+                  ) : (
+                    <p>{s.horaDeCorte}</p>
+                  )}
+                  <p className="text-xs text-tinta-tenue">A esta hora empieza el día de negocio de la caja.</p>
+                </div>
               </td>
               <td>{s.activo ? "Sí" : "No"}</td>
               <td>
