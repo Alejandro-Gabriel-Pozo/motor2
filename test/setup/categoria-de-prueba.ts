@@ -1,4 +1,5 @@
 import type { CategoriaProducto, Prisma } from "@prisma/client";
+import { primerHostNoLocal } from "../../src/core/auth/hosts-de-conexion";
 
 /**
  * Las ÚNICAS dos puertas por las que un test o un script de prueba crea o borra categorías (E1-0 de `docs/diseno-e1-arbol-de-categorias-niveles-6-10-2026-11-17.md`; H1 y H3 de
@@ -43,9 +44,14 @@ export function esBaseLocalParaLimpiar(entorno: Readonly<Record<string, string |
   if (definidas.length === 0) return false;
   return definidas.every((url) => {
     try {
-      const { hostname } = new URL(url);
-      // `postgresql:///base?host=/var/run/postgresql` (socket): sin servidor en la URL, el host va en el parámetro.
-      return hostname === "" ? (new URL(url).searchParams.get("host") ?? "").startsWith("/") : SERVIDORES_LOCALES.has(hostname);
+      const u = new URL(url);
+      // `postgresql:///base?host=/var/run/postgresql` (socket): sin servidor en la URL, el host va en el parámetro (y tiene que ser una ruta, sin `hostaddr`).
+      if (u.hostname === "") {
+        const hosts = u.searchParams.getAll("host");
+        return hosts.length > 0 && hosts.every((h) => h.startsWith("/")) && u.searchParams.getAll("hostaddr").length === 0;
+      }
+      // GT-22 (M-29): se mira TODO host al que la conexión va de verdad (`host=`, `hostaddr=`, listas), no solo el `hostname` de la URL.
+      return primerHostNoLocal(u, [...SERVIDORES_LOCALES]) === null;
     } catch {
       return false;
     }
