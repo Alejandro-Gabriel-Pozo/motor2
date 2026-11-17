@@ -456,7 +456,7 @@ testAutenticado("catalogo/productos/nuevo: el formulario de alta (materia prima,
   expect((await new AxeBuilder({ page }).analyze()).violations, "alta en consignación").toEqual([]);
 
   // Producto de venta: sin insumo ni unidad de compra, con precio de venta.
-  await page.getByLabel("Producto de venta (PV)").check();
+  await page.getByLabel("¿Qué es?").selectOption({ label: "Producto vendible" });
   await expect(page.getByLabel("Precio de venta")).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations, "alta de producto de venta").toEqual([]);
 });
