@@ -43,6 +43,8 @@ const PUBLICACION_CARTA: Readonly<Record<string, readonly string[]>> = {
   DescuentoProductoSucursal: ["porcentaje", "productoId"],
   Empresa: ["id", "nombre", "slug"],
   ItemAgrupadoCarta: ["descripcion", "especial", "id", "nombre", "opciones", "orden", "seccionCartaId", "tags"],
+  // O1 (orden de renglones): el modo de orden (alfabético o a mano) de cada sección en la sucursal. Se LEE en el servidor para decidir cómo se ordena; no viaja a `CartaV1` (sale el orden ya resuelto).
+  ModoDeOrdenDeSeccionCarta: ["modo", "seccionCartaId"],
   ModuloEmpresa: ["estado", "modulo"],
   OpcionItemAgrupadoCarta: ["orden", "producto"],
   PortalCartaEmpresa: ["valores"],

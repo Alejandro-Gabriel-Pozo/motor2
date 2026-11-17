@@ -20,6 +20,9 @@ export const ENTIDADES_AUDITABLES = [
   // Caja y cobro C3: `CuentaDeCobro` (alta, edición, activar/desactivar; `entidadId` es el id, con `sucursalId` de la cuenta) y `MedioDePago` (alta, edición con los datos que pide, activar/desactivar; `sucursalId` null: es de la empresa). Nunca llevan datos personales ni el identificador externo.
   "CuentaDeCobro",
   "MedioDePago",
+  // Carta, orden de renglones O1: `ModoDeOrdenDeSeccionCarta` (el modo de orden de una sección en una sucursal; `entidadId` es `${sucursalId}:${seccionCartaId}`, `campo: "modo"`, con `sucursalId`) e `ItemAgrupadoCarta` (el `orden` de un ítem agrupado que cambia de lugar al reordenar; `entidadId` es `${sucursalId}:${id}`, `campo: "orden"`, con `sucursalId`; el de un producto va como `ContenidoCartaProducto`).
+  "ModoDeOrdenDeSeccionCarta",
+  "ItemAgrupadoCarta",
   "PermisoRol",
   "CapacidadSucursal",
   "Rol",

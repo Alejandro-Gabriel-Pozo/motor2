@@ -55,7 +55,7 @@ export async function resolverMenuCartaConDiagnostico(
   // Filtro explícito por la empresa de la sucursal, además del RLS: con un rol que lo salta, secciones/promos/agrupados no se mezclan entre empresas.
   const { empresaId } = sucursal;
 
-  const [productos, secciones, promosLeidas, agrupados] = await Promise.all([
+  const [productos, secciones, promosLeidas, agrupados, modosDeOrden] = await Promise.all([
     db.producto.findMany({
       where: { empresaId, tipo: "PV", ...whereDisponibleEn(sucursalId), ...whereNoOcultoEn(sucursalId), contenidosCarta: { some: { ...whereCartaDeSucursal(sucursalId), visibleEnCarta: true } }, ...(GENERO_E_ITEM_AGRUPADO_VISIBLE ? { opcionesItemAgrupadoCarta: { none: whereCartaDeSucursal(sucursalId) } } : {}) },
       select: {
@@ -105,6 +105,8 @@ export async function resolverMenuCartaConDiagnostico(
         },
       },
     }),
+    // O1: el modo de orden de cada sección en ESTA sucursal. Sin fila = `A_MANO` (como siempre): una base sin filas arma la misma carta que antes.
+    db.modoDeOrdenDeSeccionCarta.findMany({ where: { empresaId, sucursalId }, select: { seccionCartaId: true, modo: true } }),
   ]);
 
   const idsConPrecio = [...new Set([...productos.map((p) => p.id), ...agrupados.flatMap((ag) => ag.opciones.map((o) => o.producto.id))])];
@@ -178,6 +180,7 @@ export async function resolverMenuCartaConDiagnostico(
       opciones: ag.opciones.map((o) => ({ productoId: o.producto.id, nombre: o.producto.nombre, precioVenta: Number(o.producto.precioVenta), orden: o.orden })),
     })),
     ...(conOpciones ? { opcionesDeProductos } : {}),
+    modosDeOrden,
   };
   const armado = armarMenuCarta(entrada);
   // Fase 5, paso 10b (DEC-20, decisión del dueño): la carta IMPRESA sale COMPLETA, sin lo «agotado hoy» (una opción apagada hoy en la sucursal: su fila, su celda y, si era la única de un grupo
