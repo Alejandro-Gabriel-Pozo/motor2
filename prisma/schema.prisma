@@ -1003,6 +1003,9 @@ model RecetaVersion {
   /// Solo en versiones propias: la versión CENTRAL vigente en la que se basó (o que había cuando se creó). Sirve para avisar «la central
   /// cambió» cuando hay una central más nueva; nunca se aplica nada solo. Dato derivado, sin FK: la versión central es append-only.
   basadaEnVersionId String?
+  /// M2 (2026-11-17, merma sobre el bruto como Pedernal): en qué BASE están escritas las cantidades de ESTA versión — NETA (lo que llega al plato, todo lo ya cargado) o BRUTA (lo que sale del
+  /// stock). La marca nace con la versión y no cambia nunca; una versión no mezcla bases. Hoy nada la lee (el código de M3 en adelante). CHECK `RecetaVersion_baseDeCantidad_chk`, hecho a mano en la migración.
+  baseDeCantidad    String    @default("NETA")
 
   ingredientes RecetaIngrediente[]
   pasos        RecetaPaso[]
@@ -2720,6 +2723,8 @@ model Empresa {
   /// Política de plataforma (ADR-008/ADR-010): solo la cambia la plataforma (scripts/politica-empresa.ts), nunca la propia empresa.
   permisosEditables Boolean       @default(true)
   dosPaneles        Boolean       @default(true)
+  /// Roles propios (clave NULL) ACTIVOS que la empresa puede tener (frente 4, P2): crear o reactivar uno exige `activos < rolesPropiosMax`. Nace en 0 (el CHECK lo mantiene entre 0 y 1000); solo la sube o la baja la plataforma (scripts/politica-empresa.ts). Bajarlo no toca los roles que ya hay.
+  rolesPropiosMax   Int           @default(0)
   /// M0-IVA: condición de la empresa frente al IVA. Código semántico de lista cerrada (`CONDICIONES_IVA` en src/core/fiscal/iva.ts), con el CHECK
   /// "Empresa_condicionIva_check" que agrega la migración a mano (Prisma no declara CHECK). NULL = «no declarada»: quien la lea falla cerrado, nunca supone
   /// Responsable Inscripto. La carga la plataforma (paso de datos auditado), no la propia empresa.
@@ -3939,6 +3944,8 @@ model VersionDeOpcion {
   porcentaje       Decimal?      @db.Decimal(7, 4)
   /// Solo una MEDIDA (> 0 y hasta 10): cuánto escala el consumo del producto.
   factorEscala     Decimal?      @db.Decimal(8, 4)
+  /// M2 (2026-11-17): la base (NETA o BRUTA) de los consumos de esta versión, igual que `RecetaVersion.baseDeCantidad`: nace con la versión y no cambia. Hoy nada la lee. CHECK `VersionDeOpcion_baseDeCantidad_chk` hecho a mano.
+  baseDeCantidad   String        @default("NETA")
   creadoPorId      String
   creadoPor        User          @relation(fields: [creadoPorId], references: [id], onDelete: Restrict)
   creadoEn         DateTime      @default(now())

@@ -268,5 +268,8 @@ export const DECLARACIONES: Readonly<Record<string, Declaracion>> = {
   "Unidad.magnitud": d("stock", "PESO, VOLUMEN o CANTIDAD: al cargar una compra, la cantidad real (peso real) solo cruza de tipo entre unidad de compra y de stock (guardPesoRealPorMagnitud); con el mismo tipo el servidor la rechaza."),
   "Insumo.activo": d("ninguna", "Baja lógica del insumo (agrupa productos por nombre): lo escribe actualizar-activo-insumo y en src/ ninguna consulta lo usa para filtrar ni decidir; no cambia plata, carta ni stock."),
   "RecetaDeCombinacionVersion.numero": d("ninguna", "Familia GO-3a retirada del código (cerco go3a-retirado): sin escritor ni lector en src/; el modelo sigue en el esquema hasta la migración de retiro."),
+  "Empresa.rolesPropiosMax": d("ninguna", "Tope de roles propios activos que la plataforma le deja a la empresa (P2); es gobierno de permisos, no toca dinero, carta ni stock."),
   "Empresa.permisosEditables": d("ninguna", "Política de permisos de plataforma (ADR-008/ADR-010); no toca dinero, carta ni stock."),
+  "RecetaVersion.baseDeCantidad": d("stock", "NETA o BRUTA (M2, 2026-11-17): en qué base están escritas las cantidades de la versión; hoy nada la lee (todo lo cargado es NETA), desde M3 decide si lo que sale del stock y se costea es la cantidad tal cual (BRUTA) o la cantidad más su merma (NETA)."),
+  "VersionDeOpcion.baseDeCantidad": d("stock", "NETA o BRUTA (M2, 2026-11-17): la base de los consumos de la versión de opción, igual que la de la receta; hoy nada la lee (todo lo cargado es NETA), desde M3 decide cuánto stock descuenta y cuánto cuesta el consumo."),
 };

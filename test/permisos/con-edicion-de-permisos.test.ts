@@ -5,7 +5,7 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 const politica = vi.hoisted(() => ({ permisosEditables: true }));
 vi.mock("../../src/server/acceso/politica-de-empresa", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../src/server/acceso/politica-de-empresa")>()),
-  politicaDeEmpresa: vi.fn(async () => ({ permisosEditables: politica.permisosEditables })),
+  politicaDeEmpresa: vi.fn(async () => ({ permisosEditables: politica.permisosEditables, dosPaneles: true, rolesPropiosMax: 100 })),
 }));
 
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
