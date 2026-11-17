@@ -69,7 +69,7 @@ describe("la portada, los dos estados", () => {
     const html = renderToStaticMarkup(<Portada estilo={estilo} restauranteNombre="Huinganco" estiloLibro />);
     expect(html).toContain("data-portada-arco");
     expect(html).toContain("radial-gradient");
-    expect(html).toContain("background-color:var(--carta-sello-fondo, var(--carta-primary))"); // el sello
+    expect(html).toContain("background-color:var(--carta-primary)"); // el sello
   });
   it("sin el estilo de la maqueta: la portada de siempre (fondo de la marca, sin arco)", () => {
     const html = renderToStaticMarkup(<Portada estilo={estilo} restauranteNombre="Huinganco" />);

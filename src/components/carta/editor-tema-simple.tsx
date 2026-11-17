@@ -6,6 +6,7 @@ import { clasesFuentesCarta } from "@/components/carta-publica/fuente-carta";
 import { FormConResultado } from "@/components/form-con-resultado";
 import {
   CLAVES_TEMA_SIMPLE,
+  detalleDelAjuste,
   MENSAJE_FORMATO_DEL_COLOR,
   PALETAS_DE_MARCA,
   ROTULO_DE_OTRO_COLOR,
@@ -26,7 +27,8 @@ import { CARTA_EJEMPLO } from "./carta-ejemplo";
 
 /**
  * La pantalla SIMPLE del tema de la carta (PASO A de «Apariencia y publicación», `docs/diseno-carta-apariencia-y-publicacion-como-pedernal-2026-11-17.md`, §3; solo con el interruptor `TEMA_SIMPLE_VISIBLE` encendido): siete campos —color de marca,
- * logo, nombre y los cuatro del contacto— y un solo «Guardar». El color de marca se elige entre las seis paletas de Pedernal o se escribe en «Otro color» (`#rrggbb`); la vista previa es la carta real con ese color sobre el fondo oscuro del sistema: el texto va en colores fijos del sistema y la marca solo en acentos y bordes, así que cualquier color se guarda tal cual (sin ajustes ni avisos). Formulario NO controlado (`FormConResultado`), como el editor completo: un `onInput`
+ * logo, nombre y los cuatro del contacto— y un solo «Guardar». El color de marca se elige entre las seis paletas de Pedernal o se escribe en «Otro color» (`#rrggbb`); la vista previa es la carta real con ese color sobre el fondo oscuro del sistema, y
+ * si el color no llega a 7:1 la pantalla avisa cuál se usa en su lugar (texto de la maqueta de Pedernal, `carta.html`) (lo que se guarda es siempre el elegido). Formulario NO controlado (`FormConResultado`), como el editor completo: un `onInput`
  * en el cuerpo vuelve a leer el `FormData` para la vista previa. El cuerpo se vuelve a montar con `key={version}` al guardar. El servidor revalida todo (guard) y cambia SOLO estas siete claves: lo demás que la empresa haya cargado sigue como estaba.
  */
 export function EditorTemaSimple({
@@ -118,6 +120,10 @@ function CuerpoSimple({ valoresIniciales, soloLectura }: { valoresIniciales: Rea
     return resolverEstiloCarta(conDefaultsDeLaMaqueta(mezcla));
   }, [valoresIniciales, lectura.valores, marca, marcaValida]);
 
+  const usada = estilo.valores.color_marca;
+  const ajustada = Boolean(marca) && marcaValida && usada !== marca;
+  const detalle = ajustada ? detalleDelAjuste(marca, usada, estilo.valores.color_fondo_dia) : null;
+  const contrasteEnTexto = (n: number) => (Math.round(n * 10) / 10).toFixed(1).replace(".", ",");
 
   return (
     <div onInput={releer} onChange={releer} className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -149,7 +155,15 @@ function CuerpoSimple({ valoresIniciales, soloLectura }: { valoresIniciales: Rea
             <Campo etiqueta={ROTULO_DE_OTRO_COLOR} name="color_marca_otro" type="text" maxLength={7} inputMode="text" autoComplete="off" defaultValue={inicial.otro} error={errorDeOtro} />
           )}
           <div data-estado-marca-simple>
-            {!marca && (
+            {ajustada && detalle ? (
+              <Aviso variante="advertencia" forma="en-linea" data-aviso-marca-ajustada>
+                El texto no se lee bien sobre este color. Se usa {usada}, del mismo tono, {detalle.masClara ? "más claro" : "más oscuro"}. Contraste {contrasteEnTexto(detalle.contraste)} a 1.
+              </Aviso>
+            ) : marca && marcaValida ? (
+              <Aviso variante="exito" forma="en-linea" data-aviso-marca-ok>
+                Contraste {contrasteEnTexto(detalleDelAjuste(marca, marca, estilo.valores.color_fondo_dia)?.contraste ?? 0)} a 1
+              </Aviso>
+            ) : (
               <Aviso variante="informacion" forma="en-linea">
                 Elegí un color para ver cómo queda la carta.
               </Aviso>

@@ -48,7 +48,8 @@ export type { EstiloCarta } from "./estilo";
 export { resolverEstiloCarta } from "./estilo";
 export { colorDeTextoLegible } from "./color-css";
 export { esMarcaHex, validarMarcaParaGuardar } from "./marca-derivada";
-// PASO A de «Apariencia y publicación» (`docs/diseno-carta-apariencia-y-publicacion-como-pedernal-2026-11-17.md`): la pantalla simple del Tema (interruptor apagado).
+// PASO A de «Apariencia y publicación» (`docs/diseno-carta-apariencia-y-publicacion-como-pedernal-2026-11-17.md`): la marca sobre el fondo oscuro del sistema y la pantalla simple del Tema (interruptor apagado).
+export { detalleDelAjuste } from "./marca-oscura";
 export { CLAVES_TEMA_SIMPLE, MENSAJE_FORMATO_DEL_COLOR, MENSAJE_TEMA_SIMPLE_APAGADO, PALETAS_DE_MARCA, ROTULO_DE_OTRO_COLOR, TEMA_SIMPLE_VISIBLE, eleccionDeLaMarca, marcaDeLaEleccion, mezclarTemaSimple, mismoContenido } from "./tema-simple";
 export { variablesDeLaEscala } from "./escala";
 export type { EstiloPortal } from "./portal";

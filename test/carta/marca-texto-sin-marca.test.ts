@@ -19,7 +19,7 @@ const NO_SON_TEXTO: ReadonlyArray<{ contiene: string; motivo: string }> = [
   { contiene: "var(--carta-flechas, var(--carta-primary))", motivo: "flechas de la navegación (elementos)" },
   { contiene: "backgroundColor: bgUrl ? undefined : conAire", motivo: "fondo de la portada al estilo del libro (la tinta derivada va encima); con `conAire` el fondo es el de la carta" },
   { contiene: "data-portada-arco", motivo: "arco decorativo de la portada del libro (borde de un círculo, no texto)" },
-  { contiene: "backgroundColor: conAire ? \"var(--carta-sello-fondo, var(--carta-primary))\"", motivo: "fondo del sello de la portada del libro (el texto de adentro va con `--carta-sello-texto`: con la marca oscura el fondo es el de la carta y la marca es solo el aro)" },
+  { contiene: "backgroundColor: conAire ? \"var(--carta-primary)\"", motivo: "fondo del sello de la portada del libro (el texto de adentro va con `--carta-bg`)" },
   { contiene: "//", motivo: "comentario" },
 ];
 
