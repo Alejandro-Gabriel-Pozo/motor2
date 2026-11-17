@@ -159,6 +159,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Compras N3 sobre el origin/main integrado (39fc9233), matriz regenerada sobre el merge. Dos cambios de la rama, ya declarados al dueño: (1) compra_recibir pasa al módulo recepcion_de_compras y a piso administrador (Compras N3-a, recepción separada) (2) acción nueva compra_controlar_recepcion (Compras N3-a): módulo recepcion_de_compras, de sucursal, piso operario, semilla admin y operador (dueño, 2026-11-16: «Como Pedernal: también el operador»). Revisado con `git diff`: solo se suma esa clave a la lista de `MODULO_NO_ACTIVO//recepcion_de_compras` y a las listas de claves de cada bloque; ningún otro permiso ni rol cambia.",
       },
+      {
+        blob: "f5b8ecac0ba3e61b16c0ca4c8e676715c4fd6218",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `6aedaff9` (la punta de la rama de Compras N3 antes de integrar `origin/main` en `15f3399d`).
+        commit: "6aedaff9",
+        motivo:
+          "Compras N3 sobre el origin/main integrado (15f3399d): la matriz de la rama (compra_recibir y compra_controlar_recepcion, ya declaradas arriba) suma las seis claves de la caja de Caja y cobro C1 PR-B (`caja_ver`, `caja_abrir_sesion`, `caja_cerrar_sesion`, `caja_mover_efectivo`, `caja_anular_movimiento_ajeno`, `cobrar_cuenta`; ya declaradas arriba con el blob `22b61bd0`, ADITIVO, semilla solo admin). Fusión de dos regeneraciones declaradas, sin ningún cambio nuevo de comportamiento. Revisado con `git diff -U0` contra el commit `1107fdc8`: cambian SOLO 224 líneas, las listas de claves de cada bloque (una por lista, con las seis claves de la caja de más); ningún otro permiso ni rol cambia.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
@@ -314,6 +321,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "470f5b2d",
         motivo:
           "Compras N3: acción compra_controlar_recepcion (admin y operador); solo suma líneas PERMISO y ACCIONES 134. Revisado con `git diff`: se suman 4 líneas `PERMISO` (admin y operador `compra_controlar_recepcion ver=true editar=true`, una por cada una de las dos fotos) y `ACCIONES` pasa de 133 a 134 en las dos fotos; ninguna otra línea cambia.",
+      },
+      {
+        blob: "8c2e41f229e72224c9b722f306358cc0f9e4cb0e",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `6aedaff9` (la punta de la rama de Compras N3 antes de integrar `origin/main` en `15f3399d`).
+        commit: "6aedaff9",
+        motivo:
+          "Compras N3 sobre el origin/main integrado (15f3399d): la huella de la rama (compra_controlar_recepcion, `ACCIONES 134`) suma las seis claves de la caja de Caja y cobro C1 PR-B (ya declaradas arriba con el blob `30eb8c0f`): `ACCIONES` pasa de 134 a 140 en las dos fotos y se suman las doce filas `PERMISO` por foto de las seis claves (admin ver=true editar=true; operador ver=false editar=false). Fusión de dos regeneraciones declaradas, sin ningún cambio nuevo de comportamiento. Revisado con `git diff -U0` contra el commit `1107fdc8`: no cambia ninguna otra línea.",
       },
     ],
   },
