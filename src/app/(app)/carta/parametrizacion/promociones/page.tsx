@@ -4,6 +4,8 @@ import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/li
 import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/server/acceso/gate";
 import { cargarAdminCarta } from "@/server/consultas/carta/admin";
 import { cargarCombosDeLaCarta } from "@/server/consultas/carta/combos";
+import { cargarRepartoDeLasPromos } from "@/server/consultas/carta/reparto-de-las-promos";
+import { RepartoDelPrecio } from "./reparto-del-precio";
 import {
   actualizarActivaPromoCarta,
   actualizarActivaPromoCartaEnSucursal,
@@ -64,6 +66,8 @@ export default async function PromocionesDeCartaPage() {
   // GO-3b (U1): los combos de cada promo (lugares de entradas y sus entradas), aparte de `cargarAdminCarta` (que no cambia).
   const combos = await cargarCombosDeLaCarta(ctx.db, ctx.sucursalId);
   const seccionesActivas = datos.secciones.filter((x) => x.activa);
+  // «Reparto del precio» (solo lectura): con el interruptor apagado no se lee nada de más.
+  const repartoDeLasPromos = ARMADO_DE_PROMO_COMO_PEDERNAL ? await cargarRepartoDeLasPromos(ctx.db, ctx.sucursalId, new Date()) : null;
 
   return (
     <div className={estilos.raiz}>
@@ -201,6 +205,7 @@ export default async function PromocionesDeCartaPage() {
                       {comoLoVeElCliente(pr.titulo, pr.precioAca, partes)}
                     </p>
                   )}
+                  {repartoDeLasPromos && <RepartoDelPrecio precio={pr.precioAca} partes={repartoDeLasPromos[pr.id] ?? []} />}
                   <h3 className="mt-3 text-sm font-medium">{ARMADO_DE_PROMO_COMO_PEDERNAL ? "Qué lleva" : "Cupos"}</h3>
                   {puedeDefinirPromos ? (
                     <FormConResultado
