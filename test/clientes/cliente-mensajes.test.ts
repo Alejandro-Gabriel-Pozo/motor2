@@ -46,7 +46,7 @@ describe("clientes: mensajes, orden de los chequeos y refresco", () => {
     expect(await actualizarCliente("cnoexiste000000000000000", "", 150)).toEqual({ ok: false, mensaje: "No se encontró el cliente." });
     expect(await actualizarCliente(uno.id, " ", 150)).toEqual({ ok: false, mensaje: "El nombre del cliente no puede estar vacío." });
     expect(await actualizarCliente(uno.id, "Uno", -1)).toEqual({ ok: false, mensaje: "El % de descuento no puede ser negativo." });
-    expect(await actualizarCliente(uno.id, "DOS", 10)).toEqual({ ok: false, mensaje: 'Ya existe un cliente llamado "Dos".' });
+    expect(await actualizarCliente(uno.id, "DOS", 10)).toEqual({ ok: false, mensaje: 'Ya existe un cliente llamado «Dos». Elegí otro nombre.' });
     expect(await actualizarCliente(uno.id, "  Uno Bis ", 12)).toEqual({ ok: true, mensaje: 'Cliente "Uno Bis" actualizado.' });
     expect(refrescos()).toBe(0);
   });
