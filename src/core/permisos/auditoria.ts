@@ -34,6 +34,11 @@ export const ENTIDADES_AUDITABLES = [
   // `MiembroDeFamilia` (agregar y quitar un producto: `campo: "miembro"`, de `null` a `true` al agregar y de `true` a `false` al quitar; `entidadId` es `${familiaId}:${productoId}`, `sucursalId` null).
   "FamiliaDeProducto",
   "MiembroDeFamilia",
+  // Carta, portal de la empresa PR-A: `PortalDeEmpresa` (el alta y cada cambio de sus datos o de su imagen: `campo: "portal"`; `entidadId` es el id del portal; el código del QR solo va en el alta), `PortalTarjeta` (el alta y cada cambio de una tarjeta: `campo: "tarjeta"`; `entidadId` es `${portalId}:${sucursalId}`) y
+  // `PortalZona` (el alta y cada cambio de una zona: `campo: "zona"`; `entidadId` es el id de la zona). Los valores son el estado antes (`null` en el alta) y después; todas son de la empresa (`sucursalId` null).
+  "PortalDeEmpresa",
+  "PortalTarjeta",
+  "PortalZona",
   "PermisoRol",
   "CapacidadSucursal",
   "Rol",

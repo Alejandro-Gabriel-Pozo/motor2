@@ -47,8 +47,8 @@ type Ata = "CLAVE_DE_SUCURSAL" | "EMPRESA_ENTERA";
 /** Los ensanches del alcance que usa una escritura de empresa entera, y la función de `alcance.ts` que cada uno llama. */
 type EnsancheDeEscritura = "ESCRITURA_EN_LA_EMPRESA" | "SUCURSAL_NUEVA";
 const FUNCION_DEL_ENSANCHE: Readonly<Record<EnsancheDeEscritura, string>> = { ESCRITURA_EN_LA_EMPRESA: "conEscrituraEnLaEmpresa", SUCURSAL_NUEVA: "incluirSucursalCreadaEnLaTransaccion" };
-/** Los modelos de GOBIERNO (la RLS por sucursal no los toca: la sucursal misma, sus membresías, capacidades e invitaciones y el registro público): una escritura de empresa entera que solo toca estos no necesita ensanche. */
-const MODELOS_DE_GOBIERNO = new Set(["sucursal", "usuarioSucursal", "capacidadSucursal", "invitacionSucursal", "sucursalPublica"]);
+/** Los modelos de GOBIERNO (la RLS por sucursal no los toca: la sucursal misma, sus membresías, capacidades e invitaciones y el registro público y, desde el portal de la empresa PR-A, sus tarjetas y zonas): una escritura de empresa entera que solo toca estos no necesita ensanche. */
+const MODELOS_DE_GOBIERNO = new Set(["sucursal", "usuarioSucursal", "capacidadSucursal", "invitacionSucursal", "sucursalPublica", "portalTarjeta", "portalZona"]);
 interface Declaracion {
   ata: Ata;
   /** M.3-A4: los ensanches del alcance que el archivo llama (vacío = ninguno; para `EMPRESA_ENTERA` entonces solo escribe modelos de GOBIERNO). */
@@ -95,6 +95,14 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
     ensanches: [],
     puertas: ["carta/registro-publico.ts|moverSucursalEnMapa"],
     motivo: "A CONFIRMAR POR EL DUEÑO (decisión 36): el portal se trata como de la empresa entera (`carta_portal`): la posición de cada tarjeta se arrastra sobre el mapa de todas las sucursales; el defecto vigente es permisivo (la clave en cualquier membresía mueve la tarjeta de cualquier sucursal)",
+  },
+  // Portal de la empresa como Pedernal (PR-A, 2026-11-17): las tarjetas y zonas son del portal de la EMPRESA y apuntan cada una a una sucursal (`PortalTarjeta` y `PortalZona`, clasificadas GOBIERNO: se leen sin alcance de sucursal). Gerente y administrador (`carta_portal`, de empresa)
+  // guardan todo de una vez; la sucursal de cada tarjeta o zona tiene que ser de la empresa (el caso de uso lo mide) y no necesita una membresía en ella: el portal es del conjunto, como el registro público.
+  "carta/casos-de-uso/guardar-portal-de-empresa.ts": {
+    ata: "EMPRESA_ENTERA",
+    ensanches: [],
+    puertas: ["carta/portal-empresa.ts|guardarPortalDeEmpresa"],
+    motivo: "el portal es de la empresa entera (`carta_portal`, piso administrador: gerente y administrador, decisión del dueño del 2026-11-17 «Gerente y administrador, como Pedernal (Recomendada)»): una tarjeta o zona por sucursal se administra desde una sola pantalla, sin depender de la activa; el caso de uso verifica que cada sucursal sea de la empresa (otra empresa = «no encontrada»)",
   },
   // ── Gobierno de las sucursales (claves `administrador_sistema` de empresa) ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
   "auth/casos-de-uso/actualizar-activo-sucursal.ts": {

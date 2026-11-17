@@ -119,3 +119,25 @@ export { opcionesParaLaCarta } from "./opciones-en-carta";
 // Fase 6, bloque 3 (6.18): lo que la vista previa de un producto en la carta recibe ya calculado (tipo; la calcula `server/consultas/carta/vista-previa-de-un-producto.ts`).
 export type { VistaPreviaDeLaCarta } from "./vista-previa-del-producto";
 export { LIBRO_ESTILO_MAQUETA, conDefaultsDeLaMaqueta } from "./libro-estilo-maqueta";
+// Portal de la empresa como Pedernal (PR-A, 2026-11-17): la imagen por dirección externa (partes), el dominio del portal (variantes, textos, colores, teléfono, zonas en centésimas, código del QR) y la parte pura de la lectura dual.
+export { leerDireccionDeImagen, sonPartesDeImagenValidas, urlDeImagenExterna } from "./imagen-externa";
+export type { PartesDeImagen } from "./imagen-externa";
+export {
+  centesimasDesdeTexto,
+  esCodigoDePortalValido,
+  esColorDePortalValido,
+  esTelefonoDeTarjetaValido,
+  esVarianteDePortal,
+  generarCodigoDePortal,
+  lineaDelPortalDesdeTexto,
+  mismaImagen,
+  mismaTarjeta,
+  mismaZona,
+  mismosDatosDelPortal,
+  textoDesdeCentesimas,
+  tituloDelPortalDesdeTexto,
+  zonaDentroDeLaImagen,
+} from "./portal-de-empresa";
+export type { DatosDelPortal, TarjetaDePortal, ZonaDePortal } from "./portal-de-empresa";
+export { entradasDelPortalNuevo, valoresDelPortalDual } from "./portal-de-empresa-lectura";
+export type { SucursalDelPortal } from "./portal-de-empresa-lectura";

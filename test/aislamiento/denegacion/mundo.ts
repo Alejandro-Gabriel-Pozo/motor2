@@ -312,6 +312,8 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
   // F1 (familias de productos): una familia de la empresa con el producto base como miembro (la lectura de gestión devuelve el nombre de la familia y del producto, los dos con el marcador).
   const familia = await db.familiaDeProducto.create({ data: { id: randomUUID(), empresaId, nombre: `Familia ${marca}`, nombreClave: `familia ${marca}`.toLowerCase(), creadoPorId: usuarioId, actualizadoEn: new Date() } });
   await db.miembroDeFamilia.create({ data: { id: randomUUID(), empresaId, familiaId: familia.id, productoId: pvBase.id, posicion: 1, agregadoPorId: usuarioId, agregadoEn: new Date() } });
+  // Portal de la empresa PR-A: el portal de la empresa (sin tarjetas: lo que la lectura de gestión devuelve con el marcador es el título) para el control positivo de `consultarPortalDeEmpresa`; con el de otra empresa, `null`.
+  await db.portalDeEmpresa.create({ data: { id: randomUUID(), empresaId, codigo: `${marca.replace(/\W/g, "")}`.padEnd(22, "x"), titulo: `Portal ${marca}`, creadoPorId: usuarioId, actualizadoEn: new Date() } });
   const entradaDeCupo = await db.entradaDeCupo.create({ data: { id: id("entrada-de-cupo"), empresaId, cupoId: cupoLista.id, productoId: pv.id } });
   await db.registroAuditoria.create({ data: { id: id("auditoria-empresa"), empresaId, entidad: "Producto", entidadId: mp.id, descripcion: `Auditoría de empresa ${marca}`, campo: "nombre", valorAnterior: "a", valorNuevo: "b", actorId: usuarioId } });
   // Caja (C1): el medio EFECTIVO de la empresa (el único que existe antes de abrir una caja). El nombre lleva el marcador: `leerMediosDeCobro` y los `esperadoPorMedio` lo devuelven.
