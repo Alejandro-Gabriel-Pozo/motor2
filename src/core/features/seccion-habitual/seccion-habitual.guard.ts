@@ -1,5 +1,7 @@
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import type { ComandoEliminarSeccionHabitual, ComandoSeccionHabitual } from "./seccion-habitual.schema";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 
 const id = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 
@@ -25,6 +27,6 @@ export function guardComandoSeccionHabitual(datos: { productoId: unknown; seccio
  * no se busca y responde el mismo «No se encontró esa sección habitual.» que una fila que no existe (sin recortar: el id se busca tal cual, como antes).
  */
 export function guardComandoEliminarSeccionHabitual(datos: { id: unknown }): ResultadoDato<ComandoEliminarSeccionHabitual> {
-  if (typeof datos.id !== "string") return rechazar("formato", "No se encontró ese depósito habitual.");
+  if (typeof datos.id !== "string") return rechazar("formato", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.deposito_habitual }));
   return aceptar({ id: datos.id });
 }

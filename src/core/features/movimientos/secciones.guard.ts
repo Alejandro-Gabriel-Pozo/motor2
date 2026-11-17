@@ -1,6 +1,8 @@
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { nombreDeCatalogo } from "@/core/features/catalogo/nombre-de-catalogo";
 import type { ComandoActualizarRespaldoSeccion, ComandoCrearSeccion, ComandoRenombrarSeccion } from "./secciones.schema";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 
 /**
  * Guard de la feature «secciones de stock de una sucursal» (convención «guard por feature», 2026-09-25; Hito 4, bloque C, paso H4C-18). Formato del comando, ANTES
@@ -38,7 +40,7 @@ export function guardComandoRenombrarSeccion(entrada: { seccionId: string; nombr
 export function guardComandoActualizarRespaldoSeccion(entrada: { seccionId: unknown; sirveDeRespaldoEnVentas: unknown }): ResultadoDato<ComandoActualizarRespaldoSeccion> {
   const { seccionId, sirveDeRespaldoEnVentas } = entrada;
   if (typeof sirveDeRespaldoEnVentas !== "boolean") return rechazar("formato", "Valor inválido.");
-  if (typeof seccionId !== "string") return rechazar("formato", "No se encontró el depósito.");
+  if (typeof seccionId !== "string") return rechazar("formato", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.deposito }));
   return aceptar({ seccionId, sirveDeRespaldoEnVentas });
 }
 

@@ -7,6 +7,8 @@ import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-aud
 import { esChoqueDeIndiceUnico } from "@/core/movimientos/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { guardarDatosDeCliente } from "@/server/persistencia/clientes/clientes";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 
 /**
  * Caso de uso «corregir nombre y % de un cliente ya creado» (Hito 4 de la pureza, bloque C de la pieza carta/catálogo/stock, paso H4C-15 —
@@ -31,7 +33,7 @@ export async function actualizarClienteCasoDeUso(
 ): Promise<ResultadoActualizarCliente> {
   const { clienteId } = comando;
   const cliente = await actor.db.cliente.findUnique({ where: { id: clienteId } });
-  if (!cliente) return fracaso("NO_ENCONTRADO", "No se encontró ese cliente.");
+  if (!cliente) return fracaso("NO_ENCONTRADO", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.cliente }));
 
   // El rechazo del guard (nombre y después %, calculado por la acción con `guardComandoActualizarCliente`) se aplica ACÁ, después de leer el cliente: un id inexistente gana sobre un dato inválido.
   if (!comando.datos.ok) return fracaso("DATO_INVALIDO", comando.datos.mensaje);
