@@ -1,5 +1,5 @@
 import "server-only";
-import { claveDeNombreDeCarta } from "@/core/carta/public";
+import { claveDeNombre } from "@/core/datos/fichas-de-texto";
 import { nombreDeFichaSiCambio } from "@/core/datos/nombre-de-ficha";
 import type { ComandoEditarFamiliaDeProducto, ResultadoEditarFamiliaDeProducto } from "@/core/features/carta/familias.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
@@ -45,7 +45,7 @@ export async function editarFamiliaDeProductoCasoDeUso(
       }
       if (familia.version !== comando.versionEsperada) return fracaso("VERSION_DESACTUALIZADA", "Otra persona cambió esta familia mientras la mirabas: no se cambió nada. Recargá la pantalla y volvé a intentar.");
 
-      const nombreClave = claveDeNombreDeCarta(nombre.valor);
+      const nombreClave = claveDeNombre(nombre.valor);
       if (nombreClave !== familia.nombreClave) {
         const repetida = await leerFamiliaPorNombreClave(tx, nombreClave);
         if (repetida && repetida.id !== familia.id) return fracaso("NOMBRE_REPETIDO", `Ya existe la familia "${repetida.nombre}".`);

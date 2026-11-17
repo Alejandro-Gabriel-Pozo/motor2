@@ -65,15 +65,16 @@ describe("familias de productos (etapa F1)", () => {
   });
 
   describe("crear", () => {
-    it("nace con los dos interruptores APAGADOS, activa, versión 1 y sin miembros, con su auditoría; el nombre repetido (sin mayúsculas ni tildes) se rechaza", async () => {
+    it("nace con los dos interruptores APAGADOS, activa, versión 1 y sin miembros, con su auditoría; el nombre repetido (sin distinguir mayúsculas; los acentos distinguen, como Pedernal) se rechaza", async () => {
       const id = await crear("Gaseosas");
       expect(await familia(id)).toMatchObject({ nombre: "Gaseosas", nombreClave: "gaseosas", agruparEnCarta: false, agruparEnPos: false, activa: true, version: 1, creadoPorId: usuarioId });
       expect(await vigentes(id)).toEqual([]);
       expect(await prisma.registroAuditoria.findFirstOrThrow({ where: { entidad: "FamiliaDeProducto" } })).toMatchObject({ entidadId: id, campo: "nombre", valorAnterior: null, valorNuevo: "Gaseosas", actorId: usuarioId, sucursalId: null });
       expect(await crearFamiliaDeProductoCasoDeUso(actor(), { id: uuid(), nombre: "GASEOSAS" })).toMatchObject({ ok: false, codigo: "NOMBRE_REPETIDO" });
       await crear("Café");
-      expect(await crearFamiliaDeProductoCasoDeUso(actor(), { id: uuid(), nombre: "Cafe" })).toMatchObject({ ok: false, codigo: "NOMBRE_REPETIDO" });
-      expect(await prisma.familiaDeProducto.count()).toBe(2);
+      expect(await crearFamiliaDeProductoCasoDeUso(actor(), { id: uuid(), nombre: "CAFÉ" })).toMatchObject({ ok: false, codigo: "NOMBRE_REPETIDO" });
+      expect(await crearFamiliaDeProductoCasoDeUso(actor(), { id: uuid(), nombre: "Cafe" })).toMatchObject({ ok: true });
+      expect(await prisma.familiaDeProducto.count()).toBe(3);
     });
 
     it("IDEMPOTENCIA: el mismo id y el mismo nombre → «yaExistia» sin escribir ni auditar; el mismo id con otro nombre → ID_REUTILIZADO y no pisa nada", async () => {

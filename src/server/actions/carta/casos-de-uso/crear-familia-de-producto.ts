@@ -1,5 +1,5 @@
 import "server-only";
-import { claveDeNombreDeCarta } from "@/core/carta/public";
+import { claveDeNombre } from "@/core/datos/fichas-de-texto";
 import type { ComandoCrearFamiliaDeProducto, ResultadoCrearFamiliaDeProducto } from "@/core/features/carta/familias.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
@@ -25,7 +25,7 @@ export async function crearFamiliaDeProductoCasoDeUso(
   actor: Pick<ContextoDeAccion, "transaccion" | "usuarioId" | "ahora">,
   comando: ComandoCrearFamiliaDeProducto,
 ): Promise<ResultadoCrearFamiliaDeProducto> {
-  const nombreClave = claveDeNombreDeCarta(comando.nombre);
+  const nombreClave = claveDeNombre(comando.nombre);
   return conTransaccionSerializable(
     actor.transaccion,
     async (tx): Promise<ResultadoCrearFamiliaDeProducto> => {
