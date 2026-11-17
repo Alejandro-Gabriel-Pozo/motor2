@@ -1,5 +1,5 @@
 import "server-only";
-import { decidirAjuste, textoDeCentavos } from "@/core/caja/public";
+import { decidirAjuste, decidirMovimiento, estadoDeSesion, textoDeCentavos } from "@/core/caja/public";
 import type { ComandoRegistrarAjuste, ResultadoRegistrarAjuste } from "@/core/features/caja/caja.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { FuenteDeAzar } from "@/core/seguridad/azar";
@@ -53,7 +53,10 @@ export async function registrarAjusteCasoDeUso(
         return exito("El ajuste ya estaba registrado.", { movimientoId: previo.id, yaExistia: true });
       }
 
-      if (sesion.estado !== "ABIERTA") return fracaso("SESION_CERRADA", "La sesión de caja ya está cerrada.");
+      // Igual que los demás movimientos (C1b): en cierre se está contando y no entra plata; cerrada está congelada. Antes EN_CIERRE se informaba como «cerrada».
+      const entra = decidirMovimiento(estadoDeSesion(sesion.estado));
+      if (entra === "CAJA_EN_CIERRE") return fracaso("CAJA_EN_CIERRE", "La caja está en cierre: se está contando el efectivo.");
+      if (entra === "SESION_CERRADA") return fracaso("SESION_CERRADA", "La sesión de caja ya está cerrada.");
       const medio = (await cargarTiposDeMedios(tx, actor.empresaId, [comando.medioDePagoId])).get(comando.medioDePagoId);
       if (medio?.activo !== true) return fracaso("MEDIO_NO_HABILITADO", "El medio de pago no está habilitado.");
 

@@ -44,9 +44,9 @@ export async function cargarSesionDeClave(db: Prisma.TransactionClient, empresaI
   return db.sesionCaja.findFirst({ where: { empresaId, claveIdempotencia }, select: SELECCION_DE_SESION });
 }
 
-/** La sesión sin cerrar de la caja, o `null`. */
-export async function cargarSesionAbiertaDeCaja(db: Prisma.TransactionClient, empresaId: string, cajaId: string): Promise<SesionGuardada | null> {
-  return db.sesionCaja.findFirst({ where: { empresaId, cajaId, estado: "ABIERTA" }, select: SELECCION_DE_SESION });
+/** La sesión sin cerrar de la caja (ABIERTA o EN_CIERRE: el índice único parcial deja a lo sumo una), o `null`. */
+export async function cargarSesionSinCerrarDeCaja(db: Prisma.TransactionClient, empresaId: string, cajaId: string): Promise<SesionGuardada | null> {
+  return db.sesionCaja.findFirst({ where: { empresaId, cajaId, estado: { in: ["ABIERTA", "EN_CIERRE"] } }, select: SELECCION_DE_SESION });
 }
 
 export async function cargarSesion(db: Prisma.TransactionClient, empresaId: string, id: string): Promise<SesionGuardada | null> {
@@ -61,10 +61,33 @@ export async function insertarSesion(
   await db.sesionCaja.create({ data: { ...resto, horaDeCorte: new Date(`1970-01-01T${horaDeCorte}:00.000Z`), estado: "ABIERTA" }, select: { id: true } });
 }
 
-/** Cierra la sesión (ABIERTA → CERRADA). Devuelve si escribió: 0 filas = ya estaba cerrada. El disparador de la base deja pasar solo ese cambio. */
-export async function cerrarSesionEnBase(db: Prisma.TransactionClient, args: { empresaId: string; id: string; cerradaEn: Date; cerradaPorId: string; observacion: string | null }): Promise<boolean> {
+/** Toma el bloqueo exclusivo de la sesión (FOR UPDATE): los cierres que llegan a la vez se ordenan acá en vez de pelearse al subir el bloqueo compartido de los disparadores (deadlock); el que espera ve la sesión ya cerrada en su reintento. */
+export async function bloquearSesion(db: Prisma.TransactionClient, empresaId: string, id: string): Promise<void> {
+  await db.$queryRaw`SELECT "id" FROM "SesionCaja" WHERE "empresaId" = ${empresaId} AND "id" = ${id}::uuid FOR UPDATE`;
+}
+
+/** Inicia el cierre (ABIERTA → EN_CIERRE). Devuelve si escribió: 0 filas = ya no estaba abierta. El disparador de la base deja pasar solo las transiciones del ciclo y el UPDATE espera a los cobros en vuelo (FOR SHARE). */
+export async function iniciarCierreEnBase(db: Prisma.TransactionClient, args: { empresaId: string; id: string; cierreIniciadoEn: Date; cierreIniciadoPorId: string }): Promise<boolean> {
   const { count } = await db.sesionCaja.updateMany({
     where: { empresaId: args.empresaId, id: args.id, estado: "ABIERTA" },
+    data: { estado: "EN_CIERRE", cierreIniciadoEn: args.cierreIniciadoEn, cierreIniciadoPorId: args.cierreIniciadoPorId },
+  });
+  return count > 0;
+}
+
+/** Cancela el cierre (EN_CIERRE → ABIERTA, sin las marcas del cierre). Devuelve si escribió: 0 filas = ya no estaba en cierre. */
+export async function cancelarCierreEnBase(db: Prisma.TransactionClient, args: { empresaId: string; id: string }): Promise<boolean> {
+  const { count } = await db.sesionCaja.updateMany({
+    where: { empresaId: args.empresaId, id: args.id, estado: "EN_CIERRE" },
+    data: { estado: "ABIERTA", cierreIniciadoEn: null, cierreIniciadoPorId: null },
+  });
+  return count > 0;
+}
+
+/** Cierra la sesión (EN_CIERRE → CERRADA). Devuelve si escribió: 0 filas = ya no estaba en cierre. El disparador de la base deja pasar solo ese cambio y no toca quién inició el cierre. */
+export async function cerrarSesionEnBase(db: Prisma.TransactionClient, args: { empresaId: string; id: string; cerradaEn: Date; cerradaPorId: string; observacion: string | null }): Promise<boolean> {
+  const { count } = await db.sesionCaja.updateMany({
+    where: { empresaId: args.empresaId, id: args.id, estado: "EN_CIERRE" },
     data: { estado: "CERRADA", cerradaEn: args.cerradaEn, cerradaPorId: args.cerradaPorId, observacion: args.observacion },
   });
   return count > 0;

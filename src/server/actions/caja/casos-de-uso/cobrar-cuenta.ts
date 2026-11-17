@@ -1,5 +1,5 @@
 import "server-only";
-import { centavosDeImporte, datosCompletados, datosEnFormaCompleta, repartirCobro, sinDatos, textoDeCentavos, validarDatosDelCobro, validarParDeCobro } from "@/core/caja/public";
+import { centavosDeImporte, datosCompletados, decidirMovimiento, estadoDeSesion, datosEnFormaCompleta, repartirCobro, sinDatos, textoDeCentavos, validarDatosDelCobro, validarParDeCobro } from "@/core/caja/public";
 import type { DatosDelCobroCompletos, RenglonDeCobro } from "@/core/caja/public";
 import { fechaDeNegocio } from "@/core/tiempo/fecha-de-negocio";
 import type { ComandoCobrarCuenta, ResultadoCobrarCuenta } from "@/core/features/caja/caja.schema";
@@ -11,7 +11,7 @@ import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { diaDeColumnaDate } from "@/core/tiempo/zona-horaria";
 import { asegurarYBloquearJornadaCompartida, horaDeCorteDeColumna } from "@/server/persistencia/caja/jornada";
-import { cargarCajaDeSucursal, cargarCobranzaDeClave, cargarCobranzaDeCuenta, cargarSesion, cargarSesionAbiertaDeCaja, cargarTiposDeMedios, insertarCobranza, insertarCobro, insertarMovimiento } from "@/server/persistencia/caja/caja";
+import { cargarCajaDeSucursal, cargarCobranzaDeClave, cargarCobranzaDeCuenta, cargarSesion, cargarSesionSinCerrarDeCaja, cargarTiposDeMedios, insertarCobranza, insertarCobro, insertarMovimiento } from "@/server/persistencia/caja/caja";
 import { cargarCuentaDeCobro, esMarcaDeTarjetaActiva } from "@/server/persistencia/caja/configuracion";
 import { cargarCuentaParaCobrar } from "@/server/lecturas/caja/total-de-cuenta";
 
@@ -22,7 +22,7 @@ import { cargarCuentaParaCobrar } from "@/server/lecturas/caja/total-de-cuenta";
  * `import "server-only"` y SIN `"use server"`: la Server Action ya pidió el permiso y validó el formato. En UNA transacción SERIALIZABLE, en este orden:
  *  1. la clave de reintento se mira ANTES que el estado: misma clave y mismo pedido → el cobro ya hecho (`yaExistia`, sin escribir ni auditar de nuevo); misma clave con otro pedido → `CLAVE_REUTILIZADA`;
  *  2. la cuenta es de la sucursal activa, está cerrada y tuvo venta; si ya tiene cobro → `CUENTA_YA_COBRADA { cobranzaId }`; el total que vio quien cobra tiene que ser el actual (`TOTAL_CAMBIO`: nadie cobra un número viejo);
- *  3. hay una sesión de caja ABIERTA en la sucursal (`SIN_SESION_ABIERTA`), la JORNADA de esa sesión está ABIERTA (C2; tomada `FOR SHARE`: con el cierre del día en curso → `JORNADA_EN_AUDITORIA`, con la jornada cerrada → `JORNADA_CERRADA`; una sesión abierta
+ *  3. hay una sesión de caja ABIERTA en la sucursal (`SIN_SESION_ABIERTA`; con la sesión EN_CIERRE → `CAJA_EN_CIERRE`, C1b), la JORNADA de esa sesión está ABIERTA (C2; tomada `FOR SHARE`: con el cierre del día en curso → `JORNADA_EN_AUDITORIA`, con la jornada cerrada → `JORNADA_CERRADA`; una sesión abierta
  *     pasada su hora de corte sigue cobrando en SU jornada y el resultado avisa `jornadaVencida`) y todos los medios existen y están activos (`MEDIO_NO_HABILITADO`);
  *  4. `repartirCobro` (suma = total, ni de más ni de menos: `COBRO_NO_CUADRA` con `falta` o `sobra`);
  *  5. inserta la cobranza (con el total congelado), un movimiento COBRO por renglón y su renglón de cobro, y la auditoría. TODO o nada: la base verifica además, al confirmar, que la suma da el total (disparador diferido).
@@ -76,8 +76,10 @@ export async function cobrarCuentaCasoDeUso(
       if (totalActual !== comando.totalVistoEnCentavos) return { ...fracaso("TOTAL_CAMBIO", "El total de la cuenta cambió: volvé a mirarlo antes de cobrar."), totalActualEnCentavos: totalActual };
 
       const caja = await cargarCajaDeSucursal(tx, actor.empresaId, actor.sucursalId);
-      const sesion = caja ? await cargarSesionAbiertaDeCaja(tx, actor.empresaId, caja.id) : null;
+      const sesion = caja ? await cargarSesionSinCerrarDeCaja(tx, actor.empresaId, caja.id) : null;
       if (!sesion) return fracaso("SIN_SESION_ABIERTA", "No hay una caja abierta en esta sucursal: abrila antes de cobrar.");
+      // Se está contando el efectivo para cerrar: no entra ningún cobro hasta cancelar el cierre (decisión del dueño, 2026-11-16: «Frenar el cobro, como Pedernal»).
+      if (decidirMovimiento(estadoDeSesion(sesion.estado)) === "CAJA_EN_CIERRE") return { ...fracaso("CAJA_EN_CIERRE", "La caja está en cierre: se está contando el efectivo."), sesionId: sesion.id };
 
       const jornada = await asegurarYBloquearJornadaCompartida(tx, { id: azar.uuid(), empresaId: actor.empresaId, sucursalId: actor.sucursalId, fechaDeNegocio: diaDeColumnaDate(sesion.fechaDeNegocio) });
       if (jornada.estado === "EN_AUDITORIA") return fracaso("JORNADA_EN_AUDITORIA", "El cierre del día está en curso: no se cobra. Cancelalo para seguir.");

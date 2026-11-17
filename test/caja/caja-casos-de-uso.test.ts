@@ -8,6 +8,7 @@ import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { abrirSesionCasoDeUso } from "../../src/server/actions/caja/casos-de-uso/abrir-sesion";
 import { anularMovimientoCasoDeUso } from "../../src/server/actions/caja/casos-de-uso/anular-movimiento";
 import { cerrarSesionCasoDeUso } from "../../src/server/actions/caja/casos-de-uso/cerrar-sesion";
+import { iniciarCierreDeSesion } from "../../src/server/actions/caja/casos-de-uso/iniciar-cierre";
 import { cobrarCuentaCasoDeUso } from "../../src/server/actions/caja/casos-de-uso/cobrar-cuenta";
 import { registrarMovimientoManualCasoDeUso } from "../../src/server/actions/caja/casos-de-uso/registrar-movimiento-manual";
 import { baseDeEmpresa } from "../../src/server/sesion/base";
@@ -15,7 +16,7 @@ import { entrarComo, sembrarCuenta, sembrarSalon } from "../pos/salon-fixture";
 import { EMPRESA_POR_DEFECTO_ID as EMPRESA, limpiarBaseDeTest, prismaAdmin } from "../setup/test-db";
 
 /**
- * Caja y cobro, etapa C1, contra Postgres real y con las acciones reales del POS para cerrar la cuenta: abrir caja, mover efectivo, cobrar una cuenta cerrada y cerrar con arqueo. Las carreras son de verdad
+ * Caja y cobro, etapa C1 (con el cierre en dos pasos de la C1b: iniciar el cierre y después cerrar con el conteo), contra Postgres real y con las acciones reales del POS para cerrar la cuenta: abrir caja, mover efectivo, cobrar una cuenta cerrada y cerrar con arqueo. Las carreras son de verdad
  * (`Promise.allSettled` desde conexiones distintas). Mutación: sacar el `true` final de `conTransaccionSerializable` en `cobrarCuentaCasoDeUso` deja en rojo «ocho cobros a la vez»; quitar el chequeo de la clave
  * antes del estado deja en rojo «el mismo cobro repetido».
  */
@@ -26,6 +27,7 @@ const c = (n: number) => BigInt(n);
 
 const actor = () => ({ usuarioId: s.admin.id, empresaId: EMPRESA, sucursalId: s.sucursalId, ahora: AHORA, empresaZonaHoraria: "America/Argentina/Buenos_Aires", ...baseDeEmpresa(EMPRESA, { lectura: [s.sucursalId], escritura: [s.sucursalId] }) });
 const abrir = (fondo = 100_00, clave = randomUUID()) => abrirSesionCasoDeUso(actor(), { claveIdempotencia: clave, fondoEnCentavos: c(fondo) }, azarDelProceso);
+const iniciarCierre = async (sesionId: string) => { const r = await iniciarCierreDeSesion(actor(), { sesionId }); if (!r.ok) throw new Error(`no inició el cierre: ${r.codigo}`); };
 const mover = (sesionId: string, sentido: "INGRESO" | "EGRESO", importe: number, clave = randomUUID(), motivo = "cambio") =>
   registrarMovimientoManualCasoDeUso(actor(), { claveIdempotencia: clave, sesionId, sentido, importeEnCentavos: c(importe), motivo }, azarDelProceso);
 
@@ -126,6 +128,7 @@ describe("ingreso y egreso manual", () => {
     const a = await abrir(0);
     if (!a.ok) throw new Error("no abrió");
     expect(await mover(randomUUID(), "INGRESO", 1_00)).toMatchObject({ ok: false, codigo: "SESION_NO_ENCONTRADA" });
+    await iniciarCierre(a.datos.sesionId);
     const cerrada = await cerrarSesionCasoDeUso(actor(), { sesionId: a.datos.sesionId, conteo: { billetes: {}, monedasEnCentavos: c(0) }, conformeDeLosDemasMedios: false, observacion: null }, azarDelProceso);
     expect(cerrada.ok).toBe(true);
     expect(await mover(a.datos.sesionId, "INGRESO", 1_00)).toMatchObject({ ok: false, codigo: "SESION_CERRADA" });
@@ -237,6 +240,7 @@ describe("cerrar con arqueo", () => {
     if (!a.ok) throw new Error("no abrió");
     const cuenta = await cuentaCerrada(1, 3000);
     await cobrar(cuenta.id, [{ medioDePagoId: await efectivoId(), importeEnCentavos: c(3000_00) }], 3000_00);
+    await iniciarCierre(a.datos.sesionId);
     const r = await cerrar(a.datos.sesionId, { 2000: 1, 1000: 1, 100: 1 });
     expect(r).toMatchObject({ ok: true, datos: { yaEstabaCerrada: false, diferenciaEnEfectivoEnCentavos: c(0) } });
     const arqueo = await prismaAdmin.arqueoCaja.findFirstOrThrow({ where: { sesionId: a.datos.sesionId } });
@@ -255,6 +259,7 @@ describe("cerrar con arqueo", () => {
     const cuenta = await cuentaCerrada(1, 3000);
     const tarjeta = await prismaAdmin.medioDePago.create({ data: { id: randomUUID(), empresaId: EMPRESA, tipo: "TARJETA_CREDITO" } });
     await cobrar(cuenta.id, [{ medioDePagoId: tarjeta.id, importeEnCentavos: c(3000_00) }], 3000_00);
+    await iniciarCierre(a.datos.sesionId);
     expect(await cerrar(a.datos.sesionId, { 100: 1 })).toMatchObject({ ok: false, codigo: "CONFORME_FALTANTE" });
     const r = await cerrar(a.datos.sesionId, { 100: 1 }, 50_00, true); // esperado 100, contado 100 + 50 de monedas = 150 → sobran 50
     expect(r).toMatchObject({ ok: true, datos: { diferenciaEnEfectivoEnCentavos: c(50_00) } });
@@ -273,6 +278,7 @@ describe("cerrar con arqueo", () => {
   it("después de cerrar la sesión ya no se cobra y se puede abrir otra", async () => {
     const a = await abrir(0);
     if (!a.ok) throw new Error("no abrió");
+    await iniciarCierre(a.datos.sesionId);
     expect((await cerrar(a.datos.sesionId, {})).ok).toBe(true);
     const cuenta = await cuentaCerrada(1, 3000);
     expect(await cobrar(cuenta.id, [{ medioDePagoId: await efectivoId(), importeEnCentavos: c(3000_00) }], 3000_00)).toMatchObject({ ok: false, codigo: "SIN_SESION_ABIERTA" });
@@ -286,6 +292,7 @@ describe("la base hace cumplir lo que el caso de uso no puede olvidar", () => {
   it("no entra un movimiento en una sesión cerrada", async () => {
     const a = await abrir(0);
     if (!a.ok) throw new Error("no abrió");
+    await iniciarCierre(a.datos.sesionId);
     expect((await cerrarSesionCasoDeUso(actor(), { sesionId: a.datos.sesionId, conteo: { billetes: {}, monedasEnCentavos: c(0) }, conformeDeLosDemasMedios: false, observacion: null }, azarDelProceso)).ok).toBe(true);
     await expect(prismaAdmin.movimientoCaja.create({ data: await movimiento(a.datos.sesionId) as never })).rejects.toThrow(/sesion_caja_no_abierta/);
   });
