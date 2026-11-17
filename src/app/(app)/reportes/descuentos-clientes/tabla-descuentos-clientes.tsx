@@ -3,6 +3,7 @@
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaDescuentoCliente } from "@/core/reportes/public";
 import { formatearMonto, formatearEntero } from "@/core/formato-de-numero";
+import { textoDe } from "@/core/textos/texto-de";
 
 const AYUDA_MARGEN =
   'Costo congelado al momento de cada venta, o reconstruido con el historial de compras cuando no se guardó (mismo criterio que Período/Promociones). "parcial" si alguna venta de ese cliente no se pudo costear así.';
@@ -21,8 +22,8 @@ function celdaMargen(valor: number | null, pct: number | null, reconstruido: boo
 const COLUMNAS: ColumnaReporte<FilaDescuentoCliente>[] = [
   { clave: "cliente", etiqueta: "Cliente", valor: (f) => f.cliente, render: (f) => f.cliente },
   { clave: "cantidadVentas", etiqueta: "Ventas", alinear: "derecha", valor: (f) => f.cantidadVentas, render: (f) => formatearEntero(f.cantidadVentas) },
-  { clave: "ingresoALista", etiqueta: "A precio de lista", alinear: "derecha", valor: (f) => f.ingresoALista, render: (f) => `${formatearMonto(f.ingresoALista)}` },
-  { clave: "ingresoCobrado", etiqueta: "Cobrado", alinear: "derecha", valor: (f) => f.ingresoCobrado, render: (f) => `${formatearMonto(f.ingresoCobrado)}` },
+  { clave: "ingresoALista", etiqueta: textoDe("columna.a_precio_de_lista"), alinear: "derecha", valor: (f) => f.ingresoALista, render: (f) => `${formatearMonto(f.ingresoALista)}` },
+  { clave: "ingresoCobrado", etiqueta: textoDe("columna.cobrado"), alinear: "derecha", valor: (f) => f.ingresoCobrado, render: (f) => `${formatearMonto(f.ingresoCobrado)}` },
   {
     clave: "totalDescontado",
     etiqueta: "Descontado",
@@ -32,7 +33,7 @@ const COLUMNAS: ColumnaReporte<FilaDescuentoCliente>[] = [
   },
   {
     clave: "margenReal",
-    etiqueta: "Margen Real (cobrado)",
+    etiqueta: textoDe("columna.margen_real_cobrado"),
     alinear: "derecha",
     valor: (f) => f.margenReal,
     ayuda: AYUDA_MARGEN,

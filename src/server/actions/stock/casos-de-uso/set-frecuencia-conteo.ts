@@ -2,6 +2,7 @@ import "server-only";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoSetFrecuenciaConteo, ResultadoSetFrecuenciaConteo } from "@/core/features/stock/frecuencia-conteo.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
+import { textoDe } from "@/core/textos/texto-de";
 import { guardarFrecuenciaConteo } from "@/server/persistencia/stock/frecuencia-conteo";
 
 /**
@@ -26,7 +27,7 @@ export async function setFrecuenciaConteoCasoDeUso(
 ): Promise<ResultadoSetFrecuenciaConteo> {
   const { productoId, frecuenciaDias } = comando;
   const producto = await actor.db.producto.findUnique({ where: { id: productoId } });
-  if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró el producto.");
+  if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", textoDe("rechazo.PRODUCTO_NO_ENCONTRADO"));
 
   await guardarFrecuenciaConteo(actor.db, { sucursalId: actor.sucursalId, productoId, frecuenciaDias });
   return exito(

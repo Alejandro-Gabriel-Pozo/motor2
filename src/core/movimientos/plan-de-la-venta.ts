@@ -1,7 +1,7 @@
 import { asignarConsumosDeVenta, elegirSeccionDeStockPropio, type FaltanteDeStock, type ParteAsignada, type ParteConsumo, type PedidoDeConsumo } from "@/core/movimientos/origen-venta";
 import type { DatosDeOrigen } from "@/core/movimientos/origen-venta-datos";
 import type { AvisoStockNegativo } from "@/core/movimientos/registrar-venta";
-import { redondearACantidadDeUnidad } from "@/core/movimientos/transiciones";
+import { DECIMALES_DE_STOCK, redondearACantidadDeUnidad } from "@/core/movimientos/transiciones";
 
 /**
  * El PLAN DE ORIGEN de una venta (Hito 5, pieza 5.1, bloque B: mudado TAL CUAL desde `registrarVentaEnTx`, que vive en `server/actions/movimientos/casos-de-uso/registrar-venta-en-tx.ts`).
@@ -141,7 +141,7 @@ interface ProductoFaltante {
  * con qué saldo queda, redondeados a los decimales de la unidad de stock del producto. `seccionNombre` lo resuelve quien llama (`origenDatos.nombreDeSeccion`).
  */
 export function avisoDeStockNegativo(faltante: FaltanteDeStock, producto: ProductoFaltante | null | undefined, seccionNombre: string): AvisoStockNegativo {
-  const decimales = producto?.unidadStock.decimales ?? 2;
+  const decimales = DECIMALES_DE_STOCK;
   return {
     productoId: faltante.productoId,
     nombre: producto?.nombre ?? faltante.productoId,

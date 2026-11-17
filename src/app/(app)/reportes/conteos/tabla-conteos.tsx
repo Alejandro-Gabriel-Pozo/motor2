@@ -3,6 +3,7 @@
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
+import { textoDe } from "@/core/textos/texto-de";
 
 /** El día de calendario de un instante en hora argentina (P1): `ConteoFisico.fecha` es un instante; leerlo en UTC mostraba el día siguiente a partir de las 21:00. */
 const dia = (f: Date) => diaDeCalendario(f, ZONA_ARGENTINA);
@@ -25,7 +26,7 @@ const COLUMNAS: ColumnaReporte<FilaConteo>[] = [
   { clave: "fecha", etiqueta: "Fecha", tipoFecha: "dia", valor: (c) => dia(c.fecha), render: (c) => dia(c.fecha) },
   {
     clave: "producto",
-    etiqueta: "Producto",
+    etiqueta: textoDe("columna.producto"),
     valor: (c) => `${c.productoCodigo} — ${c.productoNombre}`,
     render: (c) => (
       <EnlaceInterno href={`/reportes/historial?productoId=${c.productoId}`} className="underline">
@@ -33,7 +34,7 @@ const COLUMNAS: ColumnaReporte<FilaConteo>[] = [
       </EnlaceInterno>
     ),
   },
-  { clave: "seccion", etiqueta: "Sección", valor: (c) => c.seccionNombre, render: (c) => c.seccionNombre },
+  { clave: "seccion", etiqueta: textoDe("columna.seccion"), valor: (c) => c.seccionNombre, render: (c) => c.seccionNombre },
   { clave: "sistema", etiqueta: "Sistema", alinear: "derecha", valor: (c) => c.saldoSistema, render: (c) => c.saldoSistema },
   { clave: "real", etiqueta: "Real", alinear: "derecha", valor: (c) => c.conteoReal, render: (c) => c.conteoReal },
   {

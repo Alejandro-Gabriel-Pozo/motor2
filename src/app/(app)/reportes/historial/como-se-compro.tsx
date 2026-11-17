@@ -6,6 +6,7 @@ import type { FilaCompraHistorial, ResumenCompras } from "@/core/reportes/public
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
 import { formatearMonto } from "@/core/formato-de-numero";
+import { textoDe } from "@/core/textos/texto-de";
 
 function armarProsa(r: ResumenCompras, unidad: string, mostrarDinero: boolean): string {
   if (r.cantidadCompras === 0) return "Sin compras en el rango elegido.";
@@ -23,14 +24,14 @@ function armarProsa(r: ResumenCompras, unidad: string, mostrarDinero: boolean): 
 function columnas(mostrarDinero: boolean, zona: string): ColumnaReporte<FilaCompraHistorial>[] {
   const base: ColumnaReporte<FilaCompraHistorial>[] = [
     { clave: "fecha", etiqueta: "Fecha", tipoFecha: "dia", valor: (f) => diaDeCalendario(f.fecha, zona), render: (f) => diaDeCalendario(f.fecha, zona) },
-    { clave: "cantidad", etiqueta: "Cantidad", alinear: "derecha", valor: (f) => f.cantidad, render: (f) => f.cantidad },
+    { clave: "cantidad", etiqueta: textoDe("columna.cantidad"), alinear: "derecha", valor: (f) => f.cantidad, render: (f) => f.cantidad },
   ];
   if (mostrarDinero) {
     // Proveedor y N.º de factura son datos comerciales: van con la misma clave que el dinero (el servidor ya los saca de los eventos).
     base.splice(
       1,
       0,
-      { clave: "proveedor", etiqueta: "Proveedor", valor: (f) => f.proveedor, render: (f) => f.proveedor ?? <span className="text-tinta-tenue">Sin proveedor</span> },
+      { clave: "proveedor", etiqueta: textoDe("columna.proveedor"), valor: (f) => f.proveedor, render: (f) => f.proveedor ?? <span className="text-tinta-tenue">Sin proveedor</span> },
       { clave: "factura", etiqueta: "N.º de factura", valor: (f) => f.nroFactura, render: (f) => f.nroFactura ?? "—" }
     );
     base.push(
@@ -46,7 +47,7 @@ function columnas(mostrarDinero: boolean, zona: string): ColumnaReporte<FilaComp
   }
   base.push({
     clave: "origen",
-    etiqueta: "Origen",
+    etiqueta: textoDe("columna.origen"),
     render: (f) =>
       f.idOperacion ? (
         <EnlaceInterno href={`/reportes/trazabilidad?idOperacion=${encodeURIComponent(f.idOperacion)}`} className="underline inline-flex items-center gap-1">

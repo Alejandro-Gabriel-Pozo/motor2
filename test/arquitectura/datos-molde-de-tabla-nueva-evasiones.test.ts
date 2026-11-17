@@ -5,6 +5,7 @@ import {
   privilegiosDe,
   sinComentarios,
   tablasCreadas,
+  tipoFinalDeId,
   violacionesDeMolde,
   type Migracion,
   type Regla,
@@ -169,5 +170,30 @@ describe("molde de tabla nueva: las excepciones", () => {
 
   it("una excepción que ya no hace falta falla (la lista solo baja)", () => {
     expect(aplicarExcepciones([], [{ tabla: "T", regla: "ID_UUID", motivo }]).excepcionesInvalidas).toHaveLength(1);
+  });
+});
+
+describe("molde de tabla nueva: un id que se alinea a UUID en una migración posterior", () => {
+  const conTexto = BUENA.replace('"id" UUID NOT NULL', '"id" TEXT NOT NULL');
+  const alinear = (tipo: string) => migracion(`ALTER TABLE "Cosa" ALTER COLUMN "id" TYPE ${tipo} USING "id"::${tipo.toLowerCase()};`, "20261116010000_alinear");
+
+  it("control: un id TEXT sin alinear es una violación ID_UUID", () => {
+    expect(reglasDe(conTexto)).toContain("ID_UUID");
+  });
+
+  it("un `ALTER COLUMN \"id\" TYPE UUID` posterior la cierra (el tipo final manda)", () => {
+    expect(violacionesDeMolde([migracion(conTexto), alinear("UUID")]).filter((v) => v.regla === "ID_UUID")).toEqual([]);
+    expect(tipoFinalDeId([migracion(conTexto), alinear("UUID")]).get("Cosa")).toBe("UUID");
+  });
+
+  it("si una migración posterior lo vuelve a TEXT, la violación vuelve; y un ALTER de otra columna no cuenta", () => {
+    expect(violacionesDeMolde([migracion(BUENA), alinear("TEXT")]).map((v) => v.regla)).toContain("ID_UUID");
+    const otra = migracion('ALTER TABLE "Cosa" ALTER COLUMN "empresaId" TYPE UUID USING "empresaId"::uuid;', "20261116010000_otra");
+    expect(violacionesDeMolde([migracion(conTexto), otra]).map((v) => v.regla)).toContain("ID_UUID");
+  });
+
+  it("un ALTER dentro de un comentario no cuenta", () => {
+    const comentado = migracion('-- ALTER TABLE "Cosa" ALTER COLUMN "id" TYPE UUID;\nSELECT 1;', "20261116010000_comentario");
+    expect(violacionesDeMolde([migracion(conTexto), comentado]).map((v) => v.regla)).toContain("ID_UUID");
   });
 });

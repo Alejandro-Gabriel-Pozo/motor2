@@ -5,7 +5,7 @@ import { texto } from "@/core/texto";
 import { mensajeSeccionDesactivada } from "@/core/features/movimientos/secciones.guard";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { validarCantidad } from "@/core/datos/cantidad";
-import { redondearACantidadDeUnidad, tieneStockReal } from "@/core/movimientos/public";
+import { DECIMALES_DE_STOCK, redondearACantidadDeUnidad, tieneStockReal } from "@/core/movimientos/public";
 import { calcularPayloadHash, esChoqueDeIndiceUnico, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { calcularSaldoPorLote, calcularSaldoTotal, obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
@@ -127,7 +127,7 @@ export async function registrarConteoFisicoCasoDeUso(
     const saldoSistema = loteVencimiento
       ? await calcularSaldoPorLote(producto.id, comando.seccionId, loteVencimiento, actor.sucursalId, tx)
       : await calcularSaldoTotal(producto.id, comando.seccionId, actor.sucursalId, tx);
-    const diferencia = redondearACantidadDeUnidad(conteoReal - saldoSistema, producto.unidadStock.decimales);
+    const diferencia = redondearACantidadDeUnidad(conteoReal - saldoSistema, DECIMALES_DE_STOCK);
 
     const accionInfo = ACCIONES_CONTEO[comando.accion];
     const estado: EstadoConteo = diferencia === 0 ? "RESUELTO" : accionInfo.estado;

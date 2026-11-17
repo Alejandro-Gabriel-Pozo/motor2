@@ -5,6 +5,7 @@ import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { EventoHistorialProducto } from "@/core/reportes/public";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
+import { textoDe } from "@/core/textos/texto-de";
 
 /** Mismo texto/estilo que la marca "Anulada" de /reportes/compras (page.tsx) — una compra o venta anulada no ocurrió, esto lo deja a la vista en vez de verse como un "movimiento fantasma". */
 function MarcaAnulada() {
@@ -36,10 +37,10 @@ function columnas(mostrarSaldo: boolean, zona: string): ColumnaReporte<EventoHis
         </>
       ),
     },
-    { clave: "seccion", etiqueta: "Sección", valor: (ev) => ev.seccionNombre, render: (ev) => ev.seccionNombre },
+    { clave: "seccion", etiqueta: textoDe("columna.seccion"), valor: (ev) => ev.seccionNombre, render: (ev) => ev.seccionNombre },
     {
       clave: "cantidad",
-      etiqueta: "Cantidad",
+      etiqueta: textoDe("columna.cantidad"),
       alinear: "derecha",
       valor: (ev) => (ev.tipo === "movimiento" ? (ev.cantidadConSigno ?? 0) : (ev.conteoReal ?? 0)),
       render: (ev) => (ev.tipo === "movimiento" ? ev.cantidadConSigno : `${ev.conteoReal} (dif. ${ev.diferencia})`),
@@ -57,7 +58,7 @@ function columnas(mostrarSaldo: boolean, zona: string): ColumnaReporte<EventoHis
   base.push({
     // Sin `valor`: columna fija, no ordena y queda fuera del Excel (es un link, no un dato — mismo criterio documentado en ColumnaReporte.valor).
     clave: "origen",
-    etiqueta: "Origen",
+    etiqueta: textoDe("columna.origen"),
     render: (ev) =>
       ev.tipo === "movimiento" && ev.idOperacion ? (
         // /reportes/trazabilidad tiene su propia clave (reporte_trazabilidad): EnlaceInterno deja el texto sin enlace si el rol no la tiene (test/arquitectura/enlaces-con-permiso.test.ts).

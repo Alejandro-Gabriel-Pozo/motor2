@@ -5,9 +5,10 @@ import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import { RegistrarPagoConsignante } from "./registrar-pago-consignante";
 import type { FilaDebidoConsignante, FilaStockSinVenderConsignacion } from "@/core/reportes/public";
 import { formatearMonto } from "@/core/formato-de-numero";
+import { textoDe } from "@/core/textos/texto-de";
 
 const COLUMNAS_DEBIDO: ColumnaReporte<FilaDebidoConsignante>[] = [
-  { clave: "proveedor", etiqueta: "Proveedor", valor: (d) => d.proveedor, render: (d) => d.proveedor },
+  { clave: "proveedor", etiqueta: textoDe("columna.proveedor"), valor: (d) => d.proveedor, render: (d) => d.proveedor },
   { clave: "liquidado", etiqueta: "Liquidado", alinear: "derecha", valor: (d) => d.liquidado, render: (d) => `${formatearMonto(d.liquidado)}` },
   { clave: "pagado", etiqueta: "Pagado", alinear: "derecha", valor: (d) => d.pagado, render: (d) => `${formatearMonto(d.pagado)}` },
   { clave: "importe", etiqueta: "Saldo debido", alinear: "derecha", valor: (d) => d.importe, render: (d) => `${formatearMonto(d.importe)}` },
@@ -23,7 +24,7 @@ const COLUMNA_PAGAR: ColumnaReporte<FilaDebidoConsignante> = {
 const COLUMNAS_STOCK: ColumnaReporte<FilaStockSinVenderConsignacion>[] = [
   {
     clave: "producto",
-    etiqueta: "Producto",
+    etiqueta: textoDe("columna.producto"),
     valor: (s) => `${s.codigo} — ${s.producto}`,
     render: (s) => (
       <EnlaceInterno href={`/reportes/historial?productoId=${s.productoId}`} className="underline">
