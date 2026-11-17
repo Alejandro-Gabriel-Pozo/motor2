@@ -23,6 +23,9 @@ test(`el servidor E2E corre en modo «${modo}» de verdad`, async ({ page }) => 
     expect(cache).not.toContain("immutable");
   } else {
     expect(cache, "en producción los estáticos son inmutables: si no lo son, el servidor NO está en modo producción").toContain("immutable");
-    await expect(page.locator("nextjs-portal"), "el indicador de desarrollo no existe en producción").toHaveCount(0);
+    // El cartel de desarrollo de Next lo inyecta el cliente al hidratar: se espera a que la página termine de cargar antes de afirmar que no está (si no, el `toHaveCount(0)` pasaría antes de que pudiera aparecer).
+    await page.waitForLoadState("load");
+    await page.evaluate(() => document.fonts.ready);
+    await expect(page.locator("nextjs-portal"), "la página no tiene el cartel de desarrollo de Next (`nextjs-portal`): en producción no existe").toHaveCount(0);
   }
 });
