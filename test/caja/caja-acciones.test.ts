@@ -28,6 +28,9 @@ async function rolCon(nombre: string, claves: readonly Clave[]) {
   return rol;
 }
 
+/** C1b: la sesión se cierra desde EN_CIERRE y la etapa no trae Server Action para iniciar el cierre: el test la deja en cierre por la base (el caso de uso se prueba en en-cierre-c1b.test.ts). */
+const iniciarElCierre = (sesionId: string) => prismaAdmin.sesionCaja.update({ where: { id: sesionId }, data: { estado: "EN_CIERRE", cierreIniciadoEn: new Date(), cierreIniciadoPorId: s.admin.id } });
+
 const foto = async () => ({
   sesiones: await prismaAdmin.sesionCaja.count(),
   movimientos: await prismaAdmin.movimientoCaja.count(),
@@ -110,6 +113,7 @@ const ACCIONES: Accion[] = [
     exacto: "admin",
     preparar: async () => {
       const sesionId = await abrirComoAdmin("0");
+      await iniciarElCierre(sesionId);
       return () => cerrarSesionDeCaja({ sesionId, ...conteoVacio });
     },
   },
@@ -185,6 +189,7 @@ describe("el operador de caja cobra pero no cierra la caja", () => {
     const cuenta = await cuentaCerrada();
     await como(s.admin);
     expect(await cobrarCuenta({ claveIdempotencia: randomUUID(), cuentaId: cuenta.id, totalVisto: "6000", renglones: [{ medioDePagoId: await efectivoId(), importe: "6000" }] })).toMatchObject({ ok: true });
+    await iniciarElCierre(sesionId);
     // Esperado en efectivo: 100 de fondo + 6000 de cobro = 6100. Se cuenta 6000 (3 de 2000) + 90 de monedas = 6090: faltan 10 pesos = -1000 centavos.
     const r = await cerrarSesionDeCaja({ sesionId, billetes: { "2000": 3 }, monedas: "90", conformeDeLosDemasMedios: false, observacion: "Faltó vuelto" });
     expect(r).toMatchObject({ ok: true, yaEstabaCerrada: false, diferenciaEnEfectivoEnCentavos: "-1000" });
@@ -381,9 +386,11 @@ describe("las lecturas de la caja piden `caja_ver` en la sucursal activa", () =>
 
     it("la última cerrada con su arqueo: esperado, contado, diferencia con signo (centavos), billetes y monedas", async () => {
       const primera = await abrirComoAdmin("100");
+      await iniciarElCierre(primera);
       await como(s.admin);
       expect(await cerrarSesionDeCaja({ sesionId: primera, billetes: { "100": 1 }, monedas: "0", conformeDeLosDemasMedios: false, observacion: null })).toMatchObject({ ok: true });
       const segunda = await abrirComoAdmin("100");
+      await iniciarElCierre(segunda);
       await como(s.admin);
       // Esperado 100; se cuentan 2 de 20 + 1 de 100 = 140 + 5.50 de monedas = 145.50: sobran 45.50 = 4550 centavos.
       expect(await cerrarSesionDeCaja({ sesionId: segunda, billetes: { "100": 1, "20": 2 }, monedas: "5.50", conformeDeLosDemasMedios: false, observacion: "Sobró" })).toMatchObject({ ok: true });
@@ -396,6 +403,7 @@ describe("las lecturas de la caja piden `caja_ver` en la sucursal activa", () =>
 
     it("una diferencia negativa conserva el signo; otra sucursal no ve la sesión de ésta", async () => {
       const sesion = await abrirComoAdmin("100");
+      await iniciarElCierre(sesion);
       await como(s.admin);
       await cerrarSesionDeCaja({ sesionId: sesion, billetes: { "20": 1 }, monedas: "0", conformeDeLosDemasMedios: false, observacion: null });
       expect((await ultimaSesionDeLaCaja())?.arqueos[0]?.diferenciaEnCentavos).toBe("-8000");

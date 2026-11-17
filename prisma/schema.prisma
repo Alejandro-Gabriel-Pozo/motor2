@@ -45,6 +45,7 @@ model User {
   ocultamientosActualizados  OcultamientoProducto[]
   sesionesDeCajaAbiertas     SesionCaja[]           @relation("SesionCajaAbiertaPor")
   sesionesDeCajaCerradas     SesionCaja[]           @relation("SesionCajaCerradaPor")
+  sesionesDeCajaConCierreIniciado SesionCaja[]    @relation("SesionCajaCierreIniciadoPor")
   movimientosDeCaja          MovimientoCaja[]       @relation("MovimientoCajaCreadoPor")
   cobranzas                  Cobranza[]             @relation("CobranzaCreadaPor")
   jornadasEnCierreIniciadas  JornadaDeSucursal[]    @relation("JornadaIniciadaPor")
@@ -4257,7 +4258,7 @@ model SesionCaja {
   sucursal          Sucursal  @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   cajaId            String    @db.Uuid
   caja              Caja      @relation(fields: [empresaId, cajaId], references: [empresaId, id])
-  /// ABIERTA | CERRADA (CHECK). Solo cambia de ABIERTA a CERRADA, una vez (disparador).
+  /// ABIERTA | EN_CIERRE | CERRADA (CHECK). Solo cambia ABIERTA → EN_CIERRE, EN_CIERRE → ABIERTA y EN_CIERRE → CERRADA; la cerrada no se toca (disparador).
   estado            String
   fechaDeNegocio    DateTime  @db.Date
   zonaHoraria       String
@@ -4266,6 +4267,10 @@ model SesionCaja {
   abiertaEn         DateTime  @default(now()) @db.Timestamptz(3)
   abiertaPorId      String
   abiertaPor        User      @relation("SesionCajaAbiertaPor", fields: [abiertaPorId], references: [id])
+  /// Quién y cuándo inició el cierre (C1b). Nulos con la sesión ABIERTA; con EN_CIERRE son obligatorios (CHECK); al cancelar el cierre vuelven a nulo (queda en la auditoría).
+  cierreIniciadoEn  DateTime? @db.Timestamptz(3)
+  cierreIniciadoPorId String?
+  cierreIniciadoPor User?     @relation("SesionCajaCierreIniciadoPor", fields: [cierreIniciadoPorId], references: [id])
   cerradaEn         DateTime? @db.Timestamptz(3)
   cerradaPorId      String?
   cerradaPor        User?     @relation("SesionCajaCerradaPor", fields: [cerradaPorId], references: [id])

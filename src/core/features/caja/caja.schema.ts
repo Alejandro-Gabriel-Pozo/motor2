@@ -89,7 +89,7 @@ export interface ComandoCerrarSesion {
 export type CodigoDeFalloDeAbrirSesion = "CLAVE_REUTILIZADA" | "SUCURSAL_INACTIVA" | "CAJA_YA_ABIERTA" | "SUCURSAL_NO_ENCONTRADA" | "JORNADA_EN_AUDITORIA" | "JORNADA_CERRADA" | "HORA_DE_CORTE_INVALIDA" | "ZONA_HORARIA_INVALIDA" | "INSTANTE_INVALIDO";
 export type ResultadoAbrirSesion = Exito<{ sesionId: string; yaExistia: boolean }> | (Fracaso<CodigoDeFalloDeAbrirSesion> & { sesionId?: string });
 
-export type CodigoDeFalloDeMovimiento = "CLAVE_REUTILIZADA" | "SESION_NO_ENCONTRADA" | "SESION_CERRADA";
+export type CodigoDeFalloDeMovimiento = "CLAVE_REUTILIZADA" | "SESION_NO_ENCONTRADA" | "SESION_CERRADA" | "CAJA_EN_CIERRE";
 export type ResultadoMovimientoManual = Exito<{ movimientoId: string; yaExistia: boolean; superaElEfectivo: boolean }> | Fracaso<CodigoDeFalloDeMovimiento>;
 
 export type CodigoDeFalloDeAnulacion = CodigoDeFalloDeMovimiento | "MOVIMIENTO_NO_ENCONTRADO" | "MOVIMIENTO_NO_ANULABLE" | "MOVIMIENTO_YA_ANULADO" | "SIN_PERMISO_SOBRE_MOVIMIENTO_AJENO";
@@ -104,6 +104,7 @@ export type CodigoDeFalloDeCobro =
   | "NADA_PARA_COBRAR"
   | "TOTAL_CAMBIO"
   | "SIN_SESION_ABIERTA"
+  | "CAJA_EN_CIERRE"
   | "MEDIO_NO_HABILITADO"
   | "JORNADA_EN_AUDITORIA"
   | "JORNADA_CERRADA"
@@ -121,13 +122,26 @@ export type CodigoDeFalloDeCobro =
   | "CUENTA_DE_COBRO_INCOMPATIBLE"
   | "DATO_DE_COBRO_NO_HABILITADO"
   | "DATO_DE_COBRO_INVALIDO";
-/** `totalActualEnCentavos` con `TOTAL_CAMBIO`; `falta` y `sobra` (centavos) con `COBRO_NO_CUADRA`; `dato` con los dos `DATO_DE_COBRO_*` (y `motivo` con `_INVALIDO`). */
+/** `totalActualEnCentavos` con `TOTAL_CAMBIO`; `falta` y `sobra` (centavos) con `COBRO_NO_CUADRA`; `dato` con los dos `DATO_DE_COBRO_*` (y `motivo` con `_INVALIDO`); `sesionId` con `CAJA_EN_CIERRE`. */
 /** `jornadaVencida`: la sesión sigue abierta pasada su hora de corte (cobra en SU jornada, la que selló al abrir); la pantalla lo avisa. */
 export type ResultadoCobrarCuenta =
   | Exito<{ cobranzaId: string; yaExistia: boolean; jornadaVencida: boolean }>
-  | (Fracaso<CodigoDeFalloDeCobro> & { totalActualEnCentavos?: bigint; faltaEnCentavos?: bigint; sobraEnCentavos?: bigint; cobranzaId?: string; dato?: DatoDelCobro; motivo?: MotivoDeDatoInvalido });
+  | (Fracaso<CodigoDeFalloDeCobro> & { totalActualEnCentavos?: bigint; faltaEnCentavos?: bigint; sobraEnCentavos?: bigint; cobranzaId?: string; sesionId?: string; dato?: DatoDelCobro; motivo?: MotivoDeDatoInvalido });
 
-export type CodigoDeFalloDeCierre = "SESION_NO_ENCONTRADA" | "SESION_CERRADA" | "CONTEO_INVALIDO" | "CONFORME_FALTANTE";
+export interface ComandoIniciarCierre {
+  sesionId: string;
+}
+export type CodigoDeFalloDeCambioDeCierre = "SESION_NO_ENCONTRADA" | "SESION_CERRADA";
+/** `yaEstabaEnCierre`: repetir no escribe ni audita (idempotente por estado). */
+export type ResultadoIniciarCierre = Exito<{ sesionId: string; yaEstabaEnCierre: boolean }> | Fracaso<CodigoDeFalloDeCambioDeCierre>;
+
+export interface ComandoCancelarCierre {
+  sesionId: string;
+}
+/** `yaEstabaAbierta`: repetir no escribe ni audita (idempotente por estado). */
+export type ResultadoCancelarCierre = Exito<{ sesionId: string; yaEstabaAbierta: boolean }> | Fracaso<CodigoDeFalloDeCambioDeCierre>;
+
+export type CodigoDeFalloDeCierre = "SESION_NO_ENCONTRADA" | "SESION_CERRADA" | "SESION_NO_EN_CIERRE" | "CONTEO_INVALIDO" | "CONFORME_FALTANTE";
 export type ResultadoCerrarSesion = Exito<{ sesionId: string; yaEstabaCerrada: boolean; diferenciaEnEfectivoEnCentavos: bigint }> | Fracaso<CodigoDeFalloDeCierre>;
 
 // ----- Etapa C3: cuentas de cobro y medios de pago -----
@@ -291,6 +305,7 @@ export type ResultadoRegistrarAjuste =
       | "SIN_PERMISO_PARA_AJUSTAR"
       | "SESION_NO_ENCONTRADA"
       | "SESION_CERRADA"
+      | "CAJA_EN_CIERRE"
       | "MEDIO_NO_HABILITADO"
       | "IMPORTE_INVALIDO"
       | "MOTIVO_INVALIDO"
