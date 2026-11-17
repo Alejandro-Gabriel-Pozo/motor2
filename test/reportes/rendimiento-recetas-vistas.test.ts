@@ -1,7 +1,10 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+import { CASOS_DE_RENDIMIENTO_POR_BASE } from "./rendimiento-por-base.reglas";
 import {
   UMBRAL_DESVIO_AMBAR_PCT,
   bandaDeRuidoDeLote,
+  calcularCantidadEstimadaEnBase,
   calcularCantidadEstimadaNeta,
   calcularCantidadTeoricaBruta,
   calcularDesviacionPorcentaje,
@@ -12,6 +15,7 @@ import {
   motivoSinEstimacion,
   motivoSinEstimacionConteo,
   rotularLineaDeReceta,
+  rotuloDeBase,
 } from "../../src/core/reportes/rendimiento-recetas-vistas";
 
 describe("caso real: Agua mineral (72 comprados en cajas de 12, 63 vendidos, receta 1:1)", () => {
@@ -248,5 +252,46 @@ describe("explicarConfianza", () => {
 
   it("singular con 1 semana", () => {
     expect(explicarConfianza("baja", 1)).toBe("Baja — solo 1 semana con datos");
+  });
+});
+
+describe("rendimiento según la base de la línea (M3d)", () => {
+  it.each(CASOS_DE_RENDIMIENTO_POR_BASE)("$base cantidad $cantidadCargada · merma $mermaPorcentaje % → teórico, estimado y desvío del oráculo", (c) => {
+    const teorico = calcularCantidadTeoricaBruta(c.cantidadCargada, c.mermaPorcentaje, c.base);
+    expect(teorico).toBe(c.teoricoBruto);
+    expect(calcularCantidadEstimadaEnBase(c.estimadoBrutoObservado, c.mermaPorcentaje, c.base)).toBe(c.estimadoEnLaBase);
+    expect(calcularDesviacionPorcentaje(c.estimadoBrutoObservado, teorico)).toBe(c.desviacionPorcentaje);
+  });
+
+  it("sin la base (parámetro omitido) es NETA: el mismo resultado de siempre", () => {
+    expect(calcularCantidadTeoricaBruta(0.4, 10)).toBe(calcularCantidadTeoricaBruta(0.4, 10, "NETA"));
+  });
+
+  it("una base ilegible CIERRA: lanza en vez de asumir NETA", () => {
+    expect(() => calcularCantidadTeoricaBruta(0.4, 10, "OTRA" as never)).toThrow(/no es legible/);
+  });
+
+  it("rotuloDeBase usa los textos ya aprobados", () => {
+    expect(rotuloDeBase("NETA")).toBe("Neto");
+    expect(rotuloDeBase("BRUTA")).toBe("Bruto");
+  });
+
+  it("PROPIEDAD: la misma comida cargada en neto o en bruto da el mismo bruto teórico y el mismo desvío (dentro del redondeo del reporte)", () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 1, max: 20000 }), fc.integer({ min: 0, max: 9900 }), fc.integer({ min: 1, max: 40000 }), (cantidadNetaMilesimas, mermaCentesimas, estimadoMilesimas) => {
+        const neta = cantidadNetaMilesimas / 1000;
+        const merma = mermaCentesimas / 100;
+        const estimado = estimadoMilesimas / 1000;
+        const brutoEquivalente = neta * (1 + merma / 100);
+        const teoricoNeta = calcularCantidadTeoricaBruta(neta, merma, "NETA");
+        const teoricoBruta = calcularCantidadTeoricaBruta(brutoEquivalente, merma, "BRUTA");
+        expect(Math.abs(teoricoNeta - teoricoBruta)).toBeLessThanOrEqual(0.0011);
+        // El estimado que se escribe en bruta es el bruto observado; en neta, ese bruto dividido por el factor: convertido de vuelta coincide.
+        const escritoNeta = calcularCantidadEstimadaEnBase(estimado, merma, "NETA");
+        expect(Math.abs(escritoNeta * (1 + merma / 100) - estimado)).toBeLessThanOrEqual(0.0006 * (1 + merma / 100) + 1e-9);
+        expect(calcularCantidadEstimadaEnBase(estimado, merma, "BRUTA")).toBe(Math.round(estimado * 1000) / 1000);
+      }),
+      { numRuns: 300 }
+    );
   });
 });

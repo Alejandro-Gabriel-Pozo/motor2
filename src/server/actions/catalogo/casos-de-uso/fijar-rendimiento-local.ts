@@ -27,8 +27,10 @@ const INCLUDE_LINEA = {
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos ni el formato (el guard). Escribe siempre en `actor.sucursalId`, nunca en la
  * sucursal que declare el origen.
  *
- * DECISIÓN DEL DUEÑO (D4): "cantidad" es SIEMPRE el estimado NETO ya congelado (mismo criterio que hoy escribe la receta), y `origen` (si viene de una sugerencia)
- * trae la merma EFECTIVA que se usó para calcularlo — las dos se guardan juntas ("la merma se congela junto con la cantidad").
+ * DECISIÓN DEL DUEÑO (D4, 2026-09-26): "cantidad" es el estimado ya congelado, en la BASE de la línea que se calibra — NETO en una receta neta (mismo criterio que hoy escribe la receta). M3d (dueño,
+ * 2026-11-17: «Si el numer que guarsa también tiene que ser bruto»): en una receta BRUTA es el BRUTO. La calibración no lleva marca de base propia: hereda la de su línea
+ * (`RecetaVersion.baseDeCantidad`); el reporte ya entrega el número en esa base y esta acción solo lo guarda. `origen` (si viene de una sugerencia) trae la merma EFECTIVA que se usó para
+ * calcularlo — las dos se guardan juntas ("la merma se congela junto con la cantidad").
  *
  * @contract Deja la calibración pedida en la línea vigente de la receta, en la sucursal activa, con una fila de auditoría por campo que cambió: todo o nada.
  * @idempotency Optimista — la línea tiene que seguir siendo de la versión vigente (si la receta cambió mientras se miraba el reporte, se rechaza); repetir los mismos valores no deja filas de auditoría nuevas.
