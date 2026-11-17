@@ -35,7 +35,7 @@ describe("cargarOpcionesParaVender (lectura A)", () => {
     ]);
     const almendras = cafe.grupos[1]!.opciones.find((o) => o.opcionId === c.almendrasId)!;
     expect(almendras).toMatchObject({ versionVigenteId: c.versionDe[c.almendrasId], diferenciaDeLaVersion: { tipo: "MONTO", monto: 150 }, admitida: true, apagadaEnSucursal: false });
-    expect(almendras.consumos).toEqual([{ efecto: "REEMPLAZA", insumoProductoId: c.almendrasInsumoId, reemplazaAProductoId: c.lecheId, cantidad: 0.2, unidadStockId: s.kg.id, mermaPorcentaje: 0, escalaConLaMedida: false }]);
+    expect(almendras.consumos).toEqual([{ efecto: "REEMPLAZA", insumoProductoId: c.almendrasInsumoId, reemplazaAProductoId: c.lecheId, cantidad: 0.2, unidadStockId: s.kg.id, mermaPorcentaje: 0, baseDeCantidad: "NETA", escalaConLaMedida: false }]);
     expect(cafe.grupos[2]!.opciones[0]).toMatchObject({ opcionId: c.shotId, productoAnclaId: c.anclaDelShotId, cantidadMaxima: 3 });
     expect(opciones.get(c.anclaDelShotId)).toEqual({ grupos: [], anclaDeOpcionId: c.shotId, esBase: false });
     expect(opciones.get(s.milanesa.id)).toEqual({ grupos: [], anclaDeOpcionId: null, esBase: false });
@@ -47,6 +47,18 @@ describe("cargarOpcionesParaVender (lectura A)", () => {
     const opciones = await enTx((tx) => cargarOpcionesParaVender(tx, { sucursalId: s.sucursalId, productoIds: [c.cafeId, s.milanesa.id] }));
     expect(opciones.get(c.cafeId)!.esBase).toBe(true);
     expect(opciones.get(s.milanesa.id)!.esBase).toBe(false);
+  });
+
+  // M3a (2026-11-17): cada consumo lleva la base (NETA/BRUTA) de la versión VIGENTE de su opción (no la de una versión vieja); hoy ningún camino de la aplicación escribe BRUTA (M3b): la versión se crea directo.
+  it("cada consumo lleva la base de la versión VIGENTE de su opción: una versión nueva BRUTA gana sobre la NETA vieja", async () => {
+    const consumosDe = async () => {
+      const opciones = await enTx((tx) => cargarOpcionesParaVender(tx, { sucursalId: s.sucursalId, productoIds: [c.cafeId] }));
+      return opciones.get(c.cafeId)!.grupos[1]!.opciones.find((o) => o.opcionId === c.almendrasId)!.consumos.map((k) => k.baseDeCantidad);
+    };
+    expect(await consumosDe()).toEqual(["NETA"]);
+    const v2 = await prisma.versionDeOpcion.create({ data: { opcionId: c.almendrasId, numero: 2, tipoDeDiferencia: "MONTO", diferenciaPrecio: "150.00", baseDeCantidad: "BRUTA", creadoPorId: s.admin.id } });
+    await prisma.consumoDeOpcion.create({ data: { versionDeOpcionId: v2.id, efecto: "REEMPLAZA", insumoProductoId: c.almendrasInsumoId, reemplazaAProductoId: c.lecheId, cantidad: "0.3000", unidadId: s.kg.id } });
+    expect(await consumosDe()).toEqual(["BRUTA"]);
   });
 
   it("la vigente es la versión de NÚMERO mayor (no la última creada ni la primera)", async () => {

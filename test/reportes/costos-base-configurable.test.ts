@@ -14,7 +14,7 @@ describe("costos y márgenes de una base configurable", () => {
   };
   const pizzas: InfoProductoReporte = { ...insumo, id: "pv-1", codigo: "PV_PIZZAS", nombre: "Pizzas", tipo: "PV", precioVenta: 18000, esBase: true };
   const gaseosa: InfoProductoReporte = { ...insumo, id: "pv-2", codigo: "PV_GASEOSA", nombre: "Gaseosa", tipo: "PV", precioVenta: 4000 };
-  const ing = (productoId: string): IngredienteRecetaReporte => ({ recetaIngredienteId: `ri-${productoId}`, insumoProductoId: insumo.id, insumoNombre: insumo.nombre, cantidad: 2, unidadNombre: "kg", mermaPorcentaje: 0, cantidadCentral: 2, mermaPorcentajeCentral: 0, calibradoLocal: false });
+  const ing = (productoId: string): IngredienteRecetaReporte => ({ recetaIngredienteId: `ri-${productoId}`, insumoProductoId: insumo.id, insumoNombre: insumo.nombre, cantidad: 2, unidadNombre: "kg", mermaPorcentaje: 0, baseDeCantidad: "NETA", cantidadCentral: 2, mermaPorcentajeCentral: 0, calibradoLocal: false });
   const costo = (precio: number): CostoMP => ({ precioPorUnidadStock: precio, proveedorNombre: "Molino", fecha: new Date("2026-01-01") });
   const productos = new Map([[insumo.id, insumo], [pizzas.id, pizzas], [gaseosa.id, gaseosa]]);
   const recetas = new Map([[pizzas.id, [ing(pizzas.id)]], [gaseosa.id, [ing(gaseosa.id)]]]);

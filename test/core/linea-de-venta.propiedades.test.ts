@@ -25,6 +25,7 @@ const ingredienteArb: fc.Arbitrary<IngredienteParaVender> = fc.record({
   insumoProductoId: fc.constantFrom("mp-1", "mp-2", "mp-3"),
   cantidad: numeroArb,
   mermaPorcentaje: mermaArb,
+  baseDeCantidad: fc.constant("NETA" as const), // M3a: estas propiedades fijan la base NETA (la de todo lo ya cargado)
   rendimientosLocales: fc.array(calibracionArb, { maxLength: 4 }),
   insumoSustitutoIds: fc.array(fc.constantFrom("ins-1", "ins-2", "ins-3"), { maxLength: 3 }),
 });
