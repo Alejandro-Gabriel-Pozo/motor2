@@ -126,6 +126,7 @@ export function SidebarNav({
           <div key={grupo.id}>
             <button
               type="button"
+              aria-expanded={abierto}
               onClick={() => setExpandido((prev) => ({ ...prev, [grupo.id]: !abierto }))}
               className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left font-medium text-tinta hover:bg-superficie-suave"
             >
