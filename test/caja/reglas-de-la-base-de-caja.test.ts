@@ -74,8 +74,10 @@ async function armar(c: Client): Promise<Armado> {
   const sesion = randomUUID();
   await c.query(`INSERT INTO "Caja" ("id","sucursalId","nombre") VALUES ($1,$2,'Caja 1')`, [caja, s.sucursalId]);
   await c.query(`INSERT INTO "MedioDePago" ("id","tipo") VALUES ($1,'EFECTIVO')`, [efectivo]);
+  // C2: toda sesión cuelga de la jornada ABIERTA de su sucursal y fecha de negocio (la caja abre una sola vez por día de negocio).
+  await c.query(`INSERT INTO "JornadaDeSucursal" ("id","sucursalId","fechaDeNegocio") VALUES ($1,$2,'2026-01-15')`, [randomUUID(), s.sucursalId]);
   await c.query(
-    `INSERT INTO "SesionCaja" ("id","sucursalId","cajaId","estado","fechaDeNegocio","zonaHoraria","abiertaPorId","claveIdempotencia","huella") VALUES ($1,$2,$3,'ABIERTA','2026-01-15','America/Argentina/Buenos_Aires',$4,$5,$6)`,
+    `INSERT INTO "SesionCaja" ("id","sucursalId","cajaId","estado","fechaDeNegocio","abiertaEn","zonaHoraria","abiertaPorId","claveIdempotencia","huella") VALUES ($1,$2,$3,'ABIERTA','2026-01-15','2026-01-15T15:00:00Z','America/Argentina/Buenos_Aires',$4,$5,$6)`,
     [sesion, s.sucursalId, caja, s.admin.id, randomUUID(), HUELLA],
   );
   return { caja, efectivo, sesion };
@@ -91,7 +93,8 @@ describe("sesión: una sola sin cerrar por caja y el ciclo ABIERTA → CERRADA",
   it("un segundo INSERT de sesión abierta para la misma caja es 23505 (índice SesionCaja_una_sin_cerrar_por_caja_key)", async () => {
     const c = await comoApp();
     const a = await armar(c);
-    const otra = `INSERT INTO "SesionCaja" ("id","sucursalId","cajaId","estado","fechaDeNegocio","zonaHoraria","abiertaPorId","claveIdempotencia","huella") VALUES ($1,$2,$3,'ABIERTA','2026-01-15','America/Argentina/Buenos_Aires',$4,$5,$6)`;
+    await c.query(`INSERT INTO "JornadaDeSucursal" ("id","sucursalId","fechaDeNegocio") VALUES ($1,$2,'2026-01-16')`, [randomUUID(), s.sucursalId]);
+    const otra = `INSERT INTO "SesionCaja" ("id","sucursalId","cajaId","estado","fechaDeNegocio","abiertaEn","zonaHoraria","abiertaPorId","claveIdempotencia","huella") VALUES ($1,$2,$3,'ABIERTA','2026-01-15','2026-01-15T15:00:00Z','America/Argentina/Buenos_Aires',$4,$5,$6)`;
     expect(await falla(c, otra, [randomUUID(), s.sucursalId, a.caja, s.admin.id, randomUUID(), HUELLA])).toBe("23505");
     await c.query("ROLLBACK");
   });
@@ -377,7 +380,8 @@ describe("claves de reintento únicas y renglones agregados desde otra transacci
     await c.query(`INSERT INTO "ArqueoCaja" ("id","sucursalId","sesionId","medioDePagoId","esperado","contado","conforme") VALUES ($1,$2,$3,$4,100.00,100.00,false)`, [randomUUID(), s.sucursalId, a.sesion, a.efectivo]);
     await c.query(`INSERT INTO "ArqueoBillete" ("id","sucursalId","sesionId","denominacion","cantidad") VALUES ($1,$2,$3,100,1)`, [randomUUID(), s.sucursalId, a.sesion]);
     await c.query(`UPDATE "SesionCaja" SET "estado" = 'CERRADA', "cerradaEn" = now(), "cerradaPorId" = $2 WHERE "id" = $1`, [a.sesion, s.admin.id]);
-    const otra = `INSERT INTO "SesionCaja" ("id","sucursalId","cajaId","estado","fechaDeNegocio","zonaHoraria","abiertaPorId","claveIdempotencia","huella") VALUES ($1,$2,$3,'ABIERTA','2026-01-16','America/Argentina/Buenos_Aires',$4,$5,$6)`;
+    await c.query(`INSERT INTO "JornadaDeSucursal" ("id","sucursalId","fechaDeNegocio") VALUES ($1,$2,'2026-01-16')`, [randomUUID(), s.sucursalId]);
+    const otra = `INSERT INTO "SesionCaja" ("id","sucursalId","cajaId","estado","fechaDeNegocio","abiertaEn","zonaHoraria","abiertaPorId","claveIdempotencia","huella") VALUES ($1,$2,$3,'ABIERTA','2026-01-16','2026-01-16T15:00:00Z','America/Argentina/Buenos_Aires',$4,$5,$6)`;
     // La primera está CERRADA: el único motivo posible del 23505 es la clave repetida (no el índice de «una sin cerrar por caja»).
     expect(await falla(c, otra, [randomUUID(), s.sucursalId, a.caja, s.admin.id, clave, HUELLA])).toBe("23505");
     await c.query("ROLLBACK");

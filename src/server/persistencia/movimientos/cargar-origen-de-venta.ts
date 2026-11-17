@@ -6,6 +6,8 @@ import { whereSeccionHabitualVigente } from "@/core/stock/public";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
 import { crearLibroDeStock, type SeccionCandidata } from "@/core/movimientos/public";
 import type { DatosDeOrigen, OrigenPreparado, OrigenVenta } from "@/core/movimientos/public";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 
 /**
  * Cargador con Prisma del origen de la venta (docs/plan-seccion-habitual-stock-2026-09-25.md, C4): arma, EN LOTE (un solo `groupBy`
@@ -28,7 +30,7 @@ export async function prepararOrigen(tx: Prisma.TransactionClient, sucursalId: s
   if (origen.tipo === "seccion") {
     // Fase 6 (auditoría de seguridad/contratos): conPermiso no valida que la sección sea de ESTA sucursal, solo el permiso de quien llama.
     const seccion = await obtenerSeccionPropia(origen.seccionId, sucursalId, tx);
-    if (!seccion) return { ok: false, mensaje: "No se encontró la sección." };
+    if (!seccion) return { ok: false, mensaje: textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.seccion }) };
     // P17 (decisión del dueño, 2026-10-11): no se vende desde una sección dada de baja (la venta de mostrador elige la sección; el cierre de cuenta del POS ya usa solo las activas). El llamador corre esto
     // DESPUÉS de la clave I3: un reintento de una venta ya escrita devuelve el mensaje original.
     if (!seccion.activa) return { ok: false, mensaje: mensajeSeccionDesactivada(seccion.nombre) };
