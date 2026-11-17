@@ -42,7 +42,7 @@ const dibujar = (extra: Record<string, unknown>, vendible: boolean) => {
 describe("el precio de venta fuera del alta (pantalla)", () => {
   it("el arranque de la prueba es de verdad un alta de producto vendible (sin esto las demás pruebas no miden nada)", () => {
     const html = dibujar({}, true);
-    expect(html).toContain("Paso de venta");
+    expect(html).toContain("Nombre de cocina");
     expect(html).toContain("¿Qué es?");
   });
 

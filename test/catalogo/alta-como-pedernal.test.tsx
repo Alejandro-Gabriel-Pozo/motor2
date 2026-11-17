@@ -59,6 +59,13 @@ describe("alta de producto como Pedernal (M3 de la pantalla «Producto nuevo»)"
     for (const viejo of ["Materia prima (MP)", "Producto de venta (PV)", "Se produce (tiene receta propia", "Activo en todas las sucursales", 'name="seProduce"', 'name="tipoRadio"']) expect(html, viejo).not.toContain(viejo);
   });
 
+  it("el alta no pide categoría, insumo, unidad de compra, factor, paso de venta ni consignación, y tiene UNA «Unidad» (decisión del dueño, 2026-11-17); la edición los conserva (detalle en alta-como-pedernal-campos.test.tsx)", () => {
+    const html = alta({ puedeGestionarConsignacion: true, puedeCrear: { categoria: true, insumo: true, proveedor: true } });
+    for (const sacado of ["Sin categoría", "Sin insumo", "+ Nueva categoría", "+ Nuevo insumo", 'name="unidadCompraId"', 'name="factorConversion"', "Es consignación", "Unidad de stock"]) expect(html, sacado).not.toContain(sacado);
+    expect(html).toMatch(/<label[^>]*>Unidad<span/);
+    expect(renderToStaticMarkup(<ProductoForm {...comunes} productoExistente={existente({})} />)).toContain('name="factorConversion"');
+  });
+
   it("Insumo se ofrece (E2); Reventa NO (el CHECK de la base no la admite hasta E4): no se inventa", () => {
     const html = alta();
     expect(html).toContain(">Insumo</option>");

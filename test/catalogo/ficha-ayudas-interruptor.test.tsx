@@ -99,9 +99,8 @@ describe("ficha del producto, alta: el aviso «No se va a poder vender todavía�
     // Pantalla anterior (interruptor ALTA_DE_PRODUCTO_COMO_PEDERNAL apagado): la casilla «Activo en todas las sucursales» (archivo propio desde #422) lleva el aviso como rama, no dentro de la ayuda.
     const casilla = readFileSync("src/app/(app)/catalogo/productos/casilla-activo-en-todas.tsx", "utf-8");
     expect(casilla).toMatch(/naceSinPoderVenderse \? \(\s*<AvisoAltaSinPrecio \/>\s*\) : \(\s*<AyudaDeFicha>/);
-    // Pantalla como Pedernal: el aviso va solo, sin envolverlo en `AyudaDeFicha` (que el interruptor de ayudas oculta).
+    // Pantalla como Pedernal (decisión del dueño, 2026-11-17: el alta es UNA pantalla final, sin párrafos ni avisos): el formulario ya no dibuja el aviso, y nunca lo envuelve en `AyudaDeFicha`.
     const formulario = readFileSync("src/app/(app)/catalogo/productos/producto-form.tsx", "utf-8");
-    expect(formulario).toMatch(/naceSinPoderVenderse && <AvisoAltaSinPrecio \/>/);
-    expect(formulario).not.toMatch(/<AyudaDeFicha>\s*<AvisoAltaSinPrecio/);
+    expect(formulario).not.toMatch(/<AvisoAltaSinPrecio/);
   });
 });

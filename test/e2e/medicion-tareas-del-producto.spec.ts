@@ -266,11 +266,11 @@ test.describe("medición de las tareas del producto (el espacio) contra el umbra
     await m.elegir(page.getByLabel("¿Qué es?"), "Producto vendible", "elegir «¿Qué es?»: Producto vendible");
     // La clase «agarró» (antes lo confirmaba el campo de precio). Si se eligió antes de hidratar, la pantalla vuelve a «Materia prima»: se reelige FUERA del medidor (no suma pasos ni clics a la tarea).
     await expect(async () => {
-      if (!(await page.getByLabel("Paso de venta").isVisible())) await page.getByLabel("¿Qué es?").selectOption({ label: "Producto vendible" });
-      await expect(page.getByLabel("Paso de venta")).toBeVisible({ timeout: 1500 });
+      if (!(await page.getByLabel("Nombre de cocina").isVisible())) await page.getByLabel("¿Qué es?").selectOption({ label: "Producto vendible" });
+      await expect(page.getByLabel("Nombre de cocina")).toBeVisible({ timeout: 1500 });
     }).toPass({ timeout: 20_000 });
     await m.llenar(page.locator('input[name="nombre"]'), nombre, "escribir el nombre");
-    await m.elegir(page.getByLabel("Unidad de stock"), "unidad", "elegir la unidad de stock");
+    await m.elegir(page.getByRole("combobox", { name: "Unidad", exact: true }), "unidad", "elegir la unidad");
     await m.clic(page.getByRole("button", { name: "Crear producto" }), "tocar «Crear producto»");
     await m.ver("se llega a la ficha del producto creado", () => expect(page).toHaveURL(/\/catalogo\/productos\/[^/?]+\?guardado=alta/));
     // Frente 2: el alta ya no pide precio, así que el producto nace SIN precio y NO disponible (A1) hasta que se le cargue el precio en «Precios» y se active.
@@ -315,11 +315,11 @@ test.describe("medición de las tareas del producto (el espacio) contra el umbra
     await m.elegir(page.getByLabel("¿Qué es?"), "Producto vendible", "elegir «¿Qué es?»: Producto vendible");
     // La clase «agarró» (antes lo confirmaba el campo de precio). Si se eligió antes de hidratar, la pantalla vuelve a «Materia prima»: se reelige FUERA del medidor (no suma pasos ni clics a la tarea).
     await expect(async () => {
-      if (!(await page.getByLabel("Paso de venta").isVisible())) await page.getByLabel("¿Qué es?").selectOption({ label: "Producto vendible" });
-      await expect(page.getByLabel("Paso de venta")).toBeVisible({ timeout: 1500 });
+      if (!(await page.getByLabel("Nombre de cocina").isVisible())) await page.getByLabel("¿Qué es?").selectOption({ label: "Producto vendible" });
+      await expect(page.getByLabel("Nombre de cocina")).toBeVisible({ timeout: 1500 });
     }).toPass({ timeout: 20_000 });
     await m.llenar(page.locator('input[name="nombre"]'), producto, "escribir el nombre del producto");
-    await m.elegir(page.getByLabel("Unidad de stock"), "unidad", "elegir la unidad de stock");
+    await m.elegir(page.getByRole("combobox", { name: "Unidad", exact: true }), "unidad", "elegir la unidad");
     await m.clic(page.getByRole("button", { name: "Crear producto" }), "tocar «Crear producto»");
     await m.ver("se llega a la ficha del producto", () => expect(page).toHaveURL(/\/catalogo\/productos\/[^/?]+\?guardado=alta/));
 

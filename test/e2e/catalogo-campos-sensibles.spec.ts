@@ -193,13 +193,15 @@ test("sin la clave, el alta se ve como la crea el servidor (precio 0, factor 1, 
   try {
     await page.goto("/catalogo/productos/nuevo");
     await expect(page.locator('input[name="nombre"]')).toBeVisible();
-    await expect(soloLectura(page, "factorConversion")).toContainText("1");
-    await expect(soloLectura(page, "unidadCompraId")).toContainText("Sin unidad de compra");
+    // Como Pedernal, el alta ya no muestra factor ni unidad de compra (ni editables ni en solo lectura): el servidor crea con factor 1 y sin unidad de compra, y se completan en la ficha.
+    await expect(soloLectura(page, "factorConversion")).toHaveCount(0);
+    await expect(soloLectura(page, "unidadCompraId")).toHaveCount(0);
     await expect(page.getByLabel("Factor de conversión (unidades de stock por unidad de compra)")).toHaveCount(0);
     await expect(page.getByLabel("Unidad de compra", { exact: true })).toHaveCount(0);
-    await expect(aviso(page)).toContainText("campos sensibles del producto");
-    // La unidad de stock del alta queda libre (el servidor no la protege: sin ella no hay producto).
-    await expect(page.getByLabel("Unidad de stock")).toBeEnabled();
+    // El alta es una pantalla final como la de Pedernal: sin avisos (el servidor crea con precio 0, factor 1 y sin unidad de compra).
+    await expect(aviso(page)).toHaveCount(0);
+    // La unidad del alta queda libre (el servidor no la protege: sin ella no hay producto).
+    await expect(page.getByRole("combobox", { name: "Unidad", exact: true })).toBeEnabled();
 
     // Una materia prima no se vende: sin aviso. Como Pedernal, el alta ya no ofrece «Activo en todas las sucursales» (nace disponible en todas, el valor de hoy).
     await expect(page.getByLabel("Activo en todas las sucursales")).toHaveCount(0);
@@ -211,12 +213,10 @@ test("sin la clave, el alta se ve como la crea el servidor (precio 0, factor 1, 
     await expect(page.getByLabel("Precio de venta", { exact: true })).toHaveCount(0);
     // M.2-A4: un PV sin la clave nace sin precio, así que NO se puede vender: un aviso (visible, no una ayuda gris) lo dice. Sin casilla de sucursales (alta como Pedernal): el servidor lo deja no disponible.
     await expect(page.getByLabel("Activo en todas las sucursales")).toHaveCount(0);
-    await expect(sinPoderVender(page)).toBeVisible();
-    await expect(sinPoderVender(page)).toContainText("No se va a poder vender todavía");
-    await expect(sinPoderVender(page)).toContainText("campos sensibles del producto");
+    await expect(sinPoderVender(page)).toHaveCount(0); // el alta no dibuja avisos (decisión del dueño, 2026-11-17); el producto igual nace sin precio y NO disponible (se comprueba abajo)
 
     await page.locator('input[name="nombre"]').fill(nombre);
-    await page.getByLabel("Unidad de stock").selectOption({ label: "unidad" });
+    await page.getByRole("combobox", { name: "Unidad", exact: true }).selectOption({ label: "unidad" });
     await page.getByRole("button", { name: "Crear producto" }).click();
     await page.waitForURL(/\/catalogo\/productos\/[^/?]+\?guardado=alta$/);
     const creado = await prisma.producto.findFirstOrThrow({ where: { nombre } });
@@ -310,11 +310,11 @@ test("M.2-A2: un rol con alta_producto pero SIN producto_editar ni la clave fina
     await page.goto("/catalogo/productos/nuevo");
     await expect(page.locator('input[name="nombre"]')).toBeVisible();
     await page.getByLabel("¿Qué es?").selectOption({ label: "Producto vendible" });
-    await expect(aviso(page)).toContainText("campos sensibles del producto");
-    await expect(sinPoderVender(page)).toBeVisible();
+    await expect(aviso(page)).toHaveCount(0);
+    await expect(sinPoderVender(page)).toHaveCount(0);
     await expect(page.getByLabel("Activo en todas las sucursales")).toHaveCount(0);
     await page.locator('input[name="nombre"]').fill(nombre);
-    await page.getByLabel("Unidad de stock").selectOption({ label: "unidad" });
+    await page.getByRole("combobox", { name: "Unidad", exact: true }).selectOption({ label: "unidad" });
     await page.getByRole("button", { name: "Crear producto" }).click();
     await page.waitForURL(/\/catalogo\/productos\/[^/?]+\?guardado=alta$/);
 
@@ -358,12 +358,12 @@ test("accesibilidad (axe) sin la clave: la edición de una materia prima y de un
     await sinViolaciones("edición de producto de venta en solo lectura");
 
     await page.goto("/catalogo/productos/nuevo");
-    await expect(soloLectura(page, "factorConversion")).toBeVisible();
+    await expect(page.locator('input[name="nombre"]')).toBeVisible();
     await sinViolaciones("alta de materia prima sin la clave");
     await page.getByLabel("¿Qué es?").selectOption({ label: "Producto vendible" });
     await expect(soloLectura(page, "precioVenta")).toHaveCount(0); // Frente 2: el alta no muestra el precio
-    await expect(sinPoderVender(page)).toBeVisible();
-    await sinViolaciones("alta de producto de venta sin la clave (con el aviso de que no se podrá vender)");
+    await expect(sinPoderVender(page)).toHaveCount(0);
+    await sinViolaciones("alta de producto de venta sin la clave");
   } finally {
     await limpiar();
     await limpiarProductos();

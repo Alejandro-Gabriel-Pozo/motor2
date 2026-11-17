@@ -28,7 +28,7 @@ test("cada clase del alta se guarda con el tipo y «se produce» de siempre, y e
       // Frente 2: el alta no pide precio (se carga en la pestaña «Precios» de la ficha).
       await expect(page.getByLabel("Precio de venta")).toHaveCount(0);
       await page.locator('input[name="nombre"]').fill(c.nombre);
-      await page.getByLabel("Unidad de stock").selectOption({ label: "unidad" });
+      await page.getByRole("combobox", { name: "Unidad", exact: true }).selectOption({ label: "unidad" });
       await page.getByRole("button", { name: "Crear producto" }).click();
       await page.waitForURL(/\/catalogo\/productos\/[^/?]+\?guardado=alta/);
       const guardado = await prisma.producto.findFirstOrThrow({ where: { nombre: c.nombre } });

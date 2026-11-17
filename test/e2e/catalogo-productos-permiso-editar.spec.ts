@@ -186,14 +186,37 @@ test("un rol CON permiso de editar el alta ve «+ Nuevo producto» y el formular
   }
 });
 
-test("el formulario de producto no ofrece «+ Nueva categoría», «+ Nuevo insumo» ni «+ Nuevo proveedor» a quien no puede dar de alta eso", async ({ browser, baseURL, sucursalId }) => {
-  // Cada alta rápida la guarda su propio permiso de Editar (categoria_alta, insumo_alta, proveedor_alta); el rol puede dar de alta productos pero nada de eso.
-  const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { altaEditar: true });
+/** Una materia prima (la edición ofrece su insumo). El alta como Pedernal ya no pide categoría, insumo ni consignación (decisión del dueño, 2026-11-17): esas altas rápidas viven en la EDICIÓN. */
+async function crearMateriaPrima(marca: number) {
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
+  return prisma.producto.create({ data: { codigo: `E2E-PE-MP-${marca}`, nombre: `E2E Permiso Editar MP ${marca}`, tipo: "MP", unidadStockId: unidad.id } });
+}
+const borrarProducto = async (id: string) => {
+  await prisma.disponibilidadProducto.deleteMany({ where: { productoId: id } });
+  await prisma.producto.deleteMany({ where: { id } });
+};
+
+test("el alta como Pedernal no pide categoría, insumo ni consignación ni ofrece sus «+ Nuevo …», ni siquiera a quien tiene todos los permisos", async ({ browser, baseURL, sucursalId }) => {
+  const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { altaEditar: true, altasRapidas: true });
   try {
     await page.goto("/catalogo/productos/nuevo");
     await expect(page.locator('input[name="nombre"]')).toBeVisible();
+    await expect(page.getByLabel("Es consignación")).toHaveCount(0);
+    for (const boton of ["+ Nueva categoría", "+ Nuevo insumo", "+ Nuevo proveedor"]) await expect(page.getByRole("button", { name: boton })).toHaveCount(0);
+  } finally {
+    await limpiar();
+  }
+});
+
+test("el formulario de edición de producto no ofrece «+ Nueva categoría», «+ Nuevo insumo» ni «+ Nuevo proveedor» a quien no puede dar de alta eso", async ({ browser, baseURL, sucursalId }) => {
+  // Cada alta rápida la guarda su propio permiso de Editar (categoria_alta, insumo_alta, proveedor_alta); el rol puede editar productos pero nada de eso.
+  const producto = await crearMateriaPrima(Date.now());
+  const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { editarProducto: true });
+  try {
+    await page.goto(`/catalogo/productos/${producto.id}/datos`);
+    await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
     // S-12 (D8): el bloque de consignación (donde vive el selector de proveedor y su «+ Nuevo proveedor») es de quien tiene `pagar_consignante`, que un rol propio no puede tener (piso
-    // administrador): este rol ni siquiera ve la casilla. Antes el test la tildaba para desplegar el bloque.
+    // administrador): este rol ni siquiera ve la casilla.
     await expect(page.getByLabel("Es consignación")).toHaveCount(0);
     await expect(page.getByLabel("Proveedor de consignación")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "+ Nueva categoría" })).toHaveCount(0);
@@ -201,29 +224,37 @@ test("el formulario de producto no ofrece «+ Nueva categoría», «+ Nuevo insu
     await expect(page.getByRole("button", { name: "+ Nuevo proveedor" })).toHaveCount(0);
   } finally {
     await limpiar();
+    await borrarProducto(producto.id);
   }
 });
 
-test("un rol CON los permisos de alta de categoría, insumo y proveedor ve los tres «+ Nuevo …» en el formulario de producto", async ({ browser, baseURL, sucursalId }) => {
+test("un rol CON los permisos de alta de categoría, insumo y proveedor ve los «+ Nuevo …» en el formulario de edición de producto", async ({ browser, baseURL, sucursalId }) => {
   // Contraespejo: impide «arreglarlo» escondiendo las altas rápidas para todos.
-  const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { altaEditar: true, altasRapidas: true });
+  const producto = await crearMateriaPrima(Date.now());
+  const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { editarProducto: true, altasRapidas: true });
   try {
-    await page.goto("/catalogo/productos/nuevo");
-    await expect(page.locator('input[name="nombre"]')).toBeVisible();
+    await page.goto(`/catalogo/productos/${producto.id}/datos`);
+    await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
     await expect(page.getByRole("button", { name: "+ Nueva categoría" })).toBeVisible();
     await expect(page.getByRole("button", { name: "+ Nuevo insumo" })).toBeVisible();
     // El proveedor se da de alta desde el bloque de consignación, que este rol no ve (S-12): el contraespejo del proveedor es el del administrador, justo abajo.
     await expect(page.getByLabel("Es consignación")).toHaveCount(0);
   } finally {
     await limpiar();
+    await borrarProducto(producto.id);
   }
 });
 
-test("el administrador (con pagar_consignante y proveedor_alta) ve la consignación y su «+ Nuevo proveedor» en el formulario de alta", async ({ paginaAutenticada: page }) => {
+test("el administrador (con pagar_consignante y proveedor_alta) ve la consignación y su «+ Nuevo proveedor» en el formulario de edición", async ({ paginaAutenticada: page }) => {
   // Contraespejo de S-12/D8: la consignación se esconde a quien no tiene `pagar_consignante`, no a todos.
-  await page.goto("/catalogo/productos/nuevo");
-  await expect(page.locator('input[name="nombre"]')).toBeVisible();
-  await page.getByLabel("Es consignación").check();
-  await expect(page.getByLabel("Proveedor de consignación")).toBeVisible();
-  await expect(page.getByRole("button", { name: "+ Nuevo proveedor" })).toBeVisible();
+  const producto = await crearMateriaPrima(Date.now());
+  try {
+    await page.goto(`/catalogo/productos/${producto.id}/datos`);
+    await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
+    await page.getByLabel("Es consignación").check();
+    await expect(page.getByLabel("Proveedor de consignación")).toBeVisible();
+    await expect(page.getByRole("button", { name: "+ Nuevo proveedor" })).toBeVisible();
+  } finally {
+    await borrarProducto(producto.id);
+  }
 });

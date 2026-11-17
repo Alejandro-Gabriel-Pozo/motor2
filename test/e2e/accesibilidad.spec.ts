@@ -448,15 +448,10 @@ testAutenticado("catalogo/productos/nuevo: el formulario de alta (materia prima,
   await conTitulo(page, "Nuevo producto");
   await expect(page.locator('input[name="nombre"]')).toBeVisible(); // se renderizó el formulario y no un mensaje de permiso
 
-  // Materia prima (lo que abre por defecto): categoría, insumo, unidad de stock, unidad de compra, factor y «se produce».
+  // Materia prima (lo que abre por defecto): como Pedernal, «¿Qué es?», nombre, código y una «Unidad» (sin categoría, insumo, unidad de compra, factor ni consignación: decisión del dueño, 2026-11-17).
   expect((await new AxeBuilder({ page }).analyze()).violations, "alta de materia prima").toEqual([]);
 
-  // Es consignación: suma el proveedor y el precio de consignación.
-  await page.getByLabel("Es consignación").check();
-  await expect(page.getByRole("combobox", { name: "Proveedor de consignación" })).toBeVisible();
-  expect((await new AxeBuilder({ page }).analyze()).violations, "alta en consignación").toEqual([]);
-
-  // Producto de venta: sin insumo ni unidad de compra y, desde el Frente 2, sin precio de venta (se carga en la pestaña «Precios» de la ficha).
+  // Producto de venta: con su alícuota de IVA y, desde el Frente 2, sin precio de venta (se carga en la pestaña «Precios» de la ficha).
   await page.getByLabel("¿Qué es?").selectOption({ label: "Producto vendible" });
   await expect(page.getByLabel("Precio de venta")).toHaveCount(0);
   expect((await new AxeBuilder({ page }).analyze()).violations, "alta de producto de venta").toEqual([]);

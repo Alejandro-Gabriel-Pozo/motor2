@@ -53,7 +53,7 @@ export function alicuotasDelFormulario(
  * «IVA de venta» (PV) o «IVA de compra» (MP). Nada preelegido; vacío = «sin declarar» y la pantalla lo dice («Pendiente de completar»). Sin la clave fina, solo lectura. El formulario lo monta con `key={tipo}`:
  * al cambiar de tipo en el alta no se arrastra la alícuota elegida (la de venta y la de compra son datos distintos).
  */
-export function CampoAlicuotaIva({ tipo, existente, puedeEditar }: { tipo: TipoProducto; existente: AlicuotasGuardadas | undefined; puedeEditar: boolean }) {
+export function CampoAlicuotaIva({ tipo, existente, puedeEditar, sinAyudas = false }: { tipo: TipoProducto; existente: AlicuotasGuardadas | undefined; puedeEditar: boolean; sinAyudas?: boolean }) {
   const guardada = alicuotaGuardadaDe(tipo, existente);
   const [alicuota, setAlicuota] = useState<string>(guardada ?? "");
   const etiqueta = tipo === "PV" ? "IVA de venta" : "IVA de compra";
@@ -76,7 +76,7 @@ export function CampoAlicuotaIva({ tipo, existente, puedeEditar }: { tipo: TipoP
           <AyudaCampo>Para cambiarla hace falta el mismo permiso que para el precio de venta.</AyudaCampo>
         </>
       )}
-      {puedeEditar && alicuota === "" && (
+      {puedeEditar && !sinAyudas && alicuota === "" && (
         <p className="text-xs text-tinta-tenue" data-alicuota-pendiente>
           Pendiente de completar
         </p>

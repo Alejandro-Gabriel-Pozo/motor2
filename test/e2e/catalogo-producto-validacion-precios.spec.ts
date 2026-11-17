@@ -51,19 +51,23 @@ test("un precio de venta negativo queda inválido en el campo", async ({ paginaA
   });
 });
 
+/** El alta como Pedernal ya no pide el factor de conversión (decisión del dueño, 2026-11-17); la validación se prueba donde se pide hoy, la edición de una materia prima (clave `producto_campos_sensibles`). */
 test("un factor de conversión con más decimales de los que admite la unidad de stock (kg admite 2) queda inválido", async ({ paginaAutenticada: page }) => {
-  await page.goto("/catalogo/productos/nuevo");
-
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const nombreProducto = `E2E Factor Inválido ${Date.now()}`;
-  await page.locator('input[name="nombre"]').fill(nombreProducto);
-  await page.getByLabel("Unidad de stock").selectOption({ label: "kg" });
+  const producto = await prisma.producto.create({ data: { codigo: `E2E-FACTOR-${Date.now()}`, nombre: nombreProducto, tipo: "MP", unidadStockId: kg.id } });
+  try {
+    await page.goto(`/catalogo/productos/${producto.id}/datos`);
+    const factor = page.getByLabel("Factor de conversión (unidades de stock por unidad de compra)");
+    await factor.fill("1,234");
+    await page.getByRole("button", { name: "Guardar cambios" }).click();
 
-  const factor = page.getByLabel("Factor de conversión (unidades de stock por unidad de compra)");
-  await factor.fill("1,234");
-  await page.getByRole("button", { name: "Crear producto" }).click();
-
-  expect(await factor.evaluate((e: HTMLInputElement) => e.validity.customError), "el factor de conversión tiene que quedar inválido").toBe(true);
-  expect(await factor.evaluate((e: HTMLInputElement) => e.validationMessage)).toMatch(/admite como máximo 2 decimales/);
-  await page.waitForTimeout(500);
-  expect(await prisma.producto.count({ where: { nombre: nombreProducto } }), "no tenía que crearse ningún producto").toBe(0);
+    expect(await factor.evaluate((e: HTMLInputElement) => e.validity.customError), "el factor de conversión tiene que quedar inválido").toBe(true);
+    expect(await factor.evaluate((e: HTMLInputElement) => e.validationMessage)).toMatch(/admite como máximo 2 decimales/);
+    await page.waitForTimeout(500);
+    expect(Number((await prisma.producto.findUniqueOrThrow({ where: { id: producto.id } })).factorConversion), "el factor no tenía que cambiar").toBe(1);
+  } finally {
+    await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });
+    await prisma.producto.deleteMany({ where: { id: producto.id } });
+  }
 });

@@ -2,10 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { QuickCrear } from "@/components/catalogo/quick-crear";
-import { AsistenteHermanar } from "@/components/catalogo/asistente-hermanar";
 import { GestionPresentaciones } from "@/components/catalogo/gestion-presentaciones";
-import { CampoNumero } from "@/components/campo-numero"; import { nombreDelCampo } from "./nombre-del-campo-del-alta";
+import { nombreDelCampo } from "./nombre-del-campo-del-alta";
+import { CampoCategoria } from "./campo-categoria"; import { CampoInsumo } from "./campo-insumo"; import { CampoPasoDeVenta } from "./campo-paso-de-venta";
+import { BloqueConsignacion } from "./bloque-consignacion"; import { CamposDeUnidad, type OpcionUnidad } from "./campos-de-unidad";
 import { AyudaCampo } from "@/components/ayuda-campo";
 import { AyudaDeFicha } from "@/components/catalogo/ayuda-de-ficha";
 import { ALTA_DE_PRODUCTO_COMO_PEDERNAL, CLASES_DE_ALTA, claseDeAltaDe, OBSERVACIONES_VISIBLES, PRESENTACIONES_VISIBLES, type ClaveDeClaseDeAlta } from "@/core/catalogo/public";
@@ -13,7 +13,7 @@ import { CampoPrecioDeVenta } from "./campo-precio-de-venta"; import { CampoQueE
 import { CampoAlicuotaIva, alicuotasDelFormulario } from "./campo-alicuota-iva"; import { CampoNombreDeCocina, nombreDeCocinaDelFormulario } from "./campo-nombre-de-cocina";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { SincronizarPrecioGrupo } from "@/components/carta/sincronizar-precio-grupo";
-import { AvisoAltaSinPrecio, AvisoCamposSensibles, ValorSoloLectura } from "@/components/catalogo/campos-sensibles-solo-lectura";
+import { AvisoCamposSensibles, ValorSoloLectura } from "@/components/catalogo/campos-sensibles-solo-lectura";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { AreaDeTexto } from "@/ui/primitivas/area-de-texto";
 import { Aviso } from "@/ui/primitivas/aviso";
@@ -21,31 +21,17 @@ import { Boton } from "@/ui/primitivas/boton";
 import { Campo } from "@/ui/primitivas/campo";
 import { Casilla } from "@/ui/primitivas/casilla";
 import { OpcionesExcluyentes } from "@/ui/primitivas/opciones-excluyentes";
-import { Selector } from "@/ui/primitivas/selector";
 import type { CampoSensibleDelProducto } from "@/core/features/catalogo/productos.schema";
 import { darDeAltaProducto, actualizarProducto, sincronizarPrecioGrupoCarta, type DatosProducto, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
 import type { SincronizablePrecioGrupo } from "@/server/actions/tipos";
-import { crearInsumo } from "@/server/actions/catalogo/insumos";
-import { crearCategoriaProducto } from "@/server/actions/catalogo/categorias-producto";
-import { altaProveedor } from "@/server/actions/catalogo/proveedores";
 import { MODO_DE_VENTA, esBaseConfigurable, modoDeVentaDe, type ModoDeVenta } from "@/core/opciones/public";
 import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
-import { formatearCantidad, formatearMonto } from "@/core/formato-de-numero";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 interface Opcion {
   id: string;
   nombre: string;
 }
-
-interface OpcionUnidad extends Opcion {
-  /** 0-6: cuántos decimales admite — para validar `factorConversion` con el mismo criterio del servidor (validarCantidad). */
-  decimales: number;
-  /** M.2-A4 (D): una unidad que el producto usa pero se desactivó (la edición la incluye para no mostrarla como «sin unidad» ni borrarla al guardar). Se ve con «(inactiva)» y no se ofrece para presentaciones nuevas. */
-  inactiva?: boolean;
-}
-
-/** El nombre de la unidad como se ve en el formulario: las inactivas llevan «(inactiva)». */
-const etiquetaDeUnidad = (u: OpcionUnidad) => (u.inactiva ? `${u.nombre} (inactiva)` : u.nombre);
 
 export interface ProductoExistente extends DatosProducto {
   id: string;
@@ -135,10 +121,6 @@ export function ProductoForm({
   const unidadDeStockEditable = puedeEditarCamposSensibles || !editando;
   // M.2-A4: un producto de venta dado de alta SIN la clave nace con precio $0 y el servidor lo deja NO disponible en ninguna sucursal (no se puede vender a $0): el tilde se ve apagado y sin poder cambiarse.
   const naceSinPoderVenderse = !editando && tipo === "PV" && !puedeEditarCamposSensibles; const rotulos = altaComoPedernal && !editando; // rótulo VISIBLE arriba de cada campo (dirección del dueño, 2026-11-17)
-  const nombreDeUnidad = (id: string | null | undefined) => {
-    const u = unidades.find((x) => x.id === id);
-    return u ? etiquetaDeUnidad(u) : undefined;
-  };
   const irALaFicha = (id: string | null) => router.push(id ? `/catalogo/productos/${id}?guardado=${editando ? "cambios" : "alta"}` : "/catalogo/productos");
 
   return (
@@ -155,7 +137,7 @@ export function ProductoForm({
           factorConversion: numeroDelCampo(String(form.get("factorConversion") ?? "")) ?? Number.NaN,
           precioVenta: numeroDelCampo(String(form.get("precioVenta") ?? "")) ?? 0,
         };
-        const sensiblesDelAlta: DatosSensibles = puedeEditarCamposSensibles ? delFormulario : { unidadCompraId: null, unidadStockId, factorConversion: 1, precioVenta: 0 };
+        const sensiblesDelAlta: DatosSensibles = puedeEditarCamposSensibles && !rotulos ? delFormulario : { unidadCompraId: null, unidadStockId, factorConversion: 1, precioVenta: 0 };
         // Fase 4: siendo (o pasando a ser) base, el precio de venta NO se manda: el servidor conserva el guardado.
         const { precioVenta: _precioDelFormulario, ...delFormularioSinPrecio } = delFormulario;
         void _precioDelFormulario;
@@ -204,7 +186,7 @@ export function ProductoForm({
       }}
       className="flex max-w-xl flex-col gap-3"
     >
-      {sinEncabezado ? null : <h2 className="font-medium">{editando ? `Editar "${productoExistente!.nombre}"` : "Nuevo producto"}</h2>}
+      {sinEncabezado || rotulos ? null : <h2 className="font-medium">{editando ? `Editar "${productoExistente!.nombre}"` : "Nuevo producto"}</h2>}
 
       {altaComoPedernal ? (
         <CampoQueEs editando={editando} clase={clase} alCambiar={(c) => { setClase(c); setTipo(CLASES_DE_ALTA[c].tipo); }} />
@@ -229,139 +211,37 @@ export function ProductoForm({
         />
       )}
 
-      {!editando && <Campo name="codigo" {...nombreDelCampo(rotulos, "Código (opcional, se autogenera)")} />}
+      {!editando && !rotulos && <Campo name="codigo" {...nombreDelCampo(false, "Código (opcional, se autogenera)")} />}
       <Campo name="nombre" {...nombreDelCampo(rotulos, "Nombre")} defaultValue={productoExistente?.nombre} required /><CampoNombreDeCocina rotuloVisible={rotulos} tipo={tipo} valorInicial={productoExistente?.nombreDeCocina} />
+      {rotulos && <Campo name="codigo" {...nombreDelCampo(true, "Código (opcional, se autogenera)")} />}{/* orden de la maqueta de Pedernal: Nombre, Nombre de cocina, Código */}
 
-      <div className={`flex gap-2 ${rotulos ? "items-end" : "items-center"}`}>
-        <div className="flex-1">
-          <Selector etiqueta="Categoría" etiquetaOculta={!rotulos} value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)}>
-            <option value="">Sin categoría</option>
-            {categorias.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nombre}
-              </option>
-            ))}
-          </Selector>
-        </div>
-        {puedeCrear.categoria && (
-          <QuickCrear
-            triggerLabel="+ Nueva categoría"
-            title="Nueva categoría"
-            campoLabel="Nombre"
-            accion={crearCategoriaProducto}
-            onCreado={(item) => {
-              setCategorias((prev) => [...prev, item]);
-              setCategoriaId(item.id);
-            }}
-          />
-        )}
-      </div>
-
-      {tipo === "MP" && (
-        <div className="flex flex-col gap-1">
-          <div className={`flex gap-2 ${rotulos ? "items-end" : "items-center"}`}>
-            <div className="flex-1">
-              <Selector etiqueta="Insumo" etiquetaOculta={!rotulos} value={insumoId} onChange={(e) => setInsumoId(e.target.value)}>
-                <option value="">Sin insumo</option>
-                {insumos.map((i) => (
-                  <option key={i.id} value={i.id}>
-                    {i.nombre}
-                  </option>
-                ))}
-              </Selector>
-            </div>
-            {puedeCrear.insumo && (
-              <QuickCrear
-                triggerLabel="+ Nuevo insumo"
-                title="Nuevo insumo"
-                campoLabel="Nombre"
-                accion={crearInsumo}
-                onCreado={(item) => {
-                  setInsumos((prev) => [...prev, item]);
-                  setInsumoId(item.id);
-                }}
-              />
-            )}
-          </div>
-          <AsistenteHermanar
-            unidadStockId={unidadStockId}
-            onResuelto={(id, nombre) => {
-              setInsumos((prev) => (prev.some((i) => i.id === id) ? prev : [...prev, { id, nombre }]));
-              setInsumoId(id);
-            }}
-          />
-          <AyudaDeFicha>
-            Agrupa esta materia prima con otras que sean, en la práctica, la misma (ej. comprada a proveedores distintos) — comparten stock
-            automáticamente si una se queda sin stock, y se comparan sus precios entre sí.
-          </AyudaDeFicha>
-        </div>
+      {!rotulos && (
+        <CampoCategoria categorias={categorias} categoriaId={categoriaId} alElegir={setCategoriaId} alCrear={(item) => { setCategorias((prev) => [...prev, item]); setCategoriaId(item.id); }} puedeCrear={puedeCrear.categoria} />
       )}
 
-      <div className="flex flex-col gap-1">
-        <div className="flex gap-2">
-          {unidadDeStockEditable ? (
-            <div className="flex-1">
-              <Selector etiqueta="Unidad de stock" etiquetaOculta={!rotulos} value={unidadStockId} onChange={(e) => setUnidadStockId(e.target.value)} required>
-                <option value="">{rotulos ? "Sin elegir" : "Unidad de stock"}</option>
-                {unidades.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {etiquetaDeUnidad(u)}
-                  </option>
-                ))}
-              </Selector>
-            </div>
-          ) : (
-            <ValorSoloLectura campo="unidadStockId" etiqueta="Unidad de stock">
-              {nombreDeUnidad(unidadStockId) ?? "—"}
-            </ValorSoloLectura>
-          )}
-          {tipo === "MP" &&
-            (puedeEditarCamposSensibles ? (
-              <div className="flex-1">
-                <Selector etiqueta="Unidad de compra" etiquetaOculta={!rotulos} name="unidadCompraId" defaultValue={productoExistente?.unidadCompraId ?? ""}>
-                  <option value="">{rotulos ? "Sin elegir" : "Unidad de compra (default)"}</option>
-                  {unidades.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {etiquetaDeUnidad(u)}
-                    </option>
-                  ))}
-                </Selector>
-              </div>
-            ) : (
-              <ValorSoloLectura campo="unidadCompraId" etiqueta="Unidad de compra">
-                {nombreDeUnidad(productoExistente?.unidadCompraId) ?? "Sin unidad de compra"}
-              </ValorSoloLectura>
-            ))}
-        </div>
-        <AyudaDeFicha>
-          {tipo === "MP"
-            ? "Stock: en qué unidad se mide el inventario (ej. kg). Compra: en qué unidad la facturás (ej. \"bolsa\") — el Factor de conversión de abajo pasa de una a la otra."
-            : "En qué unidad se mide el inventario de este producto (ej. unidad, kg)."}
-        </AyudaDeFicha>
-      </div>
+      {tipo === "MP" && !rotulos && (
+        <CampoInsumo
+          insumos={insumos}
+          insumoId={insumoId}
+          unidadStockId={unidadStockId}
+          alElegir={setInsumoId}
+          alCrear={(item) => { setInsumos((prev) => [...prev, item]); setInsumoId(item.id); }}
+          alResolver={(item) => { setInsumos((prev) => (prev.some((i) => i.id === item.id) ? prev : [...prev, item])); setInsumoId(item.id); }}
+          puedeCrear={puedeCrear.insumo}
+        />
+      )}
 
-      <div className="flex flex-col gap-1">
-        {puedeEditarCamposSensibles ? (
-          <CampoNumero
-            name="factorConversion"
-            placeholder="Factor de conversión (unidades de stock por unidad de compra)"
-            ariaLabel="Factor de conversión (unidades de stock por unidad de compra)" rotulo={rotulos ? "Factor de conversión (unidades de stock por unidad de compra)" : undefined}
-            defaultValue={String(productoExistente?.factorConversion ?? 1)}
-            tipo="cantidad"
-            etiqueta="El factor de conversión"
-            decimales={unidades.find((u) => u.id === unidadStockId)?.decimales}
-            required
-          />
-        ) : (
-          <ValorSoloLectura campo="factorConversion" etiqueta="Factor de conversión (unidades de stock por unidad de compra)">
-            {formatearCantidad(productoExistente?.factorConversion ?? 1)}
-          </ValorSoloLectura>
-        )}
-        <AyudaDeFicha>
-          Cuántas unidades de stock entran en 1 unidad de compra — ej. 25 si comprás bolsas de 25kg y controlás el stock en kg. Si comprás y
-          controlás en la misma unidad, dejalo en 1.
-        </AyudaDeFicha>
-      </div>
+      <CamposDeUnidad
+        tipo={tipo}
+        unidades={unidades}
+        unidadStockId={unidadStockId}
+        alElegirUnidadStock={setUnidadStockId}
+        unidadDeStockEditable={unidadDeStockEditable}
+        puedeEditarCamposSensibles={puedeEditarCamposSensibles}
+        soloUnidad={rotulos}
+        unidadCompraId={productoExistente?.unidadCompraId}
+        factorConversion={productoExistente?.factorConversion}
+      />
 
       {tipo === "PV" && venta && (
         <div className="flex flex-col gap-1" data-modo-de-venta={modoDeVenta}>
@@ -405,28 +285,14 @@ export function ProductoForm({
       )}
 
       {tipo === "PV" && !esBase && <CampoPrecioDeVenta editando={editando} altaComoPedernal={altaComoPedernal} puedeEditarCamposSensibles={puedeEditarCamposSensibles} precioGuardado={productoExistente?.precioVenta ?? 0} />}
-      <CampoAlicuotaIva key={tipo} tipo={tipo} existente={productoExistente} puedeEditar={puedeEditarCamposSensibles} />
-      {!puedeEditarCamposSensibles && (
+      {(!rotulos || (tipo === "PV" && puedeEditarCamposSensibles)) && <CampoAlicuotaIva key={tipo} tipo={tipo} existente={productoExistente} puedeEditar={puedeEditarCamposSensibles} sinAyudas={rotulos} />}
+      {!puedeEditarCamposSensibles && !rotulos && (
         <AvisoCamposSensibles>
           {editando ? "Se muestran los valores guardados; el resto de los datos del producto se puede editar." : "El producto se crea con precio $0, factor 1 y sin unidad de compra; después lo completa quien tenga ese permiso."}
         </AvisoCamposSensibles>
       )}
 
-      {tipo === "PV" && (
-        <div className="flex flex-col gap-1">
-          <CampoNumero
-            tipo="cantidad"
-            name="pasoVenta"
-            placeholder="Paso de venta (opcional)"
-            ariaLabel="Paso de venta" rotulo={rotulos ? "Paso de venta (opcional)" : undefined}
-            defaultValue={productoExistente?.pasoVenta != null ? String(productoExistente.pasoVenta) : ""}
-          />
-          <AyudaDeFicha>
-            Dejalo vacío para vender siempre de a una unidad entera (lo habitual). Con un paso (ej. 0,5), se puede vender esa fracción —
-            0,5 vende media unidad al 50% del precio — y cualquier cantidad que no sea múltiplo exacto del paso se rechaza al cargarla.
-          </AyudaDeFicha>
-        </div>
-      )}
+      {tipo === "PV" && !rotulos && <CampoPasoDeVenta pasoVenta={productoExistente?.pasoVenta} />}
 
       {PRESENTACIONES_VISIBLES && editando && tipo === "MP" && (
         <GestionPresentaciones
@@ -442,65 +308,21 @@ export function ProductoForm({
         <Casilla name="seProduce" defaultChecked={productoExistente?.seProduce} etiqueta="Se produce (tiene receta propia, se fabrica por lote)" />
       )}
 
-      {!editando && altaComoPedernal && naceSinPoderVenderse && <AvisoAltaSinPrecio />}
       {!editando && !altaComoPedernal && <CasillaActivoEnTodas activoEnTodas={activoEnTodas} alCambiar={setActivoEnTodas} naceSinPoderVenderse={naceSinPoderVenderse} cantidadSucursales={cantidadSucursales} nombreSucursalActual={nombreSucursalActual} />}
 
-      {puedeGestionarConsignacion ? (
-        <div className="flex flex-col gap-1">
-          <Casilla checked={esConsignacion} onChange={(e) => setEsConsignacion(e.target.checked)} etiqueta="Es consignación" />
-          <AyudaDeFicha>
-            El producto queda en tu depósito pero sigue siendo propiedad del proveedor hasta que se vende — recién ahí se liquida (se le paga por
-            lo vendido, no por lo entregado).
-          </AyudaDeFicha>
-        </div>
-      ) : (
-        editando && (
-          <div className="flex flex-col gap-1">
-            <p className="text-sm">{esConsignacion ? "Es consignación" : "No es consignación"}</p>
-            <AyudaCampo>El proveedor y el precio de consignación los gestiona quien tiene permiso para pagar a consignantes.</AyudaCampo>
-          </div>
-        )
-      )}
-
-      {puedeGestionarConsignacion && esConsignacion && (
-        <>
-          <div className="flex items-center gap-2">
-            <div className="flex-1">
-              <Selector etiqueta="Proveedor de consignación" etiquetaOculta={!rotulos} value={proveedorConsignacionId} onChange={(e) => setProveedorConsignacionId(e.target.value)}>
-                <option value="">{rotulos ? "Sin elegir" : "Proveedor de consignación"}</option>
-                {proveedores.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nombre}
-                  </option>
-                ))}
-              </Selector>
-            </div>
-            {puedeCrear.proveedor && (
-              <QuickCrear
-                triggerLabel="+ Nuevo proveedor"
-                title="Nuevo proveedor"
-                campoLabel="Nombre"
-                accion={(nombre) => altaProveedor({ nombre })}
-                onCreado={(item) => {
-                  setProveedores((prev) => [...prev, item]);
-                  setProveedorConsignacionId(item.id);
-                }}
-              />
-            )}
-          </div>
-          <div className="flex flex-col gap-1">
-            <CampoNumero
-              name="precioConsignacion"
-              prefijo="$"
-              placeholder="Precio de consignación"
-              ariaLabel="Precio de consignación" rotulo={rotulos ? "Precio de consignación" : undefined}
-              defaultValue={String(productoExistente?.precioConsignacion ?? 0)}
-              tipo="importe"
-              etiqueta="El precio de consignación"
-            />
-            <AyudaDeFicha>Lo que le pagás al proveedor por cada unidad vendida — no tiene por qué ser igual al precio al que vos la vendés.</AyudaDeFicha>
-          </div>
-        </>
+      {!rotulos && (
+        <BloqueConsignacion
+          editando={editando}
+          puedeGestionar={puedeGestionarConsignacion}
+          esConsignacion={esConsignacion}
+          alCambiarEsConsignacion={setEsConsignacion}
+          proveedores={proveedores}
+          proveedorId={proveedorConsignacionId}
+          alElegirProveedor={setProveedorConsignacionId}
+          alCrearProveedor={(item) => { setProveedores((prev) => [...prev, item]); setProveedorConsignacionId(item.id); }}
+          puedeCrearProveedor={puedeCrear.proveedor}
+          precioConsignacion={productoExistente?.precioConsignacion}
+        />
       )}
 
       {OBSERVACIONES_VISIBLES && <AreaDeTexto etiqueta="Observaciones" etiquetaOculta name="observaciones" placeholder="Observaciones" defaultValue={productoExistente?.observaciones ?? ""} />}
