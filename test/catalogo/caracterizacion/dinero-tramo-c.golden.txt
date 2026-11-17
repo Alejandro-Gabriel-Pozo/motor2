@@ -19,9 +19,9 @@
   RECETA_SUCURSAL recetaSucursal1 empresaId=empresa habilitada=true productoId=empanada sucursalId=central
   RECETA_VERSION recetaVersion1 basadaEnVersionId=null comentarios=null creadoEn=<fecha> empresaId=empresa equipamientoNecesario=null notasAdicionales=null presentacionEmplatado=null productoId=empanada racionTamano=null racionUnidadId=null racionesCantidad=null rendimientoCantidad=null rendimientoUnidadId=null sucursalId=central tiempoCoccionMinutos=null tiempoPreparacionMinutos=null version=1
   RECETA_VERSION recetaVersion2 basadaEnVersionId=null comentarios=null creadoEn=<fecha> empresaId=empresa equipamientoNecesario=null notasAdicionales=null presentacionEmplatado=null productoId=pizza racionTamano=null racionUnidadId=null racionesCantidad=null rendimientoCantidad=null rendimientoUnidadId=null sucursalId=null tiempoCoccionMinutos=null tiempoPreparacionMinutos=null version=1
-  UNIDAD caja activa=true decimales=0 empresaId=empresa magnitud=CANTIDAD nombre=caja
-  UNIDAD kg activa=true decimales=2 empresaId=empresa magnitud=PESO nombre=kg
-  UNIDAD unidad activa=true decimales=0 empresaId=empresa magnitud=CANTIDAD nombre=unidad
+  UNIDAD caja activa=true codigoFijo=null decimales=0 empresaId=empresa magnitud=CANTIDAD nombre=caja
+  UNIDAD kg activa=true codigoFijo=null decimales=2 empresaId=empresa magnitud=PESO nombre=kg
+  UNIDAD unidad activa=true codigoFijo=null decimales=0 empresaId=empresa magnitud=CANTIDAD nombre=unidad
 ### descuento: alta del 15 % al Flan
   resultado: {"ok":true,"mensaje":"«Flan» con 15 % de descuento en esta sucursal."}
   efectos: revalidarCartasPublicas=1 refrescar=0
@@ -380,15 +380,15 @@
 ### unidad: alta del litro (decimales por defecto)
   resultado: {"ok":true,"mensaje":"Unidad \"litro\" creada.","id":"unidad1","nombre":"litro"}
   efectos: revalidarCartasPublicas=0 refrescar=1
-  + UNIDAD unidad1 activa=true decimales=2 empresaId=empresa magnitud=VOLUMEN nombre=litro
+  + UNIDAD unidad1 activa=true codigoFijo=null decimales=2 empresaId=empresa magnitud=VOLUMEN nombre=litro
 ### unidad: alta repetida
   resultado: {"ok":false,"mensaje":"Ya existe una unidad llamada \"LITRO\"."}
   efectos: revalidarCartasPublicas=0 refrescar=0
 ### unidad: decimales del litro a 3
   resultado: {"ok":true,"mensaje":"Decimales actualizados."}
   efectos: revalidarCartasPublicas=0 refrescar=1
-  - UNIDAD unidad1 activa=true decimales=2 empresaId=empresa magnitud=VOLUMEN nombre=litro
-  + UNIDAD unidad1 activa=true decimales=3 empresaId=empresa magnitud=VOLUMEN nombre=litro
+  - UNIDAD unidad1 activa=true codigoFijo=null decimales=2 empresaId=empresa magnitud=VOLUMEN nombre=litro
+  + UNIDAD unidad1 activa=true codigoFijo=null decimales=3 empresaId=empresa magnitud=VOLUMEN nombre=litro
   AUDITORIA actorId=admin campo=decimales descripcion=Unidad "litro": decimales empresaId=empresa entidad=Unidad entidadId=unidad1 sucursalId=null valorAnterior=2 valorNuevo=3
 ### unidad: los mismos decimales
   resultado: {"ok":true,"mensaje":"Decimales actualizados."}
