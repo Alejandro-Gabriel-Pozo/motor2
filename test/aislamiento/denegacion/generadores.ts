@@ -147,9 +147,9 @@ const completos: Record<string, Valor> = {
   "accion|actions/carta/secciones.ts|guardarSeccionCarta": (k) => [{ id: k.seccionCartaId, nombre: "Nombre nuevo" }],
   // CARTA-MANT F3: la empresa del mundo tiene UNA sección de carta (orden 0): el control positivo la deja en su lugar (éxito sin cambio); con la de otra empresa, «No se encontró…».
   "accion|actions/carta/secciones.ts|ordenarSeccionesCarta": (k) => [{ secciones: [{ seccionCartaId: k.seccionCartaId, ordenVisto: 0 }] }],
-  // O1 (orden de renglones): el modo y el orden son de UNA sucursal; con la sección y el producto del otro mundo, «No se encontró…». Con lo propio, el modo se fija (versión 0 = sin fila) y la lista pedida no es la de la sección (ORDEN_DESACTUALIZADO): ninguna cosa del otro mundo se toca.
+  // O1 (orden de renglones): el modo y el orden son de UNA sucursal; con la sección y el producto del otro mundo, «No se encontró…». Con lo propio, el modo se fija (versión 0 = sin fila) y la lista pedida es TODA la de la sección (el ítem agrupado y los dos productos visibles; el PV oculto no entra): ninguna cosa del otro mundo se toca.
   "accion|actions/carta/contenido-producto.ts|fijarModoDeOrdenDeSeccion": (k) => [{ seccionCartaId: k.seccionCartaId, modo: "ALFABETICO", versionVista: 0 }],
-  "accion|actions/carta/contenido-producto.ts|reordenarRenglonesDeSeccion": (k) => [{ seccionCartaId: k.seccionCartaId, renglones: [{ tipo: "PRODUCTO", id: k.productoPvId, ordenVisto: 0 }] }],
+  "accion|actions/carta/contenido-producto.ts|reordenarRenglonesDeSeccion": (k) => [{ seccionCartaId: k.seccionCartaId, renglones: [{ tipo: "ITEM_AGRUPADO", id: k.itemAgrupadoCartaId, ordenVisto: 0 }, { tipo: "PRODUCTO", id: k.productoMp2Id, ordenVisto: 0 }, { tipo: "PRODUCTO", id: k.productoConOpcionesId, ordenVisto: 0 }] }],
 
   // --- catálogo ---
   "accion|actions/catalogo/productos.ts|actualizarProducto": (k, c) =>
