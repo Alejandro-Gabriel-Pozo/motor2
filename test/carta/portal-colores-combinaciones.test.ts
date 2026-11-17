@@ -77,7 +77,7 @@ describe("el ajuste siempre termina y llega a 7:1 (de a 5 niveles de gris, de #0
 });
 
 describe("aviso y guardado de cada marca (maqueta `portal-de-la-empresa.html:633`)", () => {
-  for (const f of FONDOS_ELEGIDOS.filter((x) => x.esperado.mostrado !== null)) {
+  for (const f of FONDOS_ELEGIDOS.filter((x): x is Extract<typeof x, { elegido: string }> => x.elegido !== null && x.esperado.mostrado !== null)) {
     it(`${f.nombre}: el aviso ${f.esperado.aviso ? "sale" : "no sale"}, el texto llega a 7:1 y se GUARDA el color elegido`, () => {
       const c = colorDelPortal(f.elegido)!;
       expect(c.ajustado).toBe(f.esperado.aviso);
