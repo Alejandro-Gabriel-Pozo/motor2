@@ -1,4 +1,4 @@
-import { ALTA_DE_SECCION_SOLO_NOMBRE, SUMAR_LUGAR_DE_LISTA_VISIBLE, type LugarDeCombo, type ProductoParaMantener } from "@/core/carta/public";
+import { ALTA_DE_SECCION_SOLO_NOMBRE, ARMADO_DE_PROMO_COMO_PEDERNAL, SUMAR_LUGAR_DE_LISTA_VISIBLE, esCantidadExacta, type LugarDeCombo, type ProductoParaMantener } from "@/core/carta/public";
 import { CampoNumero } from "@/components/campo-numero";
 import { AreaDeTexto } from "@/ui/primitivas/area-de-texto";
 import { Campo } from "@/ui/primitivas/campo";
@@ -181,14 +181,23 @@ export function CamposLugares({ lugares }: { lugares: LugarDeCombo[] }) {
           <div className={CLASE_NOMBRE_DE_CUPO}>
             <Casilla etiqueta={`${l.nombre} (lista)`} name={`lugar_incluir_${l.id}`} defaultChecked />
           </div>
-          <label className={CLASE_CANTIDAD_DE_CUPO}>
-            mín.
-            <CampoNumero tipo="entero" etiqueta="El mínimo" name={`lugar_min_${l.id}`} defaultValue={String(l.cantidadMinima)} className={CLASE_NUMERO} />
-          </label>
-          <label className={CLASE_CANTIDAD_DE_CUPO}>
-            máx.
-            <CampoNumero tipo="entero" etiqueta="El máximo" name={`lugar_max_${l.id}`} defaultValue={String(l.cantidadMaxima)} className={CLASE_NUMERO} />
-          </label>
+          {ARMADO_DE_PROMO_COMO_PEDERNAL && esCantidadExacta(l.cantidadMinima, l.cantidadMaxima) ? (
+            <label className={`${CLASE_CANTIDAD_DE_CUPO} col-span-2`}>
+              Cantidad
+              <CampoNumero tipo="entero" etiqueta="La cantidad exacta" name={`lugar_cantidad_${l.id}`} defaultValue={String(l.cantidadMaxima)} className={CLASE_NUMERO} />
+            </label>
+          ) : (
+            <>
+              <label className={CLASE_CANTIDAD_DE_CUPO}>
+                mín.
+                <CampoNumero tipo="entero" etiqueta="El mínimo" name={`lugar_min_${l.id}`} defaultValue={String(l.cantidadMinima)} className={CLASE_NUMERO} />
+              </label>
+              <label className={CLASE_CANTIDAD_DE_CUPO}>
+                máx.
+                <CampoNumero tipo="entero" etiqueta="El máximo" name={`lugar_max_${l.id}`} defaultValue={String(l.cantidadMaxima)} className={CLASE_NUMERO} />
+              </label>
+            </>
+          )}
         </div>
       ))}
       {/* «Sumar un lugar» (`SUMAR_LUGAR_DE_LISTA_VISIBLE`: apagado el 2026-10-28, vuelto a prender el 2026-11-11 por el pedido del «Menú ejecutivo»); aparece solo con su interruptor. */}
@@ -203,14 +212,23 @@ export function CamposLugares({ lugares }: { lugares: LugarDeCombo[] }) {
           <div className="col-span-2">
             <Campo etiqueta="Nombre" name="nuevo_lugar_nombre" maxLength={80} placeholder="Ej.: Bebida" />
           </div>
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium">mín.</span>
-            <CampoNumero tipo="entero" etiqueta="El mínimo" name="nuevo_lugar_min" defaultValue="1" className={CLASE_NUMERO} />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium">máx.</span>
-            <CampoNumero tipo="entero" etiqueta="El máximo" name="nuevo_lugar_max" defaultValue="1" className={CLASE_NUMERO} />
-          </label>
+          {ARMADO_DE_PROMO_COMO_PEDERNAL ? (
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium">Cantidad</span>
+              <CampoNumero tipo="entero" etiqueta="La cantidad exacta" name="nuevo_lugar_cantidad" defaultValue="1" className={CLASE_NUMERO} />
+            </label>
+          ) : (
+            <>
+              <label className="flex flex-col gap-1">
+                <span className="text-sm font-medium">mín.</span>
+                <CampoNumero tipo="entero" etiqueta="El mínimo" name="nuevo_lugar_min" defaultValue="1" className={CLASE_NUMERO} />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-sm font-medium">máx.</span>
+                <CampoNumero tipo="entero" etiqueta="El máximo" name="nuevo_lugar_max" defaultValue="1" className={CLASE_NUMERO} />
+              </label>
+            </>
+          )}
         </fieldset>
       )}
     </div>
