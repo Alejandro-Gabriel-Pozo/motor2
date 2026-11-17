@@ -294,6 +294,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Parte P1, operador como Pedernal (pedido del dueño 2026-11-16, «como pedernal,»; CAMBIA COMPORTAMIENTO, deliberado): la semilla de `partes_ver` y `partes_editar` pasa de [admin] a [admin, operador] (`partes_desactivar` NO cambia: piso administrador). Las filas `PERMISO operador:partes_ver` y `operador:partes_editar` pasan de ver=false editar=false a ver=true editar=true en las dos fotos. Revisado con `git diff -U0`: cambia SOLO lo de `partes_ver`/`partes_editar` y el rol operador; ningún otro permiso ni rol cambia.",
       },
+      {
+        blob: "22f3ad5659d6daf834e82fc6152b4afc993c6944",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `470f5b2d` (la mezcla de origin/main que dejó la acción `compra_controlar_recepcion` junto al resto del catálogo).
+        commit: "470f5b2d",
+        motivo:
+          "Compras N3: acción compra_controlar_recepcion (admin y operador); solo suma líneas PERMISO y ACCIONES 134. Revisado con `git diff`: se suman 4 líneas `PERMISO` (admin y operador `compra_controlar_recepcion ver=true editar=true`, una por cada una de las dos fotos) y `ACCIONES` pasa de 133 a 134 en las dos fotos; ninguna otra línea cambia.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-aceptacion.golden.txt": {
