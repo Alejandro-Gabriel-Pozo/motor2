@@ -9,7 +9,7 @@ import {
   ingredientesDadosDeBaja,
   textoDeIngredientesDadosDeBaja,
 } from "@/core/catalogo/duplicar-producto";
-import { validarCabecera, validarIngredientes, validarPasos, validarUnidadDeIngredientes } from "@/core/catalogo/public";
+import { leerBaseDeCantidad, validarCabecera, validarIngredientes, validarPasos, validarUnidadDeIngredientes, type BaseDeCantidad } from "@/core/catalogo/public";
 import { esErrorDeUnicidad, mapCabeceraAInput, mapIngredientesAInput, mapPasosAInput } from "@/core/catalogo/public-servidor";
 import { mismosCentavos } from "@/core/datos/importe";
 import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
@@ -141,7 +141,7 @@ export async function duplicarProductoCasoDeUso(
         if (await existeProductoConElNombre(tx, comando.nombre)) return fracaso("NOMBRE_REPETIDO", `Ya existe un producto llamado "${comando.nombre}". Elegí otro nombre.`);
 
         // 4. La receta del original, leída y validada ANTES de escribir nada.
-        let aCopiar: { ingredientes: ReturnType<typeof mapIngredientesAInput>; pasos: ReturnType<typeof mapPasosAInput>; cabecera: ReturnType<typeof mapCabeceraAInput>; versionDeOrigen: number; dondeRegia: string } | null = null;
+        let aCopiar: { ingredientes: ReturnType<typeof mapIngredientesAInput>; pasos: ReturnType<typeof mapPasosAInput>; cabecera: ReturnType<typeof mapCabeceraAInput>; versionDeOrigen: number; dondeRegia: string; baseDeCantidad: BaseDeCantidad } | null = null;
         if (comando.copiarReceta) {
           const elegible = origen.tipo === "PV" || (origen.tipo === "MP" && origen.seProduce);
           if (!elegible) return fracaso("PRODUCTO_NO_ELEGIBLE", `«${origen.nombre}» no es elegible para tener receta — tiene que ser PV, o MP con "Se produce" activado.`);
@@ -165,7 +165,8 @@ export async function duplicarProductoCasoDeUso(
           const invalidoUnidad = validarUnidadDeIngredientes(ingredientes, unidades.productos, unidades.nombresDeUnidad);
           if (invalidoUnidad) return fracaso("INGREDIENTES_INVALIDOS", invalidoUnidad);
           const dondeRegia = receta.sucursalId !== null && sucursalDeLaReceta ? `la receta propia de «${sucursalDeLaReceta.nombre}»` : "la receta central";
-          aCopiar = { ingredientes, pasos, cabecera, versionDeOrigen: receta.version, dondeRegia };
+          // M3a: el duplicado conserva la marca (NETA/BRUTA) de la versión que copia; una marca ilegible CIERRA (lanza), nunca se asume una base.
+          aCopiar = { ingredientes, pasos, cabecera, versionDeOrigen: receta.version, dondeRegia, baseDeCantidad: leerBaseDeCantidad(receta.baseDeCantidad) };
         }
 
         // 5. Lo que el original admite, leído ANTES de escribir nada.
@@ -213,6 +214,7 @@ export async function duplicarProductoCasoDeUso(
             cabecera: aCopiar.cabecera,
             sucursalId: null,
             basadaEnVersionId: null,
+            baseDeCantidad: aCopiar.baseDeCantidad,
           });
           await registrarCambioAuditado(tx, {
             entidad: "RecetaVersion",

@@ -14,6 +14,21 @@ import { Decimal } from "decimal.js";
 /** Misma configuración de decimal.js que `core/movimientos/consumo-de-linea-configurada.ts` (donde se usaba esta cuenta): 40 dígitos, mitad hacia arriba. */
 const D = Decimal.clone({ precision: 40, rounding: Decimal.ROUND_HALF_UP });
 
+/**
+ * En qué BASE están escritas las cantidades de una versión (M2 de `docs/diseno-merma-sobre-bruto-como-pedernal-2026-11-15.md`): NETA (lo que llega al plato; todo lo ya cargado) o BRUTA (lo que sale del
+ * stock). La marca nace con la versión y no cambia; una versión no mezcla bases. Espejo del CHECK `RecetaVersion_baseDeCantidad_chk` / `VersionDeOpcion_baseDeCantidad_chk`.
+ */
+export const BASES_DE_CANTIDAD = ["NETA", "BRUTA"] as const;
+export type BaseDeCantidad = (typeof BASES_DE_CANTIDAD)[number];
+
+/**
+ * La marca leída de la base, validada. CIERRA, NO ABRE (diseño §7.2): un valor que no es NETA ni BRUTA (columna ilegible, dato corrupto) lanza error explícito; nunca se asume una base ni se omite la merma.
+ */
+export function leerBaseDeCantidad(valor: unknown): BaseDeCantidad {
+  if (valor === "NETA" || valor === "BRUTA") return valor;
+  throw new Error(`La base de cantidad de la versión no es legible: ${JSON.stringify(valor)} (tiene que ser NETA o BRUTA).`);
+}
+
 /** El factor `1 + merma/100` en `number`: lo multiplican (o dividen, en la inversa del reporte de rendimiento) los llamadores que trabajan con `number`. */
 export function factorDeMerma(mermaPorcentaje: number): number {
   return 1 + mermaPorcentaje / 100;
