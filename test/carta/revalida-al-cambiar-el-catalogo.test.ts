@@ -10,6 +10,7 @@ import { actualizarDisponibilidadProducto, actualizarProducto, sincronizarPrecio
 import { crearGrupoDeOpciones } from "../../src/server/actions/catalogo/opciones-de-venta";
 import { apagarOpcionEnSucursal } from "../../src/server/actions/catalogo/opciones-por-sucursal";
 
+import { crearCategoriaDeTest } from "../setup/categoria-de-prueba";
 /**
  * La carta pública se cachea 5 minutos (ISR). Lo que ella muestra (nombre, precio, disponibilidad de un producto) también se cambia desde
  * el catálogo: esas acciones tienen que invalidar el caché al instante, igual que las del módulo carta, o un producto agotado o con otro
@@ -29,7 +30,7 @@ describe("el catálogo invalida la carta pública al cambiar lo que ella muestra
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
     unidadId = (await prisma.unidad.create({ data: { nombre: "u", magnitud: "CANTIDAD", decimales: 0 } })).id;
-    const categoriaId = (await prisma.categoriaProducto.create({ data: { nombre: "Gaseosa" } })).id;
+    const categoriaId = (await crearCategoriaDeTest(prisma, { nombre: "Gaseosa" })).id;
     productoId = (await sembrarProductoDisponible({ codigo: "RV_1", nombre: "Coca", tipo: "PV", categoriaId, precioVenta: 1000, unidadStockId: unidadId }, sucursalId)).id;
     hermanoId = (await sembrarProductoDisponible({ codigo: "RV_2", nombre: "Sprite", tipo: "PV", categoriaId, precioVenta: 1000, unidadStockId: unidadId }, sucursalId)).id;
     const seccion = await prisma.seccionCarta.create({ data: { nombre: "Bebidas" } });

@@ -10,6 +10,7 @@ import { activarTodosLosModulos } from "./modulos";
 import { ACCIONES } from "../../src/core/permisos/acciones";
 import { MOTIVOS_MERMA_SEMILLA, DESTINOS_CONSUMO_SEMILLA } from "../../src/core/movimientos/motivos-semilla";
 
+import { crearCategoriaDeTest, limpiarCategoriasDeTest } from "./categoria-de-prueba";
 /**
  * El cliente de los FIXTURES con la empresa de prueba fijada en la conexión (ADR-022): lo que los tests escriben y leen cae en ella sin depender de «la única empresa activa». Siembra con el
  * ROL DE PRUEBAS `motor2_app_pruebas` (`MOTOR2_PRUEBAS_DATABASE_URL`, M.3-A8): mismos privilegios que `motor2_app` pero fuera de sus políticas por sucursal (Fase B), así un fixture ve y escribe
@@ -244,7 +245,7 @@ export async function limpiarBaseDeTest() {
   await prismaAdmin.producto.deleteMany();
   await prismaAdmin.insumo.deleteMany();
   await prismaAdmin.grupo.deleteMany();
-  await prismaAdmin.categoriaProducto.deleteMany();
+  await limpiarCategoriasDeTest(prismaAdmin);
   await prismaAdmin.unidad.deleteMany();
   // Los puntos de venta del proveedor (M3e) lo referencian (RESTRICT): antes que él.
   await prismaAdmin.puntoDeVentaDeProveedor.deleteMany();
@@ -312,7 +313,7 @@ export async function sembrarCatalogoBase() {
     prisma.unidad.create({ data: { nombre: "kg", magnitud: "PESO", decimales: 2 } }),
     prisma.unidad.create({ data: { nombre: "g", magnitud: "PESO", decimales: 0 } }),
   ]);
-  const categoria = await prisma.categoriaProducto.create({ data: { nombre: "Almacén" } });
+  const categoria = await crearCategoriaDeTest(prisma, { nombre: "Almacén" });
   const insumo = await prisma.insumo.create({ data: { nombre: "Harina" } });
   return { kg, g, categoria, insumo };
 }
