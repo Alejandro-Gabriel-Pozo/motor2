@@ -11,7 +11,12 @@ describe("textoDe con entidad: el género de la cosa", () => {
       expect(esperado, `falta la fila de «${clave}» en el oráculo`).toBeDefined();
       expect(entidad.genero, clave).toBe(esperado!.genero);
       expect(textoDe("rechazo.NO_ENCONTRADO", { entidad }), clave).toBe(esperado!.noSeEncontro);
+      if (esperado!.yaExiste !== undefined) expect(textoDe("rechazo.NOMBRE_REPETIDO", { entidad, nombre: "Fulano" }), clave).toBe(esperado!.yaExiste);
     }
+  });
+
+  it("el artículo indefinido concuerda con el género (hoy solo el cliente se repite por nombre: «llamado» queda fijo, como lo eligió el dueño)", () => {
+    expect(textoDe("rechazo.NOMBRE_REPETIDO", { entidad: ENTIDADES.cliente, nombre: "A" })).toBe("Ya existe un cliente llamado «A». Elegí otro nombre.");
   });
 
   it("guardián de dimensiones: el oráculo no tiene entidades que ya no existen y los géneros son m o f", () => {
@@ -27,6 +32,9 @@ describe("textoDe con entidad: el género de la cosa", () => {
     const espia = vi.spyOn(console, "error").mockImplementation(() => {});
     const leer = textoDe as unknown as (clave: string, valores?: Record<string, unknown>) => string;
     expect(leer("rechazo.NO_ENCONTRADO", { entidad: { nombre: "mesa", genero: "x" } })).toBe(MENSAJE_GENERICO);
+    // bien formada pero que NO está en la tabla (con un cast): también falla cerrado, no se escribe
+    expect(leer("rechazo.NO_ENCONTRADO", { entidad: { nombre: "mesa", genero: "f" } })).toBe(MENSAJE_GENERICO);
+    expect(leer("rechazo.NO_ENCONTRADO", { entidad: { nombre: "sucursal", genero: "m" } })).toBe(MENSAJE_GENERICO);
     expect(leer("rechazo.NO_ENCONTRADO", { entidad: { nombre: " ", genero: "m" } })).toBe(MENSAJE_GENERICO);
     expect(leer("rechazo.NO_ENCONTRADO", { entidad: "sucursal" })).toBe(MENSAJE_GENERICO);
     expect(leer("rechazo.NO_ENCONTRADO", { entidad: null })).toBe(MENSAJE_GENERICO);
