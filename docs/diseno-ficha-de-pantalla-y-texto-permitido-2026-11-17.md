@@ -46,6 +46,13 @@ Por qué por pantalla renderizada y no por análisis del código (diferencia con
 ## 4. Excepciones con motivo (PROPUESTA)
 En la misma ficha: `excepciones: [{ patron | texto, motivo (≥ 20 caracteres), cita (del dueño, con fecha), vence (≤ 60 días) }]`. Una excepción que no atrapa nada hace fallar el test (se borra); una vencida falla. Mismo mecanismo y misma regla que `cercos/vencimientos.ts`.
 
+## 4 bis. Fuente del texto permitido: dos orígenes (precisión de Pedernal, ZuluHub-ERP `4fa7f3b8` / ZuluHub-docs `6b0b88d`)
+| La pantalla en Pedernal | Fuente de los textos permitidos |
+|---|---|
+| YA construida (carpeta `apps/web/ui/plantillas/`, verificada en `origin/main` y no en deuda) | El catálogo `src/capacidades/vocabulario/catalogo-*.ts`: cada clave con sus `usos` y su `fuente` |
+| Solo en maqueta (p. ej. proveedores/directorio, que no existe en `apps/web`) | La tabla «Textos nuevos» y las fichas de la maqueta HTML aprobada |
+El chequeo por pantalla renderizada (arriba) queda como **control adicional**: cada texto visible tiene que existir en una de las dos fuentes. Nota: el chequeo propio de Pedernal (`test/arquitectura/declaracion-de-pantallas.test.ts`) hoy mide y no falla; no hay nada para copiar, así que el de Motor2 empieza por el control renderizado.
+
 ## 5. Tabla «¿qué pasa si…?»
 | Situación | Resultado |
 |---|---|
@@ -70,5 +77,5 @@ Criterio de seguir: si F3 de la segunda pantalla cuesta la mitad que la primera.
 1. Chequeo por render y no por AST: Motor2 no tiene el catálogo de textos ni los `caminos` declarados (motivo: datos existentes en el código).
 2. Carpeta `core/pantallas/fichas/` y no `src/capacidades/pantallas/`: la estructura de Motor2 es `src/core/<dominio>` (motivo: convención del proyecto).
 
-## 8. Pregunta abierta (una, que cambia lo que se construye)
-¿La fuente de los textos permitidos es **la maqueta HTML aprobada** (recomendado: ya existe, la aprobó el dueño y no hay que traducir nada) o **el catálogo de textos de Pedernal** (todavía no tiene las pantallas de gastronomía)? Mientras no se resuelva, la lista permitida se arma desde la maqueta y queda declarada como PROPUESTA.
+## 8. Pregunta abierta
+Resuelta por Pedernal el 2026-11-17 (§4 bis): dos fuentes según la pantalla esté construida o solo en maqueta. Queda por decidir con el dueño, pantalla por pantalla de Motor2, cuál de las dos corresponde (se mira la carpeta `plantillas/` en `origin/main`).
