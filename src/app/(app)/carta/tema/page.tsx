@@ -5,12 +5,14 @@ import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
 import { AvisoSoloLectura } from "@/components/carta/datos-solo-lectura";
-import { CLAVES_TEMA_V1, PESTANAS_DE_APARIENCIA, type TemaAdmin } from "@/core/carta/public";
+import { CLAVES_TEMA_SIMPLE, CLAVES_TEMA_V1, PESTANAS_DE_APARIENCIA, marcaDeLaEleccion, type TemaAdmin } from "@/core/carta/public";
 import { cargarTemaAdmin } from "@/server/consultas/carta/admin";
-import { guardarTemaCarta } from "@/server/actions/carta/tema";
+import { guardarTemaCarta, guardarTemaSimpleCarta } from "@/server/actions/carta/tema";
+import { temaSimpleVisible } from "@/lib/tema-simple-visible";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { EditorTema } from "@/components/carta/editor-tema";
+import { EditorTemaSimple } from "@/components/carta/editor-tema-simple";
 
 /**
  * Tema de la carta (docs/plan-tema-carta-2026-09-24.md, M9, D11): los colores, textos, tipografía y layout de la carta pública de
@@ -40,6 +42,15 @@ function valoresDelFormulario(fd: FormData): Record<string, string> {
   return valores;
 }
 
+/**
+ * Pantalla simple (PASO A, interruptor `TEMA_SIMPLE_VISIBLE`): las siete claves del formulario, con el color de marca armado desde la paleta o el «Otro color». Lo que no viene en la lista no se lee (el guard igual lo ignora).
+ */
+function valoresSimplesDelFormulario(fd: FormData): Record<string, string> {
+  const texto = (clave: string) => String(fd.get(clave) ?? "");
+  const valores = Object.fromEntries(CLAVES_TEMA_SIMPLE.map((clave) => [clave, texto(clave)]));
+  return { ...valores, color_marca: marcaDeLaEleccion(fd.get("paleta"), fd.get("color_marca_otro")) };
+}
+
 function estadoDelTema(d: TemaAdmin): string {
   const portal = !d.publica ? "no está en el portal" : `/carta/${d.publica.slug}${d.publica.publicada ? "" : " (sin publicar)"}`;
   const tema = !d.tema ? "sin tema (la carta usa el estilo por defecto)" : d.tema.aplicarEnCarta ? "tema aplicado" : "borrador (la carta usa el estilo por defecto)";
@@ -59,6 +70,41 @@ export default async function TemaCartaPage() {
   const [{ editar: puedeEditar }, datos] = await Promise.all([obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_tema", ctx.db), cargarTemaAdmin(ctx.sucursalId, ctx.db)]);
   if (!datos) return <p className="text-error">No se encontró la sucursal activa.</p>;
   const sucursalId = datos.sucursalId;
+
+  if (temaSimpleVisible()) {
+    // La versión que ve la pantalla viaja en el closure (no en el formulario): el servidor la compara con la vigente y rechaza si otra persona guardó antes.
+    const version = datos.tema?.actualizadoEn.toISOString() ?? "sin-tema";
+    return (
+      <div className="flex flex-col gap-6">
+        <FilaDeCarta ctx={ctx} etiqueta="Apariencia y publicación" pestanas={PESTANAS_DE_APARIENCIA} ruta="/carta/tema" />
+        <div className="flex flex-col gap-1">
+          <h1 className="text-xl font-semibold">Identidad de la carta</h1>
+          <p className="text-sm text-tinta-tenue">
+            El color de marca, el logo, el nombre y el contacto de la carta de «{datos.nombre}». Al guardar, la carta lo toma en hasta 5 minutos. Lo demás se calcula solo.
+          </p>
+          {!datos.publica && (
+            <p className="text-sm text-tinta-tenue">
+              Se puede preparar igual; no tiene efecto hasta agregar la sucursal en el{" "}
+              <EnlaceInterno href="/carta/portal" className="underline">
+                Portal de sucursales
+              </EnlaceInterno>
+              .
+            </p>
+          )}
+          {!puedeEditar && <AvisoSoloLectura />}
+        </div>
+        <EditorTemaSimple
+          valoresIniciales={datos.tema?.valores ?? {}}
+          version={version}
+          soloLectura={!puedeEditar}
+          accion={async (fd: FormData) => {
+            "use server";
+            return refrescarSiOk(await guardarTemaSimpleCarta(sucursalId, valoresSimplesDelFormulario(fd), version));
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">

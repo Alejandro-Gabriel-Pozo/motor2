@@ -17,7 +17,7 @@ const RAIZ = join(__dirname, "../../src");
 const RAIZ_ACCIONES = "server/actions/";
 
 /** Ayudantes puros (leen el formulario o formatean): solo se llaman por nombre, sin importar de dónde vengan. */
-const AYUDANTES_LOCALES = new Set(["String", "Number", "campo", "datosDelFormulario", "valoresDelFormulario", "refrescarSiOk"]);
+const AYUDANTES_LOCALES = new Set(["String", "Number", "campo", "datosDelFormulario", "valoresDelFormulario", "valoresSimplesDelFormulario", "refrescarSiOk"]);
 /** Métodos sin efectos sobre `FormData`/arrays/strings, para encadenar sobre `fd.get(...)`, `.map(String)`, `.trim()`. */
 const METODOS_PUROS = new Set(["get", "getAll", "map", "filter", "flatMap", "trim"]);
 /** Nombre → módulo del que tiene que venir. */

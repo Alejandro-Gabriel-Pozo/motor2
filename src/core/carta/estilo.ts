@@ -1,6 +1,7 @@
 import { colorDeTextoLegible, resolveHeroInk, resolvePrimaryForeground } from "./color-css";
 import { variablesDeLaEscala } from "./escala";
 import { canalesDeMarcaHex, marcaGuardadaLegible, tintaSobreMarca } from "./marca-derivada";
+import { MARCADOR_DE_MARCA_OSCURA, FONDO_OSCURO_DEL_SISTEMA, ajustarMarcaSobreFondo } from "./marca-oscura";
 import { CLAVES_TEMA_V1, validarValorTema, type ClaveTema, type DefinicionClaveTema, type FamiliaTipografica } from "./tema";
 
 /**
@@ -156,6 +157,30 @@ function aplicarModoMarca(valores: Record<ClaveTema, string>, variablesCss: Reco
   return canales ? tintaSobreMarca(canales).css : null;
 }
 
+/**
+ * MARCA OSCURA (PASO A de «Apariencia y publicación», `docs/diseno-carta-apariencia-y-publicacion-como-pedernal-2026-11-17.md` §4 y §5): con `marca_derivada = "oscura"` la carta se lee con la marca elegida sobre el fondo OSCURO del sistema.
+ * A diferencia de «si», NO deja de leer ninguna clave cargada («lo cargado manda»): solo se DERIVA lo que está vacío —el fondo (el oscuro del sistema; la tinta base la sigue por contraste, como siempre)— y se corrige la marca AL MOSTRAR
+ * hasta 7:1 contra ese fondo (`ajustarMarcaSobreFondo`, mismo tono; lo guardado no cambia). La marca queda solo en los elementos que ya la usaban; los textos que se pintaban con ella pasan a la tinta del sistema (`--carta-primary-texto`).
+ * Devuelve la tinta del texto sobre la marca (para la portada pintada con la marca) o null.
+ */
+function aplicarMarcaOscura(valores: Record<ClaveTema, string>, variablesCss: Record<string, string>): string | null {
+  // Un fondo cargado que no se puede leer (un nombre CSS) no se puede medir: falla cerrado, manda el oscuro del sistema.
+  const fondoCargado = valores.color_fondo_dia ? marcaGuardadaLegible(valores.color_fondo_dia) : null;
+  const fondo = fondoCargado ?? FONDO_OSCURO_DEL_SISTEMA;
+  if (!fondoCargado) {
+    valores.color_fondo_dia = fondo;
+    variablesCss[aVariableCss("color_fondo_dia")] = fondo;
+  }
+  const elegida = marcaGuardadaLegible(valores.color_marca);
+  const marca = elegida ? ajustarMarcaSobreFondo(elegida, fondo) : null;
+  valores.color_marca = marca?.usada ?? "";
+  variablesCss[aVariableCss("color_marca")] = marca?.usada ?? "";
+  variablesCss["--carta-primary-texto"] = "var(--carta-ink)";
+  const canales = marca ? canalesDeMarcaHex(marca.usada) : null;
+  // Con un fondo de portada cargado la portada no se pinta con la marca: su texto lo decide ese fondo.
+  return canales && !valores.hero_color_fondo ? tintaSobreMarca(canales).css : null;
+}
+
 export function resolverEstiloCarta(valoresGuardados: unknown): EstiloCarta {
   const obj: Record<string, unknown> =
     typeof valoresGuardados === "object" && valoresGuardados !== null && !Array.isArray(valoresGuardados) ? (valoresGuardados as Record<string, unknown>) : {};
@@ -172,7 +197,9 @@ export function resolverEstiloCarta(valoresGuardados: unknown): EstiloCarta {
   // Con el marcador `marca_derivada = "si"`, SOLO la marca (ver `aplicarModoMarca`); sin él, todo se lee como siempre.
   // Exacto: solo el texto «si» guardado activa el modo (nada de «Si», « si » ni valores raros: todo nace cerrado).
   const modoMarca = Object.hasOwn(obj, "marca_derivada") && obj.marca_derivada === "si";
-  const tintaSobreLaMarca = modoMarca ? aplicarModoMarca(valores, variablesCss) : null;
+  // Marca oscura (PASO A): otro marcador, otra lectura (ver `aplicarMarcaOscura`); «si» y sin marcador se leen como siempre.
+  const modoMarcaOscura = !modoMarca && Object.hasOwn(obj, "marca_derivada") && obj.marca_derivada === MARCADOR_DE_MARCA_OSCURA;
+  const tintaSobreLaMarca = modoMarca ? aplicarModoMarca(valores, variablesCss) : modoMarcaOscura ? aplicarMarcaOscura(valores, variablesCss) : null;
 
   const heroInk = valores.hero_ink ? resolveHeroInk(valores.hero_ink) : null;
   if (heroInk) variablesCss[aVariableCss("hero_ink")] = heroInk;
@@ -187,7 +214,7 @@ export function resolverEstiloCarta(valoresGuardados: unknown): EstiloCarta {
   // (marca #797d62 sobre #181818 = 4,16:1) los textos usan `--carta-primary-texto`, la marca acercada a la tinta lo justo. Con una marca que ya llega no se define y nada cambia.
   const tintaBase = valores.color_fondo_dia ? resolvePrimaryForeground(valores.color_fondo_dia) : null;
   // En modo marca el texto sobre la marca es SIEMPRE la tinta del sistema (`aplicarModoMarca` ya fijó `--carta-primary-texto`): esta corrección es solo del modo clásico.
-  if (valores.color_marca && !modoMarca) {
+  if (valores.color_marca && !modoMarca && !modoMarcaOscura) {
     const marcaLegible = colorDeTextoLegible(valores.color_marca, valores.color_fondo_dia, tintaBase);
     if (marcaLegible !== valores.color_marca) variablesCss["--carta-primary-texto"] = marcaLegible;
   }

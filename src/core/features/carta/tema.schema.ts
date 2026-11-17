@@ -20,3 +20,21 @@ export interface DatosTemaCartaGuardado {
 
 /** `SUCURSAL_NO_ENCONTRADA`: la sucursal activa no se pudo leer (el guard ya descartó cualquier otra). El formato lo rechaza antes el guard. */
 export type ResultadoGuardarTemaCarta = ResultadoCaso<DatosTemaCartaGuardado, "SUCURSAL_NO_ENCONTRADA">;
+
+/**
+ * Comando «guardar la pantalla simple del tema» (PASO A de «Apariencia y publicación», `docs/diseno-carta-apariencia-y-publicacion-como-pedernal-2026-11-17.md`): solo las siete claves de `CLAVES_TEMA_SIMPLE`, YA validadas y
+ * normalizadas por `guardComandoGuardarTemaSimpleCarta` (una clave ausente = vacía = se saca), y la versión que vio la pantalla (`actualizadoEn` en ISO del tema, o `sin-tema` si la sucursal no tenía).
+ */
+export interface ComandoGuardarTemaSimpleCarta {
+  sucursalId: string;
+  valores: ValoresTema;
+  versionEsperada: string;
+}
+
+/** `cambiado`: `false` si lo pedido ya era lo guardado (no se escribió ni se versionó nada). */
+export interface DatosTemaSimpleCartaGuardado {
+  cambiado: boolean;
+}
+
+/** `SUCURSAL_NO_ENCONTRADA`: la sucursal activa no se pudo leer. `VERSION_DESACTUALIZADA`: otra persona cambió el tema mientras se editaba (no se escribió nada). */
+export type ResultadoGuardarTemaSimpleCarta = ResultadoCaso<DatosTemaSimpleCartaGuardado, "SUCURSAL_NO_ENCONTRADA" | "VERSION_DESACTUALIZADA">;
