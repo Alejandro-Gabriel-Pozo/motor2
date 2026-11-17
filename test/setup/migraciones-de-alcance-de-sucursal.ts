@@ -68,6 +68,8 @@ export const MIGRACIONES_DE_POLITICAS_POSTERIORES: readonly { readonly migracion
   { migracion: "20261117115000_rls_sucursal_caja_c2", tablas: ["JornadaDeSucursal", "ControlDeJornadaCerrada", "CorreccionDeMedio", "DeclaracionDeTotal", "ConformeDeJornada"] },
   // Caja y cobro C2b: la foto congelada de la conciliación por medio al cerrar el día (la cabecera, sus líneas por medio y los orígenes cobrados contra el ticket) (PROPIA).
   { migracion: "20261117117000_rls_sucursal_caja_c2b", tablas: ["CierreDeCajaDeJornada", "ConciliacionDeJornada", "ConciliacionDeCobroPorOrigen"] },
+  // Compras N3-b: el control por línea de una compra pendiente de recibir, de la sucursal de su parte (HEREDADA de `FacturaProveedorSucursal`).
+  { migracion: "20261117120110_rls_sucursal_control_de_linea_de_recepcion", tablas: ["ControlDeLineaDeRecepcion"] },
   // Carta, orden de renglones O1: el modo de orden (alfabético o a mano) de una sección en una sucursal (PROPIA).
   { migracion: "20261117160100_rls_sucursal_modo_de_orden_de_seccion_carta", tablas: ["ModoDeOrdenDeSeccionCarta"] },
 ];

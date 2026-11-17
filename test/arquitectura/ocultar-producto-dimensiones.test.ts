@@ -82,6 +82,7 @@ const LECTORES: Record<string, Declaracion> = {
   "src/server/actions/stock/casos-de-uso/reclasificar-stock.ts": { afecta: true, motivo: "§8.5: suma existencia al destino; E5." },
   "src/server/actions/traspasos/casos-de-uso/producto-transferible.ts": { afecta: true, motivo: "§8.5: traspaso entrante suma existencia; E5." },
   "src/server/actions/movimientos/casos-de-uso/aceptar-propuesta-de-factura.ts": { afecta: true, motivo: "§8.5: la compra suma existencia; E5." },
+  "src/server/actions/movimientos/casos-de-uso/confirmar-recepcion-de-factura.ts": { afecta: true, motivo: "§8.5: confirmar la recepción de una compra pendiente suma existencia (igual que aceptar una propuesta); un producto oculto no entra: «no está disponible en …». Compras N3-a." },
   "src/server/consultas/stock/consolidado.ts": { afecta: false, motivo: "§8.5 «No cambian»: consolidado." },
   "src/server/consultas/reportes/valuacion.ts": { afecta: false, motivo: "§8.5 «No cambian»: valuación." },
   "src/server/consultas/reportes/rendimiento-recetas.ts": { afecta: false, motivo: "§8.5 «No cambian»: rendimiento de recetas." },

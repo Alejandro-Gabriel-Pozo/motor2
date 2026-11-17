@@ -123,7 +123,7 @@ describe("(b) las filas muertas no aparecen y las demás sí", () => {
   it("una fila se oculta si el acceso la da siempre por prendida (la misma marca que usa el acceso) o si está reservada", () => {
     for (const clave of CLAVES) {
       const aparece = accionesConfigurablesPorSucursal([{ clave }]).length === 1;
-      expect(aparece, clave).toBe(!esCapacidadSiempreHabilitada(clave) && !esAccionReservada(clave)); // la reservada (`compra_recibir`) se oculta por otra marca (poda 2/2)
+      expect(aparece, clave).toBe(!esCapacidadSiempreHabilitada(clave) && !esAccionReservada(clave)); // una reservada se oculta por otra marca (poda 2/2; hoy no hay ninguna)
     }
   });
 

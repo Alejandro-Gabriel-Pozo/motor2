@@ -3,6 +3,7 @@ import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { describirCambioVersionReceta, describirCopiaDeRecetaPropia, describirDescarteArrastre, describirRecetaPropiaGuardada } from "@/core/catalogo/public";
 import { juzgarCantidadesDeIngredientes, validarCabecera, validarIngredientes, validarPasos, validarUnidadDeIngredientes } from "@/core/catalogo/public";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
+import type { BaseDeCantidad } from "@/core/catalogo/public";
 import { cargarDatosParaValidarReceta } from "@/server/persistencia/catalogo/cargar-datos-para-validar-receta";
 import { MENSAJE_PRODUCTO_NO_ENCONTRADO } from "@/core/features/catalogo/receta-version.guard";
 import type { ComandoGuardarVersionDeReceta, ResultadoGuardarVersionDeReceta } from "@/core/features/catalogo/receta-version.schema";
@@ -76,8 +77,8 @@ import {
  * verlo: dentro de la transacción se compara con `RecetaSucursal.habilitada` y, si no coincide, se rechaza (`VERSION_DESACTUALIZADA`) sin escribir nada.
  */
 export type DestinoDeVersionDeReceta =
-  | { sucursalId: null }
-  | { sucursalId: string; habilitadaEsperada: boolean; basadaEnVersionId?: string | null; copiadaDeSucursal?: string };
+  | { sucursalId: null; baseDeCantidad?: BaseDeCantidad }
+  | { sucursalId: string; habilitadaEsperada: boolean; basadaEnVersionId?: string | null; copiadaDeSucursal?: string; baseDeCantidad?: BaseDeCantidad };
 
 export async function guardarVersionDeRecetaCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalNombre" | "db" | "transaccion" | "empresaId" | "alcance">,
@@ -198,7 +199,8 @@ export async function guardarVersionDeRecetaCasoDeUso(
         }
         version = versionActual + 1;
         const basadaEnVersionId = sucursalId === null ? null : destino.basadaEnVersionId !== undefined ? destino.basadaEnVersionId : await cargarIdDeVersionCentralVigente(tx, productoId);
-        const creada = await escribirVersionDeReceta(tx, { productoId, version, items, pasos, cabecera, sucursalId, basadaEnVersionId });
+        // M3a: una COPIA (receta propia desde la central o desde otra sucursal) conserva la marca de la versión de origen; el resto no la manda y nace con el DEFAULT (NETA).
+        const creada = await escribirVersionDeReceta(tx, { productoId, version, items, pasos, cabecera, sucursalId, basadaEnVersionId, ...(destino.baseDeCantidad !== undefined && { baseDeCantidad: destino.baseDeCantidad }) });
         recetaVersionId = creada.id;
 
         // D3 — arrastre de calibraciones locales (RendimientoLocalIngrediente) de la versión vieja a la nueva, por
