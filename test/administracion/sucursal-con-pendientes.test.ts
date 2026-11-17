@@ -216,7 +216,7 @@ describe("actualizarActivoSucursal: no se apaga una sucursal con traspasos en ca
     expect(await activo(norteId)).toBe(true);
   });
 
-  it("aislamiento: un admin de otra empresa que intenta apagar una sucursal con pendientes recibe «No se encontró esa sucursal.», no la lista (lo garantiza la RLS por empresa: el test lo deja como evidencia)", async () => {
+  it("aislamiento: un admin de otra empresa que intenta apagar una sucursal con pendientes recibe «No se encontró la sucursal.», no la lista (lo garantiza la RLS por empresa: el test lo deja como evidencia)", async () => {
     await traspaso("ENVIADA", surId, norteId);
     await mesaConCuenta(norteId, 1);
     const otra = await crearEmpresa(
@@ -228,7 +228,7 @@ describe("actualizarActivoSucursal: no se apaga una sucursal con traspasos en ca
 
     const r = await actualizarActivoSucursalCasoDeUso(actorDeLaOtra, { sucursalId: norteId, activo: false });
 
-    expect(r).toMatchObject({ ok: false, codigo: "SUCURSAL_NO_ENCONTRADA", mensaje: "No se encontró esa sucursal." });
+    expect(r).toMatchObject({ ok: false, codigo: "SUCURSAL_NO_ENCONTRADA", mensaje: "No se encontró la sucursal." });
     expect(await activo(norteId)).toBe(true);
     expect(await filasDeAuditoria(norteId)).toBe(0);
   });

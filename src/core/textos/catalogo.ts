@@ -124,22 +124,22 @@ export const CATALOGO = {
     fuente: { decision: "DEC-0015" },
   },
   // Lote A (DEC-0017): «No se encontró …» idénticos con el mismo código, una clave por código.
-  "rechazo.MEMBRESIA_NO_ENCONTRADA": {
-    porDefecto: "No se encontró esa membresía.",
+  // Lote C1 (DEC-0020): «No se encontró {entidad}.», un solo molde con el género de la cosa («ese/esa» pasa a «el/la», aceptado por el dueño). Hoy lo usa `server/actions/auth/`; el resto de los sitios entra en C2.
+  "rechazo.NO_ENCONTRADO": {
+    porDefecto: "No se encontró {entidad}.",
+    marcadores: { entidad: "entidad" },
     usos: [
       { archivo: "src/server/actions/auth/casos-de-uso/actualizar-activo-membresia.ts", nombre: "actualizarActivoMembresiaCasoDeUso" },
       { archivo: "src/server/actions/auth/casos-de-uso/actualizar-notas-membresia.ts", nombre: "actualizarNotasMembresiaCasoDeUso" },
       { archivo: "src/server/actions/auth/casos-de-uso/invitar-a-vincular.ts", nombre: "invitarAVincularCasoDeUso" },
-    ],
-    fuente: { decision: "DEC-0017" },
-  },
-  "rechazo.SUCURSAL_NO_ENCONTRADA": {
-    porDefecto: "No se encontró esa sucursal.",
-    usos: [
       { archivo: "src/server/actions/auth/casos-de-uso/actualizar-activo-sucursal.ts", nombre: "actualizarActivoSucursalCasoDeUso" },
       { archivo: "src/server/actions/auth/casos-de-uso/renombrar-sucursal.ts", nombre: "renombrarSucursalCasoDeUso" },
+      { archivo: "src/server/actions/auth/casos-de-uso/actualizar-activo-usuario-en-empresa.ts", nombre: "actualizarActivoUsuarioEnEmpresaCasoDeUso" },
+      { archivo: "src/server/actions/auth/casos-de-uso/invitacion-gestionable.ts", nombre: "invitacionGestionable" },
+      { archivo: "src/server/actions/auth/casos-de-uso/invitaciones-de-usuario-en-tx.ts", nombre: "rotarInvitacionPendiente" },
+      { archivo: "src/server/actions/auth/casos-de-uso/revocar-invitacion.ts", nombre: "revocarInvitacionCasoDeUso" },
     ],
-    fuente: { decision: "DEC-0017" },
+    fuente: { decision: "DEC-0020" },
   },
   "rechazo.CONTEO_NO_ENCONTRADO": {
     porDefecto: "No se encontró ese conteo.",
