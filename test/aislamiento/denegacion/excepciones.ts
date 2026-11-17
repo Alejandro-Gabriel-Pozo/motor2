@@ -198,7 +198,6 @@ export const SIN_MARCA_PROPIA: Readonly<Record<string, string>> = {
   "accion|actions/traspasos/lecturas.ts|listarSucursalesParaSolicitar": "lista las OTRAS sucursales de la empresa (id y nombre) para elegir contraparte: por diseño no llevan el marcador de la sucursal propia",
   "consulta|consultas/movimientos/facturas-proveedor.ts|listarOtrasSucursalesParaReparto": "lista las OTRAS sucursales activas de la empresa (id y nombre) para repartir la factura: por diseño no llevan el marcador de la sucursal propia",
   "consulta|consultas/movimientos/ordenes-de-compra.ts|cargarNivelDelControlDeExceso": "devuelve solo el nivel del control de la empresa (PERMITIR, AVISAR o BLOQUEAR) o `null` si no se configuró: un texto, sin ninguna fila identificable",
-  "lectura|lecturas/movimientos/ordenes-de-compra.ts|cargarNivelDelControlDeExceso": "devuelve solo el nivel del control de la empresa (PERMITIR, AVISAR o BLOQUEAR) o `null` si no se configuró: un texto, sin ninguna fila identificable",
   // Consultas de las páginas.
   "consulta|consultas/catalogo/ocultar-producto.ts|cargarLoQueMuestraOcultar": "devuelve solo cuatro banderas (oculto en la sucursal, oculto en la empresa, y si se le ofrece cada botón), sin ninguna fila ni texto donde ponerle el marcador",
   "consulta|consultas/carta/admin.ts|cargarPortalEmpresaAdmin": "devuelve solo los valores de una lista cerrada de claves del portal (colores, tipografías…), sin texto libre donde ponerle el marcador",
