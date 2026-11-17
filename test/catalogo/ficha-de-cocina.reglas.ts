@@ -29,13 +29,18 @@ export function esperado(c: Combinacion): { presentes: string[]; ausentes: strin
     `Versión ${VERSION_DE[c.origen]} · ${c.origen === "PROPIA" ? "receta propia de la sucursal" : "receta central"}`,
     "Sucursal Norte · Impresa el 08/11/2026 12:10",
     "Bife de nalga",
-    "0,22",
+    // M3c (2026-11-17; dueño: la ficha imprime SIEMPRE el bruto, también para las recetas ya cargadas): los datos de prueba traen 8 % de merma en cada línea y son NETA, así que el papel lleva
+    // neto × 1,08 (escrito a mano, no derivado del código): bife 0,22 → 0,2376; huevo 1 → 1,08; pan rallado 0,06 → 0,0648; sal 0,005 → 0,0054. Antes (neto) decía 0,22 y 0,005.
+    "0,2376",
     "kg",
     "Huevo",
+    "1,08",
     "Sal fina",
-    "0,005",
+    "0,0054",
+    "0,0648",
   ];
-  const ausentes: string[] = [];
+  // El neto de antes ya no sale en el papel (el 0,005 no se nombra: «0,0054» lo contiene; el 0,22 no está contenido en ningún bruto).
+  const ausentes: string[] = ["0,22"];
 
   if (c.fichaTecnica === "con") {
     presentes.push("Rendimiento", "1 unidad", "Raciones", "Tamaño de ración", "450 g", "Preparación", "25 min", "Cocción", "15 min");
