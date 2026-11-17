@@ -80,6 +80,12 @@ const confirmar = async (facturaId: string, destinos: string[], actor = actor3()
 const movimientosDeCompra = () => prisma.movimientoStock.count({ where: { proceso: "COMPRA" } });
 const parteDe = (facturaId: string) => prisma.facturaProveedorSucursal.findFirstOrThrow({ where: { facturaProveedorId: facturaId, sucursalId: s3 } });
 const auditoriasDe = (facturaId: string) => prisma.registroAuditoria.findMany({ where: { entidadId: facturaId, campo: "recepcion" } });
+/** El detalle por renglón de la auditoría (datos estructurados): [nombre de la propuesta, nombre de la elegida, cambiado], en el orden de la factura. */
+const destinosAuditados = async (facturaId: string) => {
+  const fila = await prisma.registroAuditoria.findFirstOrThrow({ where: { entidadId: facturaId, campo: "destinoDeRecepcion" } });
+  const nombres = new Map((await prisma.seccion.findMany()).map((x) => [x.id, x.nombre]));
+  return (JSON.parse(fila.valorNuevo!) as { seccionPropuestaId: string | null; seccionElegidaId: string; cambiado: boolean }[]).map((d) => [d.seccionPropuestaId ? nombres.get(d.seccionPropuestaId) : null, nombres.get(d.seccionElegidaId), d.cambiado]);
+};
 const nada = async (facturaId: string) => {
   expect([await movimientosDeCompra(), await prisma.operacion.count({ where: { proceso: "COMPRA" } }), (await parteDe(facturaId)).estadoRecepcion, (await auditoriasDe(facturaId)).length]).toEqual([0, 0, "PENDIENTE", 0]);
 };
@@ -115,8 +121,7 @@ describe("el destino según el control", () => {
     expect(r.ok, r.mensaje).toBe(true);
     expect([await calcularSaldoTotal(harina, rechazo.id, prisma), await calcularSaldoTotal(aceite, cuarentena.id, prisma)]).toEqual([10, 5]);
     expect([await calcularSaldoTotal(harina, sec3, prisma), await calcularSaldoTotal(aceite, sec3, prisma)]).toEqual([0, 0]);
-    const [a] = await auditoriasDe(facturaId);
-    expect(a!.descripcion).toContain("Destino por renglón: Harina: propuesta «Rechazo», elegida «Rechazo», sin cambio; Aceite: propuesta «Cuarentena», elegida «Cuarentena», sin cambio");
+    expect(await destinosAuditados(facturaId)).toEqual([["Rechazo", "Rechazo", false], ["Cuarentena", "Cuarentena", false]]);
   });
 
   it("la conforme y la sin control se proponen a la primera sección NORMAL por nombre", async () => {
@@ -128,7 +133,7 @@ describe("el destino según el control", () => {
     const r = await confirmar(facturaId, [almacen, almacen]);
 
     expect(r.ok, r.mensaje).toBe(true);
-    expect((await auditoriasDe(facturaId))[0]!.descripcion).toContain("Harina: propuesta «Almacén», elegida «Almacén», sin cambio; Aceite: propuesta «Almacén», elegida «Almacén», sin cambio");
+    expect(await destinosAuditados(facturaId)).toEqual([["Almacén", "Almacén", false], ["Almacén", "Almacén", false]]);
   });
 
   it("con varias secciones del mismo uso se propone la primera por nombre y se puede elegir otra (queda «cambiado» en la auditoría)", async () => {
@@ -140,7 +145,7 @@ describe("el destino según el control", () => {
     const r = await confirmar(facturaId, [r2.id, sec3]);
 
     expect(r.ok, r.mensaje).toBe(true);
-    expect((await auditoriasDe(facturaId))[0]!.descripcion).toContain("Harina: propuesta «Rechazo 1», elegida «Rechazo 2», cambiado; Aceite: propuesta «Depósito», elegida «Depósito», sin cambio");
+    expect(await destinosAuditados(facturaId)).toEqual([["Rechazo 1", "Rechazo 2", true], ["Depósito", "Depósito", false]]);
   });
 
   it("quien confirma puede mandar la rechazada a un depósito normal SI la sucursal tiene el de rechazo (queda «cambiado»)", async () => {
@@ -152,7 +157,7 @@ describe("el destino según el control", () => {
 
     expect(r.ok, r.mensaje).toBe(true);
     expect([await calcularSaldoTotal(harina, sec3, prisma), await calcularSaldoTotal(aceite, sec3, prisma)]).toEqual([10, 5]);
-    expect((await auditoriasDe(facturaId))[0]!.descripcion).toContain("Harina: propuesta «Rechazo», elegida «Depósito», cambiado");
+    expect((await destinosAuditados(facturaId))[0]).toEqual(["Rechazo", "Depósito", true]);
   });
 });
 

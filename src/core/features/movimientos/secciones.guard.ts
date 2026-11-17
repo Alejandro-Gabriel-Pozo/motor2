@@ -14,8 +14,6 @@ import { ENTIDADES } from "@/core/textos/entidades";
  * nunca se validaron: sin guard (`SIN_GUARD`).
  */
 
-const MENSAJE_USO_DE_SECCION_INVALIDO = "Elegí un uso de depósito válido: normal, cuarentena o rechazo.";
-
 /** El nombre de una sección: recortado, no vacío (con el texto de cada acción), charset y largo de la ficha ELECCION. */
 const nombreDeSeccion = (nombre: unknown, mensajeVacio: string): ResultadoDato<string> => nombreDeCatalogo(nombre, mensajeVacio);
 
@@ -25,7 +23,7 @@ export function guardComandoCrearSeccion(entrada: { nombre: unknown; uso?: unkno
   if (!nombre.ok) return rechazar(nombre.codigo, nombre.mensaje);
   // El uso (Compras, depósitos de rechazo y cuarentena, etapa (i)): sin decir nada (`undefined`) es NORMAL; si viene, tiene que ser uno de la lista de permitidos.
   const uso = entrada.uso === undefined ? "NORMAL" : entrada.uso;
-  if (!esUsoDeSeccion(uso)) return rechazar("formato", MENSAJE_USO_DE_SECCION_INVALIDO);
+  if (!esUsoDeSeccion(uso)) return rechazar("formato", "Valor inválido.");
   return aceptar({ nombre: nombre.valor, uso });
 }
 

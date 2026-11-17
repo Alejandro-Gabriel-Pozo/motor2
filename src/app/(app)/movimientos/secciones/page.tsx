@@ -73,7 +73,7 @@ export default async function SeccionesPage() {
                     s.nombre
                   )}
                   {/* El uso se elige al crear y no se edita: solo se rotula si no es el normal. */}
-                  {esUsoDeSeccion(s.uso) && s.uso !== "NORMAL" && <span className="mt-1 block text-xs text-tinta-tenue">Uso del depósito: {ETIQUETA_DE_USO_DE_SECCION[s.uso]}</span>}
+                  {esUsoDeSeccion(s.uso) && s.uso !== "NORMAL" && <span className="mt-1 block text-xs text-tinta-tenue">{ETIQUETA_DE_USO_DE_SECCION[s.uso]}</span>}
                 </td>
                 <td>{s.activa ? "Sí" : "No"}</td>
                 <td>

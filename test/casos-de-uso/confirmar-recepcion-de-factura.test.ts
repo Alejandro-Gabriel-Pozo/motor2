@@ -242,7 +242,7 @@ describe("confirmar la recepción", () => {
       sucursalId: s3,
       valorAnterior: "PENDIENTE",
       valorNuevo: "RECIBIDA",
-      descripcion: `Recepción de la compra A-00001-00000100 confirmada en «Central» (sección «Depósito», fecha de stock ${diaDeCalendario(fechaStock, ZONA_ARGENTINA)}). Destino por renglón: Harina: propuesta «Depósito», elegida «Depósito», sin cambio; Aceite: propuesta «Depósito», elegida «Depósito», sin cambio`,
+      descripcion: `Recepción de la compra A-00001-00000100 confirmada en «Central» (sección «Depósito», fecha de stock ${diaDeCalendario(fechaStock, ZONA_ARGENTINA)})`,
     });
   });
 

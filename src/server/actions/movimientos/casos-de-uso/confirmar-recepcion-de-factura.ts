@@ -5,7 +5,6 @@ import {
   decidirConfirmacionDeRecepcion,
   decidirDestinosDeRecepcion,
   validarEntradasDeRecepcion,
-  type DestinoDeRenglon,
   type SeccionParaRecibir,
 } from "@/core/compras/public";
 import type { ComandoConfirmarRecepcionDeFactura, ResultadoConfirmarRecepcionDeFactura } from "@/core/features/compras/factura-proveedor.schema";
@@ -19,15 +18,6 @@ import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad"
 import { bloquearFactura, bloquearSeccionesDeLaSucursal, cargarCondicionesDeControl, cargarParteDeFacturaEnSucursal, cargarRenglonesParaRecibir } from "@/server/persistencia/compras/cargar-factura-proveedor";
 import { confirmarParteRecibida } from "@/server/persistencia/compras/escribir-factura-proveedor";
 import { escribirLineasDeMovimientoStock, escribirOperacionDeStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
-
-/** Por renglón, para la auditoría: el producto, la sección propuesta por el control, la elegida y si se la cambió (o que no había propuesta). */
-function textoDeLosDestinos(destinos: readonly DestinoDeRenglon[], renglones: readonly { facturaProveedorRenglonId: string; productoNombre: string }[], secciones: ReadonlyMap<string, { nombre: string }>): string {
-  const nombreDe = (id: string | null) => `«${(id && secciones.get(id)?.nombre) || ""}»`;
-  const productoDe = new Map(renglones.map((r) => [r.facturaProveedorRenglonId, r.productoNombre]));
-  return destinos
-    .map((d) => `${productoDe.get(d.renglonId) ?? ""}: propuesta ${d.seccionPropuestaId ? nombreDe(d.seccionPropuestaId) : "ninguna"}, elegida ${nombreDe(d.seccionElegidaId)}, ${d.cambiado ? "cambiado" : "sin cambio"}`)
-    .join("; ");
-}
 
 /** Lo que tira la transacción cuando otra confirmación ganó en el medio: hace ROLLBACK de todo lo escrito y el `.catch` lo traduce. */
 class ParteYaRecibida extends Error {}
@@ -52,7 +42,7 @@ class ParteYaRecibida extends Error {}
  *  3. arma UNA línea del Kardex por renglón, con la cantidad, el precio total, el precio por unidad, el lote y el detalle del renglón TAL CUAL, con la fecha de la confirmación (el mediodía argentino del día de `actor.ahora`, como el resto de las
  *     compras: P1, `mediodiaDelDia`), escribe la compra y marca la parte RECIBIDA con su compra, con `WHERE estado = 'PENDIENTE'`:
  *     si no tocó ninguna fila, ganó otra confirmación y se deshace todo (no queda compra huérfana); la segunda barrera es el disparador de la base (una parte recibida no vuelve atrás);
- *  4. audita (`FacturaProveedor`, campo `recepcion`, de PENDIENTE a RECIBIDA: quién (`actorId`), cuándo (el registro) y, en la descripción, las secciones, la fecha de stock y, por renglón, la sección propuesta, la elegida y si se la cambió).
+ *  4. audita (`FacturaProveedor`, campo `recepcion`, de PENDIENTE a RECIBIDA: quién (`actorId`), cuándo (el registro) y, en la descripción, las secciones, la fecha de stock. Una segunda fila (`campo: "destinoDeRecepcion"`) guarda por renglón, como JSON, la sección propuesta, la elegida y si se la cambió).
  * Un choque del único de la compra (`Operacion_factura_unica_vigente_key`) es la carrera perdida contra otra confirmación de la misma parte (leo el estado, valido y recién después inserto una clave única): se reintenta y el reintento ve «ya recibida».
  * Idempotente por ESTADO, sin clave de reintento: confirmar dos veces devuelve ÉXITO con `yaExistia` («ya recibida») sin crear stock de nuevo ni auditar otra vez; dos confirmaciones a la vez dejan una sola (la otra reintenta y la encuentra recibida).
  *
@@ -150,10 +140,22 @@ export async function confirmarRecepcionDeFacturaCasoDeUso(
     await registrarCambioAuditado(tx, {
       entidad: "FacturaProveedor",
       entidadId: factura.id,
-      descripcion: `Recepción de la compra${factura.nroFactura ? ` ${factura.nroFactura}` : ""} confirmada en «${actor.sucursalNombre}» (${secciones.length === 1 ? `sección «${secciones[0]?.nombre ?? ""}»` : `secciones ${secciones.map((x) => `«${x?.nombre ?? ""}»`).join(", ")}`}, fecha de stock ${diaStock}). Destino por renglón: ${textoDeLosDestinos(destinosDecididos.destinos, renglones, seccionesPorId)}`,
+      descripcion: `Recepción de la compra${factura.nroFactura ? ` ${factura.nroFactura}` : ""} confirmada en «${actor.sucursalNombre}» (${secciones.length === 1 ? `sección «${secciones[0]?.nombre ?? ""}»` : `secciones ${secciones.map((x) => `«${x?.nombre ?? ""}»`).join(", ")}`}, fecha de stock ${diaStock})`,
       campo: "recepcion",
       valorAnterior: "PENDIENTE",
       valorNuevo: "RECIBIDA",
+      actorId: actor.usuarioId,
+      sucursalId: actor.sucursalId,
+    });
+
+    // El detalle por renglón (sección propuesta, elegida y si se la cambió) queda como datos estructurados (JSON), sin texto nuevo.
+    await registrarCambioAuditado(tx, {
+      entidad: "FacturaProveedor",
+      entidadId: factura.id,
+      descripcion: `Recepción de la compra${factura.nroFactura ? ` ${factura.nroFactura}` : ""} confirmada en «${actor.sucursalNombre}»`,
+      campo: "destinoDeRecepcion",
+      valorAnterior: null,
+      valorNuevo: JSON.stringify(destinosDecididos.destinos),
       actorId: actor.usuarioId,
       sucursalId: actor.sucursalId,
     });

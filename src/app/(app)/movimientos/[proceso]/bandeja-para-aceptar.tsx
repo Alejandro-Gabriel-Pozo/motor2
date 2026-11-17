@@ -340,7 +340,7 @@ export function BandejaPorRecibir({
       <p className="text-xs text-tinta-tenue">
         Compras cargadas que todavía no entraron al stock.
         {puedeControlar ? " Controlá cómo llegó cada línea y guardá el control." : ""}
-        {puedeConfirmar ? " Confirmá la recepción cuando llegue la mercadería: ahí entra al depósito que elijas (el control propone uno: la mercadería rechazada va al depósito de rechazo y la que tiene observaciones, al de cuarentena)." : ""}
+        {puedeConfirmar ? " Confirmá la recepción cuando llegue la mercadería: ahí entra al depósito que elijas." : ""}
       </p>
       <ul className="flex flex-col gap-2">
         {compras.map((c) => (

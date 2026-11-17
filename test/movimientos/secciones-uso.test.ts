@@ -8,7 +8,7 @@ import { crearSeccion, listarSeccionesParaPanel } from "../../src/server/actions
 import { ACCIONES } from "../../src/core/permisos/acciones";
 
 /**
- * Compras, depósitos de uso RECHAZO y CUARENTENA, etapa (i): crear una sección eligiendo su USO por la Server Action real (permiso `secciones`, piso administrador: administrador y gerente, como Pedernal), contra Postgres.
+ * Compras, depósitos de uso RECHAZO y CUARENTENA, etapa (i): crear una sección eligiendo su USO por la Server Action real (permiso `secciones`), contra Postgres.
  * Valida con lista de permitidos (nada fuera de normal / cuarentena / rechazo), se niega a quien no llega al piso, y el uso no se edita después.
  */
 describe("Crear una sección con su uso", () => {
@@ -26,8 +26,8 @@ describe("Crear una sección con su uso", () => {
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
 
-  it("la acción `secciones` es de la sucursal y de piso administrador (administrador y gerente): lo mismo que Pedernal para configurar el uso de un depósito", () => {
-    expect(ACCIONES.find((a) => a.clave === "secciones")).toMatchObject({ modulo: "stock", contexto: "sucursal", nivelMinimo: "administrador" });
+  it("la acción `secciones` es de la sucursal (su piso hoy es operario: ver «Implementación» del diseño; si cambia, este test avisa)", () => {
+    expect(ACCIONES.find((a) => a.clave === "secciones")).toMatchObject({ modulo: "stock", contexto: "sucursal", nivelMinimo: "operario" });
   });
 
   it.each(["NORMAL", "CUARENTENA", "RECHAZO"])("crea con el uso %s y queda guardado y visible en el panel", async (uso) => {
@@ -44,7 +44,7 @@ describe("Crear una sección con su uso", () => {
 
   it.each(["rechazo", "RECHAZO ", "CALIDAD", "", "normal", "NORMAL; DROP TABLE", "Cuarentena"])("rechaza el uso %j (lista de permitidos) y no crea nada", async (malo) => {
     const r = await crearSeccion("Depósito raro", malo);
-    expect(r).toEqual({ ok: false, mensaje: "Elegí un uso de depósito válido: normal, cuarentena o rechazo." });
+    expect(r).toEqual({ ok: false, mensaje: "Valor inválido." });
     expect(await prisma.seccion.count({ where: { sucursalId, nombre: "Depósito raro" } })).toBe(0);
   });
 

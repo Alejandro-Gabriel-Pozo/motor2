@@ -108,8 +108,10 @@ describe("oráculo contra la base real: destino de la línea al confirmar (módu
       expect((await prisma.movimientoStock.findMany({ where: { productoId: aceite, proceso: "COMPRA" } })).map((m) => [m.seccionId, Number(m.cantidad)])).toEqual([[ids["A"], 5]]);
       const auditoria = await prisma.registroAuditoria.findMany({ where: { entidadId: facturaId, campo: "recepcion" } });
       expect(auditoria).toHaveLength(1);
-      expect(auditoria[0]!.descripcion, "lo propuesto contra lo elegido, por renglón").toContain(`Harina: propuesta`);
-      expect(auditoria[0]!.descripcion).toContain(f.Resultado === "CONFIRMA_CAMBIADO" ? ", cambiado" : "sin cambio; Aceite");
+      const detalle = await prisma.registroAuditoria.findFirstOrThrow({ where: { entidadId: facturaId, campo: "destinoDeRecepcion" } });
+      const destinos = JSON.parse(detalle.valorNuevo!) as { seccionElegidaId: string; cambiado: boolean }[];
+      expect(destinos[0]!.seccionElegidaId, "lo elegido, por renglón").toBe(elegidaId);
+      expect(destinos[0]!.cambiado).toBe(f.Resultado === "CONFIRMA_CAMBIADO");
     }
   });
 });
