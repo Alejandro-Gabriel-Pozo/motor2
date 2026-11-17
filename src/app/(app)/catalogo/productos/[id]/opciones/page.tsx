@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { FICHA_AYUDAS_VISIBLES } from "@/core/catalogo/public";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
@@ -134,13 +135,15 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
         <AvisoConDeshacer>
           <div className="flex flex-col gap-1">
             <h2 className="text-lg font-medium">Opciones</h2>
+            {FICHA_AYUDAS_VISIBLES && (
             <p className="text-sm text-tinta-suave">
-              Qué se elige al venderlo y cómo cambia el precio. El precio del producto está en la pestaña Precios. Los grupos y sus opciones se arman en la{" "}
-              <EnlaceInterno href="/catalogo/opciones" className="underline">
-                Biblioteca de opciones
-              </EnlaceInterno>
-              .
-            </p>
+                Qué se elige al venderlo y cómo cambia el precio. El precio del producto está en la pestaña Precios. Los grupos y sus opciones se arman en la{" "}
+                <EnlaceInterno href="/catalogo/opciones" className="underline">
+                  Biblioteca de opciones
+                </EnlaceInterno>
+                .
+              </p>
+            )}
           </div>
 
           {faltaMarcarloPorOpcion ? (
@@ -233,7 +236,7 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
                     >
                       Quitar de este producto
                     </BotonConDeshacer>
-                    <span className="text-xs text-tinta-suave">No se borra nada: lo que admite de cada opción queda guardado.</span>
+                    {FICHA_AYUDAS_VISIBLES && <span className="text-xs text-tinta-suave">No se borra nada: lo que admite de cada opción queda guardado.</span>}
                   </div>
                 </section>
               );

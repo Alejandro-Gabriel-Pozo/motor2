@@ -3,6 +3,8 @@ import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoActualizarActivaSeccion, ResultadoActualizarActivaSeccion } from "@/core/features/movimientos/secciones.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { fijarActivaDeSeccion } from "@/server/persistencia/movimientos/secciones";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 
 /**
  * Caso de uso «activar o desactivar una sección de stock» (Hito 4 de la pureza, bloque C de la pieza carta/catálogo/stock, paso H4C-18 —
@@ -25,9 +27,9 @@ export async function actualizarActivaSeccionCasoDeUso(
 ): Promise<ResultadoActualizarActivaSeccion> {
   const { seccionId, activa } = comando;
   // O.44b (fallo cerrado): un id que no es texto (`undefined`, un objeto) hacía lanzar a `findUnique` (un 500); se descarta antes de leer, con el mismo «no encontrado».
-  if (typeof seccionId !== "string") return fracaso("NO_ENCONTRADA", "No se encontró el depósito.");
+  if (typeof seccionId !== "string") return fracaso("NO_ENCONTRADA", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.deposito }));
   const seccion = await actor.db.seccion.findUnique({ where: { id: seccionId } });
-  if (!seccion || seccion.sucursalId !== actor.sucursalId) return fracaso("NO_ENCONTRADA", "No se encontró el depósito.");
+  if (!seccion || seccion.sucursalId !== actor.sucursalId) return fracaso("NO_ENCONTRADA", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.deposito }));
 
   await fijarActivaDeSeccion(actor.db, { id: seccionId, activa });
   return exito(`Depósito "${seccion.nombre}" ${activa ? "activado" : "desactivado"}.`, null);

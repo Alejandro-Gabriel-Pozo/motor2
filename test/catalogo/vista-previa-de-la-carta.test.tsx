@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { VistaPreviaDeLaCarta as Vista } from "../../src/core/carta/public";
 import { VistaPreviaDeLaCarta } from "../../src/components/catalogo/espacio-del-producto/vista-previa-de-la-carta";
 
@@ -12,11 +12,25 @@ const dibujar = (vista: Vista) => renderToStaticMarkup(<VistaPreviaDeLaCarta nom
 const texto = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
 
 describe("VistaPreviaDeLaCarta", () => {
-  it("siempre dice de qué sucursal es el precio, que es de lista sin descuentos, y es una región con nombre", () => {
+  it("siempre es una región con nombre; la nota «precio de lista de «Central», sin descuentos» está OCULTA con el interruptor apagado (Frente 6, paso 2: `FICHA_AYUDAS_VISIBLES`)", () => {
     const html = dibujar({ tipo: "sin-opciones" });
     expect(html).toContain('aria-labelledby="titulo-vista-previa-de-la-carta"');
     expect(texto(html)).toContain("Cómo se va a ver en la carta");
-    expect(texto(html)).toContain("precio de lista de «Central», sin descuentos");
+    expect(texto(html)).not.toContain("precio de lista de «Central», sin descuentos");
+  });
+
+  describe("con el interruptor FICHA_AYUDAS_VISIBLES encendido (reversibilidad)", () => {
+    afterEach(() => {
+      vi.doUnmock("../../src/core/catalogo/ficha-ayudas-visibles");
+      vi.resetModules();
+    });
+    it("vuelve la nota que dice de qué sucursal es el precio y que es de lista sin descuentos", async () => {
+      vi.resetModules();
+      vi.doMock("../../src/core/catalogo/ficha-ayudas-visibles", () => ({ FICHA_AYUDAS_VISIBLES: true }));
+      const { VistaPreviaDeLaCarta: Encendida } = await import("../../src/components/catalogo/espacio-del-producto/vista-previa-de-la-carta");
+      const html = renderToStaticMarkup(<Encendida nombre="Café" sucursalNombre="Central" vista={{ tipo: "sin-opciones" }} />);
+      expect(texto(html)).toContain("precio de lista de «Central», sin descuentos");
+    });
   });
 
   it("sin opciones: sale con su nombre y su precio", () => {

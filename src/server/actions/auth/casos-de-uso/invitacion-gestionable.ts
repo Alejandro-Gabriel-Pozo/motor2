@@ -6,6 +6,8 @@ import { mensajeSiNoPuedeDarRolSinTechoDeGestion, mensajeSiNoPuedeGestionar } fr
 import { actorDesdeLaBase, objetivoEnSucursal } from "@/server/lecturas/permisos/gestion-de-usuarios";
 import { SELECCION_DE_ROL_PARA_JERARQUIA } from "@/core/permisos/jerarquia";
 import { requierePermiso } from "@/server/acceso/gate";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 
 const TIPO_DE_USUARIO: TipoDeInvitacion = "usuario";
 
@@ -36,11 +38,11 @@ export async function invitacionGestionable(actor: ActorDeInvitacion, tx: Prisma
     where: { id: invitacionId, empresaId: actor.empresaId, estado: "PENDIENTE", rolEmpresa: { in: ["usuario", "vinculacion"] } },
     select: { id: true, email: true, rolEmpresa: true, enviadaEn: true, sucursales: { select: { sucursalId: true, rol: { select: SELECCION_DE_ROL_PARA_JERARQUIA } } } },
   });
-  if (!inv) return { ok: false, mensaje: "No se encontró esa invitación pendiente." };
+  if (!inv) return { ok: false, mensaje: textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.invitacion_pendiente }) };
 
   const tipoDeInvitacion: string = inv.rolEmpresa;
   if (tipoDeInvitacion === TIPO_DE_USUARIO) {
-    if (!inv.sucursales.some((s) => s.sucursalId === actor.sucursalId)) return { ok: false, mensaje: "No se encontró esa invitación pendiente." };
+    if (!inv.sucursales.some((s) => s.sucursalId === actor.sucursalId)) return { ok: false, mensaje: textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.invitacion_pendiente }) };
     for (const fila of inv.sucursales) {
       if (fila.sucursalId !== actor.sucursalId) {
         const gate = await requierePermiso(actor.usuarioId, fila.sucursalId, "gestion_usuarios", actor.db);
@@ -54,7 +56,7 @@ export async function invitacionGestionable(actor: ActorDeInvitacion, tx: Prisma
   }
 
   const membresia = await tx.usuarioSucursal.findFirst({ where: { sucursalId: actor.sucursalId, usuario: { email: inv.email } }, select: { rol: { select: SELECCION_DE_ROL_PARA_JERARQUIA }, usuarioId: true } });
-  if (!membresia) return { ok: false, mensaje: "No se encontró esa invitación pendiente." };
+  if (!membresia) return { ok: false, mensaje: textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.invitacion_pendiente }) };
   const quienActua = await actorDesdeLaBase(tx, actor.empresaId, actor.usuarioId, actor.sucursalId);
   const rechazo = mensajeSiNoPuedeGestionar(quienActua, await objetivoEnSucursal(tx, actor.empresaId, membresia.usuarioId, membresia.rol));
   if (rechazo) return { ok: false, mensaje: rechazo };

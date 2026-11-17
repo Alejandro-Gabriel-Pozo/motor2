@@ -16,6 +16,7 @@ export { factorDeMerma, factorDeMermaExacto } from "./merma";
 // Interruptor de las presentaciones de compra (decisión del dueño, 2026-11-06): apagadas, ni se ven ni se pueden escribir.
 export { MENSAJE_PRESENTACIONES_APAGADAS, PRESENTACIONES_VISIBLES } from "./presentaciones-visibles";
 export { OBSERVACIONES_VISIBLES } from "./observaciones-visibles";
+export { FICHA_AYUDAS_VISIBLES } from "./ficha-ayudas-visibles";
 export { creariaCicloEnArbol, textoCadenaDeGruposEn } from "./cadena-de-grupos";
 export type { NodoDeGrupo } from "./cadena-de-grupos";
 export { clasificarGruposNoComestibles } from "./no-comestibles";
@@ -95,3 +96,5 @@ export { PENDIENTE, armarFichaDeCocina } from "./ficha-de-cocina";
 export type { FichaDeCocina, RecetaParaFicha } from "./ficha-de-cocina";
 // «Duplicar producto» (E4, docs/diseno-duplicar-producto-2026-11-12.md): lo que el diálogo de la ficha dice que no se copia (puro; las demás reglas las lee el caso de uso).
 export { LO_QUE_NO_SE_COPIA } from "./duplicar-producto";
+export { OPCIONES_AGOTADAS_AYUDAS_VISIBLES } from "./opciones-agotadas-ayudas-visibles";
+export { OPCIONES_AGOTADAS_PLEGADAS } from "./opciones-agotadas-plegadas";

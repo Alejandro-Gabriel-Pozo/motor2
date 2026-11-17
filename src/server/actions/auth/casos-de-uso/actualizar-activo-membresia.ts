@@ -6,6 +6,7 @@ import { actorDesdeLaBase, objetivoEnSucursal, reactivaAUnAdmin } from "@/server
 import { SELECCION_DE_ROL_PARA_JERARQUIA } from "@/core/permisos/jerarquia";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 import { cambiarActivoDeMembresia } from "@/server/persistencia/permisos/membresias";
 import { conGobierno, conInvariantesDeGobierno } from "../../con-gobierno";
 
@@ -42,7 +43,7 @@ export async function actualizarActivoMembresiaCasoDeUso(
     actor,
     async (tx): Promise<ResultadoActualizarActivoMembresia> => {
       const membresia = await tx.usuarioSucursal.findUnique({ where: { id: membresiaId }, include: { rol: { select: SELECCION_DE_ROL_PARA_JERARQUIA } } });
-      if (!membresia || membresia.sucursalId !== actor.sucursalId) return fracaso("MEMBRESIA_NO_ENCONTRADA", textoDe("rechazo.MEMBRESIA_NO_ENCONTRADA"));
+      if (!membresia || membresia.sucursalId !== actor.sucursalId) return fracaso("MEMBRESIA_NO_ENCONTRADA", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.membresia }));
 
       const quienActua = await actorDesdeLaBase(tx, actor.empresaId, actor.usuarioId, actor.sucursalId);
       const objetivo = await objetivoEnSucursal(tx, actor.empresaId, membresia.usuarioId, membresia.rol);

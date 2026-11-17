@@ -1,4 +1,5 @@
 import { CATALOGO, type ClaveDeTexto } from "./catalogo";
+import { ENTIDADES, type Entidad } from "./entidades";
 import type { DefinicionDeTexto, TipoDeMarcador } from "./tipos";
 
 /**
@@ -15,7 +16,7 @@ type MarcadoresDe<C extends ClaveDeTexto> = Catalogo[C] extends { readonly marca
 /** Claves cuyo texto no tiene huecos propios: las únicas que pueden llenar un hueco `causa` (un solo nivel). */
 type ClaveSinHuecos = { [C in ClaveDeTexto]: Catalogo[C] extends { readonly marcadores: object } ? never : C }[ClaveDeTexto];
 
-type ValorDe<T extends TipoDeMarcador> = T extends "causa" ? ClaveSinHuecos : string;
+type ValorDe<T extends TipoDeMarcador> = T extends "causa" ? ClaveSinHuecos : T extends "entidad" ? (typeof ENTIDADES)[keyof typeof ENTIDADES] : string;
 type ValoresDe<C extends ClaveDeTexto> = { readonly [N in keyof MarcadoresDe<C>]: MarcadoresDe<C>[N] extends TipoDeMarcador ? ValorDe<MarcadoresDe<C>[N]> : never };
 type ArgumentosDe<C extends ClaveDeTexto> = [MarcadoresDe<C>] extends [never] ? [] : [valores: ValoresDe<C>];
 
@@ -32,7 +33,7 @@ function fallar(clave: string, motivo: string): string {
 }
 
 /** Se arma en UNA pasada sobre el texto del catálogo: lo que se inserta no se vuelve a leer, así un nombre con `{causa}` adentro no se expande. */
-function armar(clave: string, valores: Readonly<Record<string, string>>): string | null {
+function armar(clave: string, valores: Readonly<Record<string, unknown>>): string | null {
   const definicion = (CATALOGO as Readonly<Record<string, DefinicionDeTexto>>)[clave];
   if (!definicion) return null;
   const marcadores = definicion.marcadores ?? {};
@@ -40,7 +41,21 @@ function armar(clave: string, valores: Readonly<Record<string, string>>): string
   const texto = definicion.porDefecto.replace(HUECO, (_hueco, nombre: string) => {
     const tipo = marcadores[nombre];
     const valor = valores[nombre];
-    if (tipo === undefined || typeof valor !== "string") {
+    if (tipo === undefined || valor === undefined) {
+      falta = true;
+      return "";
+    }
+    if (tipo === "entidad") {
+      const e = valor as Partial<Entidad> | null;
+      // Cerrado también en ejecución: solo vale una entidad que ESTÁ en la tabla (una bien formada pero ajena, con un cast, cae al mensaje genérico).
+      const declarada = Object.values(ENTIDADES).some((x) => x.nombre === e?.nombre && x.genero === e?.genero);
+      if (!declarada || typeof e?.nombre !== "string" || e.nombre.trim() === "" || (e.genero !== "m" && e.genero !== "f")) {
+        falta = true;
+        return "";
+      }
+      return `${e.genero === "f" ? "la" : "el"} ${e.nombre}`;
+    }
+    if (typeof valor !== "string") {
       falta = true;
       return "";
     }
@@ -57,7 +72,7 @@ function armar(clave: string, valores: Readonly<Record<string, string>>): string
 }
 
 export function textoDe<C extends ClaveDeTexto>(clave: C, ...valores: ArgumentosDe<C>): string {
-  const dados = (valores[0] ?? {}) as Readonly<Record<string, string>>;
+  const dados = (valores[0] ?? {}) as Readonly<Record<string, unknown>>;
   const texto = armar(clave, dados);
   return texto === null ? fallar(clave, "clave desconocida, hueco sin valor o causa inválida") : texto;
 }

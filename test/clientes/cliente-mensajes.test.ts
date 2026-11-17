@@ -43,7 +43,7 @@ describe("clientes: mensajes, orden de los chequeos y refresco", () => {
   it("editar: «no encontrado» gana sobre un dato inválido; el nombre gana sobre el %; el nombre de OTRO; éxito; sin refrescar", async () => {
     const uno = await prisma.cliente.create({ data: { nombre: "Uno", descuentoPorcentaje: 10 } });
     await prisma.cliente.create({ data: { nombre: "Dos", descuentoPorcentaje: 20 } });
-    expect(await actualizarCliente("cnoexiste000000000000000", "", 150)).toEqual({ ok: false, mensaje: "No se encontró ese cliente." });
+    expect(await actualizarCliente("cnoexiste000000000000000", "", 150)).toEqual({ ok: false, mensaje: "No se encontró el cliente." });
     expect(await actualizarCliente(uno.id, " ", 150)).toEqual({ ok: false, mensaje: "El nombre del cliente no puede estar vacío." });
     expect(await actualizarCliente(uno.id, "Uno", -1)).toEqual({ ok: false, mensaje: "El % de descuento no puede ser negativo." });
     expect(await actualizarCliente(uno.id, "DOS", 10)).toEqual({ ok: false, mensaje: 'Ya existe un cliente llamado "Dos".' });
@@ -53,7 +53,7 @@ describe("clientes: mensajes, orden de los chequeos y refresco", () => {
 
   it("activar: refresca UNA vez cuando sale bien y NINGUNA si el cliente no existe", async () => {
     const uno = await prisma.cliente.create({ data: { nombre: "Uno", descuentoPorcentaje: 10 } });
-    expect(await actualizarActivoCliente("cnoexiste000000000000000", false)).toEqual({ ok: false, mensaje: "No se encontró ese cliente." });
+    expect(await actualizarActivoCliente("cnoexiste000000000000000", false)).toEqual({ ok: false, mensaje: "No se encontró el cliente." });
     expect(refrescos()).toBe(0);
     expect(await actualizarActivoCliente(uno.id, false)).toEqual({ ok: true, mensaje: 'Cliente "Uno" desactivado.' });
     expect(refrescos()).toBe(1);
