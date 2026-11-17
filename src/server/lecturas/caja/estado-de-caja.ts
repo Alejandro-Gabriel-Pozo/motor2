@@ -1,12 +1,13 @@
 import "server-only";
 import type { Db } from "@/lib/db-tipos";
+import { estadoDeSesion } from "@/core/caja/public";
 import { centavosDeDecimal } from "./centavos-de-decimal";
 
 /**
  * Lectura «estado de la caja de la sucursal» (etapa C1, PR-B). SOLO LECTURA: la llama la Server Action de lectura `leerEstadoDeCaja` (`actions/caja/lecturas-de-caja.ts`, que exige `caja_ver` en la sucursal activa). Siempre filtra por la sucursal recibida (que sale
  * del contexto de la sesión, nunca del navegador) además de la RLS de la base: la caja de otra sucursal nunca aparece. Los importes salen como CENTAVOS en texto con signo («12345», «-500»): la pantalla los formatea.
  *
- * Devuelve la sesión ABIERTA (o `null`: la caja está cerrada o nunca se abrió), con quién y cuándo la abrió, el efectivo esperado (Σ de los movimientos en efectivo, con signo), lo esperado por medio y los movimientos en orden de creación.
+ * Devuelve la sesión sin cerrar, ABIERTA o EN_CIERRE (C1b: `estado` las distingue) (o `null`: la caja está cerrada o nunca se abrió), con quién y cuándo la abrió, el efectivo esperado (Σ de los movimientos en efectivo, con signo), lo esperado por medio y los movimientos en orden de creación.
  * Un movimiento se marca `anulado` si otro de clase ANULACION lo anula (la anulación es otro movimiento: nada se borra). El «esperado» incluye las anulaciones (son contrapartidas), así que es la suma de TODOS los movimientos.
  */
 export interface MovimientoDeCajaVista {
@@ -37,6 +38,10 @@ export interface EsperadoPorMedio {
 
 export interface SesionDeCajaVista {
   id: string;
+  /** C1b: ABIERTA (entra plata) o EN_CIERRE (se está contando el efectivo: no entra plata). El nombre del campo `sesionAbierta` es de C1 y significa «la sesión sin cerrar». */
+  estado: "ABIERTA" | "EN_CIERRE";
+  /** Con EN_CIERRE: cuándo se inició el cierre; `null` con ABIERTA. */
+  cierreIniciadoEn: Date | null;
   /** El día de negocio sellado al abrir, «AAAA-MM-DD». */
   fechaDeNegocio: string;
   zonaHoraria: string;
@@ -58,8 +63,8 @@ const nombreVisible = (nombre: string | null): string | null => nombre?.trim() |
 
 export async function consultarEstadoDeCaja(sucursalId: string, db: Db): Promise<EstadoDeCaja> {
   const sesion = await db.sesionCaja.findFirst({
-    where: { sucursalId, estado: "ABIERTA" },
-    select: { id: true, fechaDeNegocio: true, zonaHoraria: true, abiertaEn: true, abiertaPorId: true, abiertaPor: { select: { name: true } } },
+    where: { sucursalId, estado: { in: ["ABIERTA", "EN_CIERRE"] } },
+    select: { id: true, estado: true, cierreIniciadoEn: true, fechaDeNegocio: true, zonaHoraria: true, abiertaEn: true, abiertaPorId: true, abiertaPor: { select: { name: true } } },
   });
   if (!sesion) return { sesionAbierta: null };
 
@@ -95,6 +100,8 @@ export async function consultarEstadoDeCaja(sucursalId: string, db: Db): Promise
   return {
     sesionAbierta: {
       id: sesion.id,
+      estado: estadoDeSesion(sesion.estado) === "EN_CIERRE" ? "EN_CIERRE" : "ABIERTA",
+      cierreIniciadoEn: sesion.cierreIniciadoEn,
       fechaDeNegocio: sesion.fechaDeNegocio.toISOString().slice(0, 10),
       zonaHoraria: sesion.zonaHoraria,
       abiertaEn: sesion.abiertaEn,

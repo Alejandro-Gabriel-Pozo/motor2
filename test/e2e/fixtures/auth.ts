@@ -43,8 +43,8 @@ export async function asegurarBaseSeed() {
   // `e2e` porque los specs de la carta pública navegan a /carta-publica/e2e/... (ADR-007, A3: la empresa sale de la base, no del env).
   const { id: empresaId } = await prisma.empresa.upsert({
     where: { id: EMPRESA_E2E_ID },
-    update: { estado: "ACTIVE", slug: SLUG_EMPRESA_E2E, permisosEditables: true, dosPaneles: true },
-    create: { id: EMPRESA_E2E_ID, nombre: "Empresa principal", slug: SLUG_EMPRESA_E2E, zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" },
+    update: { estado: "ACTIVE", slug: SLUG_EMPRESA_E2E, permisosEditables: true, dosPaneles: true, rolesPropiosMax: 100 },
+    create: { id: EMPRESA_E2E_ID, nombre: "Empresa principal", slug: SLUG_EMPRESA_E2E, zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE", rolesPropiosMax: 100 },
   });
   // La empresa testigo (ADR-022): una segunda empresa ACTIVE y vacía, para que la suite corra como va a correr sin el respaldo «la única empresa activa».
   await prisma.empresa.upsert({ where: { id: DATOS_EMPRESA_TESTIGO.id }, update: { estado: "ACTIVE" }, create: DATOS_EMPRESA_TESTIGO });

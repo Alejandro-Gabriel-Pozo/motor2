@@ -56,65 +56,92 @@ Perillas: las pide esta sesión al frente 4 (`conciliacion_de_tres_vias`, que ya
 
 **Perilla:** `conciliacion_de_tres_vias` (requiere `recepcion_separada`) según el frente 4. **NO VERIFICADO:** que Pedernal tenga la acción `ordenes_de_compra.*` con esos nombres (solo propuesta de E9 §229).
 
-## Etapa 3V — tres vías, tolerancias y diferencias
+### Permisos de la etapa OC contra Pedernal (contrastado 2026-11-17; orquestador aceptó)
 
-**Necesidad y decisiones (Pedernal, 16/11, `DDD:197`):** sin tolerancia por defecto («sin tolerancia definida toda diferencia queda abierta»), las configura el gerente (`compras.configurar`); «Qué hacer con la diferencia» ofrece **cuatro** opciones: «Dejar abierta», «Pedir nota de crédito», «Aceptar la diferencia», «Devolver al proveedor» (2A; reemplaza las siete de `DDD:121` del 14/11).
+- **Alcance:** empresa, como Pedernal (0066: las políticas filtran solo por empresa; la sucursal destino es un dato). Sin pregunta al dueño.
+- **Crear y pedir:** gerente/administrador, no el operador (dueño de Pedernal, 16/11, 5A). Igual.
+- **Anular y cerrar:** gerente/administrador por **SUPUESTO heredado de la maqueta `orden.html`, SIN cita del dueño** (si va en código se marca `SUPUESTO(DEC-n)` con su entrada en el registro de decisiones).
+- **Ver:** el operador ve las órdenes sin precios (maqueta de Pedernal). Igual.
+- **DIFERENCIA 1 — recibir contra una orden:** en Motor2 exige gerente/administrador (N3, con cita del dueño); Pedernal (maqueta) también lo deja al operador. Motivo: la cita del dueño de N3 manda.
+- **DIFERENCIA 2 — configurar el control de exceso:** en Motor2 `compras_configurar` = gerente y administrador (cita del dueño 16/11: «configurar: solo gerente y administrador»); Pedernal `compras.configurar` = solo gerente (`empresa.ts:224`). Motivo: la cita del dueño manda.
+- **Menú:** las órdenes están en `/movimientos/ordenes-de-compra` con enlace desde Compra; el Frente 6 las ubica en el menú de Compras como Pedernal.
 
-**Modelo (PROPUESTA):**
-- `ToleranciaDeCompras` (una fila por empresa; columnas de cantidad %, precio %, importe $, nullables; **NULL = no definida**, distinto de cero; CHECK de rango; `version`; solo el gerente escribe). Contradicción de Pedernal sobre dónde vive (satélite vs. `configuracion_de_compras`): se elige tabla propia, Motor2 no tiene `configuracion_de_compras`.
-- `ConciliacionDeCompra` y `DiferenciaDeCompra`: la tres vías compara **orden** (lo pedido) · **recepción** (lo recibido, N3) · **factura** (lo facturado). Diferencia: `tipo` ∈ {recibido distinto de lo pedido, facturado distinto de lo recibido, precio distinto, total no cierra}, cantidades e importes con signo, `dentroDeTolerancia`, tolerancias aplicadas congeladas, `estado` ∈ {`ABIERTA`,`RESUELTA`,`ANULADA`}, `resolucion` ∈ {`ACEPTADA`,`PEDIR_NOTA_DE_CREDITO`,`DEVOLVER`,`DENTRO_DE_TOLERANCIA`} (el «dejar abierta» es el estado `ABIERTA`, no una resolución), `motivo` obligatorio salvo `DENTRO_DE_TOLERANCIA`, quién y cuándo, `version`. Único por `(conciliación, tipo, renglón)`: reintentar no duplica. Regla heredada de Pedernal 0037: una asignación nunca supera lo recibido ni lo facturado (`UPDATE … WHERE asignada + n <= recibida`); en Motor2 la base la impone con CHECK sobre un contador por renglón de la parte (nuevo, escrito solo por el caso de uso).
+## Etapa 3V — tres vías, tolerancias y diferencias (reescrita 2026-11-17 según 0067)
+
+**Necesidad y decisiones:** sin tolerancia por defecto («sin tolerancia definida toda diferencia queda abierta»), las configura el gerente (`compras.configurar`). Resoluciones: dueño, 2026-11-17: «Las 7, como el SQL de Pedernal (Recomendada)» — CONFIRMADA (fuente: mensaje del orquestador general; registro en `motor2-docs`). Las 4 acordadas el 16/11 quedan incluidas. Fuente de la forma: Pedernal `0067_compras_diferencias.sql` (pendiente, sin aplicar; ZuluHub-docs 03cde03). Contraste línea por línea: `diseno-compras-contraste-sql-pedernal-2026-11-16.md` §9.3.
+
+**Modelo (PROPUESTA, igual a 0067 salvo lo que impone Prisma/RLS):**
+- `ToleranciaDeCompras`: una fila por empresa, **4** columnas nullables (**NULL = no definida ≠ 0**): `toleranciaDeCantidad` (% sobre lo recibido, 0 a 100), `toleranciaDePrecio` (% sobre el precio de referencia, 0 a 100), `toleranciaDeImporte` (pesos, ≥ 0) y `toleranciaDeRecepcion` (% sobre lo pedido, 0 a 100). `version`; solo la escribe el gerente/administrador. Con la tolerancia de recepción vacía, el tope de recibir contra la orden es idéntico al de la etapa OC; definida, el tope es `pedida × (1 + t/100)` y solo cuando el nivel `compras.recepcion_excede_la_orden` lo exige (AVISAR sin confirmar o BLOQUEAR). Diferencia declarada con Pedernal: tabla propia porque Motor2 no tiene `configuracion_de_compras`.
+- `ConciliacionDeCompra` (solo inserción) y `ToleranciaAplicadaDeConciliacion` (copia de las tres de la diferencia al conciliar; solo inserción; entra con su conciliación).
+- `DiferenciaDeCompra`: `tipo` ∈ {`FACTURADO_DISTINTO_DE_LO_RECIBIDO`, `PRECIO_DISTINTO`, `FACTURADO_Y_NO_RECIBIDO`} (solo estos tres; `TOTAL_NO_CIERRA` y `RECIBIDO_DISTINTO_DE_LO_PEDIDO` quedan **fuera** de este tramo, como en Pedernal); factura y renglón de factura, recepción y renglón de recepción (opcionales según el tipo); `cantidadDeDiferencia` e `importeDeDiferencia` con signo (NULL = no aplica o sin precio); `precioFacturado`, `precioDeReferencia` y `origenDelPrecioDeReferencia` (`ORDEN` si la recepción es contra una orden, si no `RECEPCION`; los tres juntos o ninguno; el precio facturado solo en `PRECIO_DISTINTO`); `dentroDeTolerancia`; las tres tolerancias aplicadas copiadas; `estado` ∈ {`ABIERTA`,`RESUELTA`,`ANULADA`}; `resolucion` ∈ {`ACEPTADA`, `DENTRO_DE_TOLERANCIA`, `NOTA_DE_CREDITO`, `NOTA_DE_DEBITO`, `DEVOLUCION`, `FACTURA_COMPLEMENTARIA`, `CORREGIDA_POR_EL_PROVEEDOR`} (el «dejar abierta» es el estado `ABIERTA`); `motivo` ≤ 500 obligatorio salvo `DENTRO_DE_TOLERANCIA`; `DENTRO_DE_TOLERANCIA` solo si la diferencia realmente está dentro; quién y cuándo; `version`. **Único por (conciliación, tipo, renglón de factura, recepción, renglón de recepción)** con NULL tratado como valor: reintentar no duplica.
+- Transiciones: ABIERTA → RESUELTA | ANULADA y RESUELTA → ANULADA; nada se reabre (al conciliar de nuevo se registra otra); al anularse conserva su resolución, motivo y autor. Solo cambian estado y resolución; todo lo demás es inmutable (CHECK/disparador). La diferencia entra solo en la transacción de su conciliación.
+- La regla «una asignación nunca supera lo recibido ni lo facturado» del diseño anterior **no está en 0067**: queda fuera (NO VERIFICADO dónde vive en Pedernal; no se construye sin ella).
 
 | ¿Qué pasa si…? | Resultado |
 |---|---|
 | Repetición | conciliar dos veces la misma factura: no duplica diferencias (único); resolver dos veces: `YA_RESUELTA`. |
-| Concurrencia | dos asignaciones sobre el mismo renglón: tope atómico, gana una; resolver y anular la factura a la vez: cerrojo de cabecera. |
-| Tiempo | tolerancia se congela al registrar la diferencia (cambiar la tolerancia después no reescribe lo ya registrado). |
+| Concurrencia | resolver y anular la factura a la vez: cerrojo de cabecera; dos conciliaciones de la misma factura: serializadas por el cerrojo, la segunda no duplica (único). |
+| Tiempo | las tolerancias se copian a la conciliación y a cada diferencia al registrarla: cambiar la tolerancia después no reescribe lo ya registrado. |
 | Incertidumbre | reintento por clave: devuelve lo hecho. |
-| Error parcial | conciliación + diferencias + contadores en una transacción. |
-| Datos faltantes | sin orden: se concilia recepción↔factura (dos vías); tolerancia no definida: toda diferencia `ABIERTA`. |
-| Cambio de permisos | configurar tolerancias: solo gerente; resolver una diferencia: **solo gerente y administrador — CONFIRMADA** («Solo gerente y administrador (Recomendada)», 2026-11-16, registro `motor2-docs` «Compras: tres preguntas del frente 5»); el operador no la ve resolver y el servidor lo rechaza. |
+| Error parcial | conciliación + tolerancias aplicadas + diferencias en una transacción. |
+| Datos faltantes | sin orden: se concilia recepción↔factura (precio de referencia de la recepción); tolerancia no definida: toda diferencia `ABIERTA`; renglón sin precio: importe de diferencia NULL. |
+| Cambio de permisos | configurar tolerancias: gerente/administrador; resolver: **solo gerente y administrador — CONFIRMADA** («Solo gerente y administrador (Recomendada)», 2026-11-16); el operador no resuelve y el servidor lo rechaza. |
 
-**«Pedir nota de crédito»** crea un **pedido de nota** (hecho aparte: `DDD:176` 15A «la devolución no crea sola el pedido»; ver etapa NC) y **«Devolver al proveedor»** abre la devolución (etapa DEV); ninguna de las dos mueve dinero. **Dimensiones del oráculo:** tolerancia (sin definir / definida) × tipo de diferencia × resolución × orden (con/sin) × rol.
+**Resoluciones y otras etapas:** `NOTA_DE_CREDITO`, `NOTA_DE_DEBITO`, `DEVOLUCION` y `FACTURA_COMPLEMENTARIA` son **solo la constancia de qué se hizo** (con su motivo); ninguna crea sola una nota, una devolución ni una factura ni mueve dinero (0067 no los enlaza). **Dimensiones del oráculo:** tolerancia (sin definir / definida / en el borde) × tipo (3) × resolución (7) × orden (con/sin) × rol; tabla en `docs/oraculo-combinaciones-compras-diferencias-AAAA-MM-DD.md` al construir.
 
-## Etapa NC — notas de crédito del proveedor
+## Etapa NC — notas de crédito del proveedor (reescrita 2026-11-17 según 0085)
 
-**Necesidad:** «a vos te pueden hacer una nota de crédito y ellos te tienen con saldo a favor… que yo devuelva una compra no significa que devuelva dinero» (`DDD:166`, 15/11); la nota «solo en N4» (`DDD:177`, 18A); un pedido de nota es un paso aparte (15A).
+**Necesidad:** «a vos te pueden hacer una nota de crédito y ellos te tienen con saldo a favor… que yo devuelva una compra no significa que devuelva dinero» (`DDD:166`, 15/11); la nota «solo en N4» (`DDD:177`, 18A). Forma: Pedernal `0085_compras_notas_de_credito.sql` (pendiente): **comprobante sin saldo** que corrige UNA factura; el libro de saldos (crédito, aplicación, reintegro) va aparte y no entra. Contraste: §9.2 del documento de contraste.
 
-**Decisión técnica del orquestador general (2026-11-16, «primero lo más barato»; el dueño la puede corregir): reutilizar las 4 tablas `NotaCreditoProveedor*` que ya existen sin escritor** (trae factura asociada con FK de tres columnas «misma factura y proveedor», único parcial del número vigente, líneas por renglón, imputación por sucursal y `operacionDevolucionId`) en vez del «comprobante clase nota» de Pedernal. Motivo: regla «inventariar lo que ya existe» y «tablas a ciegas»; difiere en forma de Pedernal pero produce el mismo resultado. Se completa solo lo que falte (tope `total acreditado ≤ total de la factura` atómico: `UPDATE … WHERE acreditado + n <= total`, S-1 de Pedernal) — **verificar en la implementación** que las tablas lo permiten sin tocar sus CHECK.
+**Decisión técnica del orquestador general (2026-11-16; corregible por el dueño): reutilizar la cabecera de `NotaCreditoProveedor`** (factura asociada con FK de tres columnas «misma factura y proveedor», número único entre vigentes, `claveIdempotencia`, anulación) en vez de la columna `comprobante_asociado_id` de Pedernal: mismo resultado, otra forma, declarada. **A verificar al implementar:** que la cabecera se cargue **sin líneas, sin imputaciones y sin tributos** (la nota de Pedernal no tiene líneas) y que el tope se imponga sin tocar los CHECK de las tablas; si no se puede, se declara y se pregunta.
 
-**Comandos:** `pedirNotaDeCredito` (pedido con estados `A_SOLICITAR → SOLICITADA → RECIBIDA | RECHAZADA | ANULADA`, importe estimado opcional nunca cero, factura y diferencia opcionales; tabla nueva `PedidoDeNotaDeCredito`), `cargarNotaDeCredito` (idempotente por `claveIdempotencia` ya única; número único entre vigentes; solo sobre factura vigente del mismo proveedor; **no crea stock**) y `anularNotaDeCredito` (registro nuevo; no borra). **La nota nunca reduce sola lo que se paga** (`DDD:167/168`).
+**Reglas (iguales a 0085):** N1 la nota **siempre** lleva factura asociada (la nota `SUELTA` que traen las tablas queda **sin usar**); N2 al cargar se **bloquea la factura** (`FOR UPDATE`) y se comprueba: es factura, está vigente, es **del mismo proveedor**, y **lo acreditado vigente + el importe de esta nota ≤ total de la factura** (las notas anuladas no cuentan; dos notas a la vez se serializan por el bloqueo); N3 una factura con notas vigentes **no se anula** (ya existe `CON_NOTAS_DE_CREDITO`); la nota **no tiene saldo, no reduce lo que se paga y no toca stock**. **Fuera de esta etapa (no están en Pedernal):** pedido de nota (`PedidoDeNotaDeCredito`), saldo a favor, aplicación y reintegro. **IVA/crédito fiscal de la nota: NO VERIFICADO** (0085 no lo menciona); queda en 0 como informa Pedernal, sin construir lógica propia hasta ver la regla real.
 
 | ¿Qué pasa si…? | Resultado |
 |---|---|
 | Repetición | misma clave → misma nota; misma nota (proveedor+tipo+número) con otra clave → `NOTA_DUPLICADA`. |
-| Concurrencia | dos notas que juntas pasan el total de la factura: tope atómico, gana una; anular nota y cargar otra a la vez: cerrojo de factura. |
-| Tiempo | fecha de la nota ≤ hoy; anular la factura con nota vigente: bloqueado (ya existe `CON_NOTAS_DE_CREDITO`). |
+| Concurrencia | dos notas que juntas pasan el total: bajo el candado de la factura gana una; anular la factura y cargar una nota a la vez: el candado deja la nota solo si la factura sigue vigente. |
+| Tiempo | fecha de la nota ≤ hoy; anular la factura con nota vigente: rechazado. |
 | Incertidumbre | reintento por clave devuelve el mensaje guardado. |
-| Error parcial | nota + líneas + imputaciones + (opcional) devolución atómicas. |
-| Datos faltantes | sin factura asociada: rechazo (S-3 de Pedernal) — la «nota suelta» que traen las tablas queda **sin usar** (NO se pidió). |
-| Cambio de permisos | cargar: quien tiene compras (supuesto de Pedernal); aplicar saldo: no existe en esta etapa. |
+| Error parcial | nota + auditoría atómicas. |
+| Datos faltantes | sin factura asociada: rechazo; importe ≤ 0: rechazo. |
+| Cambio de permisos | cargar y anular: quien tiene permiso de compras (supuesto, NO VERIFICADO en Pedernal); aplicar saldo: no existe. |
 
-**NO construido (sin Pedernal en código):** saldo a favor, aplicación a factura, reintegro, cuenta corriente, importe de pago = total − aplicado. **Dimensiones del oráculo:** factura (vigente/anulada/de otro proveedor) × importe (≤ / > tope) × nota (vigente/anulada/duplicada) × pago de la factura (con/sin) × rol.
+**Dimensiones del oráculo:** factura (vigente / anulada / de otro proveedor) × importe (< / = / > tope) × nota (vigente / anulada / duplicada) × rol; pago de la factura **no cambia** (se prueba que no cambia).
 
-## Etapa DEV — devolución al proveedor
+## Etapa DEV — devolución de mercadería al proveedor (reescrita 2026-11-17 según 0084)
 
-**Cambio de permisos declarado arriba en la tabla. Necesidad:** hecho H1 separado: «sale mercadería del stock hacia el proveedor; no mueve dinero, no crea nota, no toca la factura» (`e9-n4` §1); la devolución no crea sola el pedido de nota (`DDD:176` 15A). Una sola lista de motivos «que unifica rechazo y devolución» y «devuelve gerente o administrador» — **supuestos del ingeniero de Pedernal** (`DDD:121(4)`), no del dueño.
+**Necesidad:** «sale mercadería del stock hacia el proveedor; no mueve dinero, no crea nota, no toca la factura» (`e9-n4` §1; 0084, decisión del dueño de Pedernal 15/11). Forma: Pedernal `0084_compras_devoluciones.sql` (pendiente). Contraste: §9.1. Decisiones del orquestador general (2026-11-17, por «iguales a Pedernal en todo», corregibles por el dueño): motivo de la lista `MOTIVOS_DE_RECHAZO` **completa**; remito de devolución con número y fecha; sin guarda «compra con devolución no se anula», sin `diferenciaId` y sin pedido de nota (no están en Pedernal).
 
-**Modelo:** Motor2 **ya tiene** el proceso de stock `DEVOLUCION_PROVEEDOR` (permiso `proceso_devolucion_proveedor`, piso operario, sin auditoría administrativa propia). Esta etapa **no crea otra salida de stock**: agrega (a) `DevolucionAProveedor` (uuid, `empresaId`, `operacionId` → la `Operacion` ya existente, `compraOrigen` opcional, `motivo` texto obligatorio con lista de permitidos, `diferenciaId` opcional, quién/cuándo, estado `CONFIRMADA|ANULADA` con anulación espejo, `claveIdempotencia`), (b) auditoría administrativa de la devolución, (c) la guarda de anulación en cadena (una compra con devolución vigente no se anula: `COMPRA_CON_DEVOLUCION`; una devolución con pedido de nota vigente no se anula).
+**Modelo (PROPUESTA):** Motor2 **ya tiene** el proceso de stock `DEVOLUCION_PROVEEDOR` (permiso `proceso_devolucion_proveedor`): no se crea otra salida. Se agregan:
+- `DevolucionAProveedor`: `numero` consecutivo por empresa (candado por empresa), sucursal, proveedor, `motivoId` (lista `MOTIVOS_DE_RECHAZO`, **sin texto libre**), `remitoDeDevolucionNumero` y `remitoDeDevolucionFecha` (opcionales, **juntos o ninguno**; el detalle va en el remito), `claveIdempotencia`+`payloadHash` únicos por empresa, `hechoEn`, `fechaNegocio` (jornada de la sucursal), `estado` ∈ {`CONFIRMADA`,`ANULADA`}, quién y cuándo, anulación con quién, cuándo y motivo (≤ 500; los tres juntos con el estado), `version`. Solo inserción salvo CONFIRMADA → ANULADA; nada se borra.
+- `LineaDeDevolucion`: depósito, artículo, cantidad > 0, origen **opcional** por línea (recepción + renglón de recepción, juntos o ninguno), y el renglón del movimiento de stock de la salida (una salida por devolución). **Una línea por (depósito, artículo)** y devolución.
+- **Lista de motivos: Motor2 no tiene el mecanismo `valor_de_lista`** (NO VERIFICADO que exista con otro nombre: no lo encontré). Lo mínimo para igualar: una lista sembrada **administrada por la plataforma** con los motivos de Pedernal (`Temperatura`, `Envase dañado`, `Vencida`, `No es lo pedido` — SUPUESTO del ingeniero de Pedernal, **sin confirmación del dueño registrada**; se adopta completa como pidió el orquestador), activos al devolver y conservados en lo ya devuelto si después se desactivan. Dónde vive en Motor2 (tabla global de solo inserción, consola de plataforma) **se decide al diseñar el nivel 6**; no se migra antes.
+- **Reglas (0084):** con origen, la recepción debe estar **confirmada**, ser **del mismo proveedor** y la línea recibida **del mismo producto** que el artículo devuelto; **tope**: lo devuelto vigente (devoluciones CONFIRMADAS) de una línea recibida **no supera lo recibido**, bajo el candado de la línea (dos devoluciones simultáneas de la misma línea se serializan; una anulada deja de contar). Sin origen: solo rige el stock disponible. Salir de **cuarentena y rechazo**: única excepción a la validación de depósito **cuando ese depósito exista** (0064, etapa propia, no construida: hoy lo rechazado entra a un depósito común por decisión del dueño 16/11) — NO VERIFICADO mientras tanto.
 
 | ¿Qué pasa si…? | Resultado |
 |---|---|
-| Repetición | misma clave → una sola salida de stock. |
-| Concurrencia | dos devoluciones sobre la misma existencia: la base impide pasar de cero (stock agregado ya validado); devolver y anular la compra a la vez: cerrojo. |
-| Error parcial | devolución + salida de stock atómicas (falla del stock deshace el registro). |
-| Datos faltantes | motivo vacío o cantidad ≤ 0: rechazo. |
-| Cambio de permisos | **CONFIRMADA (cambia lo de hoy):** «Solo gerente y administrador (Recomendada)» (2026-11-16). Hoy `proceso_devolucion_proveedor` es piso operario; pasa a piso administrador. **Qué ve el operador ahora:** deja de ver/usar la opción de devolver al proveedor (la acción se rechaza en el servidor con «Esta acción no está permitida»); sus devoluciones ya hechas siguen visibles en el historial. Cambia permisos Y comportamiento: la etapa lo declara, regenera matrices/goldens de permisos con ese motivo y agrega pruebas de denegación del operador y de aceptación de gerente/administrador. No toca devoluciones ya registradas. |
+| Repetición | misma clave y mismo contenido → la misma devolución, una sola salida de stock; misma clave con otro contenido → rechazo. |
+| Concurrencia | dos devoluciones de la misma línea recibida: se serializan, la segunda ve a la primera y el tope decide; devolver y anular a la vez: cerrojo de la devolución; stock: la base impide pasar de cero. |
+| Tiempo | el número consecutivo y la fecha de negocio los fija el servidor (jornada de la sucursal). |
+| Error parcial | devolución + líneas + salida de stock atómicas. |
+| Datos faltantes | motivo fuera de la lista o desactivado: rechazo; cantidad ≤ 0: rechazo; remito con solo número o solo fecha: rechazo. |
+| Cambio de permisos | **CONFIRMADA (cambia lo de hoy):** «Solo gerente y administrador (Recomendada)» (2026-11-16). Hoy `proceso_devolucion_proveedor` es piso operario; pasa a piso administrador. El operador deja de ver/usar devolver al proveedor (el servidor la rechaza con «Esta acción no está permitida»); sus devoluciones hechas siguen visibles. Regenera matrices/goldens de permisos con ese motivo; pruebas de denegación del operador y aceptación de gerente/administrador. |
+| Anulación | solo CONFIRMADA → ANULADA con motivo; el efecto en el stock es **otra salida/entrada de anulación, nunca un borrado** (NO VERIFICADO cómo lo hace 0084: la anulación del movimiento vive en la aplicación). |
 
----
+**Dimensiones del oráculo:** origen (con/sin) × recepción (confirmada / no) × proveedor (mismo/otro) × producto (mismo/otro) × cantidad (< / = / > recibido) × motivo (activo / desactivado / fuera de lista) × estado × rol.
+
+## Etapa CORR — corrección de compra ampliada (nueva, 2026-11-17, según 0060)
+
+**Pedido del dueño:** 2026-11-17, «Sí, como Pedernal, después de las tres vías (Recomendada)» (fuente: mensaje del orquestador general; registro en `motor2-docs`). **Etapa propia DESPUÉS de 3V. NO se construye ahora y no se diseña el nivel 6 todavía.** Esta sección solo declara lo que hay que diseñar con la escalera de 10 niveles antes de tocar tablas.
+
+**Qué pide Pedernal (0060, decisión de su dueño 15/11 «Respuestas 24 a 27», Q2 = C):** la corrección de una compra puede cambiar **precio, cantidad o peso real** de una línea y **completar el precio** de una línea «Sin precio»; sigue siendo **una fila nueva** (la línea original no se edita); el «precio por» (presentación o unidad, con su unidad) solo se guarda al completar un «Sin precio»; el peso real viaja de a pares (anterior y nuevo, > 0); toda corrección cambia al menos precio, cantidad o peso. La base de 0036/0037 (`correccion_de_compra`) **no la leí**: NO VERIFICADO.
+
+**Lo que Motor2 tiene hoy:** `corregir_compra` (piso administrador) corrige proveedor, N.º y detalle de la FACTURA, «sin tocar renglones, partes ni Kardex». Cambiar cantidad o peso **reescribe stock y costo**; completar un precio cambia el costo y los reportes. Por eso necesita su diseño completo: invariantes de costo y stock (¿se re-valúa el kardex hacia atrás o con un movimiento de ajuste?), interacción con partes ya recibidas, con notas de crédito y devoluciones vigentes y con diferencias de tres vías ya resueltas, concurrencia contra anulación y recepción, permisos (¿`corregir_compra` basta?), y la tabla «¿qué pasa si…?». Preguntas a resolver en ese diseño: si Motor2 admite líneas «Sin precio» (NO VERIFICADO), y qué hace la corrección con un movimiento de stock ya consumido.
 
 ## Orden de construcción y reparto de subagentes
 
-N3-b → OC → 3V → NC → DEV, **un PR por etapa**, cada una en su rama sobre la anterior (máximo 2 subagentes Sonnet a la vez; cada uno corre el gate local sin e2e/build). Mientras N3-a no esté commiteada no se arranca código de N3-b. Las migraciones de cada etapa solo agregan; ninguna se aplica.
+N3-b → OC → 3V → NC → DEV → CORR (corrección ampliada, después de 3V; su diseño completo antes de construir), **un PR por etapa**, cada una en su rama sobre la anterior (máximo 2 subagentes Sonnet a la vez; cada uno corre el gate local sin e2e/build). Mientras N3-a no esté commiteada no se arranca código de N3-b. Las migraciones de cada etapa solo agregan; ninguna se aplica.
 
 ## Respuestas del dueño (2026-11-16, literales, `motor2-docs` «Compras: tres preguntas del frente 5»)
 
@@ -123,8 +150,16 @@ N3-b → OC → 3V → NC → DEV, **un PR por etapa**, cada una en su rama sobr
 - Facturas repartidas entre sucursales: «Más adelante (Recomendada)» — CONFIRMADA: N3-a2 **diferida**, no se construye ahora.
 - Reutilizar `NotaCreditoProveedor*`: decisión técnica del orquestador general (corregible por el dueño).
 
+## Respuestas del dueño (2026-11-17)
+
+- Resoluciones de diferencia: «Las 7, como el SQL de Pedernal (Recomendada)» — CONFIRMADA.
+- Corrección de compra ampliada: «Sí, como Pedernal, después de las tres vías (Recomendada)» — CONFIRMADA (etapa CORR).
+- Decisiones del orquestador general (declaradas, el dueño corrige): motivo de devolución = lista `MOTIVOS_DE_RECHAZO` completa; remito con número y fecha; sin guarda de compra con devolución, sin `diferenciaId`, sin pedido de nota; IVA de la nota NO VERIFICADO.
+
 ## Preguntas abiertas al dueño
 
+- Los cuatro motivos de rechazo de Pedernal (Temperatura, Envase dañado, Vencida, No es lo pedido) son un SUPUESTO de su ingeniero sin confirmación del dueño: ¿son los de Motor2?
+- Lista de motivos: Motor2 no tiene el mecanismo; dónde vive se decide en el nivel 6 de la etapa DEV.
 - Notas y saldo a favor: Pedernal decidió que la nota «siempre pasa por saldo a favor»; Motor2 no arranca el saldo hasta que Pedernal lo construya o el dueño lo pida (NO VERIFICADO el libro de saldos). Se pregunta cuando toque.
 
 ## Riesgos y NO VERIFICADO
