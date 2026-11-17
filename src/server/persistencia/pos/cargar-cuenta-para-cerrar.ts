@@ -1,5 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
+import { leerBaseDeCantidad, type BaseDeCantidad } from "@/core/catalogo/public";
 
 /**
  * Lecturas del CIERRE de una cuenta del salón (Task #41, Fase M12a — docs/arquitectura-casos-de-uso-2026-09-27.md; mismo contrato que
@@ -23,7 +24,7 @@ export interface FotoParaCerrar {
   esNinguna: boolean;
   /** `OpcionDeGrupo.productoId`, leído de la base: el único producto que puede respaldar este adicional. */
   productoAnclaId: string | null;
-  consumos: { efecto: string; insumoProductoId: string; reemplazaAProductoId: string | null; cantidad: number; unidadId: string; mermaPorcentaje: number; escalaConLaMedida: boolean }[];
+  consumos: { efecto: string; insumoProductoId: string; reemplazaAProductoId: string | null; cantidad: number; unidadId: string; mermaPorcentaje: number; baseDeCantidad: BaseDeCantidad; escalaConLaMedida: boolean }[];
 }
 
 /** Un ítem de la cuenta tal como lo necesita el cierre. */
@@ -81,6 +82,8 @@ export async function cargarCuentaParaCerrar(tx: Prisma.TransactionClient, args:
               opcion: { select: { esNinguna: true, productoId: true } },
               versionDeOpcion: {
                 select: {
+                  // M3a: la base de la versión que se VENDIÓ (la foto congelada), no la vigente de hoy.
+                  baseDeCantidad: true,
                   consumos: {
                     orderBy: { orden: "asc" },
                     select: { efecto: true, insumoProductoId: true, reemplazaAProductoId: true, cantidad: true, unidadId: true, mermaPorcentaje: true, escalaConLaMedida: true },
@@ -121,7 +124,7 @@ export async function cargarCuentaParaCerrar(tx: Prisma.TransactionClient, args:
   };
 }
 
-type FotoLeida = { opcionId: string; versionDeOpcionId: string; tipoGrupo: string; nombreOpcion: string; cantidad: number; factorEscala: Prisma.Decimal | null; orden: number; opcion: { esNinguna: boolean; productoId: string | null }; versionDeOpcion: { consumos: { efecto: string; insumoProductoId: string; reemplazaAProductoId: string | null; cantidad: Prisma.Decimal; unidadId: string; mermaPorcentaje: Prisma.Decimal; escalaConLaMedida: boolean }[] } };
+type FotoLeida = { opcionId: string; versionDeOpcionId: string; tipoGrupo: string; nombreOpcion: string; cantidad: number; factorEscala: Prisma.Decimal | null; orden: number; opcion: { esNinguna: boolean; productoId: string | null }; versionDeOpcion: { baseDeCantidad: string; consumos: { efecto: string; insumoProductoId: string; reemplazaAProductoId: string | null; cantidad: Prisma.Decimal; unidadId: string; mermaPorcentaje: Prisma.Decimal; escalaConLaMedida: boolean }[] } };
 
 function fotosDe(fotos: readonly FotoLeida[]): FotoParaCerrar[] {
   return fotos.map((f) => ({
@@ -141,6 +144,7 @@ function fotosDe(fotos: readonly FotoLeida[]): FotoParaCerrar[] {
       cantidad: Number(c.cantidad),
       unidadId: c.unidadId,
       mermaPorcentaje: Number(c.mermaPorcentaje),
+      baseDeCantidad: leerBaseDeCantidad(f.versionDeOpcion.baseDeCantidad),
       escalaConLaMedida: c.escalaConLaMedida,
     })),
   }));
