@@ -121,7 +121,8 @@ test("quién lo ve: sin Editar de `precio_local` no hay campo (queda el enlace a
     await page.goto(`/catalogo/productos/${directo.id}/precios`);
     await expect(page.getByRole("heading", { level: 2, name: "Así se cobra" })).toBeVisible();
     await expect(page.locator("[data-precio-editable-de-la-sucursal]")).toHaveCount(0);
-    await expect(page.locator("[data-precio-de-la-sucursal]")).toContainText("El precio de cada sucursal se cambia en Precio local");
+    await expect(page.locator("[data-precio-de-la-sucursal]")).toContainText("Precio de lista en");
+    await expect(page.locator("[data-precio-de-la-sucursal]")).not.toContainText("Precio local"); // el enlace a «Precio local» está oculto (Frente 6, paso 4)
 
     // Contraespejo: con el Editar de vuelta, el campo está.
     await admin.cambiar({ precio_local: { puedeVer: true, puedeEditar: true } });

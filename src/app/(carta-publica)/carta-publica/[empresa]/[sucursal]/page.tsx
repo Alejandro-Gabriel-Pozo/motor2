@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
-import { descripcionDeCartaDeSucursal, imagenParaCompartir, nombrePublicoUsable, tituloDeCartaDeSucursal } from "@/core/carta/public";
+import { descripcionDeCartaDeSucursal, imagenAlCompartirDeSucursal, nombrePublicoUsable, tituloDeCartaDeSucursal } from "@/core/carta/public";
 import { cartaPublica, configPortalPublica, empresaCartaPublica } from "@/server/carta-publica/sin-sesion";
 import { CartaVista } from "@/components/carta-publica/carta-vista";
 import { direccionPublicaDeCarta, hrefDeCartaPublica, metadataDeCartaPublica } from "@/components/carta-publica/metadatos";
@@ -46,7 +46,7 @@ export async function generateMetadata({ params }: { params: Promise<{ empresa: 
     }),
     ...direccionPublicaDeCarta(resuelta.empresa.slug, sucursal),
     nombreSitio: nombreEmpresa,
-    imagen: imagenParaCompartir(estilo.valores.hero_imagen_fondo_url) ?? imagenParaCompartir(estilo.valores.restaurante_logo_url),
+    imagen: imagenAlCompartirDeSucursal(estilo.valores),
   });
 }
 

@@ -6,6 +6,7 @@ import { PROCESOS_DEL_SELECTOR, type ProcesoDelSelector } from "@/core/movimient
 import { GRUPOS_NAV, accionesDeNavegacion, accionesDelMenu, elegirPantallaDeInicio, filtrarMenuPorPermiso, puedeVerItem, type GrupoNav } from "@/core/navegacion/estructura";
 import type { PantallaDeStock } from "@/core/stock/public";
 import { armarPestanasDeCarta, type PestanaDeCarta } from "@/core/carta/public";
+import { pestanasOfrecidas } from "@/core/navegacion/candidatas-a-baja";
 import { tarjetasDeInicio, type TarjetaInicio } from "@/core/navegacion/tarjetas-inicio";
 
 async function menuVisibleDe(ctx: ContextoUsuario): Promise<GrupoNav[]> {
@@ -58,5 +59,8 @@ export async function pestanasVisiblesDeStock(ctx: ContextoUsuario, pestanas: re
 export async function pestanasVisiblesDeCarta(ctx: ContextoUsuario, pestanas: readonly PestanaDeCarta[], ruta: string, visibles?: ReadonlySet<AccionClave>) {
   const claves = [...new Set(pestanas.flatMap((p) => p.pantallas.map((x) => x.accion)))];
   const puedeVer = visibles ?? (await accionesDelMenuQueElUsuarioPuedeVer(ctx.usuarioId, ctx.empresaId, ctx.sucursalId, claves, ctx.db));
-  return armarPestanasDeCarta(pestanas, puedeVer, ruta);
+  // La pestaña de una pantalla oculta que se abre por su dirección (Géneros) queda marcada en la que la reúne («Secciones y géneros»); una pestaña que se ocultó entera (Ítems agrupados) no se dibuja.
+  const armadas = armarPestanasDeCarta(pestanasOfrecidas(pestanas), puedeVer, ruta);
+  const dueña = pestanas.find((p) => p.pantallas.some((x) => x.href === ruta))?.texto;
+  return armadas.map((a) => ({ ...a, actual: a.actual || a.texto === dueña }));
 }

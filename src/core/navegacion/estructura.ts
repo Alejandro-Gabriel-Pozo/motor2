@@ -1,6 +1,7 @@
 import { DESCUENTO_POR_PRODUCTO_VISIBLE, NAV_CARTA, RUTAS_DE_LAS_ENTRADAS_DE_CARTA } from "@/core/carta/public";
 import { NAV_CATALOGO, RUTAS_DE_LAS_ENTRADAS_DE_CATALOGO } from "@/core/catalogo/public";
 import { NAV_MOVIMIENTOS, PROCESOS_DEL_SELECTOR } from "@/core/movimientos/public";
+import { CANDIDATAS_A_BAJA_VISIBLES, rutaOfrecida } from "./candidatas-a-baja";
 import { NAV_STOCK, RUTAS_DE_LAS_ENTRADAS_DE_STOCK } from "@/core/stock/public";
 import type { AccionClave } from "@/core/permisos/acciones";
 import type { PanelActivo, PanelNav } from "./panel";
@@ -85,7 +86,7 @@ export const GRUPOS_NAV: GrupoNav[] = [
   {
     id: "movimientos",
     label: "Movimientos",
-    items: NAV_MOVIMIENTOS,
+    items: NAV_MOVIMIENTOS.filter((i) => rutaOfrecida(i.href)),
   },
   {
     // DEC-27 (Fase 7): dos entradas, «Existencias» y «Configuración», con sus pestañas (fuente en core/stock/ui-config.ts). Las URL de las pantallas no cambiaron; las que no son la entrada
@@ -163,6 +164,8 @@ export const RUTAS_FUERA_DEL_MENU: ItemNav[] = [
   { href: "/catalogo/productos/nuevo", label: "Nuevo producto", accion: "alta_producto", panel: "ambos" },
   // Oculto del menú por el interruptor `DESCUENTO_POR_PRODUCTO_VISIBLE` (decisión del dueño, 2026-10-29): la pantalla sigue existiendo y se abre por su dirección.
   ...(DESCUENTO_POR_PRODUCTO_VISIBLE ? [] : [ITEM_REPORTE_DESCUENTOS_PRODUCTOS]),
+  // Oculta del menú por el interruptor `CANDIDATAS_A_BAJA_VISIBLES` (decisión del dueño, 2026-11-16; `core/navegacion/candidatas-a-baja.ts`): la pantalla sigue existiendo y se abre por su dirección.
+  ...(CANDIDATAS_A_BAJA_VISIBLES ? [] : NAV_MOVIMIENTOS.filter((i) => !rutaOfrecida(i.href))),
 ];
 
 /**

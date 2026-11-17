@@ -100,3 +100,13 @@ export function imagenParaCompartir(url: string | null | undefined): string | nu
   const limpia = url?.trim();
   return limpia && esUrlHttpsPermitida(limpia) ? limpia : null;
 }
+
+/**
+ * La imagen de la vista previa al compartir el enlace de la carta de una sucursal (WhatsApp, redes): el LOGO de la marca, y nada más. Dueño, 2026-11-17: «Como pedernal» (ZuluHub-docs
+ * `seo-y-metadatos-especificacion.md` §9.2: por defecto el logo; sin logo la vista previa sale sin imagen y no se rompe). La imagen de fondo de la portada NO se usa (antes era la primera opción).
+ * Solo se acepta un `https`. NO VERIFICADO: la especificación pide un logo de ~300 px de ancho o más; acá solo hay una URL, no sus medidas (no se descarga nada). Hoy Motor2 no tiene el campo de
+ * «imagen social propia» que menciona la especificación (sería un dato nuevo: pregunta abierta al dueño).
+ */
+export function imagenAlCompartirDeSucursal(valores: { restaurante_logo_url?: string | null; hero_imagen_fondo_url?: string | null }): string | null {
+  return imagenParaCompartir(valores.restaurante_logo_url);
+}
