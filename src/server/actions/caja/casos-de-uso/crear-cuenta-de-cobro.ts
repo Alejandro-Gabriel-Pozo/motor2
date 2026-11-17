@@ -6,7 +6,7 @@ import type { FuenteDeAzar } from "@/core/seguridad/azar";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
-import { cargarCuentaPorNombre, existeSucursal, insertarCuentaDeCobro } from "@/server/persistencia/caja/configuracion";
+import { cargarCuentaPorNombre, esChoqueDeUnaActivaPorSucursal, existeSucursal, hayOtraCuentaActivaEnSucursal, insertarCuentaDeCobro } from "@/server/persistencia/caja/configuracion";
 
 /**
  * Caso de uso «crear una cuenta de cobro» (etapa C3; Pedernal `crearCuentaDeCobro`): una terminal, un QR o una cuenta bancaria de UNA sucursal, por donde entra el dinero electrónico. Nace activa. Nada se borra: se desactiva.
@@ -15,8 +15,9 @@ import { cargarCuentaPorNombre, existeSucursal, insertarCuentaDeCobro } from "@/
  *  1. la sucursal existe y está en el alcance de escritura del actor (`SUCURSAL_NO_ENCONTRADA` / `SUCURSAL_FUERA_DE_ALCANCE`);
  *  2. el nombre (sin distinguir mayúsculas, en toda la empresa) puede ya existir: la MISMA cuenta activa (tipo, identificador y sucursal) → `yaExistia` sin escribir ni auditar (doble clic o reintento); cualquier otra cosa con ese
  *     nombre, o la misma desactivada → `CUENTA_DUPLICADA`;
- *  3. inserta y audita. La auditoría no lleva el identificador externo, solo si tiene uno.
- * Segunda barrera: el índice único del nombre sin mayúsculas, los CHECK de tipo, nombre e identificador, y la RLS de sucursal (un INSERT fuera de alcance da 42501).
+ *  3. si la sucursal ya tiene OTRA cuenta activa → `SUCURSAL_YA_TIENE_CUENTA_ACTIVA` (decisión del dueño, 2026-11-16, Q-C3-6: una sola cuenta de cobro activa por sucursal; se desactiva una y se crea otra);
+ *  4. inserta y audita. La auditoría no lleva el identificador externo, solo si tiene uno.
+ * Segunda barrera: el índice único parcial «una activa por sucursal» (`CuentaDeCobro_una_activa_por_sucursal_key`; su choque, si llegara hasta acá tras los reintentos, se traduce al MISMO rechazo y no sale como error), el índice único del nombre sin mayúsculas, los CHECK de tipo, nombre e identificador, y la RLS de sucursal (un INSERT fuera de alcance da 42501).
  *
  * @contract Deja exactamente una cuenta activa por nombre, o no escribe nada.
  * @idempotency Por estado (como Pedernal): la misma cuenta activa ya creada devuelve `yaExistia`; dos altas iguales a la vez dejan una (la perdedora, tras el reintento serializable, ve la primera).
@@ -51,6 +52,8 @@ export async function crearCuentaDeCobroCasoDeUso(
         return exito("La cuenta de cobro ya estaba creada.", { cuentaDeCobroId: existente.id, yaExistia: true });
       }
 
+      if (await hayOtraCuentaActivaEnSucursal(tx, actor.empresaId, comando.sucursalId, null)) return fracaso("SUCURSAL_YA_TIENE_CUENTA_ACTIVA", "Esa sucursal ya tiene una cuenta de cobro activa: desactivala antes de activar o crear otra.");
+
       const id = azar.uuid();
       await insertarCuentaDeCobro(tx, { id, empresaId: actor.empresaId, sucursalId: comando.sucursalId, tipo: tipo.valor, nombre: nombre.valor, identificadorExterno: identificador.valor, ahora: actor.ahora });
       await registrarCambioAuditado(tx, {
@@ -68,5 +71,8 @@ export async function crearCuentaDeCobroCasoDeUso(
     undefined,
     undefined,
     true,
-  );
+  ).catch((e: unknown) => {
+    if (esChoqueDeUnaActivaPorSucursal(e)) return fracaso("SUCURSAL_YA_TIENE_CUENTA_ACTIVA" as const, "Esa sucursal ya tiene una cuenta de cobro activa: desactivala antes de activar o crear otra.");
+    throw e;
+  });
 }

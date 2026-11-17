@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { FICHA_AYUDAS_VISIBLES } from "@/core/catalogo/public";
 import { incluyeDeLaSeccion, resolverEstiloCarta, textoDeIncluye, textoDeLaAclaracion, type AclaracionCartaV1, type PresentacionCartaV1, type VistaPreviaDeLaCarta } from "@/core/carta/public";
 import { BloquesDeOpciones, ItemFila } from "@/components/carta-publica/seccion";
 import { Aviso } from "@/ui/primitivas/aviso";
@@ -72,7 +73,9 @@ export function VistaPreviaDeLaCarta({ nombre, sucursalNombre, vista }: { nombre
       <h3 id="titulo-vista-previa-de-la-carta" className="text-base font-medium">
         Cómo se va a ver en la carta
       </h3>
-      <p className="text-xs text-tinta-suave">Con el precio de lista de «{sucursalNombre}», sin descuentos. Es la forma que le da la carta pública; si cambia algo arriba, se actualiza al guardar.</p>
+      {FICHA_AYUDAS_VISIBLES && (
+        <p className="text-xs text-tinta-suave">Con el precio de lista de «{sucursalNombre}», sin descuentos. Es la forma que le da la carta pública; si cambia algo arriba, se actualiza al guardar.</p>
+      )}
       {vista.tipo === "sin-opciones" ? (
         <p className="text-sm">
           <span className="font-medium">{nombre}</span> sin opciones: sale con su nombre y su precio.
