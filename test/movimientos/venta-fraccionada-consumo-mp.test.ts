@@ -19,6 +19,7 @@ import { sembrarCuenta } from "../pos/salon-fixture";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
 import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
+import { sumaExacta } from "../setup/suma-exacta";
 
 /**
  * Task #27 (docs/plan-redondeo-consumo-fraccionado-2026-09-26.md): sin el arrastre de redondeo, dos ventas separadas de media pizza
@@ -68,7 +69,7 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
   }
 
   const consumosDe = (productoId: string) => prisma.movimientoStock.findMany({ where: { productoId, proceso: "CONSUMO" }, orderBy: { creadoEn: "asc" } });
-  const sumaCantidad = (filas: { cantidad: unknown }[]) => filas.reduce((s, f) => s + Number(f.cantidad), 0);
+  const sumaCantidad = (filas: { cantidad: unknown }[]) => sumaExacta(filas.map((f) => Number(f.cantidad)));
 
   // A1b 2026-11-16 (prueba nueva): el comportamiento que cambió de verdad. Con bollo de 0 decimales, dos ventas de 0,5 escribían −1 y 0 (el
   // arrastre); ahora cada una escribe −0,5 exacto, el total es −1 sin ninguna deuda (cantidadExacta nula) y no hay filas que redondear.
@@ -99,7 +100,7 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
     // Dos Operaciones distintas (una por venta), cada CONSUMO tiene como máximo 4 decimales y el total es -0,0001, no -0,0002.
     expect(new Set(filas.map((f) => f.operacionId)).size).toBe(2);
     expect(filas.map((f) => Number(f.cantidad))).toEqual([-0.0001, 0]);
-    expect(sumaCantidad(filas)).toBeCloseTo(-0.0001, 10);
+    expect(sumaCantidad(filas)).toBe(-0.0001);
     expect(await calcularSaldoTotal(mp.id, seccionId, prisma)).toBe(9.9999);
   });
 
@@ -122,7 +123,7 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
 
     const filas = await consumosDe(mp.id);
     expect(filas.map((f) => Number(f.cantidad))).toEqual([-0.0001, 0]); // A1b 2026-11-16: antes [-1, 0] con receta de 1 bollo y unidad entera
-    expect(sumaCantidad(filas)).toBeCloseTo(-0.0001, 10);
+    expect(sumaCantidad(filas)).toBe(-0.0001);
   });
 
   it("una sola cuenta con 0,5 de una pizza + 0,5 de otra, mismo bollo (mismo insumo compartido) — total -0,0001 en UNA venta (A1b: receta de 0,0001)", async () => {
@@ -156,7 +157,7 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
     expect(filas).toHaveLength(2);
     // Ambas líneas son la MISMA Operacion? No — registrarVentaEnTx crea una Operacion por línea, pero es UNA sola llamada a
     // registrarVenta (una sola venta desde la perspectiva del mostrador/cuenta).
-    expect(sumaCantidad(filas)).toBeCloseTo(-0.0001, 10);
+    expect(sumaCantidad(filas)).toBe(-0.0001);
     for (const f of filas) expect(Math.round(Number(f.cantidad) * 1e4) / 1e4).toBe(Number(f.cantidad)); // A1b: antes enteras; ahora máximo 4 decimales
   });
 
@@ -174,7 +175,7 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
 
     const filas = await consumosDe(mp.id);
     expect(filas.map((f) => Number(f.cantidad))).toEqual([-0.0001, -0.0001, 0, -0.0001]); // A1b 2026-11-16: antes [0, -1, 0, 0] con receta de 1 bollo y unidad entera
-    expect(sumaCantidad(filas)).toBeCloseTo(-0.0003, 10);
+    expect(sumaCantidad(filas)).toBe(-0.0003);
     expect(await calcularSaldoTotal(mp.id, seccionId, prisma)).toBe(9.9997);
   });
 
@@ -201,8 +202,8 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
     // D = Σcantidad − ΣcantidadExacta sobre TODAS las filas con cantidadExacta no nulo (CONSUMO + su reversión AJUSTE) — tiene que
     // volver a 0: las dos ventas vigentes (v2, v3) consumieron exactamente 0,0001 entre las dos, sin resto pendiente.
     const conArrastre = await prisma.movimientoStock.findMany({ where: { productoId: mp.id, cantidadExacta: { not: null } } });
-    const deudaFinal = conArrastre.reduce((d, f) => d + Number(f.cantidad) - Number(f.cantidadExacta), 0);
-    expect(deudaFinal).toBeCloseTo(0, 10);
+    const deudaFinal = sumaExacta(conArrastre.flatMap((f) => [Number(f.cantidad), -Number(f.cantidadExacta)]));
+    expect(deudaFinal).toBe(0);
   });
 
   it("dos sucursales: la deuda de redondeo es independiente entre ellas (mismo producto, misma unidad, ninguna se contamina)", async () => {

@@ -171,6 +171,15 @@ describe("avisoDeStockNegativo y mensajeStockInsuficiente (B3)", () => {
     }
   });
 
+  // A1b 2026-11-16 (pedido del verificador): ataca el redondeo desde la venta. Con stock 0 y una venta que pide 0,00005, el saldo
+  // resultante es −0,00005: un EMPATE negativo. Cuenta exacta (empate alejándose del cero) → −0,0001; `Math.round` daba −0 (0).
+  it("venta con stock negativo permitido y empate −0,00005: el saldo resultante queda −0,0001 (alejándose del cero), no 0", () => {
+    const aviso = avisoDeStockNegativo({ productoId: "mp-harina", seccionId: COCINA.id, actual: 0, requerido: 0.00005 }, { nombre: "Harina", unidadStock: { decimales: 4 } }, "Cocina");
+    expect(aviso.resultante).toBe(-0.0001);
+    expect(aviso.requerido).toBe(0.0001);
+    expect(Object.is(aviso.resultante, -0)).toBe(false);
+  });
+
   it("el aviso conserva el ORDEN de las claves de siempre", () => {
     expect(Object.keys(avisoDeStockNegativo(faltante, { nombre: "Harina", unidadStock: { decimales: 2 } }, "Cocina"))).toEqual([
       "productoId", "nombre", "seccionId", "seccionNombre", "actual", "requerido", "resultante",

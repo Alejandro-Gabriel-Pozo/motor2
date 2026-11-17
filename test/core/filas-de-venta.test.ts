@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { crearArrastreDeRedondeo } from "../../src/core/movimientos/arrastre-redondeo";
 import { filasDeUnaVenta, type ProductoParaFilas } from "../../src/core/movimientos/filas-de-venta";
 import type { VentaCalculada } from "../../src/core/movimientos/plan-de-la-venta";
+import { sumaExacta } from "../setup/suma-exacta";
 
 /**
  * Las filas del Kardex de una venta (Hito 5, 5.1 bloque B2b: `core/movimientos/filas-de-venta.ts`, mudadas tal cual desde `registrarVentaEnTx`): sin base. Fija las CLAVES de cada fila y su
@@ -150,3 +151,40 @@ describe("filasDeUnaVenta: el PV que se produce y sale de más de un lote", () =
     expect(ventas[0]).toMatchObject({ seccionId: "s-cocina", loteVencimiento: diciembre, cantidad: -1, precioTotal: 100 });
   });
 });
+
+// A1b 2026-11-16 (pedido del verificador): la deuda HEREDADA de consumos antiguos con `cantidadExacta` (escritos cuando el stock se
+// redondeaba a los decimales de la unidad) se cobra sin escribir NUNCA una cantidad negativa en el Kardex (piso en 0 del arrastre).
+describe("filasDeUnaVenta: deuda heredada de consumos antiguos con cantidadExacta", () => {
+  /** La deuda como la arma `cargarDeudaDeRedondeo`: Σcantidad − ΣcantidadExacta de las filas CONSUMO con exacta (con signo). */
+  const deudaCargada = (filasAntiguas: { cantidad: number; cantidadExacta: number }[]) =>
+    sumaExacta(filasAntiguas.flatMap((f) => [f.cantidad, -f.cantidadExacta]));
+
+  const escritas = (consumos: number[], deudaInicial: number) => {
+    const arrastre = crearArrastreDeRedondeo(new Map([["mp-bollo", deudaInicial]]));
+    return consumos.map((c) => filasDeUnaVenta(venta({ consumos: [consumo("mp-bollo", c)] }), "op-1", { detalle: undefined, productoDe: () => bollo, arrastre })[0]!);
+  };
+
+  it("deuda −0,3 (antes −0,8 con exacta −0,5): cuatro consumos de 0,1 escriben 0, 0, 0 y 0,1 — se salda la deuda y nunca hay una cantidad positiva (consumo negativo)", () => {
+    const deuda = deudaCargada([{ cantidad: -0.8, cantidadExacta: -0.5 }]);
+    expect(deuda).toBe(-0.3);
+    const filasEscritas = escritas([0.1, 0.1, 0.1, 0.1], deuda);
+    expect(filasEscritas.map((f) => Math.abs(f.cantidad))).toEqual([0, 0, 0, 0.1]);
+    for (const f of filasEscritas) expect(f.cantidad <= 0).toBe(true);
+    // Σescrito − deuda inicial = Σexacto (0,4): la deuda heredada quedó saldada y el Kardex termina exacto.
+    expect(sumaExacta([...filasEscritas.map((f) => -f.cantidad), -deuda])).toBe(0.4);
+  });
+
+  it("deuda −0,00005 (antes −0,0001 con exacta −0,00005) y una parte de 0: el total empata en −0,00005 y se escribe 0, no −0,0001", () => {
+    const deuda = deudaCargada([{ cantidad: -0.0001, cantidadExacta: -0.00005 }]);
+    expect(deuda).toBe(-0.00005);
+    const [fila] = escritas([0], deuda);
+    expect(Math.abs(fila!.cantidad)).toBe(0);
+    expect(fila!.cantidad <= 0).toBe(true);
+  });
+
+  it("sin cobrar la deuda (arrastre vacío) los mismos consumos escribirían 0,1 cada uno: la prueba distingue si se ignora la deuda heredada", () => {
+    const filasEscritas = escritas([0.1, 0.1, 0.1, 0.1], 0);
+    expect(filasEscritas.map((f) => Math.abs(f.cantidad))).toEqual([0.1, 0.1, 0.1, 0.1]);
+  });
+});
+

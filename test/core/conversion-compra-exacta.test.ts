@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
-import { convertirCantidadAUnidadDeStock, precioPorUnidad, redondearACantidadDeUnidad } from "../../src/core/movimientos/transiciones";
+import { convertirCantidadAUnidadDeStock, precioPorUnidad } from "../../src/core/movimientos/transiciones";
 
 /**
  * Conversión de una compra (unidad de compra → unidad de stock) y precios por unidad en decimal EXACTO
@@ -63,7 +63,7 @@ function divisionPiso(dividendo: bigint, divisor: bigint): { q: bigint; r: bigin
  * Pasa `v` a `decimales` decimales con el empate ALEJÁNDOSE DEL CERO (el empate exacto va al lado de mayor valor absoluto; con resto ≥ la mitad, también).
  * A1b 2026-11-16 («Pasar a cuenta exacta como Pedernal»): antes el oráculo usaba empate hacia +∞ (heredado de `Math.round`); solo cambia el resultado de un empate NEGATIVO exacto.
  */
-function aDecimalesEmpateHaciaMasInfinito(v: Escalado, decimales: number): Escalado {
+function aDecimalesEmpateAlejandoseDelCero(v: Escalado, decimales: number): Escalado {
   if (v.escala <= decimales) return { n: v.n * POTENCIA(decimales - v.escala), escala: decimales };
   const paso = POTENCIA(v.escala - decimales);
   const negativo = v.n < BigInt(0);
@@ -76,7 +76,7 @@ function oraculoCantidadDeStock(cantidad: string, factor: string, decimales: num
   const a = leer(cantidad);
   const b = leer(factor);
   const producto: Escalado = { n: a.n * b.n, escala: a.escala + b.escala };
-  return Number(aTexto(aDecimalesEmpateHaciaMasInfinito(producto, decimales)));
+  return Number(aTexto(aDecimalesEmpateAlejandoseDelCero(producto, decimales)));
 }
 
 /** precioTotal (≥ 0) ÷ cantidad (> 0) a 4 decimales, empate alejándose del cero (para positivos: el resto ≥ mitad sube). */
