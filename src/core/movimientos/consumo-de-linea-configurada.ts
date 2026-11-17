@@ -1,5 +1,5 @@
 import { Decimal } from "decimal.js";
-import { factorDeMermaExacto, rendimientoEfectivo } from "@/core/catalogo/public";
+import { factorDeBrutoExacto, rendimientoEfectivo, type BaseDeCantidad } from "@/core/catalogo/public";
 import { CANTIDAD_MAXIMA_DE_OPCION, FACTOR_DE_ESCALA_MAXIMO, type EfectoDeConsumoDeOpcion } from "@/core/opciones/public";
 import { pedidoDeIngrediente, type IngredienteParaVender } from "./linea-de-venta";
 
@@ -50,6 +50,8 @@ export interface ConsumoDeOpcionParaVender {
   cantidad: number;
   unidadStockId: string;
   mermaPorcentaje: number;
+  /** La base de la VERSIÓN DE OPCIÓN a la que pertenece el consumo (M3a): NETA o BRUTA, como `RecetaVersion.baseDeCantidad`. */
+  baseDeCantidad: BaseDeCantidad;
   escalaConLaMedida: boolean;
 }
 
@@ -130,7 +132,7 @@ function validarConsumos(consumos: readonly ConsumoDeOpcionParaVender[], nombre:
 
 /** Unidades vendidas × unidades de la opción × cantidad del consumo × (1 + merma/100), en decimal exacto y entregado como `number`. */
 function pedidoDeConsumo(c: ConsumoDeOpcionParaVender, unidades: Decimal.Value, factor: Decimal.Value): Pedido {
-  const cantidad = new D(unidades).times(c.cantidad).times(factor).times(factorDeMermaExacto(c.mermaPorcentaje));
+  const cantidad = new D(unidades).times(c.cantidad).times(factor).times(factorDeBrutoExacto(c.baseDeCantidad, c.mermaPorcentaje));
   return { productoId: c.insumoProductoId, cantidad: cantidad.toNumber(), insumoSustitutoIds: [], unidadStockId: c.unidadStockId };
 }
 
@@ -138,7 +140,7 @@ function pedidoDeConsumo(c: ConsumoDeOpcionParaVender, unidades: Decimal.Value, 
 function pedidoDeBaseEscalado(cantidad: number, factor: number, base: IngredienteDeBase, sucursalId: string): Pedido {
   const ing = base.ingrediente;
   const ef = rendimientoEfectivo({ cantidad: ing.cantidad, mermaPorcentaje: ing.mermaPorcentaje }, ing.rendimientosLocales, sucursalId);
-  const consumo = new D(cantidad).times(factor).times(ef.cantidad).times(factorDeMermaExacto(ef.mermaPorcentaje));
+  const consumo = new D(cantidad).times(factor).times(ef.cantidad).times(factorDeBrutoExacto(ing.baseDeCantidad, ef.mermaPorcentaje));
   return { productoId: ing.insumoProductoId, cantidad: consumo.toNumber(), insumoSustitutoIds: ing.insumoSustitutoIds, unidadStockId: base.unidadStockId };
 }
 

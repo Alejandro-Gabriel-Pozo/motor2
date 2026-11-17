@@ -37,6 +37,7 @@ const consumo = (insumoProductoId: string, cantidad: number, extra: Partial<Cons
   cantidad,
   unidadStockId: s.kg.id,
   mermaPorcentaje: 0,
+  baseDeCantidad: "NETA",
   escalaConLaMedida: false,
   ...extra,
 });

@@ -40,6 +40,7 @@ describe("costos y márgenes HOY (precio de venta y costo con IVA incluido)", ()
     cantidad: 1,
     unidadNombre: kg,
     mermaPorcentaje: 0,
+    baseDeCantidad: "NETA",
     cantidadCentral: 1,
     mermaPorcentajeCentral: 0,
     calibradoLocal: false,
