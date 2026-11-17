@@ -28,7 +28,18 @@ const CONSULTA_ESCRITORIO = "(min-width: 768px)";
  * QUÉ se ofrece lo decide el SERVIDOR: recibe los MISMOS `grupos`, ya filtrados por permiso (`filtrarMenuPorPermiso`), que recibe el menú lateral; no se manda nada más al cliente ni se
  * cambia ninguna ruta; `rutasDeUnaEntrada` son las pantallas de proceso que se abren desde una entrada del menú («Registrar movimiento») y el rol puede ver, para que el buscador las encuentre. Acá no hay selector de Empresa/Sucursal: con 70 pantallas el buscador es el camino corto, y los grupos muestran todo lo que la persona puede ver.
  */
-export function MenuCelular({ grupos, hrefsDelMenu, rutasDeUnaEntrada }: { grupos: GrupoNav[]; hrefsDelMenu: readonly string[]; rutasDeUnaEntrada: readonly RutaDeUnaEntrada[] }) {
+export function MenuCelular({
+  grupos,
+  hrefsDelMenu,
+  rutasDeUnaEntrada,
+  porAreas = false,
+}: {
+  grupos: GrupoNav[];
+  hrefsDelMenu: readonly string[];
+  rutasDeUnaEntrada: readonly RutaDeUnaEntrada[];
+  /** El menú por áreas (`MENU_POR_AREAS`): `grupos` son las áreas, sin íconos y con el subencabezado de cada grupo. */
+  porAreas?: boolean;
+}) {
   const pathname = usePathname();
   const [abierto, setAbierto] = useState(false);
   const [consulta, setConsulta] = useState("");
@@ -136,7 +147,7 @@ export function MenuCelular({ grupos, hrefsDelMenu, rutasDeUnaEntrada }: { grupo
                         className="flex min-h-12 w-full items-center justify-between gap-2 px-4 text-left text-base font-semibold hover:bg-superficie-suave"
                       >
                         <span className="flex items-center gap-2">
-                          <IconoDeModulo id={g.id} />
+                          {!porAreas && <IconoDeModulo id={g.id} />}
                           {g.label}
                         </span>
                         <span aria-hidden="true" className="text-tinta-suave">
@@ -144,8 +155,11 @@ export function MenuCelular({ grupos, hrefsDelMenu, rutasDeUnaEntrada }: { grupo
                         </span>
                       </button>
                       <ul id={idPanel} hidden={!abiertoElGrupo} className="bg-papel">
-                        {g.items.map((i) => (
+                        {g.items.map((i, n) => (
                           <li key={i.href}>
+                            {i.subgrupo !== undefined && i.subgrupo !== g.items[n - 1]?.subgrupo && (
+                              <p className="px-4 pt-2 text-xs font-semibold uppercase tracking-wide text-tinta-suave">{i.subgrupo}</p>
+                            )}
                             <Link href={i.href} onClick={cerrar} aria-current={i.href === hrefActivo ? "page" : undefined} className={filaDeItem(i.href === hrefActivo, "pl-7 pr-4")}>
                               {i.label}
                               <IndicadorDeEnlace />

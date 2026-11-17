@@ -1,4 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
+import { MENU_POR_AREAS } from "./fixtures/menu";
 import { test, expect } from "./fixtures/auth";
 import { abrirComoRol } from "./fixtures/rol-pos";
 import { capturar, expectSinDesborde, fijarCelular } from "./fixtures/movil";
@@ -49,7 +50,8 @@ test("celular (375 px): el menú no está fijo, el contenido usa todo el ancho y
   await capturar(page, "menu-abierto");
 
   // Un grupo abierto a la vez.
-  const reportes = cajon.getByRole("button", { name: /Reportes/ });
+  // Otro grupo: «Reportes» (menú de siempre) o el área «Ventas» (menú por áreas, donde Reportes es un grupo de Ventas).
+  const reportes = cajon.getByRole("button", { name: MENU_POR_AREAS ? /Ventas/ : /Reportes/ });
   await reportes.click();
   await expect(reportes).toHaveAttribute("aria-expanded", "true");
   await expect(grupoActivo).toHaveAttribute("aria-expanded", "false");

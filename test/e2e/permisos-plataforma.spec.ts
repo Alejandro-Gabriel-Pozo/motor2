@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { MENU_POR_AREAS } from "./fixtures/menu";
 import { test, expect } from "./fixtures/auth";
 import { prismaAdmin } from "../setup/cliente-duenio";
 import { cambiarPoliticaDeEmpresa } from "../../src/server/operaciones-de-plataforma/cambiar-politica-de-empresa";
@@ -25,7 +26,9 @@ test.afterEach(async () => {
 
 test("empresa completa (por defecto): el selector de paneles y la edición de permisos y roles están disponibles", async ({ paginaAutenticada: page }) => {
   await page.goto("/inicio");
-  await expect(selector(page)).toBeVisible();
+  // Con el menú por áreas (`MENU_POR_AREAS`) no hay selector de paneles; sin él, está.
+  if (MENU_POR_AREAS) await expect(selector(page)).toHaveCount(0);
+  else await expect(selector(page)).toBeVisible();
 
   await page.goto("/administracion/permisos");
   await expect(page.getByRole("button", { name: "Editar permisos" })).toBeVisible();
@@ -38,13 +41,15 @@ test("dosPaneles apagado: el menú es uno solo (sin selector), con todo junto, y
   await page.goto("/inicio");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(selector(page)).toHaveCount(0);
-  await expect(page.locator("nav").getByRole("button", { name: "Stock" })).toBeVisible();
-  await expect(page.locator("nav").getByRole("button", { name: "Administración" })).toBeVisible();
+  // El menú de siempre trae «Stock» y «Administración»; el menú por áreas, «Catálogo» y «Cuenta».
+  const [grupoA, grupoB] = MENU_POR_AREAS ? ["Catálogo", "Cuenta"] : ["Stock", "Administración"];
+  await expect(page.locator("nav").getByRole("button", { name: grupoA })).toBeVisible();
+  await expect(page.locator("nav").getByRole("button", { name: grupoB })).toBeVisible();
 
   await page.goto("/catalogo/categorias");
   await expect(selector(page)).toHaveCount(0);
   await expect(page.locator("aside nav a[aria-current=page]")).toHaveCount(1);
-  await expect(page.locator("nav").getByRole("button", { name: "Stock" })).toBeVisible();
+  await expect(page.locator("nav").getByRole("button", { name: grupoA })).toBeVisible();
 });
 
 test("dosPaneles apagado no toca los permisos: la matriz sigue editable", async ({ paginaAutenticada: page }) => {
@@ -71,7 +76,8 @@ test("permisosEditables apagado: la matriz de permisos y la pantalla de roles av
 test("permisosEditables apagado deja el menú en dos paneles (son perillas independientes)", async ({ paginaAutenticada: page }) => {
   await fijarPolitica({ permisosEditables: false });
   await page.goto("/inicio");
-  await expect(selector(page)).toBeVisible();
+  if (MENU_POR_AREAS) await expect(selector(page)).toHaveCount(0);
+  else await expect(selector(page)).toBeVisible();
 });
 
 test("el cambio de política queda en la auditoría de plataforma, a nombre del administrador y con la instalación", async () => {
