@@ -43,6 +43,16 @@ function marcadorAjenoDe(puerta: PuertaInventariada): RegExp {
   return puerta.contexto === "empresa" ? SOLO_OTRA_EMPRESA : OTRA_EMPRESA_U_OTRA_SUCURSAL;
 }
 
+/** Tapa los ids UUID de un texto: sus grupos de 4 cifras pueden coincidir por azar con una huella numérica (`7741`, `8888`) y dar un falso «filtró filas ajenas». Los marcadores (`ZZ-…`) y las huellas sueltas siguen a la vista. */
+export function sinUuids(texto: string): string {
+  return texto.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "·");
+}
+
+/** Para la prueba del detector: ¿el texto trae un marcador ajeno (otra empresa u otra sucursal)? */
+export function traeMarcadorAjeno(texto: string): boolean {
+  return OTRA_EMPRESA_U_OTRA_SUCURSAL.test(texto);
+}
+
 export interface Salida {
   lanzo: boolean;
   valor: unknown;
@@ -240,7 +250,8 @@ export async function correrPuerta(puerta: PuertaInventariada, escenario: Escena
     const sinListadas = Object.hasOwn(SUCURSALES_LISTADAS_POR_DISENO, puerta.clave)
       ? [NOMBRE_DE_S2, NOMBRE_DE_S3, SLUG_DE_S2, SLUG_DE_S3].reduce((t, listado) => t.split(listado).join("·"), salida.texto)
       : salida.texto;
-    const sinReflejo = reflejo.reduce((t, m) => t.split(m).join("·"), sinListadas);
+    // Un id UUID (las tablas nuevas de caja los usan) lleva grupos de 4 cifras que pueden caer por azar en la familia 77xx/88xx de las huellas: no es una fuga (los ids no llevan marcadores), se tapa antes de buscar.
+    const sinReflejo = sinUuids(reflejo.reduce((t, m) => t.split(m).join("·"), sinListadas));
     const mal = (texto: string) => problemas.push(`${etiqueta}${texto}`);
     if (esControl) {
       // El CONTROL POSITIVO de una mutación (hallazgo I-3): con ids propios y válidos la llamada tiene que terminar en `ok: true`. Escribe de verdad; el mundo se vuelve a sembrar para la próxima variante.
