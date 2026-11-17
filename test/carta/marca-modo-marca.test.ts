@@ -76,10 +76,10 @@ describe("modo marca: la marca guardada se lee si se puede (decisión del dueño
 });
 
 describe("el marcador es una clave del catálogo, no un color", () => {
-  it("está en el catálogo (para que el editor lo guarde), con el único valor «si», y no es de color", () => {
+  it("está en el catálogo (para que el editor lo guarde), con los valores «si» y «oscura», y no es de color", () => {
     const d = CLAVES_TEMA_V1.find((c) => c.clave === "marca_derivada");
     expect(d?.tipo).toBe("enum");
-    expect(d && "opciones" in d ? d.opciones : null).toEqual(["si"]);
+    expect(d && "opciones" in d ? d.opciones : null).toEqual(["si", "oscura"]);
     expect(Object.keys(CLAVES_DE_COLOR_DEL_TEMA)).not.toContain("marca_derivada");
   });
 });

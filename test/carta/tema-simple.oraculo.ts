@@ -6,9 +6,13 @@ import { CLAVES_TEMA_V1, type DefinicionClaveTema } from "../../src/core/carta/t
  *
  * Qué pasa con cada una de las 65 claves del Tema (la tabla campo por campo del diseño, columna «Decisión»):
  *  - SIMPLE: la pide la pantalla simple (el dueño, 2026-11-17: «Te pedía color de marca nada más», «lo del contacto sí»; el logo y el nombre, según Pedernal).
- *  - DERIVADA: la pantalla ya no la pide; la da el sistema (contraste sobre el fondo oscuro, la maqueta o la marca). Lo ya cargado sigue mandando. (`marca_derivada` es el marcador que escribe la pantalla simple.)
+ *  - DERIVADA: la pantalla ya no la pide; la da el sistema (colores fijos sobre el fondo oscuro o la maqueta). Lo ya cargado sigue mandando. (`marca_derivada` es el marcador que escribe la pantalla simple.)
  *  - PENDIENTE: falta la palabra del dueño (rubro, lema, descripción, imagen de portada): no se muestra y lo cargado sigue mandando.
  *  - ESCONDIDA: la tipografía general, también pendiente del dueño (¿sans o serifa?): no se muestra.
+ *
+ * REGLA DE COLOR (dueño, 2026-11-17: «Ve como un pedernal.»; Pedernal `ui/tokens.css`, «Acción y acento: lo único que sale de la marca»): con el marcador «oscura» el TEXTO y los ÍCONOS de la carta (tinta, texto de lo que antes
+ * se pintaba con la marca, flechas, íconos de redes, invitación y letra del sello) salen de colores FIJOS del sistema a 7:1 o más sobre el fondo, IGUALES con cualquier marca; la marca queda solo en acentos y bordes y se muestra tal cual
+ * (sin ajuste de luminosidad ni aviso). Como acento puede quedar bajo 3:1 contra el fondo (colores muy oscuros): se declara, no se rechaza.
  * Una clave NUEVA del catálogo sin entrada acá rompe `tema-simple.test.ts`: hay que declarar si afecta o no a la pantalla simple.
  */
 export type DestinoDeClave = "SIMPLE" | "DERIVADA" | "PENDIENTE" | "ESCONDIDA";
@@ -93,6 +97,7 @@ export const EXTREMOS: readonly string[] = [
   "#19191a", // el mismo fondo oscuro del sistema
   "#ff0000", // rojo puro
   "#00ff00", // verde puro
+  "#ffff00", // amarillo puro
 ];
 
 /** La razón de contraste WCAG 2.1, escrita acá de nuevo (no la del código): de 1 a 21. */

@@ -1,7 +1,7 @@
 import { colorDeTextoLegible, resolveHeroInk, resolvePrimaryForeground } from "./color-css";
 import { variablesDeLaEscala } from "./escala";
 import { canalesDeMarcaHex, marcaGuardadaLegible, tintaSobreMarca } from "./marca-derivada";
-import { MARCADOR_DE_MARCA_OSCURA, FONDO_OSCURO_DEL_SISTEMA, ajustarMarcaSobreFondo } from "./marca-oscura";
+import { MARCADOR_DE_MARCA_OSCURA, FONDO_OSCURO_DEL_SISTEMA } from "./tema-simple";
 import { CLAVES_TEMA_V1, validarValorTema, type ClaveTema, type DefinicionClaveTema, type FamiliaTipografica } from "./tema";
 
 /**
@@ -158,27 +158,32 @@ function aplicarModoMarca(valores: Record<ClaveTema, string>, variablesCss: Reco
 }
 
 /**
- * MARCA OSCURA (PASO A de «Apariencia y publicación», `docs/diseno-carta-apariencia-y-publicacion-como-pedernal-2026-11-17.md` §4 y §5): con `marca_derivada = "oscura"` la carta se lee con la marca elegida sobre el fondo OSCURO del sistema.
- * A diferencia de «si», NO deja de leer ninguna clave cargada («lo cargado manda»): solo se DERIVA lo que está vacío —el fondo (el oscuro del sistema; la tinta base la sigue por contraste, como siempre)— y se corrige la marca AL MOSTRAR
- * hasta 7:1 contra ese fondo (`ajustarMarcaSobreFondo`, mismo tono; lo guardado no cambia). La marca queda solo en los elementos que ya la usaban; los textos que se pintaban con ella pasan a la tinta del sistema (`--carta-primary-texto`).
- * Devuelve la tinta del texto sobre la marca (para la portada pintada con la marca) o null.
+ * MARCA OSCURA (PASO A de «Apariencia y publicación», `docs/diseno-carta-apariencia-y-publicacion-como-pedernal-2026-11-17.md`; dueño, 2026-11-17: «Ve como un pedernal.»): con `marca_derivada = "oscura"` la carta se lee sobre el fondo
+ * OSCURO del sistema con colores de TEXTO e ICONOS FIJOS (la tinta del fondo, `resolvePrimaryForeground`), que NO dependen del color de marca: la marca queda solo en acentos y bordes (arco y aro del sello de la portada, bordes,
+ * subrayados, barras). Sin ajuste de luminosidad: la marca se muestra tal cual la eligió la empresa. A diferencia de «si», NO deja de leer ninguna clave cargada («lo cargado manda»): solo se DERIVA lo que está vacío (el fondo, las
+ * flechas, los íconos de redes y el texto de la invitación de la portada, que pasan a la tinta). Devuelve null: ningún texto se pinta sobre la marca.
  */
-function aplicarMarcaOscura(valores: Record<ClaveTema, string>, variablesCss: Record<string, string>): string | null {
+function aplicarMarcaOscura(valores: Record<ClaveTema, string>, variablesCss: Record<string, string>): null {
   // Un fondo cargado que no se puede leer (un nombre CSS) no se puede medir: falla cerrado, manda el oscuro del sistema.
   const fondoCargado = valores.color_fondo_dia ? marcaGuardadaLegible(valores.color_fondo_dia) : null;
   const fondo = fondoCargado ?? FONDO_OSCURO_DEL_SISTEMA;
-  if (!fondoCargado) {
-    valores.color_fondo_dia = fondo;
-    variablesCss[aVariableCss("color_fondo_dia")] = fondo;
-  }
-  const elegida = marcaGuardadaLegible(valores.color_marca);
-  const marca = elegida ? ajustarMarcaSobreFondo(elegida, fondo) : null;
-  valores.color_marca = marca?.usada ?? "";
-  variablesCss[aVariableCss("color_marca")] = marca?.usada ?? "";
+  const poner = (clave: ClaveTema, valor: string) => {
+    valores[clave] = valor;
+    variablesCss[aVariableCss(clave)] = valor;
+  };
+  if (!fondoCargado) poner("color_fondo_dia", fondo);
+  const marca = marcaGuardadaLegible(valores.color_marca) ?? "";
+  poner("color_marca", marca);
+  const tinta = resolvePrimaryForeground(fondo);
   variablesCss["--carta-primary-texto"] = "var(--carta-ink)";
-  const canales = marca ? canalesDeMarcaHex(marca.usada) : null;
-  // Con un fondo de portada cargado la portada no se pinta con la marca: su texto lo decide ese fondo.
-  return canales && !valores.hero_color_fondo ? tintaSobreMarca(canales).css : null;
+  if (tinta) {
+    for (const clave of ["color_nav_flechas", "color_nav_iconos", "color_portada_cta"] as const) if (!valores[clave]) poner(clave, tinta);
+  }
+  // El sello de la portada (la inicial del nombre): fondo de la carta, letra de la tinta y la marca como aro (acento), no como fondo de un texto.
+  variablesCss["--carta-sello-fondo"] = "var(--carta-bg)";
+  variablesCss["--carta-sello-texto"] = "var(--carta-ink)";
+  variablesCss["--carta-sello-aro"] = "inset 0 0 0 2px var(--carta-primary)";
+  return null;
 }
 
 export function resolverEstiloCarta(valoresGuardados: unknown): EstiloCarta {

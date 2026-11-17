@@ -17,8 +17,8 @@ import { temaSimpleVisible } from "../../src/lib/tema-simple-visible";
 import { CLAVES_POR_DESTINO, EXTREMOS, PALETAS_ESPERADAS, TODO_LO_AJENO_CARGADO, ALGO_AJENO_CARGADO, contrasteWcag, hexACanales } from "./tema-simple.oraculo";
 
 /**
- * Pantalla simple del Tema de la carta, parte PURA (PASO A de «Apariencia y publicación», `docs/diseno-carta-apariencia-y-publicacion-como-pedernal-2026-11-17.md`): el guardián de las 65 claves, el interruptor, el contraste al mostrar
- * (paleta por defecto, las seis paletas y doce extremos: ninguno bajo 7:1), la mezcla («lo cargado manda») y el guard del guardado simple. Las reglas esperadas están en `tema-simple.oraculo.ts`, escritas aparte.
+ * Pantalla simple del Tema de la carta, parte PURA (PASO A de «Apariencia y publicación», `docs/diseno-carta-apariencia-y-publicacion-como-pedernal-2026-11-17.md`): el guardián de las 65 claves, el interruptor, el texto en colores fijos
+ * (paleta por defecto, las seis paletas y trece extremos: ningún texto o ícono bajo 7:1, sin depender de la marca), la mezcla («lo cargado manda») y el guard del guardado simple. Las reglas esperadas están en `tema-simple.oraculo.ts`, escritas aparte.
  */
 
 describe("guardián: cada clave del Tema declara si es de la pantalla simple o está escondida", () => {
@@ -81,16 +81,28 @@ describe("las seis paletas son las de Pedernal y la elección se traduce de ida 
   });
 });
 
-describe("contraste AL MOSTRAR: con cualquier color de marca, nada queda bajo 7:1 sobre el fondo oscuro, y lo guardado es lo elegido", () => {
+describe("texto e íconos en colores FIJOS: con cualquier color de marca, nada queda bajo 7:1 sobre el fondo oscuro, y lo guardado es lo elegido (dueño, 2026-11-17: «Ve como un pedernal.»)", () => {
   const POR_DEFECTO = DEFAULTS_DEL_LIBRO_MAQUETA.color_marca!;
   const CASOS: ReadonlyArray<readonly [string, string]> = [
     ["la marca por defecto de la maqueta", POR_DEFECTO],
     ...Object.entries(PALETAS_ESPERADAS).map(([nombre, hex]) => [`paleta ${nombre}`, hex] as const),
     ...EXTREMOS.map((hex) => [`extremo ${hex}`, hex] as const),
   ];
+  const SIN_MARCA = resolverEstiloCarta(conDefaultsDeLaMaqueta({ marca_derivada: "oscura" }));
+  /** Todo lo que la carta pinta como TEXTO o ÍCONO con las variables del sistema, ya resuelto, sin la marca. */
+  const fijos = (e: ReturnType<typeof resolverEstiloCarta>) => ({
+    tinta: e.tintaBase,
+    textoDeMarca: e.variablesCss["--carta-primary-texto"],
+    flechas: e.colores.navFlechas,
+    iconos: e.colores.navIconos,
+    invitacion: e.portada.colorCta,
+    textoPortada: e.portada.colorTexto,
+    selloTexto: e.variablesCss["--carta-sello-texto"],
+    selloFondo: e.variablesCss["--carta-sello-fondo"],
+  });
 
-  it("son 1 + 6 + 12 colores", () => {
-    expect(CASOS).toHaveLength(19);
+  it("son 1 + 6 + 13 colores", () => {
+    expect(CASOS).toHaveLength(20);
   });
 
   describe.each(CASOS)("%s", (_nombre, elegido) => {
@@ -98,51 +110,49 @@ describe("contraste AL MOSTRAR: con cualquier color de marca, nada queda bajo 7:
     const copiaDeLoGuardado = JSON.stringify(guardado);
     const estilo = resolverEstiloCarta(conDefaultsDeLaMaqueta(guardado));
     const fondo = rgbDeColorCss(estilo.valores.color_fondo_dia)!;
-    const usada = estilo.valores.color_marca;
 
-    it("el fondo del sistema es oscuro y el texto base llega a 7:1 (también la tinta atenuada, medida en sRGB)", () => {
+    it("el fondo del sistema es oscuro y cada texto e ícono de la carta llega a 7:1 sobre él (también la tinta atenuada, medida en sRGB)", () => {
       expect(contrasteWcag(fondo, [255, 255, 255])).toBeGreaterThan(7);
       const tinta = rgbDeColorCss(estilo.tintaBase!)!;
       expect(contrasteWcag(tinta, fondo)).toBeGreaterThanOrEqual(7);
       const atenuada: [number, number, number] = [0, 1, 2].map((i) => tinta[i]! * 0.7 + fondo[i]! * 0.3) as [number, number, number];
       expect(contrasteWcag(atenuada, fondo)).toBeGreaterThanOrEqual(7);
+      // Las flechas, los íconos de redes y la invitación de la portada: colores explícitos (no la marca) y a 7:1.
+      for (const color of [estilo.colores.navFlechas, estilo.colores.navIconos, estilo.portada.colorCta]) {
+        expect(color).toBeTruthy();
+        expect(contrasteWcag(rgbDeColorCss(color!)!, fondo)).toBeGreaterThanOrEqual(7);
+      }
+      // Todo texto que sin marcador se pintaba con la marca pasa a la tinta; la letra del sello también (el aro es el único uso de la marca).
+      expect(estilo.variablesCss["--carta-primary-texto"]).toBe("var(--carta-ink)");
+      expect(estilo.variablesCss["--carta-sello-texto"]).toBe("var(--carta-ink)");
+      expect(estilo.variablesCss["--carta-sello-fondo"]).toBe("var(--carta-bg)");
     });
 
-    it("la marca que se usa llega a 7:1 contra el fondo y el texto que va sobre ella también", () => {
-      expect(usada).toMatch(/^#[0-9a-f]{6}$/);
-      expect(contrasteWcag(hexACanales(usada), fondo)).toBeGreaterThanOrEqual(7);
-      expect(contrasteWcag(hexACanales(usada), rgbDeColorCss(estilo.portada.colorTexto!)!)).toBeGreaterThanOrEqual(7);
+    it("el color de marca NO cambia ningún color de texto o ícono: son idénticos a los de una carta sin marca", () => {
+      expect(fijos(estilo)).toEqual(fijos(SIN_MARCA));
     });
 
-    it("si ya llegaba, se usa tal cual; si no, se ajusta CONSERVANDO el tono", () => {
-      if (usada === elegido) return;
-      const [r, g, b] = hexACanales(elegido).map((c) => c / 255) as [number, number, number];
-      const [r2, g2, b2] = hexACanales(usada).map((c) => c / 255) as [number, number, number];
-      const tono = (R: number, G: number, B: number) => {
-        const max = Math.max(R, G, B);
-        const d = max - Math.min(R, G, B);
-        if (d === 0) return null;
-        const h = max === R ? ((G - B) / d) % 6 : max === G ? (B - R) / d + 2 : (R - G) / d + 4;
-        return (h * 60 + 360) % 360;
-      };
-      const antes = tono(r, g, b);
-      const despues = tono(r2, g2, b2);
-      const saturacion = Math.max(r, g, b) - Math.min(r, g, b);
-      // Un color sin tono (gris, blanco, negro) se queda sin tono; uno con tono y con saturación apreciable lo conserva (el redondeo a 8 bits mueve el tono hasta unos grados en colores casi neutros).
-      if (antes === null) expect(despues).toBeNull();
-      else if (saturacion > 0.25 && despues !== null) expect(Math.min(Math.abs(antes - despues), 360 - Math.abs(antes - despues))).toBeLessThanOrEqual(4);
-    });
-
-    it("lo guardado no se toca: el pedido sigue igual y la mezcla escribe el color elegido, no el ajustado", () => {
+    it("la marca se muestra TAL CUAL la eligió la empresa (sin ajuste de luminosidad) y lo guardado no se toca", () => {
+      expect(estilo.valores.color_marca).toBe(elegido);
       expect(JSON.stringify(guardado)).toBe(copiaDeLoGuardado);
       expect(mezclarTemaSimple({}, { color_marca: elegido }).color_marca).toBe(elegido);
     });
   });
 
-  it("sin el marcador «oscura» el resolvedor NO ajusta nada (la carta de hoy sale igual)", () => {
+  it("DECLARADO, no rechazado: como acento (arco y aro de la portada, bordes) la marca puede quedar bajo 3:1 contra el fondo (los colores muy oscuros, como el negro o el fondo mismo); la carta no la rechaza ni la ajusta", () => {
+    const fondo = hexACanales(DEFAULTS_DEL_LIBRO_MAQUETA.color_fondo_dia!);
+    const flojos = CASOS.filter(([, hex]) => contrasteWcag(hexACanales(hex), fondo) < 3).map(([, hex]) => hex);
+    expect(flojos).toEqual(expect.arrayContaining(["#000000", "#0a0a0a", "#19191a", "#000033"]));
+    for (const hex of flojos) expect(resolverEstiloCarta(conDefaultsDeLaMaqueta({ color_marca: hex, marca_derivada: "oscura" })).valores.color_marca).toBe(hex);
+    expect(flojos).not.toContain("#ffffff");
+    expect(flojos).not.toContain("#ffff00");
+  });
+
+  it("sin el marcador «oscura» el resolvedor NO cambia nada (la carta de hoy sale igual)", () => {
     for (const hex of ["#1f4e79", "#ffffff", "#000000"]) {
       expect(resolverEstiloCarta({ color_marca: hex }).valores.color_marca).toBe(hex);
       expect(resolverEstiloCarta({ color_marca: hex, marca_derivada: "si" }).valores.color_marca).toBe(hex);
+      expect(resolverEstiloCarta({ color_marca: hex }).variablesCss["--carta-sello-fondo"]).toBeUndefined();
     }
   });
 
@@ -151,10 +161,10 @@ describe("contraste AL MOSTRAR: con cualquier color de marca, nada queda bajo 7:
     expect(resolverEstiloCarta({ color_marca: "#1f4e79", marca_derivada: "oscura" }).valores.color_fondo_dia).toBe(DEFAULTS_DEL_LIBRO_MAQUETA.color_fondo_dia);
   });
 
-  it("lo cargado manda: un fondo propio de la empresa se respeta (no se pisa con el oscuro del sistema) y la marca se mide contra ese fondo", () => {
+  it("lo cargado manda: un fondo propio de la empresa se respeta (no se pisa con el oscuro del sistema) y la marca sigue tal cual", () => {
     const estilo = resolverEstiloCarta({ color_marca: "#1f4e79", marca_derivada: "oscura", color_fondo_dia: "#222222" });
     expect(estilo.valores.color_fondo_dia).toBe("#222222");
-    expect(contrasteWcag(hexACanales(estilo.valores.color_marca), hexACanales("#222222"))).toBeGreaterThanOrEqual(7);
+    expect(estilo.valores.color_marca).toBe("#1f4e79");
   });
 
   it("un fondo cargado que no se puede leer (un nombre CSS) falla cerrado: manda el oscuro del sistema", () => {
@@ -248,7 +258,7 @@ describe("guard del guardado simple: solo las siete claves, sin regla de contras
     }
   });
 
-  it("NO rechaza por contraste: blanco, negro y amarillo claro pasan (el ajuste es al mostrar)", () => {
+  it("NO rechaza por contraste: blanco, negro y amarillo claro pasan (la carta no ajusta la marca)", () => {
     for (const hex of ["#ffffff", "#000000", "#ffff99", "#19191a"]) expect(guard({ color_marca: hex }).ok, hex).toBe(true);
   });
 
