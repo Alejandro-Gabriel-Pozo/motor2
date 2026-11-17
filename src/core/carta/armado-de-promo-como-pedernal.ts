@@ -29,8 +29,8 @@ export function textoDeLaParte(p: ParteDeLaPromoParaLeer): string {
 }
 
 /** Lo que lleva la promo, en una línea: «1 de Entrada + 2 × Hamburguesa». Sin partes: «Sin componentes todavía (solo informativa)». */
-export function loQueLlevaLaPromo(partes: readonly ParteDeLaPromoParaLeer[]): string {
-  return partes.length ? partes.map(textoDeLaParte).join(" + ") : "Sin componentes todavía (solo informativa)";
+export function loQueLlevaLaPromo(partes: readonly ParteDeLaPromoParaLeer[], sinPartes: string = "Sin componentes todavía (solo informativa)"): string {
+  return partes.length ? partes.map(textoDeLaParte).join(" + ") : sinPartes;
 }
 
 /** El estado de la promo en ESTA sucursal con las palabras de Pedernal. Se vende solo si está prendida en la empresa Y en la sucursal. */
@@ -46,8 +46,8 @@ export function renglonDeLaLista(titulo: string, precio: number, partes: readonl
 }
 
 /** «Cómo lo ve el cliente»: «Menú ejecutivo $ 55.000,00 — 1 de Entrada + 1 de Bebidas». */
-export function comoLoVeElCliente(titulo: string, precio: number, partes: readonly ParteDeLaPromoParaLeer[]): string {
-  return `${titulo} ${formatearMonto(precio)} — ${loQueLlevaLaPromo(partes)}`;
+export function comoLoVeElCliente(titulo: string, precio: number, partes: readonly ParteDeLaPromoParaLeer[], sinPartes?: string): string {
+  return `${titulo} ${formatearMonto(precio)} — ${loQueLlevaLaPromo(partes, sinPartes)}`;
 }
 
 /**

@@ -43,8 +43,6 @@ export type RepartoDelPrecio =
 
 /** El texto fijo de abajo del reparto (el de la maqueta de Pedernal). */
 export const TEXTO_DEL_REPARTO = "Se reparte en proporción al precio de lista. Para el ejemplo se usa el primer producto disponible de cada elección.";
-/** Se suma al texto solo si alguna parte es un rango. */
-export const TEXTO_DEL_REPARTO_CON_RANGO = "En las partes cargadas con un rango se usa la cantidad máxima.";
 export const TEXTO_SIN_PRODUCTOS = "Sin productos disponibles para el ejemplo";
 /** Cuando falta producto en alguna parte: no se reparte (no se estima). */
 export const TEXTO_NO_SE_REPARTE = "No se puede mostrar el reparto: no hay producto disponible para el ejemplo en";

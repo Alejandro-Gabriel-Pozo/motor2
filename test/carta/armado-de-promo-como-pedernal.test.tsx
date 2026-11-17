@@ -79,13 +79,13 @@ describe("«Qué lleva»: los mismos campos que el formulario viejo", () => {
     expect(nombres(nuevo).filter((n) => !n.startsWith("incluir_"))).toEqual(["cantidad_s2", "cantidad_s3", "max_s1", "min_s1"]);
   });
 
-  it("lo que ya lleva va arriba, tildado y con su rango; el resto, plegado en «Agregar un componente» y sin tildar", () => {
+  it("lo que ya lleva va arriba, tildado y con su rango; el resto, plegado en «Agregar componente» y sin tildar", () => {
     const [arriba, plegado] = nuevo.split("data-agregar-componente");
     expect(arriba).toContain("data-que-lleva");
     expect(arriba).toContain('data-cupo-seccion="Entrada"');
     expect(arriba).not.toContain('data-cupo-seccion="Postres"');
     expect(arriba).toMatch(/name="incluir_s1"[^>]*checked=""|checked=""[^>]*name="incluir_s1"/);
-    expect(plegado).toContain("Agregar un componente");
+    expect(plegado).toContain("Agregar componente");
     expect(plegado).toContain('data-cupo-seccion="Postres"');
     expect(plegado).toContain('data-cupo-seccion="Vinos"');
     expect(plegado).not.toContain('checked=""');

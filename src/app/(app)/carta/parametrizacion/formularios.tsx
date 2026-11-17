@@ -1,4 +1,4 @@
-import { ALTA_DE_SECCION_SOLO_NOMBRE, ARMADO_DE_PROMO_COMO_PEDERNAL, SUMAR_LUGAR_DE_LISTA_VISIBLE, esCantidadExacta, type LugarDeCombo, type ProductoParaMantener } from "@/core/carta/public";
+import { ALTA_DE_SECCION_SOLO_NOMBRE, ARMADO_DE_PROMO_COMO_PEDERNAL, SUMAR_LUGAR_DE_LISTA_VISIBLE, esCantidadExacta, textosDeLaPantallaDePromos, type LugarDeCombo, type ProductoParaMantener } from "@/core/carta/public";
 import { CampoNumero } from "@/components/campo-numero";
 import { AreaDeTexto } from "@/ui/primitivas/area-de-texto";
 import { Campo } from "@/ui/primitivas/campo";
@@ -131,9 +131,10 @@ export function CamposPromo({
   secciones: { id: string; nombre: string; activa: boolean }[];
   valores?: { seccionCartaId: string; titulo: string; descripcion: string | null; precio: number; orden: number };
 }) {
+  const t = textosDeLaPantallaDePromos(ARMADO_DE_PROMO_COMO_PEDERNAL);
   return (
     <>
-      <Campo etiqueta="Título" name="titulo" required defaultValue={valores?.titulo ?? ""} placeholder="1 pizza + coca 1,5 L" />
+      <Campo etiqueta={t.rotuloDelTitulo} name="titulo" required defaultValue={valores?.titulo ?? ""} placeholder="1 pizza + coca 1,5 L" />
       <Selector etiqueta="Sección de carta" name="seccionCartaId" required defaultValue={valores?.seccionCartaId ?? ""}>
         {!valores && <option value="">— elegí una —</option>}
         {secciones.map((s) => (
@@ -144,11 +145,12 @@ export function CamposPromo({
         ))}
       </Selector>
       <div className="sm:col-span-2">
-        <AreaDeTexto etiqueta="Descripción (opcional)" name="descripcion" rows={2} defaultValue={valores?.descripcion ?? ""} />
+        <AreaDeTexto etiqueta={t.rotuloDeLaDescripcion} name="descripcion" rows={2} defaultValue={valores?.descripcion ?? ""} />
       </div>
       <label className="flex flex-col gap-1">
         <span className="text-sm font-medium">
-          Precio<span aria-hidden="true"> *</span>
+          {t.rotuloDelPrecio}
+          {t.asteriscoEnElPrecio && <span aria-hidden="true"> *</span>}
         </span>
         <CampoNumero tipo="importe" etiqueta="El precio" name="precio" prefijo="$" required defaultValue={valores ? String(valores.precio) : ""} />
       </label>
@@ -213,7 +215,7 @@ export function CamposLugares({ lugares }: { lugares: LugarDeCombo[] }) {
       {/* «Sumar un lugar» (`SUMAR_LUGAR_DE_LISTA_VISIBLE`: apagado el 2026-10-28, vuelto a prender el 2026-11-11 por el pedido del «Menú ejecutivo»); aparece solo con su interruptor. */}
       {SUMAR_LUGAR_DE_LISTA_VISIBLE && (
         <fieldset className={aire ? "mt-1 flex min-w-0 flex-col gap-3 text-sm sm:flex-row sm:flex-wrap sm:items-end" : "mt-1 grid min-w-0 grid-cols-2 gap-2 text-sm sm:flex sm:flex-wrap sm:items-end"}>
-          <legend className="mb-1 text-sm">Sumar un lugar (opcional)</legend>
+          <legend className="mb-1 text-sm">{textosDeLaPantallaDePromos(aire).leyendaDeSumarUnLugar}</legend>
           <div className="col-span-2">
             <Selector etiqueta="Tipo" name="nuevo_lugar_tipo" defaultValue="LISTA">
               <option value="LISTA">Lista de productos</option>

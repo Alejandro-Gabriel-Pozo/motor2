@@ -27,7 +27,7 @@ export { formatearNumeroTicket } from "./numeracion-ticket";
 export type { NumeroDeTicket } from "./numeracion-ticket";
 export { componentesDeEleccion, precioMinimoPromo } from "./promo-combo";
 // Frente 6: «Reparto del precio» de una promo en la administración (solo lectura; usa el mismo prorrateo que la venta).
-export { TEXTO_DEL_REPARTO, TEXTO_DEL_REPARTO_CON_RANGO, TEXTO_NO_SE_REPARTE, TEXTO_SIN_PRODUCTOS, repartoDelPrecioDeLaPromo, textoDeLaFilaDelReparto, type ParteParaRepartir } from "./reparto-del-precio-de-la-promo";
+export { TEXTO_DEL_REPARTO, TEXTO_NO_SE_REPARTE, TEXTO_SIN_PRODUCTOS, repartoDelPrecioDeLaPromo, textoDeLaFilaDelReparto, type ParteParaRepartir } from "./reparto-del-precio-de-la-promo";
 export type { CupoPromoDefinicion, EleccionDePromo } from "./promo-combo";
 // GO-3b (I2): los cupos de entradas (LISTA) que arma la lectura de la promo para agregar, y la clave de prorrateo de una entrada configurada.
 export { claveDeComponente, esCupoFijo } from "./promo-combo";

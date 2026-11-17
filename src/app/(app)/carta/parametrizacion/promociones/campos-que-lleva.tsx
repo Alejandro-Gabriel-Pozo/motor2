@@ -1,5 +1,5 @@
 import { CampoNumero } from "@/components/campo-numero";
-import { esCantidadExacta } from "@/core/carta/public";
+import { esCantidadExacta, textosDeLaPantallaDePromos } from "@/core/carta/public";
 import { Casilla } from "@/ui/primitivas/casilla";
 
 /**
@@ -43,6 +43,8 @@ function Fila({ s, g }: { s: SeccionParaElegir; g: CupoGuardado | undefined }) {
 }
 
 export function CamposQueLleva({ secciones, guardados }: { secciones: SeccionParaElegir[]; guardados: CupoGuardado[] }) {
+  // Este armado ES el de «como Pedernal»: siempre con sus textos.
+  const t = textosDeLaPantallaDePromos(true);
   const porSeccion = new Map(guardados.map((c) => [c.seccionCartaId, c]));
   const queLleva = secciones.filter((s) => porSeccion.has(s.id));
   const restantes = secciones.filter((s) => !porSeccion.has(s.id));
@@ -53,13 +55,13 @@ export function CamposQueLleva({ secciones, guardados }: { secciones: SeccionPar
           {queLleva.map((s) => (
             <Fila key={s.id} s={s} g={porSeccion.get(s.id)} />
           ))}
-          <p className="text-xs text-tinta-tenue">Para quitar un componente, destildalo y guardá.</p>
+          {t.ayudaParaQuitar !== null && <p className="text-xs text-tinta-tenue">{t.ayudaParaQuitar}</p>}
         </div>
       )}
       {restantes.length > 0 && (
         <details className="rounded border p-3" data-agregar-componente>
-          <summary className="cursor-pointer text-sm font-medium max-md:min-h-11 max-md:py-2">Agregar un componente</summary>
-          <p className="mt-2 text-sm text-tinta-tenue">Tildá la sección de la carta de la que el mozo elige y poné cuántos productos (mín. y máx.).</p>
+          <summary className="cursor-pointer text-sm font-medium max-md:min-h-11 max-md:py-2">{t.agregarComponente}</summary>
+          {t.parrafoDeAgregarComponente !== null && <p className="mt-2 text-sm text-tinta-tenue">{t.parrafoDeAgregarComponente}</p>}
           <div className="mt-3 flex flex-col gap-3">
             {restantes.map((s) => (
               <Fila key={s.id} s={s} g={undefined} />
