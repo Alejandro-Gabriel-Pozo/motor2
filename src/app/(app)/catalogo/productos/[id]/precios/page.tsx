@@ -6,6 +6,8 @@ import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/li
 import { obtenerMiNivelPermiso, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { leerProductoDelEspacio } from "@/server/consultas/catalogo/espacio-del-producto";
 import { cargarOpcionesDelProducto } from "@/server/consultas/catalogo/opciones-de-venta";
+import { historialDePreciosDelProducto } from "@/server/consultas/catalogo/historial-de-precios";
+import { HistorialDePrecios } from "@/components/catalogo/historial-de-precios";
 import { formatearMonto } from "@/core/pos/public";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { ResumenDeOpciones } from "@/components/catalogo/resumen-de-opciones";
@@ -49,9 +51,11 @@ export default async function PreciosDelProductoPage({ params }: { params: Promi
       </div>
     );
   }
-  const [marco, puedeEditarElPrecio] = await Promise.all([
+  const [marco, puedeEditarElPrecio, cambiosDePrecio] = await Promise.all([
     cargarMarcoDelEspacio(ctx, productoDelEspacio, { opciones: datos }),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "precio_local", ctx.db).then((nivel) => nivel.editar),
+    // Paso 7 del plan de pantallas (dueño, 2026-11-17: «A»): el historial lo ve quien ve el catálogo (esta pestaña ya lo exige), sin el nombre de quien cambió el precio. Un producto que se vende por opción no tiene precio propio.
+    producto.esBase ? Promise.resolve([]) : historialDePreciosDelProducto(ctx.db, productoId, ctx.sucursalId),
   ]);
 
   return (
@@ -88,6 +92,8 @@ export default async function PreciosDelProductoPage({ params }: { params: Promi
             capacidadActiva={datos.precioLocal.capacidadActiva}
           />
         ) : null}
+
+        {!producto.esBase && <HistorialDePrecios cambios={cambiosDePrecio} sucursalNombre={ctx.sucursalNombre} />}
 
         <section aria-labelledby="titulo-asi-se-cobra" className="flex flex-col gap-2 rounded border border-borde p-4">
           <h2 id="titulo-asi-se-cobra" className="text-sm font-medium">
