@@ -2,12 +2,16 @@
 
 import { generarCodigoDePortal } from "@/core/carta/public";
 import { guardComandoGuardarPortalDeEmpresa } from "@/core/features/carta/portal-de-empresa.guard";
+import { guardComandoGuardarColoresDelPortal } from "@/core/features/carta/portal-colores.guard";
 import { guardComandoGuardarPortalEmpresa } from "@/core/features/carta/portal-empresa.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { azarDelProceso } from "@/lib/azar";
+import { COOKIE_PORTAL_SIMPLE_PRUEBA, portalSimpleVisible } from "@/lib/portal-simple-visible";
+import { cookies } from "next/headers";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { revalidarCartasPublicas } from "./revalidar";
 import { error, type ResultadoAccion } from "../tipos";
+import { guardarColoresDelPortalCasoDeUso } from "./casos-de-uso/guardar-colores-del-portal";
 import { guardarPortalDeEmpresaCasoDeUso } from "./casos-de-uso/guardar-portal-de-empresa";
 import { guardarPortalEmpresaCasoDeUso } from "./casos-de-uso/guardar-portal-empresa";/**
  * Apariencia del portal de sucursales de la empresa (ADR-006): colores, textos, imagen del mapa y tamaños de las tarjetas.
@@ -48,5 +52,23 @@ export async function guardarPortalDeEmpresa(entrada: unknown): Promise<Resultad
     if (!pedido.ok) return error(pedido.mensaje);
     const zonas = pedido.valor.zonas.map((z) => ({ ...z, id: azarDelProceso.uuid() }));
     return aResultadoAccion(await guardarPortalDeEmpresaCasoDeUso(ctx, { ...pedido.valor, zonas, portalId: azarDelProceso.uuid(), codigoNuevo: generarCodigoDePortal(azarDelProceso) }));
+  });
+}
+
+/** El texto cuando el interruptor está apagado (el servidor rechaza aunque el pedido se arme a mano: todo nace cerrado). */
+const MENSAJE_PORTAL_SIMPLE_APAGADO = "La pantalla simple de los colores del portal todavía no está disponible.";
+
+/**
+ * Guarda la pantalla SIMPLE del portal (colores como Pedernal: tres fondos, línea superior, título, logo e imagen; decisión del dueño 2026-11-17: «Sí, los tres fondos elegibles.»). MEZCLA: no toca la variante, las tarjetas, las zonas ni el código del QR. Permiso
+ * (`conPermisoDeEmpresa("carta_portal")`: gerente y administrador) → interruptor (`portalSimpleVisible`: apagado, el servidor rechaza) → formato (`guardComandoGuardarColoresDelPortal`, DENTRO del envoltorio; un color que no se lee NO se rechaza: se ajusta al mostrar) → caso de uso
+ * (`casos-de-uso/guardar-colores-del-portal.ts`: SERIALIZABLE, con `versionEsperada`; si la empresa no tiene portal nuevo lo crea sembrando sus tarjetas desde lo ya cargado, para que el portal se vea igual) → `aResultadoAccion`. El id y el código del QR los genera el SERVIDOR acá en el borde.
+ * No revalida las cartas públicas: el portal se lee en cada pedido, sin caché.
+ */
+export async function guardarColoresDelPortal(entrada: unknown): Promise<ResultadoAccion> {
+  return conPermisoDeEmpresa("carta_portal", async (ctx) => {
+    if (!portalSimpleVisible((await cookies()).get(COOKIE_PORTAL_SIMPLE_PRUEBA)?.value)) return error(MENSAJE_PORTAL_SIMPLE_APAGADO);
+    const pedido = guardComandoGuardarColoresDelPortal(entrada);
+    if (!pedido.ok) return error(pedido.mensaje);
+    return aResultadoAccion(await guardarColoresDelPortalCasoDeUso(ctx, { ...pedido.valor, portalId: azarDelProceso.uuid(), codigoNuevo: generarCodigoDePortal(azarDelProceso) }));
   });
 }
