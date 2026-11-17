@@ -71,6 +71,8 @@ export type CodigoRegistrarMovimiento =
  */
 export type DatosRegistrarMovimiento =
   | { repetida: true; operacionId: null; movimientos: null }
-  | { repetida: false; operacionId: string; movimientos: number };
+  | { repetida: false; operacionId: string; movimientos: number }
+  // Compras N3-a (recepción separada): una COMPRA cargada «pendiente de recibir» (módulo `recepcion_de_compras` encendido) no tiene compra ni stock todavía: los crea la confirmación de la recepción.
+  | { repetida: false; operacionId: null; movimientos: 0 };
 
 export type ResultadoRegistrarMovimiento = ResultadoCaso<DatosRegistrarMovimiento, CodigoRegistrarMovimiento>;

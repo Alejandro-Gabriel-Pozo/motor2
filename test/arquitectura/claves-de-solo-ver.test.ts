@@ -64,7 +64,8 @@ describe("claves de solo ver: la casilla «Editar» se oculta por UNA marca del 
   it("las claves RESERVADAS son exactamente las que ninguna guarda usa (marca y realidad coinciden)", () => {
     const usadas = clavesUsadas(inventariarDirectorio(SRC));
     const reservadas = claves.filter(esAccionReservada);
-    expect(reservadas).toEqual(["compra_recibir"]);
+    // Hoy no hay ninguna: la única, `compra_recibir`, tiene consumidor desde Compras N3-a (2026-11-16, recepción separada).
+    expect(reservadas).toEqual([]);
     expect(reservadas.filter((c) => usadas.has(c)), "Ya tiene consumidor: quitale `reservada: true`").toEqual([]);
   });
 });

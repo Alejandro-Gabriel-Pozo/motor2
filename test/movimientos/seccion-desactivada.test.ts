@@ -58,6 +58,8 @@ function dbFalso(): Prisma.TransactionClient {
     facturaProveedor: { count: async () => 0, findUnique: async () => null },
     // Y lee las sucursales de las partes ajenas del reparto (ninguna, en una compra de una sucursal).
     sucursal: { findMany: async () => [] },
+    // Compras N3-a: la carga de una factura lee si la empresa tiene el módulo `recepcion_de_compras` (registro de módulos); el cliente falso responde que no tiene ninguno (la compra entra al stock al cargar, como siempre).
+    moduloEmpresa: { findMany: async () => [] },
     $queryRaw: async () => [],
   } as unknown as Prisma.TransactionClient;
 }

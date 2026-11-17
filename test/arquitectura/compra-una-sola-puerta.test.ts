@@ -6,10 +6,11 @@ import { describe, expect, it } from "vitest";
 /**
  * Guardianes de «una sola compra» (U0 de docs/diseno-una-sola-compra-2026-11-06.md, §6.7): toda compra se escribe por UNA puerta, la factura de una o más partes.
  *
- *  U-I2  Un solo escritor de `Operacion` COMPRA en `src/`: el caso de uso de la factura (al cargar) y el de aceptar la parte (al aceptar). `registrarMovimiento` con proceso COMPRA es un adaptador que delega ahí
+ *  U-I2  Un solo escritor de `Operacion` COMPRA en `src/`: el caso de uso de la factura (al cargar), el de aceptar la parte (al aceptar) y el de confirmar la recepción de una parte pendiente (Compras N3-a, 2026-11-16). `registrarMovimiento` con proceso COMPRA es un adaptador que delega ahí
  *        y NO escribe: lo vigila (a) que ningún otro archivo de `src/` escriba una `Operacion` con `proceso: "COMPRA"` y (b) que el motor genérico corte la COMPRA ANTES de su primera escritura de Kardex.
- *  U-I6  Cabecera siempre `CONFIRMADA`/`CARGA` y parte siempre `RECIBIDA`: nada en `src/` escribe otro `estado` u `origen` en `FacturaProveedor`, ni otra recepción en `FacturaProveedorSucursal`
- *        (`PENDIENTE_DE_REPARTO`, `MIGRACION` y `PENDIENTE` quedan en el esquema, sin uso, hasta una poda con autorización del dueño).
+ *  U-I6  Cabecera siempre `CONFIRMADA`/`CARGA` y parte `RECIBIDA`: nada en `src/` escribe otro `estado` u `origen` en `FacturaProveedor`, ni otra recepción en `FacturaProveedorSucursal`
+ *        (`PENDIENTE_DE_REPARTO` y `MIGRACION` quedan en el esquema, sin uso, hasta una poda con autorización del dueño). Compras N3-a (recepción separada, 2026-11-16): la parte puede nacer `PENDIENTE` (módulo `recepcion_de_compras` encendido)
+ *        y pasar a `RECIBIDA` al confirmar la recepción; `PENDIENTE` solo se escribe en el escritor de la persistencia de la factura (`escribir-factura-proveedor.ts`), nunca en un caso de uso ni en una pantalla.
  *  U-I1  Toda COMPRA nueva tiene parte de factura: lo prueba, con la base real, `test/movimientos/compra-una-sola-puerta.test.ts`.
  *
  * Cada guardián trae su control de sanidad (si el analizador quedara ciego, las reglas pasarían por vacías) y se prueba a sí mismo con código de muestra que SÍ debe fallar.
@@ -73,8 +74,11 @@ export function escritoresDeOperacionCompra(codigo: string): number {
   return cuenta;
 }
 
+/** El único archivo que puede escribir una parte PENDIENTE (la guarda `WHERE estadoRecepcion = 'PENDIENTE'` de la confirmación y el alta de la parte pendiente): la persistencia de la factura. */
+const ESCRITOR_DE_PARTES = "src/server/persistencia/compras/escribir-factura-proveedor.ts";
+
 /** Escrituras de `FacturaProveedor` / `FacturaProveedorSucursal` que ponen un valor distinto del permitido en `estado`, `origen` o `estadoRecepcion`. Devuelve una descripción por hallazgo. */
-export function escriturasDeEstadoNoPermitidas(codigo: string): string[] {
+export function escriturasDeEstadoNoPermitidas(codigo: string, ruta: string = ""): string[] {
   const hallazgos: string[] = [];
   const visitar = (n: ts.Node): void => {
     if (ts.isCallExpression(n)) {
@@ -90,7 +94,7 @@ export function escriturasDeEstadoNoPermitidas(codigo: string): string[] {
         }
         if (duenio === "facturaProveedorSucursal") {
           for (const a of n.arguments) {
-            for (const v of valoresLiteralesDe(a, "estadoRecepcion")) if (v !== "RECIBIDA") hallazgos.push(`facturaProveedorSucursal escribe estadoRecepcion ${v}`);
+            for (const v of valoresLiteralesDe(a, "estadoRecepcion")) if (v !== "RECIBIDA" && !(v === "PENDIENTE" && ruta === ESCRITOR_DE_PARTES)) hallazgos.push(`facturaProveedorSucursal escribe estadoRecepcion ${v}`);
             if (clavesDe(a).has("estadoRecepcion") && valoresLiteralesDe(a, "estadoRecepcion").length === 0) hallazgos.push("facturaProveedorSucursal escribe `estadoRecepcion` con un valor que no es un literal");
           }
         }
@@ -105,10 +109,11 @@ export function escriturasDeEstadoNoPermitidas(codigo: string): string[] {
 describe("U-I2: un solo escritor de Operacion COMPRA en src/", () => {
   const ESCRITORES_PERMITIDOS = [
     "src/server/actions/movimientos/casos-de-uso/aceptar-propuesta-de-factura.ts",
+    "src/server/actions/movimientos/casos-de-uso/confirmar-recepcion-de-factura.ts",
     "src/server/actions/movimientos/casos-de-uso/registrar-factura-proveedor.ts",
   ];
 
-  it("solo la carga y la aceptación de la factura escriben una Operacion con proceso COMPRA", () => {
+  it("solo la carga, la aceptación y la confirmación de la recepción de la factura escriben una Operacion con proceso COMPRA", () => {
     const escritores = ARCHIVOS_DE_SRC.filter((a) => escritoresDeOperacionCompra(a.codigo) > 0).map((a) => a.ruta).sort();
     expect(escritores).toEqual(ESCRITORES_PERMITIDOS);
   });
@@ -134,7 +139,7 @@ describe("U-I2: un solo escritor de Operacion COMPRA en src/", () => {
 
 describe("U-I6: estado, origen y recepción constantes", () => {
   it("nada en src/ escribe otro estado u origen de la factura, ni otra recepción de la parte", () => {
-    const hallazgos = ARCHIVOS_DE_SRC.flatMap((a) => escriturasDeEstadoNoPermitidas(a.codigo).map((h) => `${a.ruta}: ${h}`));
+    const hallazgos = ARCHIVOS_DE_SRC.flatMap((a) => escriturasDeEstadoNoPermitidas(a.codigo, a.ruta).map((h) => `${a.ruta}: ${h}`));
     expect(hallazgos).toEqual([]);
   });
 
@@ -144,6 +149,10 @@ describe("U-I6: estado, origen y recepción constantes", () => {
     expect(escriturasDeEstadoNoPermitidas(`await tx.facturaProveedor.create({ data: { estado: "PENDIENTE_DE_REPARTO" } })`)).toHaveLength(1);
     expect(escriturasDeEstadoNoPermitidas(`await tx.facturaProveedor.update({ where: {}, data: { origen: "MIGRACION" } })`)).toHaveLength(1);
     expect(escriturasDeEstadoNoPermitidas(`await tx.facturaProveedorSucursal.update({ where: {}, data: { estadoRecepcion: "PENDIENTE" } })`)).toHaveLength(1);
+    // PENDIENTE solo en el escritor de la persistencia (Compras N3-a); en cualquier otro archivo sigue siendo un hallazgo.
+    expect(escriturasDeEstadoNoPermitidas(`await tx.facturaProveedorSucursal.create({ data: { estadoRecepcion: "PENDIENTE" } })`, ESCRITOR_DE_PARTES)).toEqual([]);
+    expect(escriturasDeEstadoNoPermitidas(`await tx.facturaProveedorSucursal.create({ data: { estadoRecepcion: "PENDIENTE" } })`, "src/server/actions/movimientos/casos-de-uso/registrar-factura-proveedor.ts")).toHaveLength(1);
+    expect(escriturasDeEstadoNoPermitidas(`await tx.facturaProveedorSucursal.updateMany({ where: { estadoRecepcion: "OTRA" }, data: {} })`, ESCRITOR_DE_PARTES)).toHaveLength(1);
     expect(escriturasDeEstadoNoPermitidas(`await tx.facturaProveedor.update({ where: {}, data: { estado } })`)).toHaveLength(1);
     expect(escriturasDeEstadoNoPermitidas(`await tx.facturaProveedor.update({ where: {}, data: { anuladaEn: ahora } })`)).toEqual([]);
   });

@@ -340,6 +340,19 @@ const completos: Record<string, Valor> = {
       intento(c, ["propuestaParaAceptarId"], [k.propuestaParaAceptarId, c.propio.seccionId, hoy(), crypto.randomUUID()]),
       intento(c, ["seccionId"], [c.propio.propuestaParaAceptarId, k.seccionId, hoy(), crypto.randomUUID()]),
     ),
+  // Compras N3-a y N3-b: confirmar la recepción de la parte PENDIENTE de la sucursal activa: el renglón de mercadería entra entero en una sección propia, con la fecha de stock de hoy (la factura es de ayer).
+  "accion|actions/movimientos/facturas-proveedor.ts|confirmarRecepcionDeFactura": (k, c) =>
+    conVariantes(
+      intento(c, ["facturaId"], [k.facturaPorRecibirId, [{ renglonId: c.propio.renglonPorRecibirId, seccionId: c.propio.seccionId, cantidad: 2 }], hoy()]),
+      intento(c, ["seccionId"], [c.propio.facturaPorRecibirId, [{ renglonId: c.propio.renglonPorRecibirId, seccionId: k.seccionId, cantidad: 2 }], hoy()]),
+      intento(c, ["renglonId"], [c.propio.facturaPorRecibirId, [{ renglonId: k.renglonPorRecibirId, seccionId: c.propio.seccionId, cantidad: 2 }], hoy()]),
+    ),
+  // Compras N3-b: registrar el control de un renglón de la parte PENDIENTE de la sucursal activa (conforme, sin observación).
+  "accion|actions/movimientos/facturas-proveedor.ts|registrarControlDeRecepcion": (k, c) =>
+    conVariantes(
+      intento(c, ["facturaId"], [k.facturaPorRecibirId, [{ renglonId: c.propio.renglonPorRecibirId, condicion: "CONFORME" }]]),
+      intento(c, ["renglonId"], [c.propio.facturaPorRecibirId, [{ renglonId: k.renglonPorRecibirId, condicion: "CONFORME" }]]),
+    ),
   // Anular: la factura que cargó la sucursal ajena (la cabecera es de la empresa: la defensa es pedir `anular_compra` en la sucursal que la cargó y en cada una con parte).
   "accion|actions/movimientos/facturas-proveedor.ts|anularFacturaProveedor": (k, c) => intento(c, ["facturaEnviadaId"], [k.facturaEnviadaId, "motivo de prueba", crypto.randomUUID()]),
   // Pagos X0: declarar y anular el pago. La clave es de EMPRESA (`declarar_pago_compra`) y la cabecera de la factura es de la empresa: la defensa es la RLS (la factura o el pago de otra empresa no existe para quien pide) y el permiso. La
