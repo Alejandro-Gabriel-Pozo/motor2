@@ -995,6 +995,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Nombre de cocina (ADITIVO; migración 20261115170000_nombre_de_cocina; regenerado con REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1): las filas PRODUCTO y las líneas ITEM suman `nombreDeCocina=null` (nadie tiene nombre de cocina en este mundo). Verificado por programa: sin esa columna el contenido es IDÉNTICO al blob anterior.",
       },
+      {
+        blob: "77e4688436f56240ee42e0f5ff53530a1594fd17",
+        // El commit PADRE de este es 0912cc52 (M2 respaldada, justo antes de regenerar la huella con la columna nueva).
+        commit: "0912cc52",
+        motivo:
+          "M2 de la merma sobre el bruto (migración 20261117140000_base_de_cantidad_en_versiones; ADITIVA, nada la lee todavía; regenerado con REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1): las tres filas RECETA_VERSION suman `baseDeCantidad=NETA` (el valor por defecto de todo lo ya cargado). Ninguna otra línea cambia: precios, descuentos, promos y costos siguen idénticos.",
+      },
     ],
   },
   "test/caracterizacion-precio-y-carta/precios.golden.txt": {

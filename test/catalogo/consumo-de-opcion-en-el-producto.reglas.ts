@@ -102,6 +102,7 @@ export const COLUMNAS_DE_VERSION_DE_OPCION: Record<string, "se-ve" | "no-se-ve">
   diferenciaPrecio: "no-se-ve",
   porcentaje: "no-se-ve",
   factorEscala: "se-ve", // «Consume ×1,3 del tamaño base» (solo un tamaño)
+  baseDeCantidad: "no-se-ve", // M2 (2026-11-17): la base NETA|BRUTA de los consumos; hoy nada la lee ni la muestra (todo es NETA)
   creadoPorId: "no-se-ve",
   creadoEn: "no-se-ve",
 };

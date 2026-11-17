@@ -68,6 +68,7 @@ export const COLUMNAS_DE_RECETA_VERSION: Record<string, "imprime" | "no-imprime"
   creadoEn: "no-imprime",
   sucursalId: "no-imprime",
   basadaEnVersionId: "no-imprime",
+  baseDeCantidad: "no-imprime", // M2 (2026-11-17): hoy nada la lee; desde M3 las cantidades que se imprimen salen de la base de la versión, pero la marca en sí no va al papel
   rendimientoCantidad: "imprime",
   rendimientoUnidadId: "imprime",
   racionesCantidad: "imprime",

@@ -53,6 +53,7 @@ export const COLUMNAS_DEL_DUPLICADO: Readonly<Record<string, Readonly<Record<str
     creadoEn: "DERIVADA",
     sucursalId: "DERIVADA", // siempre la serie central
     basadaEnVersionId: "NO_SE_COPIA", // solo lo llevan las versiones propias de una sucursal
+    baseDeCantidad: "NO_SE_COPIA", // M2 (2026-11-17), PROVISORIA: hoy toda versión es NETA (valor por defecto) y la copia también lo es; M3 la pasa a SE_COPIA (la copia conserva la marca de las líneas que copia, diseño de merma §4)
     rendimientoCantidad: "SE_COPIA",
     rendimientoUnidadId: "SE_COPIA",
     racionesCantidad: "SE_COPIA",
