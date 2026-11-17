@@ -127,6 +127,10 @@ export interface KitDeSucursal {
   facturaPorRecibirId: string;
   /** Compras N3-b: el renglón de mercadería de esa factura (2 unidades): lo que se controla y lo que entra en la confirmación. */
   renglonPorRecibirId: string;
+  /** Compras, orden de compra (etapa OC): una orden en BORRADOR (esa se pide), otra en BORRADOR (esa se anula) y una PEDIDA (esa se cierra y es la que se ofrece al cargar una compra del proveedor). */
+  ordenBorradorId: string;
+  ordenParaAnularId: string;
+  ordenPedidaId: string;
   /** Pagos X0: un pago VIGENTE de otra factura pendiente de pago (ese se anula). */
   pagoDeFacturaId: string;
   pagoConsignanteId: string;
@@ -186,6 +190,9 @@ const CAMPOS_DE_SUCURSAL_REGISTRO: Record<keyof KitDeSucursal, true> = {
   facturaPendienteDePagoId: true,
   facturaPorRecibirId: true,
   renglonPorRecibirId: true,
+  ordenBorradorId: true,
+  ordenParaAnularId: true,
+  ordenPedidaId: true,
   pagoDeFacturaId: true,
   pagoConsignanteId: true,
   precioLocalId: true,
@@ -510,6 +517,19 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   const renglonPorRecibir = await db.facturaProveedorRenglon.create({
     data: { id: id("factura-por-recibir-renglon"), empresaId, facturaProveedorId: facturasPendientes["factura-por-recibir"]!, orden: 1, naturaleza: "MERCADERIA", productoId: k.productoId, cantidadStock: 2, precioPorUnidadStock: 50, detalle: "Compra", precioTotal: 100 },
   });
+  // Compras, orden de compra (etapa OC): dos borradores y una orden PEDIDA (el número lo fija la base al pedir) del proveedor de la empresa, con una línea del producto de la empresa. Los ids son uuid (la columna lo exige): el marcador del mundo
+  // lo lleva el nombre del proveedor, que es lo que muestra la lista de órdenes.
+  const nuevaOrden = async (pedida: boolean) => {
+    const ordenId = randomUUID();
+    await db.ordenDeCompra.create({
+      data: { id: ordenId, empresaId, proveedorId: k.proveedorId, sucursalId, claveIdempotencia: randomUUID(), payloadHash: "a".repeat(64), creadoPorId: miembro.id, lineas: { create: { id: randomUUID(), numero: 1, productoId: k.productoId, cantidadPedida: 10 } } },
+    });
+    if (pedida) await db.ordenDeCompra.update({ where: { id: ordenId }, data: { estado: "PEDIDA", pedidaPorId: miembro.id, pedidaEn: new Date(), fechaDeNegocio: new Date() } });
+    return ordenId;
+  };
+  const ordenBorradorId = await nuevaOrden(false);
+  const ordenParaAnularId = await nuevaOrden(false);
+  const ordenPedidaId = await nuevaOrden(true);
   const pagoDeFactura = await db.pagoDeFacturaProveedor.create({
     data: { id: id("pago-de-factura"), empresaId, facturaProveedorId: facturasPendientes["factura-con-pago"]!, fechaPago: enElPasado(DIA_MS), medio: "TRANSFERENCIA", claveIdempotencia: id("pago-de-factura-clave"), payloadHash: "h", resultadoMensaje: "Pago declarado.", creadoPorId: miembro.id },
   });
@@ -590,6 +610,9 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
     facturaPendienteDePagoId: facturasPendientes["factura-pendiente-de-pago"]!,
     facturaPorRecibirId: facturasPendientes["factura-por-recibir"]!,
     renglonPorRecibirId: renglonPorRecibir.id,
+    ordenBorradorId,
+    ordenParaAnularId,
+    ordenPedidaId,
     pagoDeFacturaId: pagoDeFactura.id,
     pagoConsignanteId: pago.id,
     precioLocalId: precioLocal.id,
@@ -619,7 +642,8 @@ export async function sembrarMundo(): Promise<Mundo> {
   await activarTodosLosModulos(e1Id);
   // Compras N3-a: `recepcion_de_compras` nace apagado (`activarTodosLosModulos` no lo enciende). E1 lo tiene ENCENDIDO para que la puerta `confirmarRecepcionDeFactura` tenga control positivo; con él, cargar una factura de una sola parte propia deja la parte
   // pendiente (las puertas de carga lo siguen rechazando con ids ajenos: la sección que viene en el pedido se valida igual).
-  await fijarModulosActivos(e1Id, [...MODULOS_VENDIBLES, "recepcion_de_compras"]);
+  // Compras, orden de compra (etapa OC): `ordenes_de_compra` también nace apagado y requiere la recepción; E1 lo tiene ENCENDIDO para que las puertas de la orden tengan control positivo.
+  await fijarModulosActivos(e1Id, [...MODULOS_VENDIBLES, "recepcion_de_compras", "ordenes_de_compra"]);
   const miembroDeLaEmpresa = (usuarioId: string, empresaId: string) => prismaAdmin.usuarioEmpresa.create({ data: { usuarioId, empresaId } });
 
   // E1: tres sucursales (S1 = «Central» de sembrarBase) y los usuarios.

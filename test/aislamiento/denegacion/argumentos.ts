@@ -126,6 +126,8 @@ const VALORES: Readonly<Record<string, Valor>> = {
   nombreEscrito: () => "Sucursal Cuatro",
   confirmarFusion: () => true,
   soloActivos: () => false,
+  // Compras, orden de compra (etapa OC): la lista de órdenes sin precios (el dinero solo viaja a quien gestiona).
+  conPrecios: () => false,
   nombre: () => "Nombre nuevo",
   nombreNuevo: () => "Nombre nuevo",
   descripcion: () => "descripción de prueba",

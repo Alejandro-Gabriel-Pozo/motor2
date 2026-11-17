@@ -344,6 +344,25 @@ const completos: Record<string, Valor> = {
       intento(c, ["facturaId"], [k.facturaPorRecibirId, [{ renglonId: c.propio.renglonPorRecibirId, condicion: "CONFORME" }]]),
       intento(c, ["renglonId"], [c.propio.facturaPorRecibirId, [{ renglonId: k.renglonPorRecibirId, condicion: "CONFORME" }]]),
     ),
+  // Compras, orden de compra (etapa OC): crear (proveedor, producto y sucursal destino de la empresa; con ids ajenos de otra empresa se rechaza por no encontrarlos), pedir, anular y cerrar (la orden es de la empresa: la defensa es la RLS y el
+  // permiso de empresa `orden_de_compra_gestionar`) y configurar el control (`compras_configurar`).
+  "accion|actions/movimientos/ordenes-de-compra.ts|crearOrdenDeCompra": (k, c) => {
+    const datos = (o: { proveedorId?: string; productoId?: string; sucursalId?: string }) => ({
+      proveedorId: o.proveedorId ?? c.propio.proveedorId,
+      sucursalId: o.sucursalId ?? null,
+      lineas: [{ productoId: o.productoId ?? c.propio.productoId, cantidad: 2, precio: 100 }],
+      claveIdempotencia: crypto.randomUUID(),
+    });
+    return conVariantes(
+      intento(c, ["proveedorId"], [datos({ proveedorId: k.proveedorId })]),
+      intento(c, ["productoId"], [datos({ productoId: k.productoId })]),
+      intento(c, ["sucursalId"], [datos({ sucursalId: k.sucursalId })]),
+    );
+  },
+  "accion|actions/movimientos/ordenes-de-compra.ts|pedirOrdenDeCompra": (k, c) => intento(c, ["ordenBorradorId"], [k.ordenBorradorId]),
+  "accion|actions/movimientos/ordenes-de-compra.ts|anularOrdenDeCompra": (k, c) => intento(c, ["ordenParaAnularId"], [k.ordenParaAnularId, "motivo de prueba"]),
+  "accion|actions/movimientos/ordenes-de-compra.ts|cerrarOrdenDeCompra": (k, c) => intento(c, ["ordenPedidaId"], [k.ordenPedidaId]),
+  "accion|actions/movimientos/ordenes-de-compra.ts|configurarControlDeExceso": () => ["AVISAR"],
   // Anular: la factura que cargó la sucursal ajena (la cabecera es de la empresa: la defensa es pedir `anular_compra` en la sucursal que la cargó y en cada una con parte).
   "accion|actions/movimientos/facturas-proveedor.ts|anularFacturaProveedor": (k, c) => intento(c, ["facturaEnviadaId"], [k.facturaEnviadaId, "motivo de prueba", crypto.randomUUID()]),
   // Pagos X0: declarar y anular el pago. La clave es de EMPRESA (`declarar_pago_compra`) y la cabecera de la factura es de la empresa: la defensa es la RLS (la factura o el pago de otra empresa no existe para quien pide) y el permiso. La

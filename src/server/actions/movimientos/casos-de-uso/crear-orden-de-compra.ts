@@ -65,7 +65,7 @@ export async function crearOrdenDeCompraCasoDeUso(
     if (!proveedor?.activo) return fracaso("PROVEEDOR_NO_DISPONIBLE", "El proveedor elegido ya no está disponible.");
     if (o.sucursalId) {
       const sucursal = await tx.sucursal.findUnique({ where: { id: o.sucursalId }, select: { activo: true } });
-      if (!sucursal || !sucursal.activo) return fracaso("SUCURSAL_NO_DISPONIBLE", "La sucursal destino no está disponible.");
+      if (!sucursal || !sucursal.activo) return fracaso("SUCURSAL_NO_DISPONIBLE", "La sucursal destino ya no está disponible.");
     }
     const existentes = await tx.producto.findMany({ where: { id: { in: o.lineas.map((l) => l.productoId) } }, select: { id: true } });
     if (existentes.length !== o.lineas.length) return fracaso("PRODUCTO_NO_DISPONIBLE", "Uno de los productos de la orden ya no está disponible.");
