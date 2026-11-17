@@ -5,6 +5,7 @@ import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { gerentesQueQuedaranSinSucursalActiva } from "@/server/lecturas/permisos/gerencia";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
+import { textoDe } from "@/core/textos/texto-de";
 import type { Db } from "@/lib/db-tipos";
 import { cambiarActivoDeSucursal } from "@/server/persistencia/auth/sucursales";
 import { conGobierno, conInvariantesDeGobierno } from "../../con-gobierno";
@@ -114,7 +115,7 @@ export async function actualizarActivoSucursalCasoDeUso(
     verificacion,
     async (tx): Promise<ResultadoActualizarActivoSucursal> => {
       const sucursal = await tx.sucursal.findUnique({ where: { id: sucursalId } });
-      if (!sucursal) return fracaso("SUCURSAL_NO_ENCONTRADA", "No se encontró esa sucursal.");
+      if (!sucursal) return fracaso("SUCURSAL_NO_ENCONTRADA", textoDe("rechazo.SUCURSAL_NO_ENCONTRADA"));
 
       if (!activo && sucursalId === actor.sucursalId) {
         return fracaso(

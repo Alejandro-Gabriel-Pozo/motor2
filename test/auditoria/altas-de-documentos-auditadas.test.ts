@@ -60,14 +60,18 @@ describe("las altas de conteo físico y de traspaso dejan su fila de auditoría"
       expect(await auditoria("ConteoFisico")).toHaveLength(0);
     });
 
-    it("una diferencia que redondea a cero con los decimales de la unidad (saldo 9,9999, conteo 10, kg con 2 decimales) tampoco deja fila", async () => {
+    // A1b 2026-11-16: stock con 4 decimales fijos y cuenta exacta; antes la diferencia se redondeaba a los decimales de la unidad (kg: 2),
+    // así que 10 − 9,9999 daba 0 y no dejaba fila («una diferencia que redondea a cero con los decimales de la unidad … tampoco deja
+    // fila»). Ahora la diferencia es 0,0001 y SÍ deja fila. El caso «redondea a cero» ya no es alcanzable por esta puerta: el conteo
+    // admite como máximo los decimales de la unidad (2) y el saldo es Decimal(14,4), así que la diferencia mínima no nula es 0,0001.
+    it("una diferencia de 0,0001 (saldo 9,9999, conteo 10, kg con 2 decimales) ya NO se redondea a cero: deja su fila", async () => {
       const afinado = (await prisma.producto.create({ data: { codigo: "MP_AFINADO", nombre: "Sal fina", tipo: "MP", unidadStockId: kgId, insumoId } })).id;
       await prisma.disponibilidadProducto.create({ data: { sucursalId: sucursalAId, productoId: afinado, disponible: true } });
       const op = await prisma.operacion.create({ data: { sucursalId: sucursalAId, proceso: "COMPRA", fecha: new Date(), usuarioId: adminId } });
       await prisma.movimientoStock.create({ data: { operacionId: op.id, productoId: afinado, seccionId: seccionAId, proceso: "COMPRA", cantidad: 9.9999, detalle: "Compra", precioTotal: 0, precioPorUnidadStock: 0 } });
       const r = await registrarConteoFisicoCasoDeUso(comoA(), { productoId: afinado, seccionId: seccionAId, conteoReal: 10, fechaConteo: new Date(), accion: "AJUSTAR" });
       expect(r.ok, r.ok ? "" : r.mensaje).toBe(true);
-      expect(await auditoria("ConteoFisico")).toHaveLength(0);
+      expect(await auditoria("ConteoFisico")).toHaveLength(1);
     });
   });
 

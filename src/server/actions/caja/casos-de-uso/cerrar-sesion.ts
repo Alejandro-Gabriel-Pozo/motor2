@@ -6,10 +6,10 @@ import type { FuenteDeAzar } from "@/core/seguridad/azar";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
-import { centavosDeDecimal, cargarSesion, cargarTiposDeMedios, cerrarSesionEnBase, insertarArqueo, insertarBilletes, sumarMovimientosPorMedio } from "@/server/persistencia/caja/caja";
+import { centavosDeDecimal, cargarSesion, cargarTiposDeMedios, cerrarSesionEnBase, insertarArqueo, insertarBilletes, sumarMovimientosPorMedioYCuenta } from "@/server/persistencia/caja/caja";
 
 /**
- * Caso de uso «cerrar la sesión de caja con arqueo» (etapa C1, CU7): el efectivo se CUENTA por billetes y monedas; los demás medios con movimientos se dan por «conforme». La diferencia (contado − esperado) se CALCULA y
+ * Caso de uso «cerrar la sesión de caja con arqueo» (etapa C1, CU7): el efectivo se CUENTA por billetes y monedas; los demás (medio, cuenta de cobro) con movimientos se dan por «conforme» (C3: una línea por cada par; «sin cuenta» es un grupo más). La diferencia (contado − esperado) se CALCULA y
  * nadie la escribe; cerrar con diferencia se PERMITE y queda auditado (igual que Pedernal, PROPUESTA). Una sesión cerrada no se reabre.
  *
  * `import "server-only"` y SIN `"use server"`: la Server Action ya pidió el permiso y validó el formato. En UNA transacción SERIALIZABLE:
@@ -38,25 +38,27 @@ export async function cerrarSesionCasoDeUso(
       const sesion = await cargarSesion(tx, actor.empresaId, comando.sesionId);
       if (!sesion || sesion.sucursalId !== actor.sucursalId) return fracaso("SESION_NO_ENCONTRADA", "No se encontró la sesión de caja.");
 
-      const esperados = await sumarMovimientosPorMedio(tx, actor.empresaId, sesion.id);
-      const tipos = await cargarTiposDeMedios(tx, actor.empresaId, [...esperados.keys()]);
-      const idEfectivo = [...esperados.keys()].find((id) => tipos.get(id)?.tipo === "EFECTIVO");
-      if (idEfectivo === undefined) throw new Error("cerrarSesion: la sesión no tiene el movimiento de fondo (efectivo).");
-      const diferencia = diferenciaDeArqueo(contado.centavos, esperados.get(idEfectivo) ?? BigInt(0));
+      // El arqueo se lleva por (medio, cuenta de cobro); «sin cuenta» es un grupo más y el efectivo nunca lleva cuenta.
+      const esperados = await sumarMovimientosPorMedioYCuenta(tx, actor.empresaId, sesion.id);
+      const tipos = await cargarTiposDeMedios(tx, actor.empresaId, [...new Set(esperados.map((e) => e.medioDePagoId))]);
+      const lineaDeEfectivo = esperados.find((e) => tipos.get(e.medioDePagoId)?.tipo === "EFECTIVO");
+      if (lineaDeEfectivo === undefined) throw new Error("cerrarSesion: la sesión no tiene el movimiento de fondo (efectivo).");
+      const idEfectivo = lineaDeEfectivo.medioDePagoId;
+      const diferencia = diferenciaDeArqueo(contado.centavos, lineaDeEfectivo.esperadoEnCentavos);
 
       if (sesion.estado === "CERRADA") {
-        const arqueo = await tx.arqueoCaja.findFirst({ where: { empresaId: actor.empresaId, sesionId: sesion.id, medioDePagoId: idEfectivo }, select: { contado: true } });
+        const arqueo = await tx.arqueoCaja.findFirst({ where: { empresaId: actor.empresaId, sesionId: sesion.id, medioDePagoId: idEfectivo, cuentaDeCobroId: null }, select: { contado: true } });
         if (arqueo?.contado && centavosDeDecimal(arqueo.contado) === contado.centavos) return exito("La caja ya estaba cerrada.", { sesionId: sesion.id, yaEstabaCerrada: true, diferenciaEnEfectivoEnCentavos: diferencia });
         return fracaso("SESION_CERRADA", "La sesión de caja ya está cerrada.");
       }
 
-      const hayOtrosMedios = [...esperados.keys()].some((id) => id !== idEfectivo);
+      const hayOtrosMedios = esperados.some((e) => e.medioDePagoId !== idEfectivo);
       if (hayOtrosMedios && !comando.conformeDeLosDemasMedios) return fracaso("CONFORME_FALTANTE", "Hay movimientos en otros medios de pago: dalos por conformes para cerrar.");
 
-      for (const [medioId, esperado] of esperados) {
+      for (const { medioDePagoId: medioId, cuentaDeCobroId, esperadoEnCentavos: esperado } of esperados) {
         const esEfectivo = medioId === idEfectivo;
         await insertarArqueo(tx, {
-          id: azar.uuid(), empresaId: actor.empresaId, sucursalId: actor.sucursalId, sesionId: sesion.id, medioDePagoId: medioId, esperadoEnCentavos: esperado,
+          id: azar.uuid(), empresaId: actor.empresaId, sucursalId: actor.sucursalId, sesionId: sesion.id, medioDePagoId: medioId, cuentaDeCobroId, esperadoEnCentavos: esperado,
           contadoEnCentavos: esEfectivo ? contado.centavos : null, monedasEnCentavos: esEfectivo ? comando.conteo.monedasEnCentavos : null, conforme: !esEfectivo,
         });
       }

@@ -2,7 +2,7 @@ import { importeDeLinea, redondearMoneda, repartirImporte } from "@/core/moneda"
 import { texto } from "@/core/texto";
 import type { ArrastreDeRedondeo } from "@/core/movimientos/arrastre-redondeo";
 import type { VentaCalculada } from "@/core/movimientos/plan-de-la-venta";
-import { redondearACantidadDeUnidad } from "@/core/movimientos/transiciones";
+import { DECIMALES_DE_STOCK, redondearACantidadDeUnidad } from "@/core/movimientos/transiciones";
 
 /**
  * Las FILAS del Kardex de UNA venta (Hito 5, pieza 5.1, bloque B2b: mudadas TAL CUAL desde el bucle de escritura de `registrarVentaEnTx`, que vive en
@@ -61,7 +61,7 @@ export function filasDeUnaVenta(
     // en `server/lecturas/movimientos/deuda-de-redondeo.ts`) se suma antes de redondear, así que el TOTAL de la sucursal converge al consumo exacto en vez de que cada parte
     // redondee de forma independiente. `cantidadExacta` (con el mismo signo que `cantidad`) solo se llena cuando difiere de lo
     // escrito — alimenta la deuda de la PRÓXIMA venta (`cargarDeudaDeRedondeo`) y la reversión exacta de esta (`anularVenta`).
-    const { cantidad: cantidadRedondeada, cantidadExacta } = arrastre.consumir(c.productoId, c.cantidad, consumido?.unidadStock.decimales ?? 2);
+    const { cantidad: cantidadRedondeada, cantidadExacta } = arrastre.consumir(c.productoId, c.cantidad, DECIMALES_DE_STOCK);
     // D6 (docs/plan-sustitucion-insumos-receta-2026-09-26.md): solo si esta parte vino de un sustituto — un consumo de un
     // HERMANO del mismo Insumo (el caso de siempre) deja el objeto IDÉNTICO a hoy, sin la columna ni el detalle distinto.
     const detalleDelConsumo = c.sustituyeAProductoId

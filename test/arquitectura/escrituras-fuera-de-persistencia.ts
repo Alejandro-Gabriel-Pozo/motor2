@@ -16,8 +16,8 @@ export interface EscrituraHeredada {
   motivo: string;
 }
 
-/** Cuántas entradas tiene la lista. Solo baja: agregar una exige tocar este número y se ve en la revisión. */
-export const TOPE_DE_ENTRADAS = 14;
+/** Cuántas entradas tiene la lista. Solo baja: agregar una exige tocar este número y se ve en la revisión. (Subió de 14 a 15 con `operaciones-de-plataforma/planes.ts`, planes versionados M1, decisión del dueño 2026-11-16: «Planes con versiones desde el inicio, como Pedernal»; escritor único de Plan, VersionDePlan y PlanDeEmpresa.) */
+export const TOPE_DE_ENTRADAS = 15;
 
 export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, EscrituraHeredada>> = {
   "plataforma/src/servidor/auditoria.ts": {
@@ -64,6 +64,11 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     escrituras: ["$executeRaw", "moduloEmpresa.upsert"],
     fase: "Permanente",
     motivo: "Operación de plataforma que corre por script (nunca desde la app): activa y desactiva módulos con el rol de plataforma; escritor propio de ModuloEmpresa, con su auditoría.",
+  },
+  "src/server/operaciones-de-plataforma/planes.ts": {
+    escrituras: ["$executeRaw", "plan.create", "planDeEmpresa.create", "versionDePlan.create", "versionDePlan.create", "versionDePlan.update", "versionDePlan.update"],
+    fase: "Permanente",
+    motivo: "Operación de plataforma que corre por script (nunca desde la app): crea planes, guarda su borrador, publica versiones y asigna un plan a una empresa (planes versionados, M1); escritor único de Plan, VersionDePlan y PlanDeEmpresa, con su auditoría.",
   },
   "src/server/operaciones-de-plataforma/cambiar-politica-de-empresa.ts": {
     escrituras: ["$executeRaw", "empresa.update"],

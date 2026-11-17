@@ -117,8 +117,12 @@ describe("cerrar con opciones: concurrencia (GO-2b)", () => {
     expect(await prisma.ejemplarTicket.count()).toBe(1);
   });
 
+  // A1b 2026-11-16: stock con 4 decimales fijos y cuenta exacta; antes el shot consumía 0,005 (kg con 2 decimales) y el arrastre actuaba con
+  // eso. Ahora 0,005 se escribe exacto, así que para seguir probando el arrastre bajo concurrencia se usa un consumo de más de 4 decimales:
+  // el shot consume 0,0001 con una merma de 50 % → 0,00015 por cuenta: la primera escribe −0,0002 (el empate se aleja del cero, deuda de
+  // 0,00005 de más) y la segunda, con la deuda, −0,0001. Total −0,0003 = 2 × 0,00015 (sin el arrastre serían 2 × −0,0002 = −0,0004).
   it("dos cuentas que consumen el MISMO insumo fraccionado, cerradas a la vez: el arrastre de redondeo no se pierde ni se duplica", async () => {
-    await prismaAdmin.consumoDeOpcion.updateMany({ where: { versionDeOpcionId: c.versionDe[c.shotId] }, data: { cantidad: "0.0050" } });
+    await prismaAdmin.consumoDeOpcion.updateMany({ where: { versionDeOpcionId: c.versionDe[c.shotId] }, data: { cantidad: "0.0001", mermaPorcentaje: "50.00" } });
     const mesa2 = await prisma.mesa.create({ data: { sucursalId: s.sucursalId, numero: 5 } });
     const otraCuenta = (await sembrarCuenta(mesa2.id, s.admin.id)).id;
     await pedirYEnviar(cuentaId, [{ productoId: c.cafeId, cantidad: 1, opciones: [elegida(c, c.medianoId), elegida(c, c.shotId)] }]);
@@ -126,7 +130,10 @@ describe("cerrar con opciones: concurrencia (GO-2b)", () => {
     const resultados = await Promise.all([cerrarCuenta(cuentaId), cerrarCuenta(otraCuenta)]);
     expect(resultados.map((r) => r.ok), resultados.map((r) => r.mensaje).join(" / ")).toEqual([true, true]);
     const grano = await prisma.movimientoStock.findMany({ where: { proceso: "CONSUMO", productoId: c.granoId } });
-    expect(grano.map((g) => Number(g.cantidadExacta))).toEqual([-0.005, -0.005]);
-    expect(Math.round(grano.reduce((suma, g) => suma + Number(g.cantidad), 0) * 100) / 100).toBe(-0.01);
+    // El orden en que las dos transacciones toman la deuda no es fijo: lo que se fija es el conjunto y el total.
+    expect(grano.map((g) => Number(g.cantidad)).sort((a, b) => a - b)).toEqual([-0.0002, -0.0001]);
+    expect(Math.round(grano.reduce((suma, g) => suma + Number(g.cantidad), 0) * 1e4) / 1e4).toBe(-0.0003);
+    // Las dos filas guardan su exacto (−0,00015): la deuda de la siguiente se calcula con eso (Σcantidad − Σexacto = −0,0003 + 0,0003 = 0).
+    expect(grano.map((g) => Number(g.cantidadExacta))).toEqual([-0.00015, -0.00015]);
   });
 });

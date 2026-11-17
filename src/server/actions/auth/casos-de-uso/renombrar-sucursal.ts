@@ -3,6 +3,7 @@ import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
+import { textoDe } from "@/core/textos/texto-de";
 import { cambiarNombreDeSucursal } from "@/server/persistencia/auth/sucursales";
 
 type ResultadoRenombrarSucursal = ResultadoCaso<null, "SUCURSAL_NO_ENCONTRADA" | "NOMBRE_TOMADO">;
@@ -34,7 +35,7 @@ export async function renombrarSucursalCasoDeUso(
   // escribió), el reintento relee y responde «Ya existe una sucursal». Los rechazos devuelven ANTES de escribir; el cuerpo puede reintentarse: no tiene efectos fuera de la base.
   return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoRenombrarSucursal> => {
     const sucursal = await tx.sucursal.findUnique({ where: { id: sucursalId } });
-    if (!sucursal) return fracaso("SUCURSAL_NO_ENCONTRADA", "No se encontró esa sucursal.");
+    if (!sucursal) return fracaso("SUCURSAL_NO_ENCONTRADA", textoDe("rechazo.SUCURSAL_NO_ENCONTRADA"));
 
     const existente = await tx.sucursal.findFirst({ where: { nombre: { equals: nombre, mode: "insensitive" }, id: { not: sucursalId } } });
     if (existente) return fracaso("NOMBRE_TOMADO", `Ya existe una sucursal "${existente.nombre}".`);
