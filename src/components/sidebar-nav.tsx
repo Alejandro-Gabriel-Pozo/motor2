@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { hrefActivoDelMenu, mostrarSelectorDePaneles, panelDeRuta, particionarMenu, type GrupoNav } from "@/core/navegacion/estructura";
 import type { PanelActivo } from "@/core/navegacion/panel";
 import { IconoDeModulo } from "@/components/iconos";
@@ -39,15 +39,18 @@ export function SidebarNav({
   hrefsDelMenu,
   dosPaneles,
   sucursalNombre,
+  porAreas = false,
 }: {
   grupos: GrupoNav[];
   hrefsDelMenu: readonly string[];
   dosPaneles: boolean;
   sucursalNombre: string;
+  /** El menú por áreas (`MENU_POR_AREAS`): `grupos` son las áreas, sin selector de paneles ni íconos, con el subencabezado de cada grupo. */
+  porAreas?: boolean;
 }) {
   const pathname = usePathname();
   const hrefActivo = hrefActivoDelMenu(pathname, hrefsDelMenu, new Set(grupos.flatMap((g) => g.items.map((i) => i.href))));
-  const conPaneles = dosPaneles && mostrarSelectorDePaneles(grupos);
+  const conPaneles = !porAreas && dosPaneles && mostrarSelectorDePaneles(grupos);
   const [panel, setPanel] = useState<PanelActivo>(() => panelDeRuta(pathname) ?? PANEL_POR_DEFECTO);
   const gruposMostrados = conPaneles ? particionarMenu(grupos)[panel] : grupos;
   const [expandido, setExpandido] = useState<Record<string, boolean>>(() =>
@@ -127,18 +130,21 @@ export function SidebarNav({
               className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left font-medium text-tinta hover:bg-superficie-suave"
             >
               <span className="flex items-center gap-2">
-                <IconoDeModulo id={grupo.id} />
+                {!porAreas && <IconoDeModulo id={grupo.id} />}
                 {grupo.label}
               </span>
               <span className="text-xs text-tinta-suave">{abierto ? "▾" : "▸"}</span>
             </button>
             {abierto && (
               <div className="ml-2 flex flex-col gap-0.5 border-l border-borde pl-2">
-                {grupo.items.map((item) => {
+                {grupo.items.map((item, i) => {
                   const activo = item.href === hrefActivo;
                   return (
+                    <Fragment key={item.href}>
+                      {item.subgrupo !== undefined && item.subgrupo !== grupo.items[i - 1]?.subgrupo && (
+                        <p className="px-2 pt-2 text-xs font-semibold uppercase tracking-wide text-tinta-suave">{item.subgrupo}</p>
+                      )}
                     <Link
-                      key={item.href}
                       href={item.href}
                       aria-current={activo ? "page" : undefined}
                       className={`rounded px-2 py-1 ${
@@ -150,6 +156,7 @@ export function SidebarNav({
                       {item.label}
                       <IndicadorDeEnlace />
                     </Link>
+                    </Fragment>
                   );
                 })}
               </div>
