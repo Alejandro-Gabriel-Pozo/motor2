@@ -242,7 +242,7 @@ describe("confirmar la recepción", () => {
       sucursalId: s3,
       valorAnterior: "PENDIENTE",
       valorNuevo: "RECIBIDA",
-      descripcion: `Recepción de la compra A-00001-00000100 confirmada en «Central» (sección «Depósito», fecha de stock ${diaDeCalendario(fechaStock, ZONA_ARGENTINA)})`,
+      descripcion: `Recepción de la compra A-00001-00000100 confirmada en «Central» (sección «Depósito», fecha de stock ${diaDeCalendario(fechaStock, ZONA_ARGENTINA)}). Destino por renglón: Harina: propuesta «Depósito», elegida «Depósito», sin cambio; Aceite: propuesta «Depósito», elegida «Depósito», sin cambio`,
     });
   });
 
@@ -546,17 +546,19 @@ describe("confirmar con UN solo destino por renglón (paridad con Pedernal)", ()
     expect([await comprasDeStock(), await movimientosDeCompra()]).toEqual([0, 0]);
   });
 
-  it("una línea RECHAZADA (o con observaciones, o sin control) ENTRA al stock igual, en la sección que elige quien recibe: la condición del control no cambia cuánto entra", async () => {
+  it("una línea RECHAZADA (o con observaciones, o sin control) ENTRA al stock igual, con toda su cantidad: la condición del control no cambia cuánto entra, solo dónde se propone (la rechazada, al depósito de rechazo)", async () => {
+    const rechazo = await sembrarSeccion(s3, "Rechazo", "RECHAZO"); // desde la etapa (i) de los depósitos de uso: sin uno la confirmación se bloquea
     const facturaId = await cargarPendiente();
     const [rHarina, rAceite] = await renglonesDe(facturaId);
     const c = await controlar(facturaId, [{ renglonId: rHarina!.id, condicion: "RECHAZADA", observacion: "Llegó vencida" }]);
     expect(c.ok, c.mensaje).toBe(true);
 
-    const r = await confirmar(facturaId);
+    // Quien confirma deja lo propuesto: la rechazada al depósito de rechazo; la que no se constató, al normal.
+    const r = await confirmar(facturaId, { entradas: [{ renglonId: rHarina!.id, seccionId: rechazo.id }, { renglonId: rAceite!.id, seccionId: sec3 }] });
 
     expect(r.ok, r.mensaje).toBe(true);
     // La rechazada (harina) y la que no se constató (aceite) entran con toda su cantidad.
-    expect([await calcularSaldoTotal(harina, sec3, prisma), await calcularSaldoTotal(aceite, sec3, prisma)]).toEqual([10, 5]);
+    expect([await calcularSaldoTotal(harina, rechazo.id, prisma), await calcularSaldoTotal(aceite, sec3, prisma)]).toEqual([10, 5]);
     expect((await movimientosDe(rHarina!.id)).map((m) => Number(m.precioTotal))).toEqual([1000]);
     expect((await movimientosDe(rAceite!.id)).map((m) => Number(m.precioTotal))).toEqual([1000]);
     // El control queda como se constató (no se toca al confirmar).
@@ -700,6 +702,7 @@ describe("el control en la base: las reglas que no dependen del código (segunda
     // Lo válido entra; el único (parte, renglón) frena el segundo; y después de confirmar la base no admite ninguno.
     await insertar({ ...base, condicion: "CON_OBSERVACIONES", observacion: "Faltó una caja (3 de 4)" });
     await expect(insertar({ ...base })).rejects.toThrow(/parte_renglon_key|Unique constraint/i);
+    await sembrarSeccion(s3, "Cuarentena", "CUARENTENA"); // la línea con observaciones pide un depósito de cuarentena para confirmar
     expect((await confirmar(facturaId)).ok).toBe(true);
     const [, rAceite] = await renglonesDe(facturaId);
     await expect(insertar({ ...base, facturaProveedorRenglonId: rAceite!.id })).rejects.toThrow(/solo se registra mientras la compra está pendiente de recibir/);
