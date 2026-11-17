@@ -4387,6 +4387,8 @@ model ArqueoBillete {
 
 /// Por dónde entra el dinero electrónico: una terminal (posnet), un QR o una cuenta bancaria, de UNA sucursal. `tipo` cerrado e inmutable (CHECK + disparador); nombre único por empresa sin mayúsculas; el
 /// identificador externo (número de terminal o alias, nunca credenciales) es opcional. Se desactiva y reactiva, nunca se borra. Es opcional en el cobro («sin cuenta» es un grupo del arqueo).
+/// UNA sola cuenta ACTIVA por sucursal (decisión del dueño, 2026-11-16, Q-C3-6): índice único parcial "CuentaDeCobro_una_activa_por_sucursal_key" (empresaId, sucursalId) WHERE activa, hecho a mano en la migración
+/// 20261117118100_caja_c3b_una_cuenta_por_sucursal (Prisma no declara índices parciales).
 model CuentaDeCobro {
   id                   String   @id @db.Uuid
   empresaId            String   @default(dbgenerated("app_empresa_actual()"))

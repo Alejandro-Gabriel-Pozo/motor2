@@ -5,7 +5,7 @@ import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
-import { cambiarActivaDeCuenta, cargarCuentaDeCobro } from "@/server/persistencia/caja/configuracion";
+import { cambiarActivaDeCuenta, cargarCuentaDeCobro, esChoqueDeUnaActivaPorSucursal, hayOtraCuentaActivaEnSucursal } from "@/server/persistencia/caja/configuracion";
 
 type Actor = Pick<ContextoDeAccion, "usuarioId" | "empresaId" | "transaccion" | "ahora" | "alcance">;
 
@@ -18,6 +18,8 @@ async function cambiarEstado(actor: Actor, comando: ComandoCambiarEstadoDeCuenta
       if (!actual) return fracaso("CUENTA_DE_COBRO_NO_ENCONTRADA", "No se encontró la cuenta de cobro.");
       if (!sucursalEnAlcanceDeEscritura(actor.alcance, actual.sucursalId)) return fracaso("SUCURSAL_FUERA_DE_ALCANCE", "No tenés acceso a esa sucursal.");
       if (decidirCambioDeEstado(actual.activa, seQuiereActiva) === "YA_ESTABA") return { yaEstaba: true as const };
+      // Una sola cuenta activa por sucursal (decisión del dueño, 2026-11-16, Q-C3-6): reactivar con otra activa en la sucursal es un rechazo de regla. Desactivar nunca choca.
+      if (seQuiereActiva && (await hayOtraCuentaActivaEnSucursal(tx, actor.empresaId, actual.sucursalId, actual.id))) return fracaso("SUCURSAL_YA_TIENE_CUENTA_ACTIVA", "Esa sucursal ya tiene una cuenta de cobro activa: desactivala antes de activar o crear otra.");
       // El cambio se condiciona a la versión leída: si otro cambió la cuenta en el medio, la transacción serializable lo detecta y reintenta con lo nuevo.
       if (!(await cambiarActivaDeCuenta(tx, { empresaId: actor.empresaId, id: actual.id, versionEsperada: actual.version, ahora: actor.ahora, activa: seQuiereActiva }))) return fracaso("CUENTA_DE_COBRO_NO_ENCONTRADA", "No se encontró la cuenta de cobro.");
       await registrarCambioAuditado(tx, {
@@ -35,7 +37,10 @@ async function cambiarEstado(actor: Actor, comando: ComandoCambiarEstadoDeCuenta
     undefined,
     undefined,
     true,
-  );
+  ).catch((e: unknown) => {
+    if (seQuiereActiva && esChoqueDeUnaActivaPorSucursal(e)) return fracaso("SUCURSAL_YA_TIENE_CUENTA_ACTIVA" as const, "Esa sucursal ya tiene una cuenta de cobro activa: desactivala antes de activar o crear otra.");
+    throw e;
+  });
 }
 
 /**
@@ -50,12 +55,16 @@ async function cambiarEstado(actor: Actor, comando: ComandoCambiarEstadoDeCuenta
  */
 export async function desactivarCuentaDeCobroCasoDeUso(actor: Actor, comando: ComandoCambiarEstadoDeCuentaDeCobro): Promise<ResultadoDesactivarCuentaDeCobro> {
   const r = await cambiarEstado(actor, comando, false);
-  if ("ok" in r) return r;
+  if ("ok" in r) {
+    // Desactivar nunca choca con la regla de la cuenta activa única: el tipo de `cambiarEstado` la incluye porque la comparte con reactivar.
+    if (r.codigo === "SUCURSAL_YA_TIENE_CUENTA_ACTIVA") throw new Error("desactivarCuentaDeCobro: la regla de la cuenta activa única no aplica al desactivar.");
+    return r;
+  }
   return exito(r.yaEstaba ? "La cuenta ya estaba desactivada." : "Cuenta de cobro desactivada.", { yaEstabaInactiva: r.yaEstaba });
 }
 
 /**
- * Caso de uso «reactivar una cuenta de cobro» (etapa C3; Pedernal `reactivarCuentaDeCobro`): lo mismo, hacia activa. Ya activa → `yaEstabaActiva`. `import "server-only"` y SIN `"use server"`.
+ * Caso de uso «reactivar una cuenta de cobro» (etapa C3; Pedernal `reactivarCuentaDeCobro`): lo mismo, hacia activa. Ya activa → `yaEstabaActiva`. Con OTRA activa en la sucursal → `SUCURSAL_YA_TIENE_CUENTA_ACTIVA` (una sola activa por sucursal, decisión del dueño 2026-11-16, Q-C3-6; no escribe nada). `import "server-only"` y SIN `"use server"`.
  *
  * @contract Deja la cuenta activa (o ya lo estaba) y no toca ninguna otra fila.
  * @idempotency Por estado: repetirlo devuelve `yaEstabaActiva` sin escribir ni auditar de nuevo.

@@ -149,7 +149,8 @@ describe("editar, desactivar y reactivar una cuenta de cobro", () => {
 
   it("versión vieja, nombre de otra cuenta y cuenta inexistente", async () => {
     const id = await unaCuenta();
-    await crearCuenta("Banco", "CUENTA_BANCARIA");
+    // Una sola cuenta activa por sucursal: «Banco» es otra cuenta, inactiva (el nombre sigue ocupado aunque esté inactiva).
+    await prismaAdmin.cuentaDeCobro.create({ data: { id: randomUUID(), sucursalId: s.sucursalId, tipo: "CUENTA_BANCARIA", nombre: "Banco", activa: false } });
     await editarCuentaDeCobroCasoDeUso(actor(), { cuentaDeCobroId: id, versionEsperada: 1, nombre: "Posnet 2", identificadorExterno: null, sucursalId: s.sucursalId });
     expect(await editarCuentaDeCobroCasoDeUso(actor(), { cuentaDeCobroId: id, versionEsperada: 1, nombre: "Posnet 3", identificadorExterno: null, sucursalId: s.sucursalId })).toMatchObject({ ok: false, codigo: "VERSION_DESACTUALIZADA" });
     expect(await editarCuentaDeCobroCasoDeUso(actor(), { cuentaDeCobroId: id, versionEsperada: 2, nombre: "banco", identificadorExterno: null, sucursalId: s.sucursalId })).toMatchObject({ ok: false, codigo: "CUENTA_DUPLICADA" });
@@ -389,6 +390,8 @@ describe("cobrar con cuenta de cobro y datos", () => {
     const norte = await prismaAdmin.sucursal.create({ data: { nombre: "Norte" } });
     const deOtra = await prismaAdmin.cuentaDeCobro.create({ data: { id: randomUUID(), sucursalId: norte.id, tipo: "TERMINAL", nombre: "Posnet Norte" } });
     const inactiva = await prismaAdmin.cuentaDeCobro.create({ data: { id: randomUUID(), sucursalId: s.sucursalId, tipo: "TERMINAL", nombre: "Posnet viejo", activa: false } });
+    // Una sola cuenta activa por sucursal: la del escenario (`cuentaId`, un posnet) se desactiva para que «Banco» (de un tipo que el débito no admite) sea la activa; el efectivo se prueba con la desactivada.
+    await prismaAdmin.cuentaDeCobro.update({ where: { id: cuentaId }, data: { activa: false } });
     const banco = await prismaAdmin.cuentaDeCobro.create({ data: { id: randomUUID(), sucursalId: s.sucursalId, tipo: "CUENTA_BANCARIA", nombre: "Banco" } });
     const ef = (await prismaAdmin.medioDePago.findFirstOrThrow({ where: { tipo: "EFECTIVO" } })).id;
     const con = (medioDePagoId: string, cuentaDeCobroId: string) => cobrar(cuenta.id, [{ medioDePagoId, importeEnCentavos: c(3000_00), cuentaDeCobroId }], 3000_00);
@@ -401,7 +404,6 @@ describe("cobrar con cuenta de cobro y datos", () => {
     expect(await con(debito, randomUUID())).toMatchObject({ ok: false, codigo: "CUENTA_DE_COBRO_NO_ENCONTRADA" });
     expect(await con(ef, cuentaId)).toMatchObject({ ok: false, codigo: "CUENTA_DE_COBRO_NO_ADMITIDA" });
     expect(await prismaAdmin.cobranza.count()).toBe(0);
-    await desactivarCuentaDeCobroCasoDeUso(actor(), { cuentaDeCobroId: cuentaId });
     expect(await con(debito, cuentaId)).toMatchObject({ ok: false, codigo: "CUENTA_DE_COBRO_INACTIVA" });
   });
 
