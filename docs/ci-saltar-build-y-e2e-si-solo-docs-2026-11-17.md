@@ -1,6 +1,6 @@
 # CI: saltar Build y E2E cuando el pull request toca solo documentación (2026-11-17)
 
-**Pedido del dueño:** «Priorizá los PR de CI que ahorran cola» → «si» (2026-11-17, chat con el orquestador). Detalle pedido por el orquestador en el mismo chat: un PR que solo toca `docs/` (y archivos `.md`) corre Estático e Integración (los guardianes de arquitectura leen `docs/` y ya nos rompieron con capturas) pero SALTA Build y los 7 shards de E2E; cualquier otro cambio corre todo. No cambia producto.
+**Pedido del dueño:** «Priorizá los PR de CI que ahorran cola» → «si» (2026-11-17, chat con el orquestador). Detalle pedido por el orquestador en el mismo chat: un PR que solo toca `.md` de `docs/` y de la raíz corre Estático e Integración (los guardianes de arquitectura leen `docs/` y ya nos rompieron con capturas) pero SALTA Build y los 7 shards de E2E; cualquier otro cambio corre todo. No cambia producto.
 
 ## Qué hace
 - Job nuevo `alcance` (`ci.yml`): mira la lista de rutas que cambia el PR (`git diff --no-renames --name-only -z HEAD^1 HEAD` sobre la fusión de prueba que arma GitHub) y la pasa por `scripts/alcance-del-cambio.ts`. No instala nada. Sale `solo-docs` o `completo`.
@@ -9,11 +9,12 @@
 - «Gate (requerido)» sigue siendo el único requerido. Su primer paso exige Estático e Integración en success; Build y E2E en success, o en skipped únicamente si el job `alcance` terminó en success y dijo exactamente `solo-docs`. Un omitido sin esa justificación, o cancelado, lo pone rojo. Los conteos de Vitest corren también en un PR de solo docs; los de E2E solo si E2E corrió.
 
 ## Oráculo del filtro (todo nace cerrado)
-`solo-docs` únicamente si hay al menos una ruta y CADA una es `docs/…` o termina en `.md` y está bien formada. Todo lo demás da `completo`.
+`solo-docs` únicamente si hay al menos una ruta y CADA una es un `.md` bien formado que está en `docs/` (a cualquier profundidad) o en la RAÍZ del repositorio (README.md, CLAUDE.md, AGENTS.md). Todo lo demás da `completo`: un `.md` dentro de `src/`, `prisma/`, `test/` u otra carpeta, y cualquier archivo que no sea `.md` dentro de `docs/` (imágenes, json). Ajuste del orquestador, 2026-11-17 («todo nace cerrado»).
 
 | Rutas del PR | Resultado |
 |---|---|
-| `docs/a.md`, `docs/capturas/b.png`, `AGENTS.md` | solo-docs |
+| `docs/a.md`, `docs/sub/b.md`, `AGENTS.md`, `README.md` | solo-docs |
+| `docs/capturas/b.png`, `docs/datos.json`, `src/x.md`, `test/x.md`, `prisma/migrations/LEEME.md` | completo |
 | `src/x.ts`, `prisma/**`, `.github/**`, `test/**`, `package.json`, `scripts/**` | completo |
 | `docs/a.md` + `src/x.ts` (mezcla) | completo |
 | listado vacío, ruta vacía, absoluta, con `..`, `.` o `\` | completo |

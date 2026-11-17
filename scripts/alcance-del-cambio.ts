@@ -2,7 +2,7 @@
  * El filtro de alcance del CI (job `alcance` de `.github/workflows/ci.yml`; dueño, 2026-11-17: «Priorizá los PR de CI que ahorran cola», «si»): dado el listado de rutas que cambia un
  * pull request, dice si es «solo-docs» (el CI corre Estático e Integración y SALTA Build y E2E) o «completo» (corre todo).
  *
- * TODO NACE CERRADO: «solo-docs» es la ÚNICA respuesta que ahorra algo y exige que CADA ruta lo justifique (lista de permitidos: `docs/…` o un archivo `.md`). Cualquier otra cosa, una ruta rara
+ * TODO NACE CERRADO: «solo-docs» es la ÚNICA respuesta que ahorra algo y exige que CADA ruta lo justifique (lista de permitidos: un `.md` de `docs/` o de la raíz). Cualquier otra cosa, una ruta rara
  * (vacía, absoluta, con `..`, con barra invertida), un listado vacío o un error al leerlo, da «completo». Es PURO y no importa nada: el job lo corre con `node` sin instalar dependencias.
  * El oráculo con sus casos está en `test/arquitectura/ci-alcance-del-cambio.test.ts`.
  *
@@ -14,9 +14,13 @@ export type Alcance = "solo-docs" | "completo";
 const PARTE = "[\\p{L}\\p{N}_][\\p{L}\\p{N}_ .@+()-]*";
 const RUTA_BIEN_FORMADA = new RegExp(`^(?:${PARTE}/)*${PARTE}$`, "u");
 
-/** Una ruta sola justifica saltar Build y E2E si está bien formada y es de `docs/` o un `.md` (en minúscula: `.MD` o `.markdown` no cuentan). */
+/**
+ * Una ruta sola justifica saltar Build y E2E si está bien formada y es un `.md` (en minúscula: `.MD` o `.markdown` no cuentan) de `docs/` (a cualquier profundidad) o de la RAÍZ del repositorio
+ * (README.md, CLAUDE.md, AGENTS.md). Un `.md` dentro de `src/`, `prisma/`, `test/` o cualquier otra carpeta, y un archivo que no sea `.md` dentro de `docs/` (imágenes, json), NO lo justifican (dueño/orquestador, 2026-11-17).
+ */
 function esSoloDocs(ruta: string): boolean {
-  return RUTA_BIEN_FORMADA.test(ruta) && (ruta.startsWith("docs/") || ruta.endsWith(".md"));
+  if (!RUTA_BIEN_FORMADA.test(ruta) || !ruta.endsWith(".md")) return false;
+  return ruta.startsWith("docs/") || !ruta.includes("/");
 }
 
 /** «solo-docs» únicamente si hay al menos una ruta y todas son de documentación; en cualquier otro caso, «completo». */

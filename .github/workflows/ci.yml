@@ -51,7 +51,7 @@ env:
 
 jobs:
   # Filtro de alcance (ver la cabecera). Solo mira el listado de rutas que cambia el pull request contra su base (`git diff --no-renames --name-only -z HEAD^1 HEAD` sobre la fusión que arma GitHub);
-  # no instala nada. Sale «solo-docs» únicamente si TODAS las rutas son de docs/ o .md; todo lo demás (otro evento, falta la fusión, error del script, salida rara) sale «completo».
+  # no instala nada. Sale «solo-docs» únicamente si TODAS las rutas son un .md de docs/ o de la raíz (README, CLAUDE.md, AGENTS.md); todo lo demás (otro evento, falta la fusión, error del script, salida rara) sale «completo».
   alcance:
     name: Alcance del cambio (solo docs o completo)
     if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CI_EN_MAIN != 'si') }}

@@ -22,10 +22,18 @@ const ci = leer(".github/workflows/ci.yml");
 describe("alcanceDelCambio: «solo-docs» únicamente si TODAS las rutas son de documentación", () => {
   const casos: { titulo: string; rutas: string[]; esperado: "solo-docs" | "completo" }[] = [
     { titulo: "un .md de docs", rutas: ["docs/diseno-x.md"], esperado: "solo-docs" },
-    { titulo: "capturas en docs/ (cualquier extensión)", rutas: ["docs/capturas/a.png", "docs/capturas/b/c.webp"], esperado: "solo-docs" },
-    { titulo: "un .md en la raíz (AGENTS.md, README.md)", rutas: ["AGENTS.md", "README.md"], esperado: "solo-docs" },
-    { titulo: "un .md dentro de src/ (es un archivo .md)", rutas: ["src/app/LEEME.md"], esperado: "solo-docs" },
-    { titulo: "docs y .md juntos", rutas: ["docs/a.md", "CLAUDE.md"], esperado: "solo-docs" },
+    { titulo: "un .md de docs a cualquier profundidad (docs/sub/x.md)", rutas: ["docs/sub/x.md", "docs/a/b/c.md"], esperado: "solo-docs" },
+    { titulo: "los .md de la raíz (README.md, CLAUDE.md, AGENTS.md)", rutas: ["AGENTS.md", "README.md", "CLAUDE.md"], esperado: "solo-docs" },
+    { titulo: "docs y .md de la raíz juntos", rutas: ["docs/a.md", "CLAUDE.md"], esperado: "solo-docs" },
+    { titulo: "un .md dentro de src/ NO cuenta", rutas: ["src/x.md"], esperado: "completo" },
+    { titulo: "un .md dentro de test/ NO cuenta", rutas: ["test/x.md"], esperado: "completo" },
+    { titulo: "un .md dentro de prisma/ o scripts/ o .github/ NO cuenta", rutas: ["prisma/migrations/LEEME.md"], esperado: "completo" },
+    { titulo: "un .md dentro de src/app NO cuenta (carpeta profunda)", rutas: ["src/app/LEEME.md"], esperado: "completo" },
+    { titulo: "una imagen de docs/ NO cuenta (docs/x.png)", rutas: ["docs/x.png"], esperado: "completo" },
+    { titulo: "capturas en docs/ (png, webp) NO cuentan", rutas: ["docs/capturas/a.png", "docs/capturas/b/c.webp"], esperado: "completo" },
+    { titulo: "un json o un ts dentro de docs/ NO cuenta", rutas: ["docs/datos.json", "docs/x.ts"], esperado: "completo" },
+    { titulo: "mezcla: un .md de docs y una imagen de docs", rutas: ["docs/a.md", "docs/a.png"], esperado: "completo" },
+    { titulo: "un archivo de la raíz que no es .md (package.json, LICENSE)", rutas: ["LICENSE"], esperado: "completo" },
     { titulo: "código de la aplicación", rutas: ["src/x.ts"], esperado: "completo" },
     { titulo: "prisma/**", rutas: ["prisma/migrations/20261117_x/migration.sql"], esperado: "completo" },
     { titulo: ".github/** (el workflow)", rutas: [".github/workflows/ci.yml"], esperado: "completo" },
@@ -52,7 +60,7 @@ describe("alcanceDelCambio: «solo-docs» únicamente si TODAS las rutas son de 
     expect(rutasDeGitConNul("")).toEqual([]);
     expect(alcanceDelCambio(rutasDeGitConNul("docs/a.md\0\0docs/b.md\0"))).toBe("completo");
     expect(alcanceDelCambio(rutasDeGitConNul("un archivo con\nsalto.md\0"))).toBe("completo"); // un salto de línea no está en lo permitido
-    expect(alcanceDelCambio(rutasDeGitConNul("docs/capturas/ñandú (1).png\0"))).toBe("solo-docs");
+    expect(alcanceDelCambio(rutasDeGitConNul("docs/capturas/ñandú (1).md\0"))).toBe("solo-docs");
   });
 
   it("la línea de comandos (`node scripts/alcance-del-cambio.ts`) responde igual y, ante cualquier problema, «completo»", () => {
@@ -133,7 +141,9 @@ function correrElFiltro(dir: string, evento: string): string {
 
 describe("el paso «Filtro de alcance» del job `alcance` (ci.yml real, en un repositorio git temporal)", () => {
   const casos: { titulo: string; cambios: Record<string, string | null>; evento?: string; opciones?: { fusion?: boolean; scriptRoto?: boolean }; esperado: string }[] = [
-    { titulo: "PR que solo agrega docs (aunque main haya avanzado con código)", cambios: { "docs/nuevo.md": "# n\n", "docs/capturas/c.png": "png" }, esperado: "alcance=solo-docs" },
+    { titulo: "PR que solo agrega docs (aunque main haya avanzado con código)", cambios: { "docs/nuevo.md": "# n\n", "docs/sub/otro.md": "# o\n" }, esperado: "alcance=solo-docs" },
+    { titulo: "PR que agrega una captura (png) en docs/: completo", cambios: { "docs/nuevo.md": "# n\n", "docs/capturas/c.png": "png" }, esperado: "alcance=completo" },
+    { titulo: "PR que agrega un .md dentro de src/: completo", cambios: { "src/LEEME.md": "# l\n" }, esperado: "alcance=completo" },
     { titulo: "PR que solo cambia un .md de la raíz", cambios: { "LEEME.md": "x\n" }, esperado: "alcance=solo-docs" },
     { titulo: "PR mixto: docs y código", cambios: { "docs/nuevo.md": "# n\n", "src/x.ts": "export const x = 3;\n" }, esperado: "alcance=completo" },
     { titulo: "PR que solo toca el workflow", cambios: { ".github/workflows/ci.yml": "name: CI\n" }, esperado: "alcance=completo" },
