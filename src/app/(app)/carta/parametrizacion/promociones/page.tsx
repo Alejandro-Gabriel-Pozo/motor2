@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
@@ -23,7 +24,7 @@ import { AgregarEntradaDeLugar } from "../../agregar-entrada-de-lugar";
 import { DondeSeVe } from "./donde-se-ve";
 import { cuposDeSeccionDelFormulario, lugaresDelFormulario } from "./lugares-del-formulario";
 import { FilaDeCarta } from "@/components/fila-de-carta";
-import { ARMADO_DE_PROMO_COMO_PEDERNAL, PESTANAS_DE_PROMOCIONES, comoLoVeElCliente, estadoDeLaPromo, loQueLlevaLaPromo, type ParteDeLaPromoParaLeer } from "@/core/carta/public";
+import { ARMADO_DE_PROMO_COMO_PEDERNAL, PESTANAS_DE_PROMOCIONES, comoLoVeElCliente, estadoDeLaPromo, loQueLlevaLaPromo, textosDeLaPantallaDePromos, type ParteDeLaPromoParaLeer } from "@/core/carta/public";
 import { EncabezadoDeCarta } from "../../encabezado-de-carta";
 import estilos from "../../carta-mant.module.css";
 import { CamposCupos, CamposLugares, CamposPromo, esFijo } from "../formularios";
@@ -42,6 +43,21 @@ const refrescarSiOk = (r: ResultadoAccion) => {
 };
 
 /**
+ * Aire del armado «como Pedernal» (`ARMADO_DE_PROMO_COMO_PEDERNAL`, pedido del dueño 2026-11-17: «en Pedernal veo algo limpio, en Motor 2 algo apretado»): con el interruptor encendido, los bloques de cada promo van uno debajo del otro
+ * con más espacio entre sí (y sin el margen suelto que cada uno traía); apagado, no envuelve nada: la pantalla de siempre.
+ */
+function ConAire({ activo, children }: { activo: boolean; children: ReactNode }) {
+  if (!activo) return <>{children}</>;
+  return <div className="mt-4 flex flex-col gap-5 [&>*]:mt-0">{children}</div>;
+}
+
+/** Un título con lo que le cuelga (un formulario, un dato): juntos entre sí, aunque el resto vaya con aire. Apagado, no envuelve nada. */
+function Junto({ activo, children }: { activo: boolean; children: ReactNode }) {
+  if (!activo) return <>{children}</>;
+  return <div className="flex flex-col gap-2 [&>*]:mt-0">{children}</div>;
+}
+
+/**
  * CARTA-MANT: Parametrización › Promociones (prototipo aprobado). Las promos de la empresa (prendidas o no en esta sucursal, con su precio local, sus cupos, sus lugares de entradas), con el
  * MISMO bloque que antes estaba apilado en `/carta`: entrar pide «Ver» de `carta_ver`; cada formulario se dibuja solo con «Editar» de su clave (`carta_promo_definir`, `carta_promo_activar`,
  * `carta_promo_precio_local`); la acción vuelve a exigirlo.
@@ -49,6 +65,8 @@ const refrescarSiOk = (r: ResultadoAccion) => {
 export default async function PromocionesDeCartaPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
+  // Los textos de la pantalla (los de siempre o los del armado «como Pedernal», según el interruptor).
+  const t = textosDeLaPantallaDePromos(ARMADO_DE_PROMO_COMO_PEDERNAL);
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
   if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
@@ -71,8 +89,8 @@ export default async function PromocionesDeCartaPage() {
 
   return (
     <div className={estilos.raiz}>
-      <EncabezadoDeCarta entrada="Promociones" pestana="Combos y cupos" sucursal={ctx.sucursalNombre}>
-        <FilaDeCarta ctx={ctx} etiqueta="Promociones" pestanas={PESTANAS_DE_PROMOCIONES} ruta="/carta/parametrizacion/promociones" />
+      <EncabezadoDeCarta entrada={t.encabezadoDeLaEntrada} pestana={t.encabezadoDeLaPestana} sucursal={ctx.sucursalNombre}>
+        <FilaDeCarta ctx={ctx} etiqueta={t.encabezadoDeLaEntrada} pestanas={PESTANAS_DE_PROMOCIONES} ruta="/carta/parametrizacion/promociones" />
       </EncabezadoDeCarta>
       <div className={estilos.contenido}>
         <div className={estilos.pad}>
@@ -81,12 +99,9 @@ export default async function PromocionesDeCartaPage() {
       {/* 4. Promos (de la empresa; cada sucursal las prende y, si quiere, les pone su precio) */}
       <section aria-labelledby="titulo-promos" className="flex flex-col gap-3">
         <h2 id="titulo-promos" className="text-lg font-medium">
-          Promos
+          {t.tituloDeLaSeccion}
         </h2>
-        <p className="text-sm text-tinta-tenue">
-          Una promo se define una sola vez para toda la empresa. Cada sucursal decide si la prende (apagada no sale en la carta ni en el POS) y, si quiere, le pone su propio precio. No tiene fechas:
-          se maneja con activar y desactivar (mientras está prendida se vende; cuando termina, se apaga).
-        </p>
+        {t.introduccion !== null && <p className="text-sm text-tinta-tenue">{t.introduccion}</p>}
         <ul className="flex flex-col gap-2">
           {datos.promos.map((pr) => {
             const id = pr.id;
@@ -109,7 +124,7 @@ export default async function PromocionesDeCartaPage() {
                   <summary className="cursor-pointer text-sm max-md:min-h-11 max-md:py-2">
                     {ARMADO_DE_PROMO_COMO_PEDERNAL ? (
                       <span data-renglon-de-promo>
-                        <span className="font-medium">{pr.titulo}</span> — {loQueLlevaLaPromo(partes)} · {estado.texto}
+                        <span className="font-medium">{pr.titulo}</span> — {loQueLlevaLaPromo(partes, t.sinComponentes)} · {estado.texto}
                         {combo.soloSalon ? " · solo salón" : ""} — {formatearMonto(pr.precioAca)}
                         {pr.precioLocal !== null ? (datos.precioLocalActivo ? " (precio de esta sucursal)" : " (no rige: precio local apagado)") : ""}
                       </span>
@@ -129,6 +144,7 @@ export default async function PromocionesDeCartaPage() {
                     </>
                     )}
                   </summary>
+                  <ConAire activo={ARMADO_DE_PROMO_COMO_PEDERNAL}>
                   {puedeDefinirPromos ? (
                     <FormConResultado
                       accion={async (fd: FormData) => {
@@ -137,18 +153,18 @@ export default async function PromocionesDeCartaPage() {
                           await guardarPromoCarta({ id, seccionCartaId: campo(fd, "seccionCartaId"), titulo: campo(fd, "titulo"), descripcion: campo(fd, "descripcion"), precio: campo(fd, "precio"), orden: campo(fd, "orden") })
                         );
                       }}
-                      className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"
+                      className={ARMADO_DE_PROMO_COMO_PEDERNAL ? "mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2" : "mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"}
                     >
                       <CamposPromo secciones={datos.secciones} valores={pr} />
                       <div className="sm:col-span-2">
                         <BotonDeServidor type="submit" tamano="compacto">
-                          Guardar promo
+                          {t.botonGuardarPromo}
                         </BotonDeServidor>
                       </div>
                     </FormConResultado>
                   ) : (
                     <DatosSoloLectura className="mt-3">
-                      <Dato etiqueta="Título">{pr.titulo}</Dato>
+                      <Dato etiqueta={t.rotuloDelTitulo}>{pr.titulo}</Dato>
                       <Dato etiqueta="Sección de carta">{pr.seccionCarta}</Dato>
                       <Dato etiqueta="Descripción" ancho>
                         {pr.descripcion}
@@ -166,11 +182,11 @@ export default async function PromocionesDeCartaPage() {
                         const texto = campo(fd, "precioLocal").trim();
                         return refrescarSiOk(await guardarPrecioLocalPromoCarta(id, texto === "" ? null : texto, precioLocalVisto));
                       }}
-                      className="mt-3 flex flex-wrap items-end gap-2"
+                      className={ARMADO_DE_PROMO_COMO_PEDERNAL ? "mt-3 flex flex-wrap items-end gap-3" : "mt-3 flex flex-wrap items-end gap-2"}
                     >
                       <div className="flex flex-col gap-1">
                         <label htmlFor={`precio-local-${id}`} className="text-sm font-medium">
-                          Precio en esta sucursal (vacío = el de la empresa)
+                          {t.rotuloDelPrecioLocal}
                         </label>
                         <CampoNumero id={`precio-local-${id}`} name="precioLocal" tipo="importe" etiqueta="El precio en esta sucursal" prefijo="$" defaultValue={pr.precioLocal === null ? "" : String(pr.precioLocal)} />
                       </div>
@@ -202,11 +218,12 @@ export default async function PromocionesDeCartaPage() {
                   {ARMADO_DE_PROMO_COMO_PEDERNAL && (
                     <p className="mt-3 text-sm" data-como-lo-ve-el-cliente>
                       <span className="font-medium">Cómo lo ve el cliente: </span>
-                      {comoLoVeElCliente(pr.titulo, pr.precioAca, partes)}
+                      {comoLoVeElCliente(pr.titulo, pr.precioAca, partes, t.sinComponentes)}
                     </p>
                   )}
                   {repartoDeLasPromos && <RepartoDelPrecio precio={pr.precioAca} partes={repartoDeLasPromos[pr.id] ?? []} />}
-                  <h3 className="mt-3 text-sm font-medium">{ARMADO_DE_PROMO_COMO_PEDERNAL ? "Qué lleva" : "Cupos"}</h3>
+                  <Junto activo={ARMADO_DE_PROMO_COMO_PEDERNAL}>
+                  <h3 className="mt-3 text-sm font-medium">{t.tituloDeLoQueLleva}</h3>
                   {puedeDefinirPromos ? (
                     <FormConResultado
                       accion={async (fd: FormData) => {
@@ -216,17 +233,14 @@ export default async function PromocionesDeCartaPage() {
                         const deEntradas = lugaresDelFormulario(fd);
                         return refrescarSiOk(await guardarCuposPromoCarta(id, [...cupos, ...deEntradas]));
                       }}
-                      className="mt-1 flex flex-col gap-2"
+                      className={ARMADO_DE_PROMO_COMO_PEDERNAL ? "mt-1 flex flex-col gap-4" : "mt-1 flex flex-col gap-2"}
                     >
-                      <p className="text-sm text-tinta-tenue">
-                        {ARMADO_DE_PROMO_COMO_PEDERNAL
-                          ? "Cada componente es una sección de la carta (o un lugar con su propia lista de productos) y lleva una cantidad exacta: el mozo elige justo esa cantidad de productos de cada una. Los que se cargaron con un rango «de mín. a máx.» se siguen leyendo así hasta que les pongas una cantidad exacta."
-                          : "Las partes de la promo se arman tildando secciones de la carta: de cada sección tildada el mozo elige entre «mín.» y «máx.» productos (para que elija más, subí el «máx.»). Para un grupo propio, como «Bebida», creá la sección en Carta › Secciones y géneros y tildala acá, o sumá abajo un lugar con su propia lista de productos."}
-                      </p>
+                      {t.parrafoDeLoQueLleva !== null && <p className="text-sm text-tinta-tenue">{t.parrafoDeLoQueLleva}</p>}
                       {/* Paso 13 (opcional, no bloqueante): con los cupos YA guardados, cuánta holgura hay hoy antes de tocar el piso de
                           $0,01 por unidad en el peor caso (D3) — guardarCuposPromoCarta rechaza de una si un cambio lo cruza; esto avisa
                           ANTES de intentarlo, con lo que hay guardado ahora mismo (no recalcula en vivo lo que se está tipeando). */}
-                      {pr.cupos.length > 0 &&
+                      {t.mostrarAvisoDelPeorCaso &&
+                        pr.cupos.length > 0 &&
                         (() => {
                           const unidadesEnElPeorCaso = pr.cupos.reduce((suma, c) => suma + c.cantidadMaxima, 0);
                           const minimo = precioMinimoPromo([{ cantidad: unidadesEnElPeorCaso }]);
@@ -242,7 +256,7 @@ export default async function PromocionesDeCartaPage() {
                       <CamposLugares lugares={lugares} />
                       <div>
                         <BotonDeServidor type="submit" tamano="compacto">
-                          {ARMADO_DE_PROMO_COMO_PEDERNAL ? "Guardar lo que lleva" : "Guardar cupos"}
+                          {t.botonGuardarCupos}
                         </BotonDeServidor>
                       </div>
                     </FormConResultado>
@@ -260,21 +274,22 @@ export default async function PromocionesDeCartaPage() {
                       ))}
                     </DatosSoloLectura>
                   ) : (
-                    <p className="mt-1 text-sm text-tinta-tenue">{ARMADO_DE_PROMO_COMO_PEDERNAL ? "Sin componentes: esta promo es solo informativa, el POS la ignora." : "Sin cupos: esta promo es solo informativa, el POS la ignora."}</p>
+                    <p className="mt-1 text-sm text-tinta-tenue">{t.sinComponentes}</p>
                   )}
+                  </Junto>
 
                   {/* GO-3b (U1): las entradas de cada lugar LISTA (con una sola y mínimo = máximo, viene FIJO). */}
                   {lugares.map((l) => {
                     // Los closures "use server" capturan solo el id del lugar (texto): lo que capturan viaja al cliente.
                     const cupoId = l.id;
                     return (
-                    <div key={l.id} className="mt-3 flex flex-col gap-1" data-lugar-de-combo={l.nombre}>
+                    <div key={l.id} className={ARMADO_DE_PROMO_COMO_PEDERNAL ? "mt-3 flex flex-col gap-2" : "mt-3 flex flex-col gap-1"} data-lugar-de-combo={l.nombre}>
                       <h4 className="text-sm font-medium">
                         {l.nombre} · {esFijo(l) ? "viene fijo" : `se elige ${l.cantidadMinima === l.cantidadMaxima ? l.cantidadMaxima : `de ${l.cantidadMinima} a ${l.cantidadMaxima}`}`}
                       </h4>
                         <>
                           {l.entradas.length === 0 ? (
-                            <p className="text-sm text-tinta-tenue">Sin entradas todavía: sumá los productos que se pueden elegir acá.</p>
+                            <p className="text-sm text-tinta-tenue">{t.sinEntradas}</p>
                           ) : (
                             <ul className="flex flex-col divide-y text-sm">
                               {l.entradas.map((e) => {
@@ -291,7 +306,7 @@ export default async function PromocionesDeCartaPage() {
                                         }}
                                       >
                                         <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
-                                          {e.activa ? `Sacar «${e.nombre}»` : `Volver a ofrecer «${e.nombre}»`}
+                                          {e.activa ? t.quitarEntrada(e.nombre) : `Volver a ofrecer «${e.nombre}»`}
                                         </BotonDeServidor>
                                       </FormConResultado>
                                     )}
@@ -320,6 +335,7 @@ export default async function PromocionesDeCartaPage() {
                     </div>
                     );
                   })}
+                  </ConAire>
                 </details>
                 {puedeActivarPromos && (
                   <FormConResultado
@@ -350,7 +366,7 @@ export default async function PromocionesDeCartaPage() {
               </li>
             );
           })}
-          {!datos.promos.length && <li className="text-sm text-tinta-tenue">La empresa no tiene promos cargadas.</li>}
+          {!datos.promos.length && <li className="text-sm text-tinta-tenue">{t.sinPromos}</li>}
         </ul>
 
         {!puedeDefinirPromos ? null : seccionesActivas.length > 0 ? (
@@ -368,25 +384,29 @@ export default async function PromocionesDeCartaPage() {
                 })
               );
             }}
-            className="grid max-w-2xl grid-cols-1 gap-2 rounded border border-dashed p-3 sm:grid-cols-2"
+            className={
+              ARMADO_DE_PROMO_COMO_PEDERNAL
+                ? "grid max-w-2xl grid-cols-1 gap-4 rounded border border-dashed p-4 sm:grid-cols-2"
+                : "grid max-w-2xl grid-cols-1 gap-2 rounded border border-dashed p-3 sm:grid-cols-2"
+            }
           >
-            <h3 className="text-sm font-medium sm:col-span-2">Nueva promo (queda prendida en esta sucursal)</h3>
+            <h3 className="text-sm font-medium sm:col-span-2">{t.tituloDelAlta}</h3>
             <CamposPromo secciones={seccionesActivas} />
             <div className="sm:col-span-2">
               <Casilla
                 name="soloSalon"
-                etiqueta="Solo salón: se vende desde el POS, pero no aparece en la carta pública (web, QR ni impresa)"
-                ayuda="Útil para un menú pactado con una empresa: el precio no queda publicado."
+                etiqueta={t.soloSalonEtiqueta}
+                ayuda={t.soloSalonAyuda ?? undefined}
               />
             </div>
             <div className="sm:col-span-2">
               <BotonDeServidor type="submit" tamano="compacto">
-                Crear promo
+                {t.botonCrearPromo}
               </BotonDeServidor>
             </div>
           </FormConResultado>
         ) : (
-          <p className="text-sm text-tinta-tenue">Para cargar una promo hace falta al menos una sección de carta activa.</p>
+          <p className="text-sm text-tinta-tenue">{t.hacenFaltaSecciones}</p>
         )}
       </section>
           </div>

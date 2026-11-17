@@ -1,6 +1,10 @@
 import type { AccionClave } from "@/core/permisos/acciones";
 import type { PanelNav } from "@/core/navegacion/panel";
 import type { ClavesDeVer } from "@/core/navegacion/claves-de-ver";
+import { ARMADO_DE_PROMO_COMO_PEDERNAL } from "./armado-de-promo-como-pedernal";
+
+/** Cómo se llama la entrada del menú y su pestaña: «Combos» con el armado como Pedernal encendido (decisión del dueño, 2026-11-17: lo que Pedernal ya resolvió se hace como Pedernal), «Promociones» si no. */
+const NOMBRE_DE_LA_ENTRADA_DE_PROMOCIONES = ARMADO_DE_PROMO_COMO_PEDERNAL ? "Combos" : "Promociones";
 
 /**
  * Fuente del módulo Carta en el menú y de sus filas de pestañas (Fase 7, DEC-24 del dueño; diseño en `docs/diseno-modulo-carta-2026-10-28.md` §8): TRES entradas, «Carta» (pestañas Hoy · Secciones y
@@ -55,7 +59,7 @@ export const PESTANAS_DE_CARTA: readonly PestanaDeCarta[] = [
 
 /** Las pestañas de «Promociones»: una sola (el menú del día se retiró por decisión del dueño, poda 2026-11-13). */
 export const PESTANAS_DE_PROMOCIONES: readonly PestanaDeCarta[] = [
-  { texto: "Promociones", pantallas: [{ href: RUTA_PROMOCIONES, texto: "Promociones", accion: "carta_ver", panel: "ambos" }] },
+  { texto: NOMBRE_DE_LA_ENTRADA_DE_PROMOCIONES, pantallas: [{ href: RUTA_PROMOCIONES, texto: NOMBRE_DE_LA_ENTRADA_DE_PROMOCIONES, accion: "carta_ver", panel: "ambos" }] },
 ];
 
 /** Las pestañas de «Apariencia y publicación»: el tema es de la sucursal y el portal, de la empresa. */
@@ -78,7 +82,7 @@ export type ItemNavDeCarta = { href: string; label: string; panel: PanelNav } & 
  */
 export const NAV_CARTA: ItemNavDeCarta[] = [
   { href: RUTA_CARTA, label: "Carta", algunaDe: clavesDe(PESTANAS_DE_CARTA), panel: "sucursal" },
-  { href: RUTA_PROMOCIONES, label: "Promociones", accion: "carta_ver", panel: "ambos" },
+  { href: RUTA_PROMOCIONES, label: NOMBRE_DE_LA_ENTRADA_DE_PROMOCIONES, accion: "carta_ver", panel: "ambos" },
   { href: RUTA_APARIENCIA, label: "Apariencia y publicación", algunaDe: clavesDe(PESTANAS_DE_APARIENCIA), panel: "ambos" },
 ];
 

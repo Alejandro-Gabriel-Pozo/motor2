@@ -2,6 +2,7 @@ import { Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
 import type { ResultadoAccion } from "@/server/actions/tipos";
+import { ARMADO_DE_PROMO_COMO_PEDERNAL, textosDeLaPantallaDePromos } from "@/core/carta/public";
 import { Aviso } from "@/ui/primitivas/aviso";
 import { Casilla } from "@/ui/primitivas/casilla";
 
@@ -23,16 +24,17 @@ export function DondeSeVe({
   puedeDefinir: boolean;
   guardar: (formData: FormData) => Promise<ResultadoAccion>;
 }) {
+  const t = textosDeLaPantallaDePromos(ARMADO_DE_PROMO_COMO_PEDERNAL);
   return (
-    <div className="mt-3 flex flex-col gap-1" data-donde-se-ve={titulo}>
+    <div className={ARMADO_DE_PROMO_COMO_PEDERNAL ? "mt-3 flex flex-col gap-2" : "mt-3 flex flex-col gap-1"} data-donde-se-ve={titulo}>
       <h3 className="text-sm font-medium">Dónde se ve</h3>
       {puedeDefinir ? (
-        <FormConResultado accion={guardar} ofrecerRecargar className="flex flex-col gap-2">
+        <FormConResultado accion={guardar} ofrecerRecargar className={ARMADO_DE_PROMO_COMO_PEDERNAL ? "flex flex-col gap-3" : "flex flex-col gap-2"}>
           <Casilla
             name="soloSalon"
             defaultChecked={soloSalon}
-            etiqueta="Solo salón: se vende desde el POS, pero no aparece en la carta pública (web, QR ni impresa)"
-            ayuda="Útil para un menú pactado con una empresa: el precio no queda publicado."
+            etiqueta={t.soloSalonEtiqueta}
+            ayuda={t.soloSalonAyuda ?? undefined}
           />
           <div>
             <BotonDeServidor type="submit" tamano="compacto">
@@ -42,12 +44,12 @@ export function DondeSeVe({
         </FormConResultado>
       ) : (
         <DatosSoloLectura>
-          <Dato etiqueta="Dónde se ve">{soloSalon ? "Solo salón (no aparece en la carta pública)" : "Salón y carta pública"}</Dato>
+          <Dato etiqueta="Dónde se ve">{soloSalon ? t.soloSalonDato : "Salón y carta pública"}</Dato>
         </DatosSoloLectura>
       )}
-      {soloSalon && !tieneCupos ? (
+      {soloSalon && !tieneCupos && t.avisoSoloSalonSinCupos !== null ? (
         <Aviso variante="advertencia" forma="en-linea" data-aviso-solo-salon-sin-cupos={titulo}>
-          Esta promo está en «solo salón» pero no tiene cupos: es solo informativa y el POS la ignora, así que no se vería en ningún lado. Cargale cupos para poder venderla en el salón.
+          {t.avisoSoloSalonSinCupos}
         </Aviso>
       ) : null}
     </div>

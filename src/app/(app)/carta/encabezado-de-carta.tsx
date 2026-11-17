@@ -10,7 +10,7 @@ export function EncabezadoDeCarta({ entrada, pestana, sucursal, children }: { en
     <>
       <div className={s.appbar}>
         <h1>{entrada}</h1>
-        <span>{pestana}</span>
+        {pestana && <span>{pestana}</span>}
         <span className={s.suc}>{sucursal}</span>
       </div>
       {children && <div className={s.pestanas}>{children}</div>}

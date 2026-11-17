@@ -19,9 +19,9 @@ describe("RepartoDelPrecio", () => {
     expect(html).not.toContain("cantidad máxima");
   });
 
-  it("con un rango, además dice que se usa la cantidad máxima", () => {
+  it("con un rango, no suma la explicación del máximo (pocas palabras, pedido del dueño 2026-11-17)", () => {
     const html = renderToStaticMarkup(<RepartoDelPrecio precio={13500} partes={[{ ...PARTES[0]!, cantidadMinima: 0, cantidadMaxima: 2 }, PARTES[1]!]} />);
-    expect(html).toContain("En las partes cargadas con un rango se usa la cantidad máxima.");
+    expect(html).not.toContain("cantidad máxima");
   });
 
   it("sin productos disponibles: lo dice, sin inventar un precio; con el precio bajo el piso: muestra el mensaje", () => {
