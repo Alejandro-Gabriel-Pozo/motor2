@@ -1,4 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
+import { abrirAreasDelMenu } from "./fixtures/menu";
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
@@ -51,6 +52,7 @@ test("el menú de Catálogo tiene cinco entradas; Productos y Maestros abren sus
   // Una pantalla de Empresa (Clientes) deja el menú en ese panel, donde están las cinco entradas (Productos es de los dos).
   await page.goto("/catalogo/clientes");
   await expect(page.getByRole("heading", { name: "Clientes con descuento", exact: true })).toBeVisible();
+  await abrirAreasDelMenu(page); // menú por áreas: las cinco entradas están repartidas en Ventas, Catálogo y Compras
   for (const entrada of ["Productos", "Biblioteca de opciones", "Maestros", "Proveedores", "Clientes con descuento"]) {
     await expect(menu(page).getByRole("link", { name: entrada, exact: true }), entrada).toHaveCount(1);
   }

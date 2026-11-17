@@ -17,8 +17,8 @@
   PROMO menu activa=true creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=10000 seccionCartaId=platos soloSalon=false titulo=Menú del día
   PROMO_SUCURSAL promoSucursal1 activa=true empresaId=empresa precioLocal=null promoCartaId=menu sucursalId=central
   RECETA_SUCURSAL recetaSucursal1 empresaId=empresa habilitada=true productoId=empanada sucursalId=central
-  RECETA_VERSION recetaVersion1 basadaEnVersionId=null comentarios=null creadoEn=<fecha> empresaId=empresa equipamientoNecesario=null notasAdicionales=null presentacionEmplatado=null productoId=empanada racionTamano=null racionUnidadId=null racionesCantidad=null rendimientoCantidad=null rendimientoUnidadId=null sucursalId=central tiempoCoccionMinutos=null tiempoPreparacionMinutos=null version=1
-  RECETA_VERSION recetaVersion2 basadaEnVersionId=null comentarios=null creadoEn=<fecha> empresaId=empresa equipamientoNecesario=null notasAdicionales=null presentacionEmplatado=null productoId=pizza racionTamano=null racionUnidadId=null racionesCantidad=null rendimientoCantidad=null rendimientoUnidadId=null sucursalId=null tiempoCoccionMinutos=null tiempoPreparacionMinutos=null version=1
+  RECETA_VERSION recetaVersion1 basadaEnVersionId=null baseDeCantidad=NETA comentarios=null creadoEn=<fecha> empresaId=empresa equipamientoNecesario=null notasAdicionales=null presentacionEmplatado=null productoId=empanada racionTamano=null racionUnidadId=null racionesCantidad=null rendimientoCantidad=null rendimientoUnidadId=null sucursalId=central tiempoCoccionMinutos=null tiempoPreparacionMinutos=null version=1
+  RECETA_VERSION recetaVersion2 basadaEnVersionId=null baseDeCantidad=NETA comentarios=null creadoEn=<fecha> empresaId=empresa equipamientoNecesario=null notasAdicionales=null presentacionEmplatado=null productoId=pizza racionTamano=null racionUnidadId=null racionesCantidad=null rendimientoCantidad=null rendimientoUnidadId=null sucursalId=null tiempoCoccionMinutos=null tiempoPreparacionMinutos=null version=1
   UNIDAD caja activa=true codigoFijo=null decimales=0 empresaId=empresa magnitud=CANTIDAD nombre=caja
   UNIDAD kg activa=true codigoFijo=null decimales=2 empresaId=empresa magnitud=PESO nombre=kg
   UNIDAD unidad activa=true codigoFijo=null decimales=0 empresaId=empresa magnitud=CANTIDAD nombre=unidad
@@ -293,7 +293,7 @@
 ### rendimiento: la receta cambió (v2) mientras se miraba el reporte
   resultado: {"ok":false,"mensaje":"La receta cambió mientras mirabas el reporte; recargá."}
   efectos: revalidarCartasPublicas=0 refrescar=0
-  + RECETA_VERSION recetaVersion3 basadaEnVersionId=null comentarios=null creadoEn=<fecha> empresaId=empresa equipamientoNecesario=null notasAdicionales=null presentacionEmplatado=null productoId=pizza racionTamano=null racionUnidadId=null racionesCantidad=null rendimientoCantidad=null rendimientoUnidadId=null sucursalId=null tiempoCoccionMinutos=null tiempoPreparacionMinutos=null version=2
+  + RECETA_VERSION recetaVersion3 basadaEnVersionId=null baseDeCantidad=NETA comentarios=null creadoEn=<fecha> empresaId=empresa equipamientoNecesario=null notasAdicionales=null presentacionEmplatado=null productoId=pizza racionTamano=null racionUnidadId=null racionesCantidad=null rendimientoCantidad=null rendimientoUnidadId=null sucursalId=null tiempoCoccionMinutos=null tiempoPreparacionMinutos=null version=2
 ### rendimiento: volver al central con la receta cambiada
   resultado: {"ok":false,"mensaje":"La receta cambió mientras mirabas el reporte; recargá."}
   efectos: revalidarCartasPublicas=0 refrescar=0
