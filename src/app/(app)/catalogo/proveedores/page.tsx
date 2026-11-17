@@ -13,6 +13,9 @@ import { IconoDeAccion } from "@/components/iconos";
 import { claseDeBoton } from "@/ui/primitivas/boton";
 import { etiquetaDeOferta } from "@/core/features/catalogo/oferta-de-proveedor";
 import { AvisoSoloLecturaDeCatalogo } from "@/components/catalogo/aviso-solo-lectura";
+import { BuscadorDelDirectorio } from "@/components/catalogo/buscador-del-directorio";
+import { DIRECTORIO_AL_ESTILO_DE_PEDERNAL, filasDelDirectorio, hayBusquedaDelDirectorio, leerBusquedaDelDirectorio } from "@/core/catalogo/public";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 /**
  * Lista de proveedores. Ya no comparte pantalla con el formulario: el alta
@@ -23,7 +26,7 @@ import { AvisoSoloLecturaDeCatalogo } from "@/components/catalogo/aviso-solo-lec
  * Ver ≠ escribir (DEC-33, Fase 7): «Editar» y «Activar/Desactivar» se dibujan con el «Editar» de `proveedores` (la clave de `actualizarProveedor` y `actualizarActivaProveedor`); el alta, con el de
  * `proveedor_alta`. Quien solo ve lee la lista con el aviso.
  */
-export default async function ProveedoresPage() {
+export default async function ProveedoresPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"q" | "desactivados">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
@@ -39,6 +42,10 @@ export default async function ProveedoresPage() {
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "proveedores", ctx.db),
     listarProveedores(),
   ]);
+
+  // Paso 8 del plan de pantallas (dueño, 2026-11-17: «4a»): buscador y desactivados ocultos, como el directorio de Pedernal (interruptor `DIRECTORIO_AL_ESTILO_DE_PEDERNAL`).
+  const busqueda = leerBusquedaDelDirectorio(unicosDeUrl(await searchParams));
+  const visibles = filasDelDirectorio(proveedores, busqueda, (p) => [p.nombre, p.codigo, p.contacto]);
 
   return (
     <div className="space-y-8">
@@ -60,6 +67,8 @@ export default async function ProveedoresPage() {
 
       {!puedeEditar && !puedeDarDeAlta && <AvisoSoloLecturaDeCatalogo que="los proveedores" />}
 
+      {DIRECTORIO_AL_ESTILO_DE_PEDERNAL && <BuscadorDelDirectorio accion="/catalogo/proveedores" busqueda={busqueda} etiqueta="Buscar por nombre, código o contacto" marcador="Nombre, código o contacto…" />}
+
       <CajaDesplazable etiqueta="Tabla de proveedores">
         <table className="w-full text-sm">
           <thead>
@@ -73,7 +82,7 @@ export default async function ProveedoresPage() {
             </tr>
           </thead>
           <tbody>
-            {proveedores.map((p) => (
+            {visibles.map((p) => (
               <tr key={p.id} className="border-b">
                 <td className="py-2">{p.codigo}</td>
                 <td>
@@ -107,10 +116,10 @@ export default async function ProveedoresPage() {
                 </td>
               </tr>
             ))}
-            {!proveedores.length && (
+            {!visibles.length && (
               <tr>
                 <td className="py-2 text-tinta-tenue" colSpan={6}>
-                  Sin proveedores.
+                  {proveedores.length > 0 && DIRECTORIO_AL_ESTILO_DE_PEDERNAL ? (hayBusquedaDelDirectorio(busqueda) ? "Sin resultados." : "Sin proveedores activos.") : "Sin proveedores."}
                 </td>
               </tr>
             )}

@@ -83,6 +83,9 @@ export {
   necesitaLaEmpresaEntera,
 } from "./filtros-de-productos";
 export type { EntradaDeFiltrosDeProductos, FaltaFiltrable, FiltrosDeProductos, TipoFiltrable } from "./filtros-de-productos";
+// Interruptor del estilo de Pedernal en las listas de Proveedores y Clientes (Frente 6, paso 8): buscador, desactivados ocultos y alta de proveedor solo con el nombre.
+export { DIRECTORIO_AL_ESTILO_DE_PEDERNAL, filasDelDirectorio, hayBusquedaDelDirectorio, leerBusquedaDelDirectorio } from "./directorio-de-la-lista";
+export type { BusquedaDelDirectorio } from "./directorio-de-la-lista";
 // La lista de Productos (docs/diseno-productos-igual-a-pedernal-2026-11-13.md, D1): qué dice en el lugar del precio.
 export { textoDelPrecioEnLaLista } from "./precio-en-la-lista";
 // Fase 7 (DEC-13): el grupo Catálogo del menú, sus filas de pestañas y las rutas que cuelgan de cada entrada (puro; lo arma `core/navegacion/estructura.ts` y lo dibuja `FilaDeCatalogo`).
