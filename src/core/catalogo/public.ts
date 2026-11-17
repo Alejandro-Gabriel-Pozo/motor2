@@ -83,6 +83,9 @@ export {
   necesitaLaEmpresaEntera,
 } from "./filtros-de-productos";
 export type { EntradaDeFiltrosDeProductos, FaltaFiltrable, FiltrosDeProductos, TipoFiltrable } from "./filtros-de-productos";
+// Historial de precios de la ficha del producto (Frente 6, paso 7): puro, desde las filas de auditoría del precio.
+export { CAMBIOS_DE_PRECIO_A_MOSTRAR, armarHistorialDePrecios } from "./historial-de-precios";
+export type { FilaDeAuditoriaDePrecio, LineaDelHistorialDePrecios } from "./historial-de-precios";
 // La lista de Productos (docs/diseno-productos-igual-a-pedernal-2026-11-13.md, D1): qué dice en el lugar del precio.
 export { textoDelPrecioEnLaLista } from "./precio-en-la-lista";
 // Fase 7 (DEC-13): el grupo Catálogo del menú, sus filas de pestañas y las rutas que cuelgan de cada entrada (puro; lo arma `core/navegacion/estructura.ts` y lo dibuja `FilaDeCatalogo`).
