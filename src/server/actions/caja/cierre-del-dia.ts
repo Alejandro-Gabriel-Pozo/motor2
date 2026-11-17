@@ -149,7 +149,7 @@ export async function cerrarJornadaDeCaja(entrada: EntradaDeCerrarJornada): Prom
 }
 
 /**
- * «Registrar un ajuste» sobre una jornada ya cerrada. El permiso `caja_registrar_ajuste` tiene piso administrador: el gate rechaza al operador aunque tenga la fila prendida; el caso de uso recibe `true` porque la acción solo llega acá con el
+ * «Registrar un ajuste» sobre una jornada ya cerrada. El permiso `caja_registrar_ajuste` es de piso operario (PISOS-65): lo delega la empresa fila por fila y el gate rechaza a quien no tiene la fila; el caso de uso recibe `true` porque la acción solo llega acá con el
  * permiso aprobado (su propio `SIN_PERMISO_PARA_AJUSTAR` queda como segunda barrera para otros llamadores).
  */
 export async function registrarAjusteDeCaja(entrada: EntradaDeRegistrarAjuste): Promise<ResultadoDeCierreDelDia> {

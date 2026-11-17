@@ -23,14 +23,14 @@ import { crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID as EMPRESA, limpiarBas
 /**
  * Caja, cierre del día, etapa A (2026-11-17): las 7 Server Actions y las 4 lecturas del cierre del día contra Postgres real y la sesión simulada. Por cada acción: el permiso EXACTO (rechaza sin él y sin tocar la base; con él pasa), el formato (un
  * rechazo de guard no toca la base), el cambio de permisos a mitad, el resultado con el caso de uso real, la idempotencia (doble clic y misma clave) y la concurrencia por las acciones reales (carreras de verdad con `Promise.allSettled`). El operador
- * NO registra ajustes aunque tenga la fila prendida (piso administrador). Las lecturas piden `caja_jornada_ver` y no devuelven nada de otra sucursal.
+ * registra ajustes solo si tiene la fila prendida (las siete son de piso operario desde PISOS-65). Las lecturas piden `caja_jornada_ver` y no devuelven nada de otra sucursal.
  * Mutaciones (rojo/verde; se corrieron a mano al escribir la prueba): (1) quitar el `conPermiso` de una acción (llamar al caso de uso sin envoltorio) deja en rojo «(a) con todas MENOS la que exige» y «(b) sin ninguna clave» de esa acción; (2) usar la clave
  * equivocada en una acción (p. ej. `caja_jornada_cerrar` en `cancelarAuditoriaDeJornada`) deja en rojo «(a)» y «(c) con el permiso exacto» de las dos (la matriz exacta lo detecta); (3) sacar la validación del guard (`guardComandoDeJornada` que siempre
  * devuelve ok) deja en rojo «(d) el formato».
  */
 type Clave = "caja_jornada_ver" | "caja_jornada_iniciar_auditoria" | "caja_jornada_cancelar_auditoria" | "caja_jornada_cerrar" | "caja_corregir_medio_de_cobro" | "caja_declarar_total" | "caja_registrar_ajuste";
 const TODAS: readonly Clave[] = ["caja_jornada_ver", "caja_jornada_iniciar_auditoria", "caja_jornada_cancelar_auditoria", "caja_jornada_cerrar", "caja_corregir_medio_de_cobro", "caja_declarar_total", "caja_registrar_ajuste"];
-const DE_OPERARIO: readonly Clave[] = TODAS.filter((c) => c !== "caja_registrar_ajuste");
+const DE_OPERARIO: readonly Clave[] = TODAS; // las siete nacen de piso operario (PISOS-65): la empresa decide fila por fila
 
 let s: Awaited<ReturnType<typeof sembrarSalon>>;
 const actores: Record<string, { id: string; email: string }> = {};
@@ -110,7 +110,7 @@ beforeEach(async () => {
     actores[`menos-${faltante}`] = await crearUsuarioConMembresia({ email: `menos-${faltante}@test.com`, sucursalId: s.sucursalId, rolId: rol.id });
   }
   actores.ninguna = await crearUsuarioConMembresia({ email: "ninguna@test.com", sucursalId: s.sucursalId, rolId: (await rolCon("sin-cierre", [])).id });
-  // El «operador»: las siete filas prendidas a mano. El piso administrador del ajuste manda sobre la fila.
+  // El «operador»: las siete filas prendidas a mano.
   actores.operador = await crearUsuarioConMembresia({ email: "operador-cierre@test.com", sucursalId: s.sucursalId, rolId: (await rolCon("operador-cierre", TODAS)).id });
   for (const exacta of DE_OPERARIO) {
     actores[`solo-${exacta}`] = await crearUsuarioConMembresia({ email: `solo-${exacta}@test.com`, sucursalId: s.sucursalId, rolId: (await rolCon(`solo-${exacta}`, [exacta])).id });
@@ -124,7 +124,7 @@ afterAll(() => {
 interface Accion {
   nombre: string;
   exige: Clave;
-  /** Quién la tiene con el permiso exacto (el piso manda: la de piso administrador solo la alcanza el administrador). */
+  /** Quién la tiene con el permiso exacto (las siete son de piso operario). */
   exacto: string;
   /** Prepara lo que la acción necesita (corre como administrador) y devuelve la llamada. */
   preparar: () => Promise<() => Promise<{ ok: boolean; mensaje: string; codigo?: string; yaExistia?: boolean }>>;
@@ -195,7 +195,7 @@ const ACCIONES: Accion[] = [
   {
     nombre: "registrarAjusteDeCaja",
     exige: "caja_registrar_ajuste",
-    exacto: "admin",
+    exacto: "solo-caja_registrar_ajuste",
     preparar: async () => {
       await como(s.admin);
       const abierta = await abrirSesionDeCaja({ claveIdempotencia: claveNueva(), fondo: "100" });
@@ -275,19 +275,19 @@ describe("cada acción del cierre del día verifica en el servidor el permiso EX
   });
 });
 
-describe("el operador NO registra ajustes aunque tenga la fila prendida a mano (el piso administrador manda)", () => {
-  it("con las siete filas prendidas, `registrarAjusteDeCaja` lo rechaza por permiso al operador, sin escribir", async () => {
+describe("el ajuste y el cierre se delegan fila por fila (las siete claves son de piso operario)", () => {
+  it("sin la fila de `caja_registrar_ajuste`, `registrarAjusteDeCaja` se rechaza por permiso y no escribe", async () => {
     await como(s.admin);
     const abierta = await abrirSesionDeCaja({ claveIdempotencia: claveNueva(), fondo: "100" });
     await forzarJornadaCerrada(PASADO);
     const antes = await foto();
-    await como(actores.operador!);
+    await como(actores["menos-caja_registrar_ajuste"]!);
     expect(await registrarAjusteDeCaja({ claveIdempotencia: claveNueva(), sesionId: abierta.sesionId!, medioDePagoId: await efectivoId(), importe: "-5", motivo: "Faltó un vale", corrigeJornada: PASADO })).toMatchObject({ ok: false, mensaje: DICHO_POR_PERMISO });
     expect(await foto()).toEqual(antes);
     expect(await prismaAdmin.movimientoCaja.count({ where: { clase: "AJUSTE" } })).toBe(0);
   });
 
-  it("con esas mismas filas el operador sí inicia el cierre del día (piso operario)", async () => {
+  it("con las filas prendidas el operador inicia el cierre del día", async () => {
     const d = await diaConLaCajaCerrada();
     await como(actores.operador!);
     expect(await iniciarAuditoriaDeJornada({ fechaDeNegocio: d.fecha })).toMatchObject({ ok: true });
