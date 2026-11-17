@@ -92,7 +92,7 @@ const CASOS: CasoDeCaracterizacion[] = [
     { productoId: p.MP_A!, cantidad: 1, precioTotal: 17.77, referenciaProveedor: REFERENCIA_DE_PRUEBA },
   ] },
   { nombre: "con lote de vencimiento", items: (p) => [{ productoId: p.MP_A!, cantidad: 5, precioTotal: 50, loteVencimiento: LOTE, referenciaProveedor: REFERENCIA_DE_PRUEBA }] },
-  { nombre: "con detalle libre de la compra y de la línea", detalleLibre: "Entrega de la mañana", items: (p) => [{ productoId: p.MP_A!, cantidad: 5, precioTotal: 50, detalle: "bolsas de 25", referenciaProveedor: REFERENCIA_DE_PRUEBA }] },
+  { nombre: "con detalle libre de la compra (la línea no tiene `detalle`: una clave no declarada se rechaza, oráculo C5)", detalleLibre: "Entrega de la mañana", items: (p) => [{ productoId: p.MP_A!, cantidad: 5, precioTotal: 50, referenciaProveedor: REFERENCIA_DE_PRUEBA }] },
   { nombre: "unidad de compra distinta de la de stock: 3 cajas × 25 = 75 kg", items: (p) => [{ productoId: p.MP_CAJA!, cantidad: 3, precioTotal: 1000, referenciaProveedor: REFERENCIA_DE_PRUEBA }] },
   { nombre: "entra a otra sección, con fecha de hace 9 días", diasAtras: 9, enOtraSeccion: true, items: (p) => [{ productoId: p.MP_B!, cantidad: 12, precioTotal: 480, referenciaProveedor: REFERENCIA_DE_PRUEBA }] },
 ];

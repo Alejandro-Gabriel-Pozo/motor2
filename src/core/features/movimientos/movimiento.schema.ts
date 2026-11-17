@@ -22,7 +22,7 @@ export interface ItemMovimientoInput {
   precioTotal?: number;
   /** Compra/Devolución a Proveedor: cuando el producto se compra "por unidad" pero el contenido pesa distinto cada vez (carne, fiambre) — se usa tal cual como cantidad final de stock. */
   pesoReal?: number | null;
-  /** Presentación de compra alternativa (Presentacion.unidadCompraId) — si no es una presentación real y activa de este producto, se ignora y sigue con la default. */
+  /** Presentación de compra alternativa (Presentacion.unidadCompraId) — debe ser una presentación real y activa del producto, su unidad de compra por defecto, su unidad de stock, o una unidad de la misma dimensión con conversión exacta; cualquier otra RECHAZA la línea (nunca se ignora en silencio). */
   unidadCompraId?: string | null;
   /** Compra/Devolución a Proveedor: cómo llama el proveedor a este producto — se guarda en ProveedorPorProducto, puramente informativo. */
   referenciaProveedor?: string;

@@ -28,6 +28,7 @@ export { leerCantidadTecleada, unidadesDeLectura } from "./lectura-de-cantidad";
 export type { DescripcionDeLectura, UnidadDeLectura } from "./lectura-de-cantidad";
 // Guardia de unidad de las recetas (docs/diseno-guardia-de-unidad-receta-2026-11-09.md): lo desproporcionado se rechaza salvo confirmación.
 export { juzgarCantidadesDeIngredientes } from "./guardia-de-unidad";
+export { convertirCantidadExacta } from "./unidades-de-medida";
 export { filtrarPreciosLocalesVigentes } from "./precio-local";
 export { cambioDePrecio } from "./cambio-de-precio";
 export type { CambioDePrecio } from "./cambio-de-precio";

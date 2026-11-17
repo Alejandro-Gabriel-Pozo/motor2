@@ -100,15 +100,16 @@ describe("registrarMovimiento", () => {
     expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(40);
   });
 
-  it("Compra ignora un unidadCompraId que no es una Presentación real/activa de ese producto, y usa el factor default", async () => {
+  it("Compra RECHAZA un unidadCompraId que no es presentación real/activa, ni unidad del producto, ni convertible de forma exacta (antes se ignoraba en silencio: 2026-11-17, oráculo C1 negativo)", async () => {
     const mp = await crearMP("Harina simple");
     const resultado = await registrarMovimiento({
       proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId,
       items: [{ productoId: mp.id, cantidad: 5, unidadCompraId: unidadGId, referenciaProveedor: REFERENCIA_DE_PRUEBA }],
-      claveIdempotencia: crypto.randomUUID(), // no existe ninguna Presentacion para este producto
+      claveIdempotencia: crypto.randomUUID(), // no existe ninguna Presentacion para este producto; la unidad g de este fixture no tiene código fijo
     });
-    expect(resultado.ok, resultado.mensaje).toBe(true);
-    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(5);
+    expect(resultado.ok).toBe(false);
+    expect(await prisma.operacion.count({ where: { proceso: "COMPRA" } })).toBe(0);
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(0);
   });
 
   it("Merma resta stock (signoStock -1) — el bug de v2.1.0 (Merma sin signo) no puede repetirse: el signo sale de un solo lugar (TRANSICIONES), no de una lista aparte", async () => {
