@@ -44,8 +44,8 @@ describe("crearEmpresa: lo que deja una empresa recién creada", () => {
     expect(empresa).toMatchObject({ id: resultado.empresaId, nombre: "Pizzería Norte", estado: "ACTIVE", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS" });
 
     const roles = await prismaAdmin.rol.findMany({ where: { empresaId: empresa.id }, orderBy: { nombre: "asc" } });
-    expect(roles.map((r) => r.nombre)).toEqual(["admin", "operador"]);
-    // G1: los dos roles de sistema nacen con su clave estable (igual al nombre de hoy).
+    expect(roles.map((r) => r.nombre)).toEqual(["administrador", "empleado"]); // P3: nombres visibles de fábrica
+    // G1: los dos roles de sistema nacen con su clave estable (ya no igual al nombre visible).
     expect(roles.map((r) => r.clave)).toEqual(["admin", "operador"]);
 
     // La matriz de permisos es la misma que siembra prisma/seed.ts: cada acción × cada rol, Ver = Editar.
@@ -53,7 +53,7 @@ describe("crearEmpresa: lo que deja una empresa recién creada", () => {
     expect(permisos).toHaveLength(ACCIONES.length * 2);
     for (const rol of roles) {
       for (const accion of ACCIONES) {
-        const esperado = (accion.rolesEditarSemilla as readonly string[]).includes(rol.nombre);
+        const esperado = (accion.rolesEditarSemilla as readonly string[]).includes(rol.clave as string); // `rolesEditarSemilla` nombra al rol por su clave (el nombre visible es otro)
         const fila = permisos.find((p) => p.rolId === rol.id && p.accionClave === accion.clave);
         expect(fila, `${rol.nombre}/${accion.clave}`).toMatchObject({ puedeEditar: esperado, puedeVer: esperado });
       }
@@ -85,7 +85,8 @@ describe("crearEmpresa: lo que deja una empresa recién creada", () => {
     const membresiaSucursal = await prismaAdmin.usuarioSucursal.findMany({ where: { usuarioId: usuario.id }, include: { rol: true } });
     expect(membresiaSucursal).toHaveLength(1);
     expect(membresiaSucursal[0]).toMatchObject({ empresaId: resultado.empresaId, sucursalId: resultado.sucursalId });
-    expect(membresiaSucursal[0].rol.nombre).toBe("admin");
+    expect(membresiaSucursal[0].rol.nombre).toBe("administrador");
+    expect(membresiaSucursal[0].rol.clave).toBe("admin");
   });
 
   it("un usuario que ya existe se reusa (queda en las dos empresas) en vez de duplicarse", async () => {

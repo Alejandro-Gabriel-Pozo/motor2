@@ -28,6 +28,9 @@ describe("G3: nombres de rol (regla pura)", () => {
     expect(mensajeSiNombreDeRolNoPermitido("operario", "operador")).toBeNull();
     expect(mensajeSiNombreDeRolNoPermitido("admin", "operador")).toMatch(/reservado/);
     expect(mensajeSiNombreDeRolNoPermitido("operador", null)).toMatch(/reservado/);
+    expect(mensajeSiNombreDeRolNoPermitido("empleado", "operador")).toBeNull();
+    expect(mensajeSiNombreDeRolNoPermitido("empleado", "admin")).toMatch(/reservado/);
+    expect(mensajeSiNombreDeRolNoPermitido("empleado", null)).toMatch(/reservado/);
     expect(mensajeSiNombreDeRolNoPermitido("administrador", null)).toMatch(/reservado/);
     expect(mensajeSiNombreDeRolNoPermitido("gerente", null)).toMatch(/reservado/);
     expect(mensajeSiNombreDeRolNoPermitido("gerente", "admin")).toMatch(/reservado/);

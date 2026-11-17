@@ -121,7 +121,7 @@ describe("paridad ACCIONES ↔ migraciones: una base real termina con el catálo
     const filas = await base.cliente.query<{ clave: string; descripcion: string }>(`SELECT "clave", "descripcion" FROM "Accion"`);
     enBase = new Map(filas.rows.map((f) => [f.clave, f.descripcion]));
     const matriz = await base.cliente.query<{ accionClave: string }>(
-      `SELECT p."accionClave" FROM "PermisoRol" p JOIN "Rol" r ON r."id" = p."rolId" WHERE r."nombre" = $1 AND p."puedeEditar" = true`,
+      `SELECT p."accionClave" FROM "PermisoRol" p JOIN "Rol" r ON r."id" = p."rolId" WHERE r."clave" = $1 AND p."puedeEditar" = true`, // por CLAVE: el nombre visible del admin pasó a «administrador» (migración 20261117100200)
       ["admin"]
     );
     editaElAdmin = new Set(matriz.rows.map((f) => f.accionClave));

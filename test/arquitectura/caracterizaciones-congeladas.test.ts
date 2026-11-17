@@ -329,6 +329,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Compras N3 sobre el origin/main integrado (e8b07af3, con Caja C1 PR-B y Roles P2 ya declarados arriba con los blobs `30eb8c0f` y `d2cf9388`): la acción `compra_controlar_recepcion` (admin y operador) suma a la huella 4 líneas `PERMISO` (una por foto y rol: `compra_controlar_recepcion ver=true editar=true`) y `ACCIONES` pasa de 139 a 140 en las dos fotos; ninguna otra línea cambia. Las dos entradas anteriores de esta rama (blobs `22f3ad56` y `8c2e41f2`) describían estados intermedios sin Roles P2 y se reemplazan por esta, la del estado final.",
       },
+      {
+        blob: "95e87ddd1d6d2497e2c8c9e9116cfd57faa4c825",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `8d004cbd` (Compras N3 en `main`, con la huella de gobierno ya declarada arriba con el blob `7c3e168e`).
+        commit: "8d004cbd",
+        motivo:
+          "Roles P3, nombres visibles de los roles base (CAMBIA SOLO TEXTO; la clave interna no cambia): la siembra de fábrica imprime `ROL … nombre=administrador` y `nombre=empleado` en lugar de `admin` y `operador` (4 líneas: 2 por foto), y el rol que quedan asignando las altas por invitación se audita con el nombre visible: las 32 líneas `AUDITORIA … rol (alta por invitación)` pasan de `valorNuevo=operador`/`admin` a `valorNuevo=empleado`/`administrador` (16 por cada nombre; el CI de GitHub marcó la diferencia exacta). Ningún permiso, resultado ni mensaje cambia. Aprobada por el dueño el 2026-11-17: «5.-Si, yo agregaria encargado. O si se lo puede crear lo hago yo» (nombres Gerente, Administrador y Empleado y regeneración de las dos huellas; motor2-docs, seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md, sección «Respuestas del dueño en el chat sobre libro, menú, Compras, depósitos, roles y T2»).",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-aceptacion.golden.txt": {
@@ -343,6 +350,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "a428877",
         motivo:
           "E1 (paridad con Pedernal; CAMBIA COMPORTAMIENTO, decisión del dueño, 2026-11-15, chat con el orquestador, relatada: «Como Pedernal (Recomendada)» para los mensajes del CUIT): validarCuit usa los textos de Pedernal (apps/plataforma/logica/errores-de-plataforma.ts:84-88 de ZuluHub-ERP). Cambian SOLO las dos líneas de mensaje de CUIT (formato y dígito verificador); el resto de la huella queda idéntico.",
+      },
+      {
+        blob: "7b760b98948fcfa93a27d4c0674713de6425a66c",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `d6127dda` (la integración de `main` en Roles P3).
+        commit: "d6127dda",
+        motivo:
+          "Roles P3, nombres visibles de los roles base (CAMBIA SOLO TEXTO): el valor nuevo de las auditorías de alta de rol por invitación (`valorNuevo`) pasa de `admin`/`operador` a `administrador`/`empleado` (4 líneas: 2 por foto). Ningún permiso, resultado ni mensaje cambia. Aprobada por el dueño el 2026-11-17: «5.-Si, yo agregaria encargado. O si se lo puede crear lo hago yo» (nombres Gerente, Administrador y Empleado y regeneración de las dos huellas; motor2-docs, seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md, sección «Respuestas del dueño en el chat sobre libro, menú, Compras, depósitos, roles y T2»).",
       },
     ],
   },
