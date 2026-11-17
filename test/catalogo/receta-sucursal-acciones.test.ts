@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, crearUsuarioConMembresia, prisma, prismaAdmin } from "../setup/test-db";
 import { crearMembresia } from "../setup/membresia";
 import { habilitadaDeRecetaPropia, versionVigenteDeReceta } from "../setup/version-de-receta";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
@@ -256,6 +256,35 @@ describe("receta propia por sucursal: acciones", () => {
       expect((await crearRecetaPropiaDesdeLaCentral(pv.id, await versionPropia(pv.id), await habilitadaPropia(pv.id))).ok).toBe(true);
       expect((await agregarIngredienteARecetaPropia(pv.id, linea(tomate.id, 3), await versionPropia(pv.id), await habilitadaPropia(pv.id))).ok).toBe(true); // propia de Norte v2: harina, queso, tomate
       enSucursal(centralId);
+    });
+
+    // M3a (2026-11-17, «la marca viaja con la copia»): la copia conserva la marca de la versión de origen (diseño de merma §4); hoy ningún camino de la aplicación escribe BRUTA, así que la
+    // versión de origen se marca directo en la base (como superusuario) para probar que la copia NO la pisa con el DEFAULT NETA.
+    it("la propia creada desde la central conserva la marca de la central (BRUTA queda BRUTA; NETA, NETA) y la central no cambia", async () => {
+      const central = (await centrales())[0];
+      expect(central.baseDeCantidad).toBe("NETA");
+      await prismaAdmin.recetaVersion.update({ where: { id: central.id }, data: { baseDeCantidad: "BRUTA" } });
+      const r = await crearRecetaPropiaDesdeLaCentral(pv.id, await versionPropia(pv.id), await habilitadaPropia(pv.id));
+      expect(r.ok, r.mensaje).toBe(true);
+      expect((await propias(centralId))[0]?.baseDeCantidad).toBe("BRUTA");
+      expect((await centrales())[0]?.baseDeCantidad).toBe("BRUTA");
+
+      // Control: con la central NETA (el caso de siempre) la propia nace NETA.
+      await prismaAdmin.recetaVersion.deleteMany({ where: { sucursalId: centralId } });
+      await prismaAdmin.recetaSucursal.deleteMany({ where: { sucursalId: centralId } });
+      await prismaAdmin.recetaVersion.update({ where: { id: central.id }, data: { baseDeCantidad: "NETA" } });
+      const r2 = await crearRecetaPropiaDesdeLaCentral(pv.id, await versionPropia(pv.id), await habilitadaPropia(pv.id));
+      expect(r2.ok, r2.mensaje).toBe(true);
+      expect((await propias(centralId))[0]?.baseDeCantidad).toBe("NETA");
+    });
+
+    it("la receta copiada de la propia de otra sucursal conserva la marca de la versión de origen", async () => {
+      const origen = await propias(norteId);
+      await prismaAdmin.recetaVersion.update({ where: { id: origen[1].id }, data: { baseDeCantidad: "BRUTA" } });
+      const r = await copiarRecetaPropiaDeOtraSucursal(pv.id, norteId, true, await versionPropia(pv.id), await habilitadaPropia(pv.id));
+      expect(r.ok, r.mensaje).toBe(true);
+      expect((await propias(centralId))[0]?.baseDeCantidad).toBe("BRUTA");
+      expect((await propias(norteId)).map((v) => v.baseDeCantidad)).toEqual(["NETA", "BRUTA"]); // la de origen no se toca
     });
 
     it("exige la confirmación explícita", async () => {
