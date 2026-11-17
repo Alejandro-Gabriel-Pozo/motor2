@@ -82,8 +82,13 @@ describe("arrastre de calibraciones según la base de la versión (M3d)", () => 
 
     const r = await guardarRecetaConBase(pv.id, linea(), "BRUTA");
     expect(r.ok, r.mensaje).toBe(true);
-    expect(r.mensaje).toContain("descartó");
-    expect(r.mensaje).toContain("la receta pasó de neta a bruta");
+    // El texto CONFIRMADO por el dueño (2026-11-17, «ok»), plural: versión, receta, cantidad y el detalle «Sucursal» para «Ingrediente» (valor) de cada una, en castellano (el orden de las dos
+    // sucursales lo da la base, así que se aceptan los dos).
+    const aCentral = "«Central» para «Bife» (1,8 kg)";
+    const norteTxt = "«Norte» para «Bife» (0,9 kg)";
+    const armar = (detalle: string) =>
+      `Se guardó la versión 2 de «Bife a la criolla» (ahora cargada en bruto). Se descartaron 2 ajustes de sucursal porque eran del valor «neto» y ya no coinciden con la receta: ${detalle}. Si hace falta, volvé a ajustarlos desde el reporte de rendimiento.`;
+    expect([armar(`${aCentral} y ${norteTxt}`), armar(`${norteTxt} y ${aCentral}`)]).toContain(r.mensaje);
 
     const v2 = await prisma.recetaVersion.findFirstOrThrow({ where: { productoId: pv.id, version: 2 }, include: { ingredientes: true } });
     expect(v2.baseDeCantidad).toBe("BRUTA");
@@ -101,6 +106,16 @@ describe("arrastre de calibraciones según la base de la versión (M3d)", () => 
     expect(norte).toHaveLength(1);
     expect(Number(norte[0].valorAnterior)).toBe(0.9);
     expect(norte[0].sucursalId).toBe(sucursalNorteId);
+  });
+
+  it("neta → bruta con UNA sola calibración: el texto confirmado en singular (y si solo estaba calibrada la merma, muestra la merma)", async () => {
+    const lineaV1 = await sembrarV1("NETA");
+    expect((await fijarRendimientoLocal(lineaV1, { cantidad: null, mermaPorcentaje: 20 })).ok).toBe(true);
+    const r = await guardarRecetaConBase(pv.id, linea(), "BRUTA");
+    expect(r.ok, r.mensaje).toBe(true);
+    expect(r.mensaje).toBe(
+      "Se guardó la versión 2 de «Bife a la criolla» (ahora cargada en bruto). Se descartó 1 ajuste de sucursal porque era del valor «neto» y ya no coincide con la receta: «Central» para «Bife» (merma 20 %). Si hace falta, volvé a ajustarlo desde el reporte de rendimiento."
+    );
   });
 
   it("bruta → neta (al revés) también descarta: nunca se reinterpreta un número en otra base", async () => {

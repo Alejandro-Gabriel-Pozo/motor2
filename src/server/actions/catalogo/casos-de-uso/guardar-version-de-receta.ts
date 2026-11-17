@@ -1,6 +1,7 @@
 import "server-only";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
-import { describirCambioVersionReceta, describirCopiaDeRecetaPropia, describirDescarteArrastre, describirMotivoDeCambioDeBase, describirRecetaPropiaGuardada, leerBaseDeCantidad } from "@/core/catalogo/public";
+import { describirCalibracionDescartadaPorBase, describirCambioVersionReceta, describirCopiaDeRecetaPropia, describirDescarteArrastre, describirMotivoDeCambioDeBase, describirRecetaPropiaGuardada, leerBaseDeCantidad, unirEnCastellano } from "@/core/catalogo/public";
+import { textoDe } from "@/core/textos/texto-de";
 import { juzgarCantidadesDeIngredientes, validarCabecera, validarIngredientes, validarPasos, validarUnidadDeIngredientes } from "@/core/catalogo/public";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import type { BaseDeCantidad } from "@/core/catalogo/public";
@@ -133,10 +134,15 @@ export async function guardarVersionDeRecetaCasoDeUso(
   let version = 0;
   let recetaVersionId = "";
   let descartes: string[] = [];
+  // M3d: las calibraciones descartadas porque la receta pasó de neta a bruta se avisan con el texto confirmado por el dueño (2026-11-17); el resto (unidad, ingrediente quitado) con el aviso de siempre.
+  let descartesPorBase: string[] = [];
+  let descartesComunes: string[] = [];
   const rechazo: { resultado: ResultadoGuardarVersionDeReceta | null } = { resultado: null };
   await conReintento(
     async () => {
       descartes = [];
+      descartesPorBase = [];
+      descartesComunes = [];
       rechazo.resultado = null;
       await conTransaccionSerializable(base.transaccion, async (tx) => {
         // La versión anterior COMPLETA (con sus overrides locales) — D3: se arrastra a la versión nueva, salvo que el ingrediente haya cambiado de unidad o haya salido de la receta.
@@ -246,6 +252,9 @@ export async function guardarVersionDeRecetaCasoDeUso(
                 actorId: actor.usuarioId, sucursalId: r.sucursalId,
               });
               descartes.push(`«${sucNombre}» para "${viejoIng.insumoProducto.nombre}" (${motivo})`);
+              if (nuevoIng && nuevoIng.unidadId === viejoIng.unidadId && baseVieja === "NETA" && baseNueva === "BRUTA") {
+                descartesPorBase.push(describirCalibracionDescartadaPorBase({ sucursalNombre: sucNombre, insumoNombre: viejoIng.insumoProducto.nombre, cantidad: r.cantidad !== null ? Number(r.cantidad) : null, mermaPorcentaje: r.mermaPorcentaje !== null ? Number(r.mermaPorcentaje) : null, unidadNombre: viejoIng.unidad.nombre }));
+              } else descartesComunes.push(descartes[descartes.length - 1]);
             }
           }
         }
@@ -291,8 +300,15 @@ export async function guardarVersionDeRecetaCasoDeUso(
 
   if (rechazo.resultado) return rechazo.resultado;
 
-  const avisoDescartes = descartes.length ? ` Se descartó la calibración local de ${descartes.join(", ")}.` : "";
-  return exito(`Receta de "${producto.nombre}" guardada como versión ${version}.${avisoDescartes}`, {
+  // Lo que ya se avisa de siempre: las descartadas por unidad, por salir el ingrediente o por un cambio de base en otro sentido.
+  const avisoDescartes = descartesComunes.length ? ` Se descartó la calibración local de ${descartesComunes.join(", ")}.` : "";
+  // M3d: neta → bruta con calibraciones descartadas: el mensaje confirmado por el dueño (2026-11-17, «ok»; singular y plural).
+  const mensajePorBase = descartesPorBase.length
+    ? descartesPorBase.length === 1
+      ? textoDe("aviso.receta_guardada_calibracion_descartada_por_base", { version: String(version), producto: producto.nombre, detalle: descartesPorBase[0] })
+      : textoDe("aviso.receta_guardada_calibraciones_descartadas_por_base", { version: String(version), producto: producto.nombre, cantidad: String(descartesPorBase.length), detalle: unirEnCastellano(descartesPorBase) })
+    : null;
+  return exito(mensajePorBase !== null ? `${mensajePorBase}${avisoDescartes}` : `Receta de "${producto.nombre}" guardada como versión ${version}.${avisoDescartes}`, {
     recetaVersionId,
     version,
     calibracionesDescartadas: descartes,

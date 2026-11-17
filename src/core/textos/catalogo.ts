@@ -38,6 +38,19 @@ export const CATALOGO = {
   "aviso.oculto": { porDefecto: "Oculto", usos: [{ archivo: "src/components/catalogo/tarjeta-ocultar.tsx", nombre: "TarjetaOcultar" }], fuente: { decision: "DEC-0014" } },
   "aviso.oculto_en_la_empresa": { porDefecto: "Oculto en toda la empresa", usos: [{ archivo: "src/components/catalogo/tarjeta-ocultar.tsx", nombre: "TarjetaOcultar" }], fuente: { decision: "DEC-0014" } },
   "rechazo.TIENE_EXISTENCIA": { porDefecto: "Primero dejá la existencia en 0.", usos: [{ archivo: "src/server/actions/catalogo/casos-de-uso/ocultar-producto.ts", nombre: "ocultarProductoCasoDeUso" }], fuente: { decision: "DEC-0014" } },
+  // M3d (DEC-0023): el aviso al guardar una versión de receta que pasa de neta a bruta y descarta calibraciones de sucursal; singular y plural. `{detalle}` lleva «Sucursal» para «Ingrediente» (cantidad) de cada una.
+  "aviso.receta_guardada_calibraciones_descartadas_por_base": {
+    porDefecto: "Se guardó la versión {version} de «{producto}» (ahora cargada en bruto). Se descartaron {cantidad} ajustes de sucursal porque eran del valor «neto» y ya no coinciden con la receta: {detalle}. Si hace falta, volvé a ajustarlos desde el reporte de rendimiento.",
+    marcadores: { version: "texto", producto: "texto", cantidad: "texto", detalle: "texto" },
+    usos: [{ archivo: "src/server/actions/catalogo/casos-de-uso/guardar-version-de-receta.ts", nombre: "guardarVersionDeRecetaCasoDeUso" }],
+    fuente: { decision: "DEC-0023" },
+  },
+  "aviso.receta_guardada_calibracion_descartada_por_base": {
+    porDefecto: "Se guardó la versión {version} de «{producto}» (ahora cargada en bruto). Se descartó 1 ajuste de sucursal porque era del valor «neto» y ya no coincide con la receta: {detalle}. Si hace falta, volvé a ajustarlo desde el reporte de rendimiento.",
+    marcadores: { version: "texto", producto: "texto", detalle: "texto" },
+    usos: [{ archivo: "src/server/actions/catalogo/casos-de-uso/guardar-version-de-receta.ts", nombre: "guardarVersionDeRecetaCasoDeUso" }],
+    fuente: { decision: "DEC-0023" },
+  },
   // Lote E (DEC-0016): rótulos de dinero de columnas de reportes, con las MISMAS palabras que tenían (aceptado por el dueño, 2026-11-16).
   "columna.importe": {
     porDefecto: "Importe",
