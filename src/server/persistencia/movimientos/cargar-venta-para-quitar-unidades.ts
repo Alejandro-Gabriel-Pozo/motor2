@@ -1,6 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
-import type { LineaParaCorregir } from "@/core/movimientos/public";
+import { DECIMALES_DE_STOCK, type LineaParaCorregir } from "@/core/movimientos/public";
 
 /**
  * Carga de una venta para QUITARLE UNIDADES (E1 de la corrección por ajuste, docs/diseno-correccion-por-ajuste-2026-11-06.md). Mismo contrato que
@@ -67,6 +67,6 @@ export async function cargarVentaParaQuitarUnidades(
       precioListaUnitario: m.precioListaUnitario === null ? null : Number(m.precioListaUnitario),
       sustituyeAProductoId: m.sustituyeAProductoId,
     })),
-    decimalesPorProducto: new Map(operacion.movimientos.map((m) => [m.productoId, m.producto.unidadStock.decimales] as const)),
+    decimalesPorProducto: new Map(operacion.movimientos.map((m) => [m.productoId, DECIMALES_DE_STOCK] as const)),
   };
 }

@@ -91,7 +91,7 @@ describe("Auditoría — Fase 5: precisión numérica (Decimal → number) y rec
     expect(saldo).toBe(3.5); // 50 × 0.07 = 3.5 exacto — un acumulador JS ingenuo (suma += 0.07 en un loop) puede desviarse
   });
 
-  it("merma porcentual con decimales: consumo de receta con mermaPorcentaje no entero produce el valor exacto esperado, redondeado a la unidad del insumo", async () => {
+  it("merma porcentual con decimales: consumo de receta con mermaPorcentaje no entero produce el valor exacto esperado, redondeado a 4 decimales", async () => {
     const mpInsumo = await crearMP("Levadura", 3); // 3 decimales
     const pv = await sembrarProductoDisponible({ codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100, seProduce: true }, sucursalId);
     await prisma.recetaVersion.create({
@@ -100,13 +100,13 @@ describe("Auditoría — Fase 5: precisión numérica (Decimal → number) y rec
     await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     // Producir 7 unidades de pan: consumo esperado = 7 × 0.1 × 1.125 = 0.7875,
-    // redondeado a los 3 decimales de la unidad del insumo (Plan N3,
-    // docs/auditoria-motor2-pivotes-2026-09-16.md §11) → 0.788 exacto.
+    // A1b 2026-11-16: stock con 4 decimales fijos y cuenta exacta; antes se redondeaba a los 3 decimales de la unidad del insumo
+    // (Plan N3, docs/auditoria-motor2-pivotes-2026-09-16.md §11) → 0.788. Ahora 0.7875 ya cabe en 4 decimales y se guarda exacto.
     const resultado = await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date(), seccionId, items: [{ productoId: pv.id, cantidad: 7 }], claveIdempotencia: crypto.randomUUID() });
     expect(resultado.ok, resultado.mensaje).toBe(true);
 
     const saldoInsumo = await calcularSaldoTotal(mpInsumo.id, seccionId, prisma);
-    expect(saldoInsumo).toBe(10 - 0.788); // 9.212 exacto, ya no una aproximación
+    expect(saldoInsumo).toBe(9.2125); // 10 − 0.7875, exacto (A1b: antes 9.212 por el redondeo a 3 decimales de la unidad)
   });
 
   it("reconstrucción del saldo: para un producto con historial mixto (compra, consumo, merma, ajuste), la suma manual de MovimientoStock.cantidad (leída como Decimal string) coincide EXACTO con calcularSaldoTotal", async () => {

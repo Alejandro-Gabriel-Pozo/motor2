@@ -386,6 +386,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "«Ocultar» como Pedernal, E3c1 (docs/diseno-ocultar-como-pedernal-2026-11-15.md, I-6; CAMBIA SOLO LA LÍNEA `lecturas` de los pasos que venden por la vía directa y de agregar ítems): cada línea NUEVA de una venta de mostrador lee ahora `ocultamientoProducto.findMany` ×1 (para rechazar un producto oculto). Verificado con diff: al sacar ese token y el contador de `lecturas (N)`, el golden nuevo es IDÉNTICO al anterior; ni un resultado, ni una fila, ni una escritura, ni un mensaje cambian. El cierre de una cuenta NO hace la lectura (cobra lo ya cargado).",
       },
+      {
+        blob: "e6a4262ec2af09e45be7af79f63f9470b4c855a5",
+        // El commit PADRE de este es 13405dba (main con la primitiva de cantidad exacta, #343), el último antes del cambio; el golden se regenera en el commit siguiente (A1b, frente 2).
+        commit: "13405dba",
+        motivo:
+          "A1b (cuenta exacta + 4 decimales fijos en el stock NUEVO; dueño, 2026-11-16: «Pasar a cuenta exacta como Pedernal» y «4 decimales fijos como Pedernal»; regenerado con REGENERAR_CARACTERIZACION_DE_VENTA=1; CAMBIA SOLO `cantidad` y `cantidadExacta` de las filas KARDEX de CONSUMO y su reversión): el stock se redondea a 4 decimales y no a los decimales de la unidad, así que un consumo que antes se escribía redondeado (por ejemplo cantidad 0,28 con cantidadExacta 0,275) ahora se escribe exacto (0,275 con cantidadExacta null; −1 con exacta −0,5 pasa a −0,5 con null). Verificado por programa: comparando cada par de líneas −/+ sin esas dos columnas son IDÉNTICAS (ni precios, ni orden, ni cantidad de filas, ni trazas, ni mensajes cambian). 14 líneas cambiadas.",
+      },
     ],
   },
   "test/movimientos/caracterizacion/venta-matriz-ampliada.golden.txt": {
@@ -555,6 +562,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "3967f844",
         motivo:
           "Auditoría legible (CAMBIA SOLO el texto guardado en `valorNuevo` de la auditoría `campo=reparto` de la carga de una factura de proveedor, en 115 líneas AUDITORIA): `registrarCambioAuditado` guardaba un arreglo de objetos con `String(valor)` («[object Object]», ilegible); ahora un objeto plano o un arreglo se guarda como JSON compacto con las claves ordenadas, p. ej. `[{\"estado\":\"RECIBIDA\",\"importe\":320,\"porcentajeDeclaradoBp\":10000,\"sucursal\":\"Central\"}]`. Verificado: quitando `valorNuevo=…` de esas líneas, idéntico al anterior; ninguna otra línea cambia.",
+      },
+      {
+        blob: "8df708d8c06b4310a66a8bd90e0b458bfad6ca24",
+        // El commit PADRE de este es 13405dba (main con la primitiva de cantidad exacta, #343), el último antes del cambio; el golden se regenera en el commit siguiente (A1b, frente 2).
+        commit: "13405dba",
+        motivo:
+          "A1b (cuenta exacta + 4 decimales fijos en el stock NUEVO; dueño, 2026-11-16: «Pasar a cuenta exacta como Pedernal» y «4 decimales fijos como Pedernal»; regenerado con REGENERAR_CARACTERIZACION_DE_VENTA_AMPLIADA=1; CAMBIA SOLO `cantidad` y `cantidadExacta` de las filas KARDEX de CONSUMO y su reversión): el stock se redondea a 4 decimales y no a los decimales de la unidad, así que un consumo que antes se escribía redondeado (por ejemplo cantidad 0,28 con cantidadExacta 0,275) ahora se escribe exacto (0,275 con cantidadExacta null; −1 con exacta −0,5 pasa a −0,5 con null). Verificado por programa: comparando cada par de líneas −/+ sin esas dos columnas son IDÉNTICAS (ni precios, ni orden, ni cantidad de filas, ni trazas, ni mensajes cambian). 40 líneas cambiadas.",
       },
     ],
   },

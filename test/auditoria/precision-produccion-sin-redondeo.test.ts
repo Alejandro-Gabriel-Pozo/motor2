@@ -32,7 +32,7 @@ describe("Auditoría — Pivote 4: PRODUCCIÓN persiste el consumo de receta sin
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
 
-  it("REGRESIÓN: produce un PV cuya receta consume un insumo de unidad SIN decimales (entera) — el consumo persistido debe redondearse a un entero, no violar la unidad", async () => {
+  it("REGRESIÓN: produce un PV cuya receta consume un insumo de unidad SIN decimales (entera) — el consumo persistido sigue la regla de 4 decimales fijos (A1b), no la de la unidad", async () => {
     const unidadEntera = await prisma.unidad.create({ data: { nombre: "unidad_entera_prod", magnitud: "CANTIDAD", decimales: 0 } });
     const mpInsumo = await sembrarProductoDisponible({ codigo: "MP_HUEVOS", nombre: "Huevos", tipo: "MP", unidadStockId: unidadEntera.id }, sucursalId);
     const pv = await sembrarProductoDisponible({ codigo: "PV_BUDIN", nombre: "Budín", tipo: "PV", unidadStockId: unidadEntera.id, precioVenta: 10, seProduce: true }, sucursalId);
@@ -51,12 +51,11 @@ describe("Auditoría — Pivote 4: PRODUCCIÓN persiste el consumo de receta sin
 
     console.log("[auditoria] Consumo persistido para un insumo de unidad SIN decimales:", cantidadPersistida);
 
-    // Unidad.decimales=0 dice explícitamente que este insumo no admite
-    // fracciones — el Kardex debe quedar con un entero exacto, mismo
-    // criterio que COMPRA/CONSUMO/VENTA/AJUSTE/DEVOLUCIÓN/TRANSFERENCIA
-    // ya respetan hoy.
-    expect(Number.isInteger(cantidadPersistida)).toBe(true);
-    expect(cantidadPersistida).toBe(-2); // redondearACantidadDeUnidad(2.247, 0) === 2
+    // A1b 2026-11-16: stock con 4 decimales fijos y cuenta exacta (como Pedernal); antes Unidad.decimales=0 obligaba a un entero (-2) en
+    // el Kardex. Ahora el consumo se guarda a 4 decimales (2,247 cabe tal cual) sea cual sea la unidad. Lo que sigue exigiendo esta
+    // regresión: el valor persistido tiene como máximo 4 decimales y es el exacto (nada de 2,2470000001 por float).
+    expect(cantidadPersistida).toBe(-2.247);
+    expect(Math.round(cantidadPersistida * 1e4) / 1e4).toBe(cantidadPersistida);
   });
 
   it("Contraste: el mismo escenario via VENTA (no PRODUCCIÓN) SÍ redondea correctamente a la unidad del insumo", async () => {
@@ -75,6 +74,7 @@ describe("Auditoría — Pivote 4: PRODUCCIÓN persiste el consumo de receta sin
     const mov = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: mpInsumo.id, proceso: "CONSUMO" } });
     const cantidadPersistida = Number(mov.cantidad);
     console.log("[auditoria] Mismo caso vía VENTA:", cantidadPersistida);
-    expect(Number.isInteger(cantidadPersistida)).toBe(true); // VENTA sí redondea — confirma que es un problema específico de PRODUCCIÓN
+    // A1b 2026-11-16: antes VENTA redondeaba al entero de la unidad; ahora VENTA y PRODUCCIÓN escriben lo mismo (a 4 decimales fijos).
+    expect(cantidadPersistida).toBe(-2.247);
   });
 });

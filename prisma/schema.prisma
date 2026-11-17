@@ -1484,18 +1484,20 @@ model MovimientoStock {
   /// CONSUMO de una venta (`registrar-venta.ts`, `cargarDeudaDeRedondeo`/`arrastre-redondeo.ts`) y en su reversión (`anularVenta`) —
   /// `null` en todo lo demás, y también en un CONSUMO cuya cantidad exacta ya coincidía con lo escrito (sin ruido que guardar).
   ///
-  /// EL PROBLEMA: redondear cada parte de consumo de CADA venta por separado (a los decimales de `Unidad.decimales` del insumo) sin
-  /// memoria entre ventas hace que el Kardex se aleje del consumo real cuanto más fraccionada es la venta — con una unidad de 0
-  /// decimales, dos ventas de 0,5 escribían 1 + 1 = 2 en vez de 1.
+  /// EL PROBLEMA: redondear cada parte de consumo de CADA venta por separado sin memoria entre ventas hace que el Kardex se aleje del
+  /// consumo real cuanto más fraccionada es la venta — con una unidad de 0 decimales, dos ventas de 0,5 escribían 1 + 1 = 2 en vez
+  /// de 1 (filas ANTIGUAS: hasta A1b, 2026-11-16, se redondeaba a `Unidad.decimales` del insumo). Desde A1b el stock se redondea a
+  /// 4 decimales FIJOS con cuenta exacta (empate alejándose del cero), así que el arrastre solo actúa con partes de más de 4 decimales;
+  /// las filas antiguas siguen aportando su deuda.
   ///
   /// LA FÓRMULA: `cantidadExacta` es la magnitud EXACTA (con el mismo signo que `cantidad`) de la parte que esta fila representa,
   /// ANTES de redondear — nunca la acumulada. La deuda de un producto en una sucursal, en cualquier momento, es
   /// `D = Σcantidad − ΣcantidadExacta` (sumando solo las filas CONSUMO con `cantidadExacta` no nulo — las nulas aportan 0 por
   /// definición, ya que ahí `cantidad` YA es la magnitud exacta). Antes de escribir una parte nueva, se redondea `D + exacto` (no
-  /// `exacto` a secas) a los decimales del insumo, y la deuda pasa a ser `D + exacto − escrito` — así el Kardex sigue siendo enteros
-  /// exactos en su unidad (ninguna fila pierde ni gana precisión), pero el TOTAL de la sucursal converge al consumo real en vez de
+  /// `exacto` a secas) a 4 decimales, con piso en 0 (nunca se escribe una cantidad negativa), y la deuda pasa a ser
+  /// `D + exacto − escrito` — así cada fila es un múltiplo exacto de 0,0001, pero el TOTAL de la sucursal converge al consumo real en vez de
   /// redondear cada parte de forma independiente. El alcance de la deuda es (sucursal, producto consumido): puede cruzar secciones y
-  /// lotes (una sección puede escribir el sobrante que "le tocó" a otra), nunca más de ±1 unidad de la unidad de stock del insumo —
+  /// lotes (una sección puede escribir el sobrante que "le tocó" a otra), nunca más de media unidad (0,0001 / 2) de las nuevas, ni de ±1 unidad de las antiguas —
   /// corregible con Conteo Físico, igual que cualquier redondeo de reparto. Columna aditiva, sin backfill: arranca en `null` para
   /// todo lo existente, así que la deuda de cualquier producto antes de este cambio es 0 (arreglo solo hacia adelante).
   cantidadExacta Decimal? @db.Decimal(20, 8)

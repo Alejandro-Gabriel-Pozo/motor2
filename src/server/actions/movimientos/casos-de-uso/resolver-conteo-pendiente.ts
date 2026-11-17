@@ -1,6 +1,6 @@
 import "server-only";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
-import { redondearACantidadDeUnidad } from "@/core/movimientos/public";
+import { DECIMALES_DE_STOCK, redondearACantidadDeUnidad } from "@/core/movimientos/public";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { calcularSaldoPorLote, calcularSaldoTotal } from "@/server/lecturas/movimientos/saldos";
 import { exito, fracaso } from "@/core/resultado-caso";
@@ -60,7 +60,7 @@ export async function resolverConteoPendienteCasoDeUso(
     const saldoHoy = conteo.loteVencimiento
       ? await calcularSaldoPorLote(conteo.productoId, conteo.seccionId, conteo.loteVencimiento, actor.sucursalId, tx)
       : await calcularSaldoTotal(conteo.productoId, conteo.seccionId, actor.sucursalId, tx);
-    const diferencia = redondearACantidadDeUnidad(Number(conteo.conteoReal) - saldoHoy, producto.unidadStock.decimales);
+    const diferencia = redondearACantidadDeUnidad(Number(conteo.conteoReal) - saldoHoy, DECIMALES_DE_STOCK);
 
     if (diferencia === 0) {
       await actualizarEstadoDeConteo(tx, conteoId, {

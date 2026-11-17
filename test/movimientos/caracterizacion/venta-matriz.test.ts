@@ -28,6 +28,11 @@ import { REFERENCIA_DE_PRUEBA } from "../../setup/referencia-de-prueba";
  *  3. TODAS las filas de `Operacion` y `MovimientoStock`, con todas sus columnas, los decimales como texto exacto (un `Number` perdería un centavo) y los
  *     ids reemplazados por nombres simbólicos.
  * Un rechazo no escribe nada: su traza no tiene escrituras (todo rechazo sale ANTES de la primera escritura; un `fracaso` confirma la transacción).
+ *
+ * A1b 2026-11-16 («Pasar a cuenta exacta como Pedernal» y «4 decimales fijos como Pedernal»): el golden se REGENERÓ a propósito (decisión del dueño, no una
+ * mudanza). Lo único que cambió son `cantidad` y `cantidadExacta` de las filas CONSUMO y su reversión: el stock se guarda a 4 decimales fijos en vez de a los decimales de la
+ * unidad (antes 0,275 → 0,28 con `cantidadExacta` 0,275; ahora 0,275 exacto y `cantidadExacta` nula), y ya no hay filas con arrastre de redondeo con consumos de 4 decimales
+ * (0,5 de «Pan» escribe −0,5 y −0,5, no −1 y 0). Ni una consulta, ni un precio, ni el orden ni la cantidad de filas cambiaron.
  */
 const ARCHIVO = join(__dirname, "venta-matriz.golden.txt");
 
