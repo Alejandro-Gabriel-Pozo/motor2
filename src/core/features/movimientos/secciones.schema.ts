@@ -1,3 +1,4 @@
+import type { UsoDeSeccion } from "@/core/compras/public";
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**
@@ -7,15 +8,17 @@ import type { ResultadoCaso } from "@/core/resultado-caso";
  * Server Actions de `src/server/actions/movimientos/secciones.ts`. Todas actúan sobre la sucursal ACTIVA (`conPermiso("secciones")`).
  */
 
-/** Comando «alta de una sección»: el nombre YA recortado y validado (`guardComandoCrearSeccion`). */
+/** Comando «alta de una sección»: el nombre YA recortado y validado y el uso YA validado contra la lista de permitidos (`guardComandoCrearSeccion`; se elige solo al crear y no se edita después). */
 export interface ComandoCrearSeccion {
   nombre: string;
+  uso: UsoDeSeccion;
 }
 
 /** El id y el nombre de la sección creada, para el `ResultadoConId` de la Server Action. */
 export interface DatosSeccionCreada {
   id: string;
   nombre: string;
+  uso: UsoDeSeccion;
 }
 
 /** `NOMBRE_REPETIDO`: ya hay una sección con ese nombre en esta sucursal (sin distinguir mayúsculas). */

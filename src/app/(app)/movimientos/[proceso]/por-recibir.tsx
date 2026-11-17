@@ -2,6 +2,7 @@ import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { obtenerMiNivelPermiso } from "@/server/acceso/gate";
 import { listarComprasPorRecibir } from "@/server/consultas/movimientos/facturas-proveedor";
 import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
+import { esUsoDeSeccion } from "@/core/compras/public";
 import { BandejaPorRecibir } from "./bandeja-para-aceptar";
 
 /**
@@ -9,7 +10,7 @@ import { BandejaPorRecibir } from "./bandeja-para-aceptar";
  * (quien recibe, el operador también: registra el control de cada línea) en esta sucursal, y con el módulo `recepcion_de_compras` encendido (con el módulo apagado el nivel da «ni ver» y no se lee nada). Cada permiso se vuelve a exigir en el
  * servidor al actuar: la pantalla solo muestra el control a quien puede controlar y el botón de confirmar a quien puede confirmar. La lista no muestra importes: identifica la compra por proveedor, número, fecha y renglones.
  */
-export async function PorRecibir({ ctx, secciones }: { ctx: ContextoUsuario; secciones: { id: string; nombre: string }[] }) {
+export async function PorRecibir({ ctx, secciones }: { ctx: ContextoUsuario; secciones: { id: string; nombre: string; uso: string }[] }) {
   const [recibir, controlar] = await Promise.all([
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "compra_recibir", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "compra_controlar_recepcion", ctx.db),
@@ -21,7 +22,7 @@ export async function PorRecibir({ ctx, secciones }: { ctx: ContextoUsuario; sec
   const diasEntre = (desde: string, hasta: string) => Math.max(0, Math.round((Date.parse(hasta) - Date.parse(desde)) / 86_400_000));
   return (
     <BandejaPorRecibir
-      secciones={secciones}
+      secciones={secciones.flatMap((s) => (esUsoDeSeccion(s.uso) ? [{ id: s.id, nombre: s.nombre, uso: s.uso }] : []))}
       puedeConfirmar={recibir.editar}
       puedeControlar={controlar.editar}
       compras={compras.map((c) => ({

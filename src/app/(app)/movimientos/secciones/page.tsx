@@ -10,6 +10,8 @@ import { crearSeccion, actualizarActivaSeccion, actualizarRespaldoSeccion, renom
 import { FormConResultado } from "@/components/form-con-resultado";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { Campo } from "@/ui/primitivas/campo";
+import { Selector } from "@/ui/primitivas/selector";
+import { ETIQUETA_DE_USO_DE_SECCION, USOS_DE_SECCION, esUsoDeSeccion } from "@/core/compras/public";
 
 export default async function SeccionesPage() {
   const ctx = await obtenerContextoUsuario();
@@ -70,6 +72,8 @@ export default async function SeccionesPage() {
                   ) : (
                     s.nombre
                   )}
+                  {/* El uso se elige al crear y no se edita: solo se rotula si no es el normal. */}
+                  {esUsoDeSeccion(s.uso) && s.uso !== "NORMAL" && <span className="mt-1 block text-xs text-tinta-tenue">{ETIQUETA_DE_USO_DE_SECCION[s.uso]}</span>}
                 </td>
                 <td>{s.activa ? "Sí" : "No"}</td>
                 <td>
@@ -116,12 +120,21 @@ export default async function SeccionesPage() {
         <FormConResultado
           accion={async (formData: FormData) => {
             "use server";
-            return crearSeccion(String(formData.get("nombre") ?? ""));
+            return crearSeccion(String(formData.get("nombre") ?? ""), String(formData.get("uso") ?? "NORMAL"));
           }}
-          className="flex max-w-md gap-2"
+          className="flex max-w-xl flex-wrap items-end gap-2"
         >
-          <div className="flex-1">
+          <div className="min-w-48 flex-1">
             <Campo name="nombre" aria-label="Nombre del depósito" placeholder="nombre del depósito" required />
+          </div>
+          <div className="w-44">
+            <Selector name="uso" etiqueta="Uso del depósito" defaultValue="NORMAL">
+              {USOS_DE_SECCION.map((u) => (
+                <option key={u} value={u}>
+                  {ETIQUETA_DE_USO_DE_SECCION[u]}
+                </option>
+              ))}
+            </Selector>
           </div>
           <BotonDeServidor type="submit">Crear</BotonDeServidor>
         </FormConResultado>

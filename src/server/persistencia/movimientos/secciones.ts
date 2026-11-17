@@ -1,5 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
+import type { UsoDeSeccion } from "@/core/compras/public";
 
 /**
  * Escrituras de las SECCIONES de stock de una sucursal (`Seccion`; Hito 4 de la pureza, bloque C de la pieza carta/catálogo/stock, paso H4C-18 —
@@ -8,10 +9,13 @@ import type { Prisma } from "@prisma/client";
  * del contexto y sin transacción (como antes). Una sección nunca se borra: el Kardex ya escrito la referencia por FK.
  */
 
-/** Crea la sección en esa sucursal. Devuelve el id y el nombre guardados. */
-export async function crearSeccionNueva(db: Prisma.TransactionClient, args: { sucursalId: string; nombre: string }): Promise<{ id: string; nombre: string }> {
-  const creada = await db.seccion.create({ data: { sucursalId: args.sucursalId, nombre: args.nombre } });
-  return { id: creada.id, nombre: creada.nombre };
+/** Crea la sección en esa sucursal, con su uso (inmutable: lo impone un disparador de la base). Devuelve el id, el nombre y el uso guardados. */
+export async function crearSeccionNueva(
+  db: Prisma.TransactionClient,
+  args: { sucursalId: string; nombre: string; uso: UsoDeSeccion }
+): Promise<{ id: string; nombre: string; uso: UsoDeSeccion }> {
+  const creada = await db.seccion.create({ data: { sucursalId: args.sucursalId, nombre: args.nombre, uso: args.uso } });
+  return { id: creada.id, nombre: creada.nombre, uso: args.uso };
 }
 
 /** Le pone el nombre nuevo a la sección. */

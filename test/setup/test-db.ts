@@ -364,8 +364,8 @@ export async function crearUsuarioConMembresia(params: {
 }
 
 /** Fixtures mínimas de Movimientos: una Sección ("Depósito") en la sucursal dada. */
-export async function sembrarSeccion(sucursalId: string, nombre = "Depósito") {
-  return prisma.seccion.create({ data: { sucursalId, nombre } });
+export async function sembrarSeccion(sucursalId: string, nombre = "Depósito", uso: "NORMAL" | "CUARENTENA" | "RECHAZO" = "NORMAL") {
+  return prisma.seccion.create({ data: { sucursalId, nombre, uso } });
 }
 
 /**

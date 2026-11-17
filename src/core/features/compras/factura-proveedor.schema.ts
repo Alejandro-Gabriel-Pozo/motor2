@@ -2,6 +2,7 @@ import type { ResultadoCaso } from "@/core/resultado-caso";
 import type { ItemMovimientoInput } from "@/core/features/movimientos/movimiento.schema";
 import type {
   CodigoDeRechazoDeControl,
+  CodigoDeBloqueoDeDestino,
   CodigoDeRechazoDeEntradas,
   CodigoDeRechazoDeRecepcion,
   CodigoDeRechazoDeRegistroDeControl,
@@ -104,7 +105,7 @@ export interface ComandoConfirmarRecepcionDeFactura {
   entradas: EntradaDeRecepcionInput[];
 }
 
-export type CodigoConfirmarRecepcionDeFactura = "NO_ENCONTRADA" | CodigoDeRechazoDeRecepcion | CodigoDeRechazoDeEntradas | "PRODUCTO_NO_DISPONIBLE" | "SIN_LINEAS";
+export type CodigoConfirmarRecepcionDeFactura = "NO_ENCONTRADA" | CodigoDeRechazoDeRecepcion | CodigoDeRechazoDeEntradas | CodigoDeBloqueoDeDestino | "PRODUCTO_NO_DISPONIBLE" | "SIN_LINEAS";
 
 /** `yaExistia`: la parte ya estaba recibida (repetición): no se escribió ni se auditó nada (`movimientos` cuenta los que escribió ESTA llamada; `operacionId` es la compra de la recepción original, `null` solo si se perdió una carrera). */
 export type DatosConfirmarRecepcionDeFactura = { operacionId: string | null; movimientos: number; yaExistia: boolean };

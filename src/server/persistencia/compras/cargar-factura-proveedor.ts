@@ -1,5 +1,7 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
+import { CONDICIONES_DE_CONTROL, esUsoDeSeccion } from "@/core/compras/public";
+import type { CondicionDeControl, SeccionParaElDestino, UsoDeSeccion } from "@/core/compras/public";
 
 /**
  * E3a (ADR-041): las LECTURAS que necesitan los casos de uso de la factura de proveedor (cargar, aceptar una propuesta y anular) dentro de su transacción. Sin reglas de negocio; `Decimal` → `number` en el borde.
@@ -148,6 +150,28 @@ export async function cargarRenglonesParaRecibir(tx: Db, facturaProveedorId: str
 export async function cargarRenglonesYaControlados(tx: Db, parteId: string): Promise<Set<string>> {
   const filas = await tx.controlDeLineaDeRecepcion.findMany({ where: { facturaProveedorSucursalId: parteId }, select: { facturaProveedorRenglonId: true } });
   return new Set(filas.map((f) => f.facturaProveedorRenglonId));
+}
+
+/**
+ * Compras, depósitos de uso RECHAZO y CUARENTENA (etapa (i)): el control registrado de cada renglón de la parte (`renglonId` → condición; un renglón sin fila es «no se constató» y no aparece). Se lee dentro de la transacción de la
+ * confirmación, con la cabecera de la factura ya bloqueada: registrar un control también toma ese candado, así que el control que se lee es el que vale al confirmar.
+ */
+export async function cargarCondicionesDeControl(tx: Db, parteId: string): Promise<Map<string, CondicionDeControl>> {
+  const filas = await tx.controlDeLineaDeRecepcion.findMany({ where: { facturaProveedorSucursalId: parteId }, select: { facturaProveedorRenglonId: true, condicion: true } });
+  const condiciones = new Map<string, CondicionDeControl>();
+  for (const f of filas) if ((CONDICIONES_DE_CONTROL as readonly string[]).includes(f.condicion)) condiciones.set(f.facturaProveedorRenglonId, f.condicion as CondicionDeControl);
+  return condiciones;
+}
+
+/**
+ * Compras, depósitos de uso RECHAZO y CUARENTENA (etapa (i)): TODAS las secciones de la sucursal (activas e inactivas) con `SELECT … FOR SHARE`, con su uso. El candado compartido hace que desactivar una sección (un UPDATE) espere a que termine
+ * la confirmación que la lee, o, si la desactivación ganó, que esta confirmación (SERIALIZABLE) falle y se reintente viendo la sección apagada: nunca entra stock a una sección que ya se apagó. Un `uso` fuera de la lista (no puede pasar: lo impide el
+ * CHECK de la base) se lee como si la sección no existiera.
+ */
+export async function bloquearSeccionesDeLaSucursal(tx: Db, sucursalId: string): Promise<SeccionParaElDestino[]> {
+  const filas = await tx.$queryRaw<{ id: string; nombre: string; uso: string; activa: boolean }[]>`
+    SELECT "id", "nombre", "uso", "activa" FROM "Seccion" WHERE "sucursalId" = ${sucursalId} ORDER BY "id" FOR SHARE`;
+  return filas.filter((f) => esUsoDeSeccion(f.uso)).map((f) => ({ id: f.id, nombre: f.nombre, uso: f.uso as UsoDeSeccion, activa: f.activa }));
 }
 
 /** Las partes de la factura que se ven con el alcance del contexto (sucursal, nombre y su compra). */

@@ -33,7 +33,7 @@ function entradaDeLaRegla(f: Pick<FilaDeConfirmacion, "P" | "E" | "S">): Entrada
 }
 
 /** La puerta de la Server Action (guard): módulo → piso del rol, con las funciones reales del acceso. `null` = pasa. */
-function puertaDeAcceso(f: Pick<FilaDeConfirmacion, "M" | "O">, accion: "compra_recibir" | "compra_controlar_recepcion" = "compra_recibir"): "RECHAZA_MODULO_NO_ACTIVO" | "RECHAZA_SIN_PERMISO" | null {
+export function puertaDeAcceso(f: Pick<FilaDeConfirmacion, "M" | "O">, accion: "compra_recibir" | "compra_controlar_recepcion" = "compra_recibir"): "RECHAZA_MODULO_NO_ACTIVO" | "RECHAZA_SIN_PERMISO" | null {
   const efectivos = modulosEfectivos(f.M === "ENCENDIDO" ? ["compras", "recepcion_de_compras"] : ["compras"]);
   if (denegacionDeModulo("recepcion_de_compras", efectivos)) return "RECHAZA_MODULO_NO_ACTIVO";
   const nivel = nivelDe({ rolEmpresa: f.O === "GERENTE" ? ROL_EMPRESA_GERENTE : null, esAdminEnElContexto: f.O === "ADMINISTRADOR" });

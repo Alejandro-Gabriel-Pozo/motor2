@@ -1,5 +1,6 @@
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { nombreDeCatalogo } from "@/core/features/catalogo/nombre-de-catalogo";
+import { esUsoDeSeccion } from "@/core/compras/public";
 import type { ComandoActualizarRespaldoSeccion, ComandoCrearSeccion, ComandoRenombrarSeccion } from "./secciones.schema";
 import { textoDe } from "@/core/textos/texto-de";
 import { ENTIDADES } from "@/core/textos/entidades";
@@ -17,10 +18,13 @@ import { ENTIDADES } from "@/core/textos/entidades";
 const nombreDeSeccion = (nombre: unknown, mensajeVacio: string): ResultadoDato<string> => nombreDeCatalogo(nombre, mensajeVacio);
 
 /** Guard del alta de una sección: EXACTAMENTE lo que antes era lo primero de `crearSeccion`, con los MISMOS textos. Que el nombre esté libre lo resuelve el caso de uso. */
-export function guardComandoCrearSeccion(entrada: { nombre: unknown }): ResultadoDato<ComandoCrearSeccion> {
+export function guardComandoCrearSeccion(entrada: { nombre: unknown; uso?: unknown }): ResultadoDato<ComandoCrearSeccion> {
   const nombre = nombreDeSeccion(entrada.nombre, "El nombre del depósito no puede estar vacío.");
   if (!nombre.ok) return rechazar(nombre.codigo, nombre.mensaje);
-  return aceptar({ nombre: nombre.valor });
+  // El uso (Compras, depósitos de rechazo y cuarentena, etapa (i)): sin decir nada (`undefined`) es NORMAL; si viene, tiene que ser uno de la lista de permitidos.
+  const uso = entrada.uso === undefined ? "NORMAL" : entrada.uso;
+  if (!esUsoDeSeccion(uso)) return rechazar("formato", "Valor inválido.");
+  return aceptar({ nombre: nombre.valor, uso });
 }
 
 /**

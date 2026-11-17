@@ -178,6 +178,8 @@ const VALORES: Readonly<Record<string, Valor>> = {
   conOpciones: () => true,
   opciones: () => ({ conCostoDeConsignacion: true, conDatosComerciales: true, conImportes: true }),
   cuit: () => "20-12345678-9",
+  // Compras, depósitos de uso RECHAZO y CUARENTENA (etapa (i)): el uso de la sección que se crea (opcional; sin él es NORMAL). El más cerrado de los tres valores permitidos: no lleva ningún id del cliente.
+  uso: () => "NORMAL",
   precioGlobal: () => 1000,
   requerido: () => 1,
   cantidadNecesaria: () => 1,

@@ -13,7 +13,10 @@ import { crearSeccionNueva } from "@/server/persistencia/movimientos/secciones";
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos ni el formato (el guard).
  *
- * @contract Crea la sección en la sucursal activa, salvo que ya haya una con ese nombre; devuelve su id y su nombre.
+ * Compras, depósitos de uso RECHAZO y CUARENTENA, etapa (i): el alta lleva el `uso` del depósito (NORMAL por defecto; el guard ya lo validó contra la lista de permitidos). Se elige solo acá: la base impide cambiarlo después. Sin unicidad por
+ * sucursal (puede haber varios de un mismo uso).
+ *
+ * @contract Crea la sección en la sucursal activa, con su uso, salvo que ya haya una con ese nombre; devuelve su id, su nombre y su uso.
  * @idempotency Por estado — repetir el pedido encuentra la sección ya creada y se rechaza: no crea otra.
  * @transaction Ninguna: una lectura y una escritura con `actor.db`, como antes.
  * @sideEffects Ninguno (una sección no es plata: sin auditoría). El refresco de la vista lo hace la Server Action.
@@ -28,6 +31,6 @@ export async function crearSeccionCasoDeUso(actor: Pick<ContextoUsuario, "db" | 
     return fracaso("NOMBRE_REPETIDO", `Ya existe un depósito "${nombreLimpio}" en esta sucursal (los nombres no distinguen mayúsculas/espacios).`);
   }
 
-  const creada = await crearSeccionNueva(actor.db, { sucursalId: actor.sucursalId, nombre: nombreLimpio });
-  return exito(`Depósito "${creada.nombre}" creado.`, { id: creada.id, nombre: creada.nombre });
+  const creada = await crearSeccionNueva(actor.db, { sucursalId: actor.sucursalId, nombre: nombreLimpio, uso: comando.uso });
+  return exito(`Depósito "${creada.nombre}" creado.`, { id: creada.id, nombre: creada.nombre, uso: creada.uso });
 }
