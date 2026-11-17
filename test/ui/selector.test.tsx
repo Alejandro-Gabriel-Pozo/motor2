@@ -92,10 +92,10 @@ describe("Selector", () => {
 
   it("clases de tokens (borde de control, o de error), tamaño normal o compacto desde md:, 44 px en celular; nunca sm:, modo oscuro ni colores de escala", () => {
     const sinError = clasesDe(renderToStaticMarkup(<Selector etiqueta="x">{opciones}</Selector>), "select");
-    for (const clase of ["border-borde-control", "bg-superficie", "text-tinta", "focus-visible:outline-foco", "disabled:bg-superficie-suave", "disabled:text-tinta-tenue", "min-h-11"]) {
+    for (const clase of ["border-borde-control", "bg-superficie", "text-tinta", "focus-visible:outline-foco", "disabled:bg-superficie-suave", "disabled:text-tinta-tenue", "min-h-(--objetivo-minimo)"]) {
       expect(sinError, clase).toContain(clase);
     }
-    expect(clasesDe(renderToStaticMarkup(<Selector etiqueta="x" tamano="compacto">{opciones}</Selector>), "select")).toContain("min-h-11");
+    expect(clasesDe(renderToStaticMarkup(<Selector etiqueta="x" tamano="compacto">{opciones}</Selector>), "select")).toContain("min-h-(--objetivo-minimo)");
     const conError = clasesDe(renderToStaticMarkup(<Selector etiqueta="x" error="mal">{opciones}</Selector>), "select");
     expect(conError).toContain("border-error");
     expect(conError).not.toContain("border-borde-control");
@@ -112,7 +112,7 @@ describe("Selector", () => {
   it("className se suma al final sin quitar las clases del sistema", () => {
     const clases = clasesDe(renderToStaticMarkup(<Selector etiqueta="x" className="w-40">{opciones}</Selector>), "select");
     expect(clases[clases.length - 1]).toBe("w-40");
-    expect(clases).toContain("min-h-11");
+    expect(clases).toContain("min-h-(--objetivo-minimo)");
   });
 
   it("acepta ref (React 19: una prop más) y la deja en el <select>", () => {

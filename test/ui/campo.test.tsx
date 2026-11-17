@@ -157,12 +157,12 @@ describe("Campo", () => {
   it("tamaño normal por defecto y compacto desde md:, ambos con 44 px en celular; nunca el corte sm:", () => {
         for (const tamano of ["normal", "compacto"] as const) {
       const input = clasesDe(renderToStaticMarkup(<Campo etiqueta="x" tamano={tamano} />), "input");
-      expect(input, tamano).toContain("min-h-11");
+      expect(input, tamano).toContain("min-h-(--objetivo-minimo)");
       expect(input.some((c) => c.startsWith("md:min-h-")), tamano).toBe(false);
-      expect(input.filter((c) => /^min-h-/.test(c)), tamano).toEqual(["min-h-11"]);
+      expect(input.filter((c) => /^min-h-/.test(c)), tamano).toEqual(["min-h-(--objetivo-minimo)"]);
       expect(input.some((c) => c.startsWith("sm:")), tamano).toBe(false);
     }
-    expect(clasesDe(renderToStaticMarkup(<Campo etiqueta="x" />), "input")).toContain("min-h-11");
+    expect(clasesDe(renderToStaticMarkup(<Campo etiqueta="x" />), "input")).toContain("min-h-(--objetivo-minimo)");
   });
 
   it("sin modo oscuro ni colores de escala en el HTML que dibuja", () => {
@@ -174,7 +174,7 @@ describe("Campo", () => {
   it("className se suma al final sin quitar las clases del sistema", () => {
     const input = clasesDe(renderToStaticMarkup(<Campo etiqueta="x" className="w-24" />), "input");
     expect(input[input.length - 1]).toBe("w-24");
-    expect(input).toContain("min-h-11");
+    expect(input).toContain("min-h-(--objetivo-minimo)");
   });
 
   it("acepta ref (React 19: una prop más) y la deja en el input", () => {

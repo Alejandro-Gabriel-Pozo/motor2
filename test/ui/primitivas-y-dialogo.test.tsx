@@ -24,7 +24,7 @@ describe("Boton", () => {
 
   it("zona táctil de 44 px en celular en las 45 combinaciones de variante y tamaño", () => {
     for (const variante of VARIANTES_DE_BOTON) {
-      for (const tamano of TAMANOS_DE_BOTON) expect(claseDeBoton(variante, tamano), `${variante}/${tamano}`).toMatch(/(^| )min-h-11( |$)/);
+      for (const tamano of TAMANOS_DE_BOTON) expect(claseDeBoton(variante, tamano), `${variante}/${tamano}`).toMatch(/(^| )(min-h-11|min-h-\(--objetivo-minimo\))( |$)/);
     }
   });
 

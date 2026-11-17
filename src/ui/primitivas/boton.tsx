@@ -81,9 +81,9 @@ const DESHABILITADO: Record<VarianteDeBoton, string> = {
 };
 
 const TAMANOS: Record<TamanoDeBoton, string> = {
-  normal: "min-h-11 px-6 text-sm",
-  compacto: "min-h-11 px-3 text-sm",
-  chico: "min-h-11 px-2 text-xs",
+  normal: "min-h-(--objetivo-minimo) px-6 text-sm",
+  compacto: "min-h-(--objetivo-minimo) px-3 text-sm",
+  chico: "min-h-(--objetivo-minimo) px-2 text-xs",
   // 44 px SIEMPRE, también en escritorio: para lo que debe cumplir la zona táctil en cualquier ancho (el aviso flotante con «Deshacer»).
   tactil: "min-h-11 px-3 text-sm",
   // La acción de texto de una fila: 44 px en celular y, desde `md:`, la altura del texto (`md:min-h-0`), sin relleno horizontal (el espacio entre acciones lo da el contenedor).

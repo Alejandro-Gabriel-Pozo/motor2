@@ -99,10 +99,10 @@ export function EnvolturaDeCampo({ id, etiqueta, etiquetaOculta = false, requeri
   );
 }
 
-/** El alto de un control de una línea por tamaño: 44 px en celular y en escritorio (Frente «Visual» V3, como Pedernal `Campo.module.css`). Lo comparten `Campo` y `Selector`. */
+/** El alto de un control de una línea por tamaño: el objetivo táctil de la superficie (`--objetivo-minimo`: 44 px en administración, 48 px en operación; Frente «Visual» V3, como Pedernal). Lo comparten `Campo` y `Selector`. */
 export const ALTURA_DEL_CAMPO: Record<TamanoDeCampo, string> = {
-  normal: "min-h-11",
-  compacto: "min-h-11",
+  normal: "min-h-(--objetivo-minimo)",
+  compacto: "min-h-(--objetivo-minimo)",
 };
 
 /**

@@ -128,8 +128,8 @@ describe("CampoNumero dibuja la primitiva Campo", () => {
   });
 
   it("el tamaño compacto usa la altura compacta de Campo (44 px en celular y en escritorio, V3); el normal, la normal", () => {
-    expect(clasesDe(entradaVisible(renderToStaticMarkup(<CampoNumero tipo="cantidad" value="1" tamano="compacto" ariaLabel="n" />)))).toEqual(expect.arrayContaining(["min-h-11"]));
-    expect(clasesDe(entradaVisible(renderToStaticMarkup(<CampoNumero tipo="cantidad" value="1" ariaLabel="n" />)))).toEqual(expect.arrayContaining(["min-h-11"]));
+    expect(clasesDe(entradaVisible(renderToStaticMarkup(<CampoNumero tipo="cantidad" value="1" tamano="compacto" ariaLabel="n" />)))).toEqual(expect.arrayContaining(["min-h-(--objetivo-minimo)"]));
+    expect(clasesDe(entradaVisible(renderToStaticMarkup(<CampoNumero tipo="cantidad" value="1" ariaLabel="n" />)))).toEqual(expect.arrayContaining(["min-h-(--objetivo-minimo)"]));
   });
 
   // regla de números 2026-11-09: el contenedor vuelve a ser `relative` (ancla el «= …» y el aviso del punto, que son `absolute`); el prefijo lo sigue ubicando Campo.

@@ -9,6 +9,12 @@
    aunque el sistema esté en oscuro, en sintonía con los colores de más abajo. */
 :root {
   color-scheme: light;
+  /* Frente «Visual», V3: el objetivo táctil mínimo es de la SUPERFICIE, como en Pedernal (`apps/web/ui/tokens.css:81-84`): 2,75 rem (44 px) en administración, 3 rem (48 px) en operación (el salón, `.pos-shell`).
+     Lo usan los controles de una línea (`Campo`, `Selector`, `AreaDeTexto`, `Boton`) con `min-h-(--objetivo-minimo)`. */
+  --objetivo-minimo: 2.75rem;
+}
+.pos-shell {
+  --objetivo-minimo: 3rem;
 }
 
 @theme inline {
