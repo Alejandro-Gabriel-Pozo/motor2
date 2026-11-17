@@ -31,6 +31,7 @@ describe("orden de los renglones de una sección de carta (etapa O1)", () => {
   let sucursalB: string;
   let usuarioId: string;
   let operadorId: string;
+  let rolAdminId: string;
   let unidadId: string;
   let bebidas: string;
   const actor = () => actorDePrueba(usuarioId, sucursalA);
@@ -76,6 +77,7 @@ describe("orden de los renglones de una sección de carta (etapa O1)", () => {
     sucursalA = base.sucursal.id;
     sucursalB = (await prisma.sucursal.create({ data: { nombre: "Norte" } })).id;
     usuarioId = (await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: sucursalA, rolId: base.admin.id })).id;
+    rolAdminId = base.admin.id;
     operadorId = (await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: sucursalA, rolId: base.operador.id })).id;
     unidadId = (await prisma.unidad.create({ data: { nombre: "u", magnitud: "CANTIDAD", decimales: 0 } })).id;
     bebidas = (await prisma.seccionCarta.create({ data: { nombre: "Bebidas", orden: 1 } })).id;
@@ -326,10 +328,10 @@ describe("orden de los renglones de una sección de carta (etapa O1)", () => {
       expect(await filasDeModo()).toMatchObject([{ modo: "ALFABETICO", version: 1 }]);
     });
 
-    it("el GERENTE de la empresa puede aunque su rol en la sucursal sea de operador (el gerente es administrador efectivo en todo su alcance); escribe y audita una vez", async () => {
+    it("el GERENTE de la empresa (el primer administrador, con rolEmpresa «gerente») puede: escribe y audita; lo que cambia es la persona, no el permiso", async () => {
       await producto("Agua", 0);
       await producto("Soda", 1);
-      const gerente = await crearUsuarioConMembresia({ email: "gerente@test.com", sucursalId: sucursalA, rolId: (await prisma.rol.findFirstOrThrow({ where: { id: (await prisma.membresia.findFirstOrThrow({ where: { usuarioId: operadorId } })).rolId } })).id });
+      const gerente = await crearUsuarioConMembresia({ email: "gerente@test.com", sucursalId: sucursalA, rolId: rolAdminId });
       await prismaAdmin.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId: gerente.id, empresaId: EMPRESA_POR_DEFECTO_ID } }, data: { rolEmpresa: "gerente" } });
       const orden = await pedido(["Soda", "Agua"]);
       await mockearUsuarioActual({ id: gerente.id, email: "gerente@test.com", nombre: null });
