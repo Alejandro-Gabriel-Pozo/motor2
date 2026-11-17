@@ -31,6 +31,7 @@ function receta(c: Combinacion): RecetaParaFicha & Record<string, unknown> {
   const con = c.fichaTecnica === "con";
   return {
     version: VERSION_DE[c.origen],
+    baseDeCantidad: "NETA",
     costoUnitario: 1234,
     ingredientes: INGREDIENTES.map((i) => (c.sustitutos === "con" ? i : { ...i, sustitutos: [] })),
     pasos:
