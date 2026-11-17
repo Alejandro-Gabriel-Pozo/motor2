@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { mensajeSeccionDesactivada } from "@/core/features/movimientos/secciones.guard";
 import { obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
 import { whereSeccionHabitualVigente } from "@/core/stock/public";
+import { MENSAJE_SECCION_NO_SIRVE_PARA_VENDER, USOS_QUE_SIRVEN_PARA_VENDER, usoSirveParaVender } from "@/core/compras/public";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
 import { crearLibroDeStock, type SeccionCandidata } from "@/core/movimientos/public";
 import type { DatosDeOrigen, OrigenPreparado, OrigenVenta } from "@/core/movimientos/public";
@@ -18,7 +19,7 @@ import { ENTIDADES } from "@/core/textos/entidades";
  *   como siempre) y que no esté dada de baja (P17: no se vende desde ella; texto único `mensajeSeccionDesactivada`) y es la única candidata (habitual de todo = ella, sin respaldos).
  * - `automatico` (cierre de cuenta del POS): candidatas = las secciones activas de la sucursal; de RESPALDO, solo las marcadas
  *   `sirveDeRespaldoEnVentas` (default true: todas). Cada PV prefiere su sección HABITUAL (`SeccionHabitualProducto`), solo si apunta a
- *   una sección ACTIVA de ESTA sucursal — y se usa aunque no sirva de respaldo (la preferencia explícita manda). Si no hay ninguna activa,
+ *   una sección ACTIVA de ESTA sucursal y de uso NORMAL (etapa (ii-a): una habitual de cuarentena o de rechazo se ignora; el dato guardado no se toca) — y se usa aunque no sirva de respaldo (la preferencia explícita manda). Si no hay ninguna activa,
  *   «Esta sucursal no tiene ninguna sección activa: pedile a un admin que cree una.» (el mismo mensaje que ya mostraba la pantalla).
  *   Sección de REFERENCIA de un producto: la de su último movimiento entre las de respaldo (`groupBy` + `_max.creadoEn`, nunca
  *   `findMany distinct`, que Prisma deduplica en memoria); decide adónde va un faltante o la fila VENTA cuando nada más lo decide.
@@ -34,9 +35,11 @@ export async function prepararOrigen(tx: Prisma.TransactionClient, sucursalId: s
     // P17 (decisión del dueño, 2026-10-11): no se vende desde una sección dada de baja (la venta de mostrador elige la sección; el cierre de cuenta del POS ya usa solo las activas). El llamador corre esto
     // DESPUÉS de la clave I3: un reintento de una venta ya escrita devuelve el mensaje original.
     if (!seccion.activa) return { ok: false, mensaje: mensajeSeccionDesactivada(seccion.nombre) };
+    // Etapa (ii-a): tampoco se vende desde un depósito de cuarentena o de rechazo (falla cerrada; va DESPUÉS de «no encontrada» y «desactivada»).
+    if (!usoSirveParaVender(seccion.uso)) return { ok: false, mensaje: MENSAJE_SECCION_NO_SIRVE_PARA_VENDER };
     return { ok: true, tipo: "seccion", fija: { id: seccion.id, nombre: seccion.nombre } };
   }
-  const activas = await tx.seccion.findMany({ where: { sucursalId, activa: true }, select: { id: true, nombre: true, sirveDeRespaldoEnVentas: true }, orderBy: { nombre: "asc" } });
+  const activas = await tx.seccion.findMany({ where: { sucursalId, activa: true, uso: { in: [...USOS_QUE_SIRVEN_PARA_VENDER] } }, select: { id: true, nombre: true, sirveDeRespaldoEnVentas: true }, orderBy: { nombre: "asc" } });
   if (!activas.length) return { ok: false, mensaje: MENSAJE_SIN_SECCIONES_ACTIVAS };
   // Por nombre en castellano (mismo criterio que el desempate de origen-venta.ts), no por la intercalación de la base.
   activas.sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
@@ -103,7 +106,7 @@ export async function cargarDatosDeOrigen(
 async function cargarHabituales(tx: Prisma.TransactionClient, sucursalId: string, pvIds: readonly string[]): Promise<Map<string, SeccionCandidata>> {
   if (!pvIds.length) return new Map();
   const filas = await tx.seccionHabitualProducto.findMany({
-    where: { ...whereSeccionHabitualVigente(sucursalId), productoId: { in: [...pvIds] } },
+    where: { ...whereSeccionHabitualVigente(sucursalId), seccion: { ...whereSeccionHabitualVigente(sucursalId).seccion, uso: { in: [...USOS_QUE_SIRVEN_PARA_VENDER] } }, productoId: { in: [...pvIds] } },
     select: { productoId: true, seccion: { select: { id: true, nombre: true } } },
   });
   return new Map(filas.map((f) => [f.productoId, f.seccion]));

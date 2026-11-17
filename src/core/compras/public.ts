@@ -31,6 +31,7 @@ export {
   usoPropuestoPorElControl,
 } from "./destino-de-recepcion";
 export type { CodigoDeBloqueoDeDestino, LineaParaElDestino, SeccionParaElDestino, UsoDeSeccion } from "./destino-de-recepcion";
+export { EFECTO_DE_USO_EN_LA_VENTA, MENSAJE_SECCION_NO_SIRVE_PARA_VENDER, USOS_QUE_SIRVEN_PARA_VENDER, usoSirveParaVender } from "./uso-de-seccion-en-venta";
 export { decidirAnulacionDeFactura, decidirCorreccionDeDatos } from "./reglas-de-la-factura";
 export {
   CONDICIONES_DE_CONTROL,

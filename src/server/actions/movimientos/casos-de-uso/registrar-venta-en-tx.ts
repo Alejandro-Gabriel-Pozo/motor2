@@ -287,7 +287,7 @@ export async function registrarVentaEnTx(
       avisosStockNegativo.push(avisoDeStockNegativo(faltante, producto, origenDatos.nombreDeSeccion(faltante.seccionId)));
       continue;
     }
-    const pista = await seccionesConStock(faltante.productoId, actor.sucursalId, tx);
+    const pista = await seccionesConStock(faltante.productoId, actor.sucursalId, tx, { soloQueSirvenParaVender: true });
     return fallo(mensajeStockInsuficiente(faltante, producto, pista));
   }
 

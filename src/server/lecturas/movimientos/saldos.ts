@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { elegirLoteMasProximoAVencer, repartirConsumoPorFamilia, type ParteDeReparto } from "@/core/movimientos/public";
+import { USOS_QUE_SIRVEN_PARA_VENDER } from "@/core/compras/public";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
 
 type Db = PrismaClient | Prisma.TransactionClient;
@@ -60,10 +61,12 @@ export async function validarStockSuficiente(
  * la "pista" del error de sección obligatoria (Movimientos.js:744-751,
  * "Tiene stock en: ...").
  */
-export async function seccionesConStock(productoId: string, sucursalId: string, db: Db): Promise<string[]> {
+export async function seccionesConStock(productoId: string, sucursalId: string, db: Db, opciones: { soloQueSirvenParaVender?: boolean } = {}): Promise<string[]> {
+  // Etapa (ii-a): la pista del rechazo de una VENTA cuenta solo depósitos de uso NORMAL (con `soloQueSirvenParaVender`); los demás llamadores (movimientos) siguen como antes.
+  const usos = opciones.soloQueSirvenParaVender ? { uso: { in: [...USOS_QUE_SIRVEN_PARA_VENDER] } } : {};
   const filas = await db.movimientoStock.groupBy({
     by: ["seccionId"],
-    where: { productoId, seccion: { sucursalId } },
+    where: { productoId, seccion: { sucursalId, ...usos } },
     _sum: { cantidad: true },
   });
   const idsConStock = filas.filter((f) => Number(f._sum.cantidad ?? 0) > 0).map((f) => f.seccionId);
@@ -180,7 +183,7 @@ export async function resolverConsumoPorFamilia(
 
 // GO-2d
 /**
- * El STOCK TEÓRICO (lo que dice el sistema) de unos productos en UNA sucursal: la suma del libro de stock (`MovimientoStock.cantidad`) de todas sus secciones, la misma cuenta que el
+ * El STOCK TEÓRICO (lo que dice el sistema) de unos productos en UNA sucursal: la suma del libro de stock (`MovimientoStock.cantidad`) de sus secciones de uso NORMAL (etapa (ii-a): el stock de un depósito de cuarentena o de rechazo no cuenta como «disponible para vender»), la misma cuenta que el
  * «teórico» del stock consolidado (`calcularStockConsolidado`), pero solo para los productos pedidos y en UN agregado (sin N+1). Falla cerrado por sucursal, como `calcularSaldoTotal`:
  * la sección tiene que ser de la sucursal que se pide (en el mismo `where`), además de la RLS por sucursal. Un producto sin movimientos acá no vuelve: su saldo es 0.
  *
@@ -190,6 +193,6 @@ export async function resolverConsumoPorFamilia(
 export async function saldosTeoricosEnSucursal(sucursalId: string, productoIds: readonly string[], db: Db): Promise<Map<string, number>> {
   const ids = [...new Set(productoIds)];
   if (ids.length === 0) return new Map();
-  const filas = await db.movimientoStock.groupBy({ by: ["productoId"], where: { productoId: { in: ids }, seccion: { sucursalId } }, _sum: { cantidad: true } });
+  const filas = await db.movimientoStock.groupBy({ by: ["productoId"], where: { productoId: { in: ids }, seccion: { sucursalId, uso: { in: [...USOS_QUE_SIRVEN_PARA_VENDER] } } }, _sum: { cantidad: true } });
   return new Map(filas.map((f) => [f.productoId, Number(f._sum.cantidad ?? 0)]));
 }
