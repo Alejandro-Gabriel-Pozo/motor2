@@ -462,10 +462,10 @@ const completos: Record<string, Valor> = {
 
   // --- caja, etapa B: administración de cuentas de cobro y medios de pago (GT-3b) ---
   // La cuenta de cobro es de UNA sucursal (`cuentaDeCobroId`, y la sucursal que llega como entrada); el medio es de la EMPRESA (`medioQrId`: ajeno solo en el escenario de otra empresa). Crear una cuenta y editarla llevan la sucursal
-  // como dato del cliente (ajena: fuera del alcance o de otra empresa); el control positivo de crear se ejerce parado en la sucursal vacía (S4: S1 ya tiene su cuenta activa y rechazaría con «ya tiene una cuenta activa»). Crear un medio
+  // como dato del cliente (ajena: fuera del alcance o de otra empresa); el control positivo de crear desactiva antes la cuenta de S1 (`PREPARACION_DEL_CONTROL`: S1 ya tiene su cuenta activa y rechazaría con «ya tiene una cuenta activa»). Crear un medio
   // no lleva ids: solo se ejerce sin sesión, sin empresa y como control positivo.
   "accion|actions/caja/cuentas-y-medios.ts|crearCuentaDeCobroDeCaja": (k, c) =>
-    conVariantes(intento(c, ["sucursalId"], [{ tipo: "TERMINAL", nombre: "Terminal nueva", identificadorExterno: null, sucursalId: c.escenario === "controlMutacion" ? c.mundo.s4Id : k.sucursalId }])),
+    conVariantes(intento(c, ["sucursalId"], [{ tipo: "TERMINAL", nombre: "Terminal nueva", identificadorExterno: null, sucursalId: k.sucursalId }])),
   "accion|actions/caja/cuentas-y-medios.ts|editarCuentaDeCobroDeCaja": (k, c) =>
     conVariantes(
       intento(c, ["cuentaDeCobroId"], [{ cuentaDeCobroId: k.cuentaDeCobroId, versionEsperada: 1, nombre: "Terminal renombrada", identificadorExterno: null, sucursalId: c.propio.sucursalId }]),
@@ -674,7 +674,12 @@ const CARTA_PUBLICA = "carta pública: anónima POR DISEÑO (lo que la empresa p
 const dejarLaSesionEnCierre = async (mundo: Mundo): Promise<void> => {
   await prismaAdmin.sesionCaja.update({ where: { id: mundo.s1.sesionDeCajaId }, data: { estado: "EN_CIERRE", cierreIniciadoEn: new Date(), cierreIniciadoPorId: mundo.u1.id } });
 };
+/** Caja, etapa B: el mundo deja a S1 con su cuenta de cobro ACTIVA y se permite una sola activa por sucursal: para que el control positivo de crear una cuenta termine en ok, se la desactiva antes. */
+const dejarLaSucursalSinCuentaActiva = async (mundo: Mundo): Promise<void> => {
+  await prismaAdmin.cuentaDeCobro.update({ where: { id: mundo.s1.cuentaDeCobroId }, data: { activa: false } });
+};
 export const PREPARACION_DEL_CONTROL: Readonly<Record<string, (mundo: Mundo) => Promise<void>>> = {
+  "accion|actions/caja/cuentas-y-medios.ts|crearCuentaDeCobroDeCaja": dejarLaSucursalSinCuentaActiva,
   "accion|actions/caja/caja.ts|cancelarCierreDeSesionDeCaja": dejarLaSesionEnCierre,
   "accion|actions/caja/caja.ts|cerrarSesionDeCaja": dejarLaSesionEnCierre,
 };
