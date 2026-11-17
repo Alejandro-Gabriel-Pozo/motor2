@@ -3,7 +3,7 @@ import type { MagnitudUnidad, Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
 import { textoDe } from "@/core/textos/texto-de";
 import { esNumeroEstricto } from "@/core/numero";
-import { guardLineaCompra, guardPesoRealPorMagnitud } from "@/core/features/compras/compra.guard";
+import { guardClavesDeLineaDeCompra, guardLineaCompra, guardPesoRealPorMagnitud } from "@/core/features/compras/compra.guard";
 import { DECIMALES_DE_STOCK, TRANSICIONES, convertirCantidadAUnidadDeStock, esSignoFijo, precioPorUnidad, productoValidoParaProceso, redondearACantidadDeUnidad, type ConsumoParaFilas } from "@/core/movimientos/public";
 import { obtenerLoteMasProximoAVencer, resolverConsumoPorFamilia } from "@/server/lecturas/movimientos/saldos";
 import { crearCacheProducto } from "@/server/persistencia/movimientos/producto-cache";
@@ -97,6 +97,11 @@ export async function armarLineaMovimiento(
   sucursalNombre: string
 ): Promise<{ ok: true; linea: LineaCalculada | null } | { ok: false; mensaje: string }> {
   const transicion = TRANSICIONES[datos.proceso];
+  // C5 (oráculo de compras): una clave de la línea que no está declarada (p. ej. `precioUnitario`) rechaza la compra entera; ignorada, entraba con precio y costo 0. Es el punto común de la compra simple, por pasos, factura y devolución.
+  if (transicion.aplicaFactorConversion) {
+    const clavesAdmitidas = guardClavesDeLineaDeCompra(item);
+    if (!clavesAdmitidas.ok) return { ok: false, mensaje: clavesAdmitidas.mensaje };
+  }
   const producto = await obtenerProducto(item.productoId);
   if (!producto) return { ok: false, mensaje: `El producto no existe.` };
   if (!(await productoDisponibleEn(sucursalId, producto.id, tx))) {

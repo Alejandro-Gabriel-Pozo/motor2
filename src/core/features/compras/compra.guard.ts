@@ -3,6 +3,7 @@ import { validarImporte } from "@/core/datos/importe";
 import { leerNumeroDeComprobanteDeCompra } from "@/core/datos/numero-comprobante";
 import { validarNroFactura } from "@/core/datos/nro-factura";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
+import type { ItemMovimientoInput } from "@/core/features/movimientos/movimiento.schema";
 import type { DatosLineaCompra, LineaCompraValidada } from "./compra.schema";
 
 /**
@@ -77,3 +78,28 @@ export function mensajeReferenciaProveedorObligatoria(nombreDelProducto: string)
 
 /** Mismo texto que usaba la Server Action cuando la operación no existe en esta sucursal (anular y corregir). */
 export const MENSAJE_OPERACION_NO_ENCONTRADA = "No se encontró esa operación en esta sucursal.";
+
+/**
+ * Lista de PERMITIDOS de las claves de una línea de Compra/Devolución a proveedor (oráculo de compras C5, 2026-11-17): una clave que no está acá (p. ej. `precioUnitario`) se rechaza en vez de ignorarse,
+ * porque ignorada la línea entraba con precio total 0 y costo 0 sin aviso. Un `Record` sobre `keyof ItemMovimientoInput` hace que una clave NUEVA de la línea no compile hasta declararla acá.
+ */
+const CLAVES_DE_LINEA_DE_COMPRA: Readonly<Record<keyof ItemMovimientoInput, true>> = {
+  productoId: true,
+  cantidad: true,
+  loteVencimiento: true,
+  precioTotal: true,
+  pesoReal: true,
+  unidadCompraId: true,
+  referenciaProveedor: true,
+};
+
+/** PROPUESTA (texto sin aprobar del dueño): respaldo «Valor inválido.», el mismo de los guards de permisos y secciones. */
+const MENSAJE_CLAVE_DE_LINEA_DESCONOCIDA = "Valor inválido.";
+
+/** Rechaza, sin mirar nada más, una línea con cualquier clave fuera de `CLAVES_DE_LINEA_DE_COMPRA` (propia o heredada del prototipo no cuenta: se mira con `Object.keys`). */
+export function guardClavesDeLineaDeCompra(linea: object): ResultadoDato<null> {
+  for (const clave of Object.keys(linea)) {
+    if (!Object.prototype.hasOwnProperty.call(CLAVES_DE_LINEA_DE_COMPRA, clave)) return rechazar("formato", MENSAJE_CLAVE_DE_LINEA_DESCONOCIDA);
+  }
+  return aceptar(null);
+}
