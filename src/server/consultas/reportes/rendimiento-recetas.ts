@@ -436,8 +436,6 @@ async function construirPools(sucursalId: string, db: Db): Promise<Pool[]> {
       if (!usosPorClave.has(clave)) usosPorClave.set(clave, []);
       const cantidadCentral = Number(ing.cantidad);
       const mermaPorcentajeCentral = Number(ing.mermaPorcentaje);
-      // M3d: la base de la versión de la línea (la propia donde la sucursal la tiene habilitada, si no la central). Una marca ilegible CIERRA: nunca se asume NETA.
-      const baseDeCantidad = leerBaseDeCantidad(vigente.baseDeCantidad);
       const ef = rendimientoEfectivo(
         { cantidad: cantidadCentral, mermaPorcentaje: mermaPorcentajeCentral },
         ing.rendimientosLocales.map((r) => ({ sucursalId: r.sucursalId, cantidad: r.cantidad !== null ? Number(r.cantidad) : null, mermaPorcentaje: r.mermaPorcentaje !== null ? Number(r.mermaPorcentaje) : null })),
@@ -446,8 +444,7 @@ async function construirPools(sucursalId: string, db: Db): Promise<Pool[]> {
       usosPorClave.get(clave)!.push({
         pvProductoId: pv.id,
         pvNombre: pv.nombre,
-        recetaIngredienteId: ing.id,
-        baseDeCantidad,
+        recetaIngredienteId: ing.id, baseDeCantidad: leerBaseDeCantidad(vigente.baseDeCantidad), // M3d: la base de la versión de la línea; una marca ilegible CIERRA (nunca se asume NETA)
         insumoProductoId: ing.insumoProductoId,
         cantidad: ef.cantidad,
         unidadNombre: ing.unidad.nombre,
@@ -623,8 +620,7 @@ async function simplesDesde(sucursalId: string, pools: readonly Pool[], costos: 
     filas.push({
       productoVentaId: uso.pvProductoId,
       productoVentaNombre: uso.pvNombre,
-      recetaIngredienteId: uso.recetaIngredienteId,
-      baseDeCantidad: uso.baseDeCantidad,
+      recetaIngredienteId: uso.recetaIngredienteId, baseDeCantidad: uso.baseDeCantidad,
       insumoProductoId: uso.insumoProductoId,
       insumoONombre: pool.nombre,
       unidadRecetaNombre: uso.unidadNombre,
@@ -831,8 +827,7 @@ async function compartidasDesde(sucursalId: string, pools: readonly Pool[], cost
         insumoONombre: pool.nombre,
         productoVentaId: uso.pvProductoId,
         productoVentaNombre: uso.pvNombre,
-        recetaIngredienteId: uso.recetaIngredienteId,
-        baseDeCantidad: uso.baseDeCantidad,
+        recetaIngredienteId: uso.recetaIngredienteId, baseDeCantidad: uso.baseDeCantidad,
         insumoProductoId: uso.insumoProductoId,
         unidadRecetaNombre: uso.unidadNombre,
         cantidadActual: uso.cantidad,
