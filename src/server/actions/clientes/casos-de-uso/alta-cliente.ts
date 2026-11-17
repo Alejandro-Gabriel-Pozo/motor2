@@ -6,6 +6,8 @@ import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-aud
 import { esChoqueDeIndiceUnico } from "@/core/movimientos/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { crearClienteNuevo } from "@/server/persistencia/clientes/clientes";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 
 /**
  * Caso de uso «alta de un cliente con % de descuento» (Task #14, docs/plan-clientes-descuento-2026-09-26.md; Hito 4 de la pureza, bloque C de la pieza
@@ -29,7 +31,7 @@ export async function altaClienteCasoDeUso(
 ): Promise<ResultadoAltaCliente> {
   const { nombre: n, descuentoPorcentaje: pct } = comando;
   const existente = await actor.db.cliente.findFirst({ where: { nombre: { equals: n, mode: "insensitive" } } });
-  if (existente) return fracaso("NOMBRE_REPETIDO", `Ya existe un cliente llamado "${existente.nombre}".`);
+  if (existente) return fracaso("NOMBRE_REPETIDO", textoDe("rechazo.NOMBRE_REPETIDO", { entidad: ENTIDADES.cliente, nombre: existente.nombre }));
 
   // Carrera: dos altas del mismo nombre a la vez pasan la lectura de arriba; el índice único sobre lower(nombre) deja una sola y la otra se rechaza acá (la transacción se deshace entera, con su auditoría).
   let creado: Awaited<ReturnType<typeof crearClienteNuevo>>;
@@ -41,7 +43,7 @@ export async function altaClienteCasoDeUso(
       return c;
     });
   } catch (e) {
-    if (esChoqueDeIndiceUnico(e)) return fracaso("NOMBRE_REPETIDO", `Ya existe un cliente llamado "${n}".`);
+    if (esChoqueDeIndiceUnico(e)) return fracaso("NOMBRE_REPETIDO", textoDe("rechazo.NOMBRE_REPETIDO", { entidad: ENTIDADES.cliente, nombre: n }));
     throw e;
   }
   return exito(`Cliente "${creado.nombre}" creado, con ${pct}% de descuento.`, { id: creado.id, nombre: creado.nombre });
