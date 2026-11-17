@@ -132,13 +132,17 @@ describe("margen objetivo configurable", () => {
       expect(await prisma.margenObjetivo.count()).toBe(0);
     });
 
-    it("ni siquiera un rol que no es de administración, aunque se le habilite la clave: el piso de nivel lo corta", async () => {
+    it("PISOS-65: un rol que no es de administración, con la fila que le da el gerente, SÍ guarda: el piso ya no la cierra, la cierra la falta de fila", async () => {
       const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId, rolId: operadorRolId });
-      await prisma.permisoRol.updateMany({ where: { rolId: operadorRolId, accionClave: "margen_objetivo_editar" }, data: { puedeVer: true, puedeEditar: true } });
+      await prisma.permisoRol.upsert({
+        where: { rolId_accionClave: { rolId: operadorRolId, accionClave: "margen_objetivo_editar" } },
+        update: { puedeVer: true, puedeEditar: true },
+        create: { rolId: operadorRolId, accionClave: "margen_objetivo_editar", puedeVer: true, puedeEditar: true },
+      });
       await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
       const r = await guardarMargenObjetivo(null, 30);
-      expect(r.ok).toBe(false);
-      expect(await prisma.margenObjetivo.count()).toBe(0);
+      expect(r.ok, r.mensaje).toBe(true);
+      expect(await prisma.margenObjetivo.count()).toBe(1);
     });
   });
 

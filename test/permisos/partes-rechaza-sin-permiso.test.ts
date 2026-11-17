@@ -79,7 +79,7 @@ const foto = async () => ({
 interface Accion {
   nombre: string;
   exige: Clave;
-  /** Quién la tiene con el permiso exacto (el piso manda: `partes_desactivar` es de piso administrador). */
+  /** Quién la tiene con el permiso exacto (PISOS-65: `partes_desactivar` es de piso operario y de fábrica solo `admin`). */
   exacto: string;
   llamar: () => Promise<unknown>;
   /** Lo que devuelve cuando PASA (para no confundir un rechazo del caso de uso con uno del permiso). */
@@ -120,11 +120,11 @@ describe("las acciones de la ficha de parte verifican el permiso exacto en el se
     expect(a.pasa(await a.llamar().catch((e: unknown) => ({ lanzo: String(e) }))), `${a.nombre} no pasó con ${a.exige}`).toBe(true);
   });
 
-  it("(c) el piso manda: un rol propio con la fila de partes_desactivar NO desactiva (es de piso administrador)", async () => {
+  it("(c) PISOS-65: un rol propio con la fila de partes_desactivar (que le da el gerente) SÍ desactiva: el piso ya no la cierra, la cierra la falta de fila", async () => {
     const rol = await rolCon("encargado-con-desactivar", ["partes_desactivar"]);
     const encargado = await crearUsuarioConMembresia({ email: "encargado@test.com", sucursalId: centralId, rolId: rol.id });
     await como(encargado);
-    await llamarYVerRechazo(ACCIONES_DE_PARTE[2]!);
+    expect(ACCIONES_DE_PARTE[2]!.pasa(await ACCIONES_DE_PARTE[2]!.llamar())).toBe(true);
   });
 
   it("(d) un usuario de OTRA empresa (con todos los permisos en la suya) no ve la ficha ajena: la edición y la desactivación no la encuentran, la búsqueda no la trae, y la base no cambia", async () => {
