@@ -1,6 +1,6 @@
 ### 0. Siembra de la empresa (roles, matriz de permisos, unidades, motivos, destinos, sucursal)
-  ROL activo=true clave=admin nombre=admin
-  ROL activo=true clave=operador nombre=operador
+  ROL activo=true clave=admin nombre=administrador
+  ROL activo=true clave=operador nombre=empleado
   PERMISO admin:activar_sucursal ver=true editar=true
   PERMISO admin:activar_usuario_sucursal ver=true editar=true
   PERMISO admin:alta_producto ver=true editar=true
@@ -436,8 +436,8 @@
   AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#8 sucursalId=sucursal2 valorAnterior=null valorNuevo=admin
   AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
 ### 7. Siembra de una empresa en alta
-  ROL activo=true clave=admin nombre=admin
-  ROL activo=true clave=operador nombre=operador
+  ROL activo=true clave=admin nombre=administrador
+  ROL activo=true clave=operador nombre=empleado
   PERMISO admin:activar_sucursal ver=true editar=true
   PERMISO admin:activar_usuario_sucursal ver=true editar=true
   PERMISO admin:alta_producto ver=true editar=true
