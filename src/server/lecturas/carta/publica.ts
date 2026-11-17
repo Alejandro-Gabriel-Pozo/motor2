@@ -1,19 +1,4 @@
-import {
-  entradasDelPortalNuevo,
-  esSlugPublicoValido,
-  esVarianteDePortal,
-  estiloCartaPorDefecto,
-  posicionCompleta,
-  resolverEstiloCarta,
-  resolverEstiloPortal,
-  sonPartesDeImagenValidas,
-  valoresDelPortalDual,
-  type CartaV1,
-  type EntradaPortalCarta,
-  type EstiloCarta,
-  type EstiloPortal,
-  type SucursalDelPortal,
-} from "@/core/carta/public";
+import { entradasDelPortalNuevo, esVarianteDePortal, sonPartesDeImagenValidas, valoresDelPortalDual, type SucursalDelPortal, LIBRO_ESTILO_MAQUETA, conDefaultsDeLaMaqueta, esSlugPublicoValido, estiloCartaPorDefecto, posicionCompleta, resolverEstiloCarta, resolverEstiloPortal, type CartaV1, type EntradaPortalCarta, type EstiloCarta, type EstiloPortal } from "@/core/carta/public";
 import type { EmpresaCarta } from "@/server/lecturas/carta/empresa";
 import { resolverMenuCarta } from "@/server/lecturas/carta/menu";
 import type { Db } from "@/lib/db-tipos";
@@ -184,7 +169,12 @@ export async function resolverCartaPublica(
   if (!carta) return null;
 
   const tema = conTema?.temaCarta;
-  const estilo = tema?.aplicarEnCarta ? resolverEstiloCarta(tema.valores) : estiloCartaPorDefecto();
+  // Estilo de la maqueta (`core/carta/libro-estilo-maqueta.ts`): lo que la sucursal no cargó en su Tema toma el por defecto de la maqueta; apagado, todo igual que antes.
+  const estilo = LIBRO_ESTILO_MAQUETA
+    ? resolverEstiloCarta(conDefaultsDeLaMaqueta(tema?.aplicarEnCarta ? tema.valores : {}))
+    : tema?.aplicarEnCarta
+      ? resolverEstiloCarta(tema.valores)
+      : estiloCartaPorDefecto();
 
   return { carta, estilo };
 }

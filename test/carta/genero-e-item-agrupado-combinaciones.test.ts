@@ -200,6 +200,8 @@ describe("guardianes: una dimensión nueva sin declarar hace fallar", () => {
     "server/actions/carta/generos-compartido.ts": "sin-efecto",
     "server/actions/carta/casos-de-uso/copiar-carta-de-sucursal.ts": "sin-efecto",
     "server/persistencia/carta/copiar-carta.ts": "sin-efecto",
+    // F1 (familias): pregunta si un producto está en un ítem agrupado para rechazar su alta en una familia. El invariante «una familia o un ítem agrupado» es de la base (triggers) y vale con el interruptor encendido o apagado: no depende de lo que muestre la pantalla.
+    "server/persistencia/carta/familias.ts": "sin-efecto",
     "core/carta/carta-de-sucursal.ts": "sin-efecto",
   };
 

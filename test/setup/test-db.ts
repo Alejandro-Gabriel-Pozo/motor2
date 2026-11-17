@@ -94,6 +94,8 @@ export async function limpiarBaseDeTest() {
   // GO-3: lo de combos, menú del día y combinaciones primero (nadie lo referencia; ver `limpiarTablasDeGo3`, al final del archivo).
   await limpiarTablasDeGo3();
   await prismaAdmin.modoDeOrdenDeSeccionCarta.deleteMany(); // O1: el modo de orden cuelga de la sucursal y de la sección (RESTRICT).
+  await prismaAdmin.miembroDeFamilia.deleteMany(); // F1: los miembros cuelgan de la familia y del producto (RESTRICT).
+  await prismaAdmin.familiaDeProducto.deleteMany();
   await prismaAdmin.portalZona.deleteMany(); // Portal PR-A: las tarjetas y zonas cuelgan del portal y de la sucursal (RESTRICT).
   await prismaAdmin.portalTarjeta.deleteMany();
   await prismaAdmin.portalDeEmpresa.deleteMany();

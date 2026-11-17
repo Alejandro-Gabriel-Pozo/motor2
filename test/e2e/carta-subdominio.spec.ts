@@ -35,7 +35,7 @@ test.describe("carta por subdominio", () => {
     }
   });
 
-  test("los links internos (portal → carta, ← Menú) y los paths /carta-publica/... quedan en la URL limpia del subdominio", async ({ page, sucursalId, baseURL }) => {
+  test("los links internos (portal → carta, ← Portal) y los paths /carta-publica/... quedan en la URL limpia del subdominio", async ({ page, sucursalId, baseURL }) => {
     const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
     const slug = `e2e-sub-${marca}`;
     await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
@@ -47,7 +47,7 @@ test.describe("carta por subdominio", () => {
       await expect(page).toHaveURL(`${host}/${slug}`);
       await expect(page.locator(".carta-slider")).toBeVisible();
 
-      await page.getByRole("link", { name: "← Menú" }).click();
+      await page.getByRole("link", { name: "← Portal" }).click();
       await expect(page).toHaveURL(`${host}/`);
       await expect(page.getByRole("link", { name: new RegExp(`Sub ${marca}`) })).toBeVisible();
 

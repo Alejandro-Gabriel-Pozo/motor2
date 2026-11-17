@@ -477,6 +477,7 @@ model Producto {
   frecuenciasConteo         FrecuenciaConteoProducto[]
   disponibilidades          DisponibilidadProducto[]
   ocultamientos             OcultamientoProducto[]
+  miembrosDeFamilia         MiembroDeFamilia[]
   traspasos                 TraspasoSucursal[]
   contenidosCarta           ContenidoCartaProducto[]
   descuentosCarta           DescuentoProductoSucursal[]
@@ -598,6 +599,53 @@ model ModoDeOrdenDeSeccionCarta {
   @@unique([sucursalId, seccionCartaId])
   @@unique([empresaId, id])
   @@index([seccionCartaId])
+}
+
+/// Familia de productos de la EMPRESA (docs/diseno-carta-familias-niveles-6-a-10-2026-11-17.md, F1; Pedernal 0079): junta productos de venta que siguen siendo independientes (precio, receta y stock propios) para mostrarlos juntos. Solo el nombre y dos interruptores que NACEN
+/// APAGADOS (`agruparEnCarta`, `agruparEnPos`: «Agrupar en el POS» se guarda y nada más lo lee todavía). Nunca se borra: se desactiva (`activa`) y sus miembros siguen siéndolo. `id` lo manda la aplicación (uuid nativo); `nombreClave` es la clave de comparación del nombre
+/// (`claveDeNombre`: único por empresa sin distinguir mayúsculas); `version` la sube la aplicación en cada cambio (control optimista). `creadoPorId` es el usuario que la creó (sin FK: la auditoría lo nombra). CHECK del largo del nombre y de la versión, y el
+/// disparador de identidad inmutable, los agrega la migración a mano (Prisma no declara CHECK ni disparadores).
+model FamiliaDeProducto {
+  id             String             @id @db.Uuid
+  empresaId      String             @default(dbgenerated("app_empresa_actual()"))
+  empresa        Empresa            @relation(fields: [empresaId], references: [id])
+  nombre         String
+  nombreClave    String
+  agruparEnCarta Boolean            @default(false)
+  agruparEnPos   Boolean            @default(false)
+  activa         Boolean            @default(true)
+  creadoPorId    String
+  version        Int                @default(1)
+  creadoEn       DateTime           @default(now()) @db.Timestamptz(3)
+  /// Cuándo cambió por última vez (reloj inyectado de la acción; sin default a propósito).
+  actualizadoEn  DateTime           @db.Timestamptz(3)
+  miembros       MiembroDeFamilia[]
+
+  @@unique([empresaId, nombreClave])
+  @@unique([empresaId, id])
+}
+
+/// Un producto de venta en una familia (F1). Quitar NO borra: escribe `quitadoPorId` y `quitadoEn` (juntos, CHECK) y volver a agregar es una fila NUEVA; un miembro quitado no cambia más (disparador). `posicion` de 1 a 1000 (CHECK, protección de la base: no hay tope de
+/// miembros). Un producto es miembro VIGENTE (`quitadoEn IS NULL`) de UNA sola familia (único parcial `MiembroDeFamilia_producto_vigente_key`) y una posición por familia (`MiembroDeFamilia_posicion_vigente_key`): los dos índices parciales los declara solo la migración
+/// (Prisma no los modela). Invariante TRANSITORIO en la base (disparadores en esta tabla y en `OpcionItemAgrupadoCarta`): un producto no está a la vez en una familia vigente y en un ítem agrupado. No se toca `Producto`.
+model MiembroDeFamilia {
+  id            String            @id @db.Uuid
+  empresaId     String            @default(dbgenerated("app_empresa_actual()"))
+  empresa       Empresa           @relation(fields: [empresaId], references: [id])
+  familiaId     String            @db.Uuid
+  familia       FamiliaDeProducto @relation(fields: [empresaId, familiaId], references: [empresaId, id])
+  productoId    String
+  producto      Producto          @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  posicion      Int
+  agregadoPorId String
+  /// Cuándo se agregó (reloj inyectado de la acción; sin default a propósito).
+  agregadoEn    DateTime          @db.Timestamptz(3)
+  quitadoPorId  String?
+  quitadoEn     DateTime?         @db.Timestamptz(3)
+
+  @@unique([empresaId, id])
+  @@index([familiaId])
+  @@index([productoId])
 }
 
 /// Nombre interno histórico "Familia" (Catalogo.js:180-197) — de cara al
@@ -2788,6 +2836,8 @@ model Empresa {
   portalesDeEmpresa              PortalDeEmpresa[]
   portalTarjetas                 PortalTarjeta[]
   portalZonas                    PortalZona[]
+  familiasDeProducto             FamiliaDeProducto[]
+  miembrosDeFamilia              MiembroDeFamilia[]
   cajas                          Caja[]
   cuentasDeCobro                 CuentaDeCobro[]
   mediosDePago                   MedioDePago[]

@@ -1,4 +1,4 @@
-import { colorDeTextoLegible, type EstiloCarta } from "@/core/carta/public";
+import { LIBRO_ESTILO_MAQUETA, colorDeTextoLegible, type EstiloCarta } from "@/core/carta/public";
 
 /**
  * El color de la marca cuando se usa como color de TEXTO: `--carta-primary-texto` (la marca acercada a la tinta si sola no llega a 4,5:1 contra el fondo, ver `resolverEstiloCarta`) y,
@@ -15,7 +15,7 @@ export function coloresDelItem(especial: boolean, estilo: EstiloCarta) {
   const l = (color: string) => (color ? colorDeTextoLegible(color, v.color_fondo_dia, estilo.tintaBase) : color);
   return {
     nombre: especial ? l(v.color_especial_item_nombre) || MARCA_PARA_TEXTO : l(v.color_item_nombre) || undefined,
-    precio: especial ? l(v.color_especial_item_precio) || MARCA_PARA_TEXTO : l(v.color_item_precio) || MARCA_PARA_TEXTO,
+    precio: especial ? l(v.color_especial_item_precio) || MARCA_PARA_TEXTO : l(v.color_item_precio) || (LIBRO_ESTILO_MAQUETA ? "var(--carta-ink)" : MARCA_PARA_TEXTO),
     descripcion: especial ? l(v.color_especial_item_descripcion) || undefined : l(v.color_item_descripcion) || undefined,
     tags: especial ? l(v.color_especial_item_tags) || MARCA_PARA_TEXTO : l(v.color_item_tags) || MARCA_PARA_TEXTO,
     estrella: l(v.color_especial_item_nombre) || MARCA_PARA_TEXTO,

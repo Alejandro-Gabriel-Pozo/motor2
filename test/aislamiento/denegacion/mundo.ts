@@ -73,6 +73,8 @@ export interface KitDeEmpresa {
    * `basesDeUnEjeEnLaCarta`. Grupo y opción propios a propósito: así ningún control positivo de los escritores de opciones (que no dejan a una base sin su precio final) se cruza con él.
    */
   productoBaseId: string;
+  /** F1 (familias de productos): una familia de la EMPRESA (su id es un UUID) con un producto de venta miembro (`productoBaseId`: no va en ningún ítem agrupado) y el nombre con el marcador. */
+  familiaId: string;
   /** Caja (C1): el medio de pago EFECTIVO de la empresa (uno solo; su nombre lleva el marcador, así `leerMediosDeCobro` devuelve algo propio). */
   medioEfectivoId: string;
 }
@@ -306,6 +308,9 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
   await db.versionDeOpcion.create({ data: { id: `${opcionMedidaBase.id}-v1`, empresaId, opcionId: opcionMedidaBase.id, numero: 1, tipoDeDiferencia: "MONTO", diferenciaPrecio: 0, creadoPorId: usuarioId } });
   await db.productoAdmiteGrupo.create({ data: { id: id("admite-medida-base"), empresaId, productoId: pvBase.id, grupoId: grupoMedidaBase.id, orden: 0, modoPrecio: "ABSOLUTO" } });
   await db.productoAdmiteOpcion.create({ data: { id: id("admite-entera"), empresaId, productoId: pvBase.id, opcionId: opcionMedidaBase.id, precioAbsoluto: 2500 } });
+  // F1 (familias de productos): una familia de la empresa con el producto base como miembro (la lectura de gestión devuelve el nombre de la familia y del producto, los dos con el marcador).
+  const familia = await db.familiaDeProducto.create({ data: { id: randomUUID(), empresaId, nombre: `Familia ${marca}`, nombreClave: `familia ${marca}`.toLowerCase(), creadoPorId: usuarioId, actualizadoEn: new Date() } });
+  await db.miembroDeFamilia.create({ data: { id: randomUUID(), empresaId, familiaId: familia.id, productoId: pvBase.id, posicion: 1, agregadoPorId: usuarioId, agregadoEn: new Date() } });
   // Portal de la empresa PR-A: el portal de la empresa (sin tarjetas: lo que la lectura de gestión devuelve con el marcador es el título) para el control positivo de `consultarPortalDeEmpresa`; con el de otra empresa, `null`.
   await db.portalDeEmpresa.create({ data: { id: randomUUID(), empresaId, codigo: `${marca.replace(/\W/g, "")}`.padEnd(22, "x"), titulo: `Portal ${marca}`, creadoPorId: usuarioId, actualizadoEn: new Date() } });
   const entradaDeCupo = await db.entradaDeCupo.create({ data: { id: id("entrada-de-cupo"), empresaId, cupoId: cupoLista.id, productoId: pv.id } });
@@ -349,6 +354,7 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
     cupoDelDiaId: cupoDelDia.id,
     productoBaseId: pvBase.id,
     medioEfectivoId: medioEfectivo.id,
+    familiaId: familia.id,
   };
 }
 

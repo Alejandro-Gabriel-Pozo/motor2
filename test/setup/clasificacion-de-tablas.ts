@@ -18,7 +18,7 @@ import { join } from "node:path";
 export type ClaseDeTabla = "POR_EMPRESA" | "DE_EMPRESA_ESCRITA_POR_LA_PLATAFORMA" | "GLOBAL" | "EMPRESA" | "CONSOLA";
 
 const POR_EMPRESA = [
-  "ArqueoBillete", "ArqueoCaja", "Caja", "Cobranza", "Cobro", "CuentaDeCobro", "MedioDePago", "ModoDeOrdenDeSeccionCarta", "MovimientoCaja", "PortalDeEmpresa", "PortalTarjeta", "PortalZona", "SesionCaja",
+  "ArqueoBillete", "ArqueoCaja", "Caja", "Cobranza", "Cobro", "CuentaDeCobro", "FamiliaDeProducto", "MedioDePago", "MiembroDeFamilia", "ModoDeOrdenDeSeccionCarta", "MovimientoCaja", "PortalDeEmpresa", "PortalTarjeta", "PortalZona", "SesionCaja",
   "ConformeDeJornada", "ControlDeJornadaCerrada", "CorreccionDeMedio", "DeclaracionDeTotal", "JornadaDeSucursal",
   "CierreDeCajaDeJornada", "ConciliacionDeJornada", "ConciliacionDeCobroPorOrigen",
   "AgregadoDeCuenta", "CapacidadSucursal", "CategoriaProducto", "CentroDeCostos", "Cliente", "CombinacionDeProducto", "CombinacionEnLinea", "ConceptoDeGasto", "ConsumoDeOpcion", "ContenidoCartaProducto", "ConteoFisico", "ControlDeLineaDeRecepcion", "Cuenta", "CuentaItem", "DescuentoProductoSucursal", "DestinoConsumo", "DisponibilidadProducto", "DistribucionCostoLinea", "DistribucionCostoVersion",
@@ -179,7 +179,7 @@ const ALCANCE_GOBIERNO: Readonly<Record<string, string>> = {
 };
 
 const ALCANCE_DE_EMPRESA = [
-  "MedioDePago", "PortalDeEmpresa",
+  "FamiliaDeProducto", "MedioDePago", "MiembroDeFamilia", "PortalDeEmpresa",
   "AnulacionDeFacturaProveedor", "AnulacionDePagoDeFacturaProveedor", "CategoriaProducto", "CentroDeCostos", "Cliente", "CombinacionDeProducto", "ConceptoDeGasto", "ConsumoDeOpcion", "DestinoConsumo", "EntradaDeCupo", "FacturaProveedor", "FacturaProveedorRenglon", "FacturaProveedorTributo", "Grupo", "GrupoDeOpciones", "GrupoDePrecio", "Insumo", "Invitacion", "MargenObjetivo", "ModuloEmpresa", "MotivoMerma", "NotaCreditoProveedor", "NotaCreditoProveedorLinea", "NotaCreditoProveedorTributo", "OpcionDeEntradaDeCupo", "OpcionDeGrupo", "PagoDeFacturaProveedor", "PermisoRol", "PlanDeCostos", "PlanDeEmpresa", "PortalCartaEmpresa", "Presentacion", "Producto", "ProductoAdmiteGrupo", "ProductoAdmiteOpcion",
   "PromoCarta", "PromoCartaCupo", "Parte", "Proveedor", "ProveedorPorProducto", "PuntoDeVentaDeProveedor", "RecetaDeCombinacionIngrediente", "RecetaDeCombinacionVersion", "ReclasificacionRenglon", "Rol", "SeccionCarta", "Unidad", "UsuarioEmpresa", "VersionDeOpcion",
 ] as const;

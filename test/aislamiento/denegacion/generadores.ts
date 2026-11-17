@@ -156,6 +156,19 @@ const completos: Record<string, Valor> = {
   "accion|actions/carta/contenido-producto.ts|fijarModoDeOrdenDeSeccion": (k) => [{ seccionCartaId: k.seccionCartaId, modo: "ALFABETICO", versionVista: 0 }],
   "accion|actions/carta/contenido-producto.ts|reordenarRenglonesDeSeccion": (k) => [{ seccionCartaId: k.seccionCartaId, renglones: [{ tipo: "ITEM_AGRUPADO", id: k.itemAgrupadoCartaId, ordenVisto: 0 }, { tipo: "PRODUCTO", id: k.productoMp2Id, ordenVisto: 0 }, { tipo: "PRODUCTO", id: k.productoConOpcionesId, ordenVisto: 0 }] }],
 
+  // F1 (familias de productos): son de la EMPRESA (la empresa sale del contexto del servidor). La familia del mundo es de la empresa, con UN miembro (el producto base, sin ítem agrupado) en versión 1: con la familia de otra empresa, «No se encontró la familia»; con lo propio,
+  // cada comando termina en `ok: true` (crear no usa ningún id; agregar usa el PV que no está en ningún ítem agrupado, `productoPv2Id`; quitar, el miembro sembrado).
+  "accion|actions/carta/secciones.ts|crearFamiliaDeProducto": () => [{ nombre: "Familia nueva" }],
+  "accion|actions/carta/secciones.ts|editarFamiliaDeProducto": (k) => [{ familiaId: k.familiaId, versionEsperada: 1, nombre: "Familia editada", agruparEnCarta: true, agruparEnPos: false }],
+  "accion|actions/carta/secciones.ts|fijarActivaFamiliaDeProducto": (k) => [{ familiaId: k.familiaId, versionEsperada: 1, activa: false }],
+  "accion|actions/carta/secciones.ts|agregarProductoAFamilia": (k, c) =>
+    conVariantes(
+      intento(c, ["familiaId", "productoPv2Id"], [{ familiaId: k.familiaId, productoId: k.productoPv2Id }]),
+      intento(c, ["productoPv2Id"], [{ familiaId: c.propio.familiaId, productoId: k.productoPv2Id }]),
+      intento(c, ["familiaId"], [{ familiaId: k.familiaId, productoId: c.propio.productoPv2Id }]),
+    ),
+  "accion|actions/carta/secciones.ts|quitarProductoDeFamilia": (k) => [{ familiaId: k.familiaId, productoId: k.productoBaseId, versionEsperada: 1 }],
+
   // --- catálogo ---
   "accion|actions/catalogo/productos.ts|actualizarProducto": (k, c) =>
     conVariantes(
@@ -256,6 +269,9 @@ const completos: Record<string, Valor> = {
   // O1 (orden de renglones): la sucursal es la de CONTEXTO (la activa) y la sección, la del cliente: con la del otro mundo, `null` (no se ve) y ninguna lista; con la sucursal del otro mundo, la RLS por sucursal no deja ver nada.
   "lectura|lecturas/carta/orden-de-renglones.ts|leerRenglonesDeSeccion": (k, c) => [c.db, { sucursalId: c.propio.sucursalId, seccionCartaId: k.seccionCartaId }],
   "lectura|lecturas/carta/orden-de-renglones.ts|consultarOrdenDeSeccion": (k, c) => [c.db, { sucursalId: c.propio.sucursalId, seccionCartaId: k.seccionCartaId }],
+
+  // F1 (familias de productos): la ficha pide la familia (de la empresa) y la sucursal de CONTEXTO (la activa, para las banderas); con la familia del otro mundo, `null` (no se ve). La lista no recibe ningún id: solo lo de la empresa del `db`.
+  "lectura|lecturas/carta/familias.ts|consultarFichaDeFamilia": (k, c) => [c.db, { sucursalId: c.propio.sucursalId, familiaId: k.familiaId }],
 
   // --- movimientos, stock, traspasos ---
   // U1 de «una sola compra»: corregir los datos de la FACTURA (la única corrección de la compra); el id de la factura y el proveedor nuevo son los del cliente.
