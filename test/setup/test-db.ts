@@ -84,6 +84,7 @@ export async function limpiarBaseDeTest() {
   // junto a `promoCuenta.deleteMany()`), así que las tres se movieron a ese bloque.
   // GO-3: lo de combos, menú del día y combinaciones primero (nadie lo referencia; ver `limpiarTablasDeGo3`, al final del archivo).
   await limpiarTablasDeGo3();
+  await prismaAdmin.modoDeOrdenDeSeccionCarta.deleteMany(); // O1: el modo de orden cuelga de la sucursal y de la sección (RESTRICT).
   await prismaAdmin.opcionItemAgrupadoCarta.deleteMany();
   await prismaAdmin.itemAgrupadoCarta.deleteMany();
   await prismaAdmin.temaCartaSucursal.deleteMany();

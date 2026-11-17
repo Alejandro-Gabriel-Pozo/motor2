@@ -64,6 +64,8 @@ export const MIGRACIONES_DE_POLITICAS_POSTERIORES: readonly { readonly migracion
   { migracion: "20261117111000_rls_sucursal_caja_c1", tablas: ["Caja", "SesionCaja", "MovimientoCaja", "Cobranza", "Cobro", "ArqueoCaja", "ArqueoBillete"] },
   // Caja y cobro C3: la cuenta de cobro (terminal, QR o cuenta bancaria) de una sucursal (PROPIA).
   { migracion: "20261117113000_rls_sucursal_caja_c3", tablas: ["CuentaDeCobro"] },
+  // Carta, orden de renglones O1: el modo de orden (alfabético o a mano) de una sección en una sucursal (PROPIA).
+  { migracion: "20261117160100_rls_sucursal_modo_de_orden_de_seccion_carta", tablas: ["ModoDeOrdenDeSeccionCarta"] },
 ];
 
 /** Las migraciones previas que la prueba de subir/bajar/subir baja DESPUÉS de B1 (en este orden: P3 y después M.2). Ambas reversas son destructivas. */
