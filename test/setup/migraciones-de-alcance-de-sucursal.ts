@@ -62,6 +62,12 @@ export const MIGRACIONES_DE_POLITICAS_POSTERIORES: readonly { readonly migracion
   { migracion: "20261115121000_rls_sucursal_ocultamiento_de_producto", tablas: ["OcultamientoProducto"] },
   // Caja y cobro C1: las tablas de dinero de una sucursal (la caja, su sesión, sus movimientos, el cobro de una cuenta y el arqueo) (PROPIA).
   { migracion: "20261117111000_rls_sucursal_caja_c1", tablas: ["Caja", "SesionCaja", "MovimientoCaja", "Cobranza", "Cobro", "ArqueoCaja", "ArqueoBillete"] },
+  // Caja y cobro C3: la cuenta de cobro (terminal, QR o cuenta bancaria) de una sucursal (PROPIA).
+  { migracion: "20261117113000_rls_sucursal_caja_c3", tablas: ["CuentaDeCobro"] },
+  // Caja y cobro C2: la jornada de una sucursal y lo que cuelga de ella (la foto de controles, la corrección de medio, la declaración de total y el conforme general) (PROPIA).
+  { migracion: "20261117115000_rls_sucursal_caja_c2", tablas: ["JornadaDeSucursal", "ControlDeJornadaCerrada", "CorreccionDeMedio", "DeclaracionDeTotal", "ConformeDeJornada"] },
+  // Caja y cobro C2b: la foto congelada de la conciliación por medio al cerrar el día (la cabecera, sus líneas por medio y los orígenes cobrados contra el ticket) (PROPIA).
+  { migracion: "20261117117000_rls_sucursal_caja_c2b", tablas: ["CierreDeCajaDeJornada", "ConciliacionDeJornada", "ConciliacionDeCobroPorOrigen"] },
 ];
 
 /** Las migraciones previas que la prueba de subir/bajar/subir baja DESPUÉS de B1 (en este orden: P3 y después M.2). Ambas reversas son destructivas. */

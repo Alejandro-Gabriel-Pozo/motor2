@@ -6,6 +6,7 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import { enlaceParaCorregirMovimiento, type OperacionEncontrada, type ItemOperacion } from "@/core/reportes/public";
 import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
+import { textoDe } from "@/core/textos/texto-de";
 
 /** El día de calendario de un instante en hora argentina (P1): `Operacion.fecha` es un instante; leerlo en UTC mostraba el día siguiente a partir de las 21:00. */
 const dia = (f: Date) => diaDeCalendario(f, ZONA_ARGENTINA);
@@ -13,7 +14,7 @@ const dia = (f: Date) => diaDeCalendario(f, ZONA_ARGENTINA);
 const COLUMNAS_ENCONTRADAS: ColumnaReporte<OperacionEncontrada>[] = [
   { clave: "fecha", etiqueta: "Fecha", tipoFecha: "dia", valor: (e) => dia(e.fecha), render: (e) => dia(e.fecha) },
   { clave: "proceso", etiqueta: "Proceso", valor: (e) => e.proceso, render: (e) => e.proceso },
-  { clave: "seccion", etiqueta: "Sección", valor: (e) => e.seccionNombre, render: (e) => e.seccionNombre },
+  { clave: "seccion", etiqueta: textoDe("columna.seccion"), valor: (e) => e.seccionNombre, render: (e) => e.seccionNombre },
   {
     clave: "ver",
     etiqueta: "",
@@ -35,7 +36,7 @@ function MarcaSustituto({ nombrePrincipal }: { nombrePrincipal: string }) {
 const COLUMNAS_ITEMS: ColumnaReporte<ItemOperacion>[] = [
   {
     clave: "producto",
-    etiqueta: "Producto",
+    etiqueta: textoDe("columna.producto"),
     valor: (it) => `${it.productoCodigo} — ${it.productoNombre}`,
     render: (it) => (
       <>
@@ -45,8 +46,8 @@ const COLUMNAS_ITEMS: ColumnaReporte<ItemOperacion>[] = [
     ),
   },
   { clave: "proceso", etiqueta: "Proceso", valor: (it) => it.proceso, render: (it) => it.proceso },
-  { clave: "seccion", etiqueta: "Sección", valor: (it) => it.seccionNombre, render: (it) => it.seccionNombre },
-  { clave: "cantidad", etiqueta: "Cantidad", alinear: "derecha", valor: (it) => it.cantidad, render: (it) => it.cantidad },
+  { clave: "seccion", etiqueta: textoDe("columna.seccion"), valor: (it) => it.seccionNombre, render: (it) => it.seccionNombre },
+  { clave: "cantidad", etiqueta: textoDe("columna.cantidad"), alinear: "derecha", valor: (it) => it.cantidad, render: (it) => it.cantidad },
   { clave: "detalle", etiqueta: "Detalle", valor: (it) => it.detalle, render: (it) => it.detalle },
 ];
 

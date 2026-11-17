@@ -573,7 +573,7 @@ for (const { ancho, alto } of [
         // Café con dos tamaños: la carta lo lee como una tabla (el mismo dibujo de la carta pública), con el precio de lista de la sucursal (4.000 y 4.000 + 300).
         await expect(vista.getByRole("columnheader")).toHaveText(["Chico", "Grande"]);
         await expect(vista.locator("tbody").getByRole("cell")).toHaveText(["$ 4.000", "$ 4.300"]);
-        await expect(vista).toContainText("sin descuentos");
+        await expect(vista, "la nota de la vista previa está oculta (FICHA_AYUDAS_VISIBLES)").not.toContainText("sin descuentos");
         await expectSinDesborde(page, `${ancho} px: ${ruta} con la vista previa`);
         if (ancho === 375) await capturar(page, `vista-previa-de-la-carta-${ruta}-${ancho}`);
         expect((await new AxeBuilder({ page }).analyze()).violations, `${ruta}: axe con la vista previa`).toEqual([]);

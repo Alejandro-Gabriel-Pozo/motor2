@@ -3,6 +3,7 @@ import type { Browser, Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
+import { abrirModulosDePermisos } from "./fixtures/plegables";
 import { crearMembresia } from "../setup/membresia";
 import { PRESENTACIONES_VISIBLES } from "../../src/core/catalogo/presentaciones-visibles";
 
@@ -372,6 +373,7 @@ test("accesibilidad (axe) sin la clave: la edición de una materia prima y de un
 
 test("la matriz de permisos lista la clave nueva con su descripción en español", async ({ paginaAutenticada: page }) => {
   await page.goto("/administracion/permisos");
+  await abrirModulosDePermisos(page); // Frente 6, paso 3: en lectura cada módulo viene plegado
   const fila = page.getByRole("row").filter({ has: page.getByText("producto_campos_sensibles", { exact: true }) });
   await expect(fila).toHaveCount(1);
   await expect(fila).toContainText("Cambiar el precio de venta, el factor de conversión y las unidades de un producto, y definir el factor de sus presentaciones de compra");

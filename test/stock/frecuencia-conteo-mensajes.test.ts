@@ -43,7 +43,7 @@ describe("frecuencia de conteo: mensajes y orden de los chequeos", () => {
   it("eliminar: una fila de OTRA sucursal no se encuentra (y no se borra); éxito", async () => {
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
     const ajena = await prisma.frecuenciaConteoProducto.create({ data: { sucursalId: norte.id, productoId: mpId, frecuenciaDias: 3 } });
-    expect(await eliminarFrecuenciaConteo(ajena.id)).toEqual({ ok: false, mensaje: "No se encontró esa fila de Frecuencia de conteo." });
+    expect(await eliminarFrecuenciaConteo(ajena.id)).toEqual({ ok: false, mensaje: "No se encontró la fila de Frecuencia de conteo." });
     expect(await prisma.frecuenciaConteoProducto.count()).toBe(1);
     await setFrecuenciaConteo(mpId, 7);
     const propia = await prisma.frecuenciaConteoProducto.findFirstOrThrow({ where: { NOT: { id: ajena.id } } });

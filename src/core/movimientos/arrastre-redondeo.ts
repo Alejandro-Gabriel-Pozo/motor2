@@ -65,7 +65,10 @@ export function crearArrastreDeRedondeo(deudaInicial: ReadonlyMap<string, number
     consumir(productoId, exacto, decimales) {
       const exactoLimpio = r8(exacto);
       const deudaPrevia = deuda.get(productoId) ?? 0;
-      const escrito = sinCeroNegativo(redondearACantidadDeUnidad(r8(deudaPrevia + exactoLimpio), decimales));
+      // A1b 2026-11-16: el redondeo exacto empata ALEJÁNDOSE del cero (−0,5 u → −1 u); `Math.round` empataba hacia +∞ (−0,5 u → 0). Con deuda
+      // −u/2 y una parte de 0 el total es −u/2: sin el piso en 0 se escribiría una cantidad NEGATIVA en el Kardex. El piso reproduce el
+      // resultado de siempre (se escribe 0 y la deuda queda en −u/2, dentro de cota).
+      const escrito = Math.max(0, sinCeroNegativo(redondearACantidadDeUnidad(r8(deudaPrevia + exactoLimpio), decimales)));
       deuda.set(productoId, deudaPrevia + exactoLimpio - escrito);
       return { cantidad: escrito, cantidadExacta: exactoLimpio === escrito ? null : exactoLimpio };
     },

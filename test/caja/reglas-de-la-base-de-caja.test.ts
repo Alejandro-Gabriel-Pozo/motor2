@@ -74,8 +74,10 @@ async function armar(c: Client): Promise<Armado> {
   const sesion = randomUUID();
   await c.query(`INSERT INTO "Caja" ("id","sucursalId","nombre") VALUES ($1,$2,'Caja 1')`, [caja, s.sucursalId]);
   await c.query(`INSERT INTO "MedioDePago" ("id","tipo") VALUES ($1,'EFECTIVO')`, [efectivo]);
+  // C2: toda sesión cuelga de la jornada ABIERTA de su sucursal y fecha de negocio (la caja abre una sola vez por día de negocio).
+  await c.query(`INSERT INTO "JornadaDeSucursal" ("id","sucursalId","fechaDeNegocio") VALUES ($1,$2,'2026-01-15')`, [randomUUID(), s.sucursalId]);
   await c.query(
-    `INSERT INTO "SesionCaja" ("id","sucursalId","cajaId","estado","fechaDeNegocio","zonaHoraria","abiertaPorId","claveIdempotencia","huella") VALUES ($1,$2,$3,'ABIERTA','2026-01-15','America/Argentina/Buenos_Aires',$4,$5,$6)`,
+    `INSERT INTO "SesionCaja" ("id","sucursalId","cajaId","estado","fechaDeNegocio","abiertaEn","zonaHoraria","abiertaPorId","claveIdempotencia","huella") VALUES ($1,$2,$3,'ABIERTA','2026-01-15','2026-01-15T15:00:00Z','America/Argentina/Buenos_Aires',$4,$5,$6)`,
     [sesion, s.sucursalId, caja, s.admin.id, randomUUID(), HUELLA],
   );
   return { caja, efectivo, sesion };
@@ -91,7 +93,8 @@ describe("sesión: una sola sin cerrar por caja y el ciclo ABIERTA → CERRADA",
   it("un segundo INSERT de sesión abierta para la misma caja es 23505 (índice SesionCaja_una_sin_cerrar_por_caja_key)", async () => {
     const c = await comoApp();
     const a = await armar(c);
-    const otra = `INSERT INTO "SesionCaja" ("id","sucursalId","cajaId","estado","fechaDeNegocio","zonaHoraria","abiertaPorId","claveIdempotencia","huella") VALUES ($1,$2,$3,'ABIERTA','2026-01-15','America/Argentina/Buenos_Aires',$4,$5,$6)`;
+    await c.query(`INSERT INTO "JornadaDeSucursal" ("id","sucursalId","fechaDeNegocio") VALUES ($1,$2,'2026-01-16')`, [randomUUID(), s.sucursalId]);
+    const otra = `INSERT INTO "SesionCaja" ("id","sucursalId","cajaId","estado","fechaDeNegocio","abiertaEn","zonaHoraria","abiertaPorId","claveIdempotencia","huella") VALUES ($1,$2,$3,'ABIERTA','2026-01-15','2026-01-15T15:00:00Z','America/Argentina/Buenos_Aires',$4,$5,$6)`;
     expect(await falla(c, otra, [randomUUID(), s.sucursalId, a.caja, s.admin.id, randomUUID(), HUELLA])).toBe("23505");
     await c.query("ROLLBACK");
   });
@@ -356,5 +359,62 @@ describe("medios de pago: tipo cerrado, un efectivo por empresa que no se desact
     expect(await falla(c, `UPDATE "Caja" SET "nombre" = 'otra'`)).toBe("42501");
     expect(await falla(c, `DELETE FROM "Caja"`)).toBe("42501");
     await c.query("ROLLBACK");
+  });
+});
+
+describe("claves de reintento únicas y renglones agregados desde otra transacción (reglas que antes solo protegía el código)", () => {
+  async function cuentaCerradaEn(numeroDeMesa: number): Promise<string> {
+    const mesa = await prismaAdmin.mesa.create({ data: { sucursalId: s.sucursalId, numero: numeroDeMesa } });
+    const cuenta = await prismaAdmin.cuenta.create({ data: { empresaId: EMPRESA, mesaId: mesa.id, abiertaPorId: s.admin.id, cerradaEn: new Date(Date.now() - 86_400_000), cerradaPorId: s.admin.id } });
+    return cuenta.id;
+  }
+  const cobranzaSql = `INSERT INTO "Cobranza" ("id","sucursalId","cuentaId","sesionId","total","claveIdempotencia","huella","creadoPorId") VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`;
+  const cobroSql = `INSERT INTO "Cobro" ("id","sucursalId","cobranzaId","orden","medioDePagoId","movimientoId","importe") VALUES ($1,$2,$3,$4,$5,$6,$7)`;
+
+  it("la clave de reintento de una sesión no se repite en la empresa (23505, SesionCaja_empresaId_claveIdempotencia_key), aunque la primera ya esté cerrada", async () => {
+    const c = await comoApp();
+    const a = await armar(c);
+    const clave = (await c.query(`SELECT "claveIdempotencia" FROM "SesionCaja" WHERE "id" = $1`, [a.sesion])).rows[0].claveIdempotencia as string;
+    // Se cierra la primera (con su fondo y un arqueo que cuadra) para que NO salte el índice de «una sin cerrar por caja»: la única barrera que queda es la de la clave.
+    await insertar(c, movimiento(a, "FONDO_INICIAL", "100.00"));
+    await c.query(`INSERT INTO "ArqueoCaja" ("id","sucursalId","sesionId","medioDePagoId","esperado","contado","conforme") VALUES ($1,$2,$3,$4,100.00,100.00,false)`, [randomUUID(), s.sucursalId, a.sesion, a.efectivo]);
+    await c.query(`INSERT INTO "ArqueoBillete" ("id","sucursalId","sesionId","denominacion","cantidad") VALUES ($1,$2,$3,100,1)`, [randomUUID(), s.sucursalId, a.sesion]);
+    await c.query(`UPDATE "SesionCaja" SET "estado" = 'CERRADA', "cerradaEn" = now(), "cerradaPorId" = $2 WHERE "id" = $1`, [a.sesion, s.admin.id]);
+    await c.query(`INSERT INTO "JornadaDeSucursal" ("id","sucursalId","fechaDeNegocio") VALUES ($1,$2,'2026-01-16')`, [randomUUID(), s.sucursalId]);
+    const otra = `INSERT INTO "SesionCaja" ("id","sucursalId","cajaId","estado","fechaDeNegocio","abiertaEn","zonaHoraria","abiertaPorId","claveIdempotencia","huella") VALUES ($1,$2,$3,'ABIERTA','2026-01-16','2026-01-16T15:00:00Z','America/Argentina/Buenos_Aires',$4,$5,$6)`;
+    // La primera está CERRADA: el único motivo posible del 23505 es la clave repetida (no el índice de «una sin cerrar por caja»).
+    expect(await falla(c, otra, [randomUUID(), s.sucursalId, a.caja, s.admin.id, clave, HUELLA])).toBe("23505");
+    await c.query("ROLLBACK");
+  });
+
+  it("la clave de reintento de una cobranza no se repite en la empresa, aunque sea de OTRA cuenta (23505, Cobranza_empresaId_claveIdempotencia_key)", async () => {
+    const [cuentaA, cuentaB] = [await cuentaCerradaEn(80), await cuentaCerradaEn(81)];
+    const c = await comoApp();
+    const a = await armar(c);
+    const clave = randomUUID();
+    expect(await falla(c, cobranzaSql, [randomUUID(), s.sucursalId, cuentaA, a.sesion, "100.00", clave, HUELLA, s.admin.id])).toBeNull();
+    // Otra cuenta (sin cobranza todavía) con la MISMA clave: el único motivo posible del 23505 es la clave repetida (no el único por cuenta).
+    expect(await falla(c, cobranzaSql, [randomUUID(), s.sucursalId, cuentaB, a.sesion, "100.00", clave, HUELLA, s.admin.id])).toBe("23505");
+    await c.query("ROLLBACK");
+  });
+
+  it("un renglón agregado DESPUÉS, en otra transacción, a una cobranza ya confirmada rompe la suma y falla al COMMIT (disparador Cobro_cuadra)", async () => {
+    const cuenta = await cuentaCerradaEn(82);
+    const primera = await comoApp();
+    const a = await armar(primera);
+    const cobranzaId = randomUUID();
+    const mov1 = movimiento(a, "COBRO", "100.00");
+    await primera.query(cobranzaSql, [cobranzaId, s.sucursalId, cuenta, a.sesion, "100.00", randomUUID(), HUELLA, s.admin.id]);
+    await primera.query(mov1.texto, mov1.params);
+    await primera.query(cobroSql, [randomUUID(), s.sucursalId, cobranzaId, 1, a.efectivo, mov1.params[0], "100.00"]);
+    await primera.query("COMMIT");
+    expect(await prismaAdmin.cobro.count()).toBe(1);
+
+    const segunda = await comoApp();
+    const mov2 = movimiento(a, "COBRO", "50.00");
+    await segunda.query(mov2.texto, mov2.params);
+    await segunda.query(cobroSql, [randomUUID(), s.sucursalId, cobranzaId, 2, a.efectivo, mov2.params[0], "50.00"]);
+    await expect(segunda.query("COMMIT")).rejects.toThrow(/cobranza_no_cuadra/);
+    expect(await prismaAdmin.cobro.count(), "el renglón de la segunda transacción no quedó").toBe(1);
   });
 });

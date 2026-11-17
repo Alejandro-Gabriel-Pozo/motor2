@@ -146,6 +146,36 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 - **Estado:** ACEPTADA
 - **Cita del dueño:** «Los textos encargarte vos trata de reducir, textos, inventariar y empezar a reutilizar y que representen 1 sola cosa, definir primitivas e invariantes en texto igual que pedernal; Sí, confirmo esos límites (Recomendada)» — 2026-11-16 — chat del dueño con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, «Palabras literales del dueño» y «Respuesta literal del dueño»; la pantalla: «CONFIRMADA — Pantalla de Ocultar», mismo archivo); lote aceptado por el orquestador por delegación (2026-11-16)
 
+### DEC-0015
+- **Fecha:** 2026-11-16
+- **Quién:** la sesión Sonnet del frente 4 (planes y perillas); los cuatro rótulos los aceptó el dueño directamente.
+- **Qué decidió:** cuatro rótulos del historial de la consola de plataforma para las acciones de los planes versionados (M1): «Plan creado», «Borrador de plan guardado», «Versión de plan publicada» y «Plan asignado a la empresa». Van por el catálogo de textos (`rotulo.plan_creado`, `rotulo.plan_borrador_guardado`, `rotulo.plan_version_publicada`, `rotulo.plan_asignado`). Son rótulos de acciones de la plataforma: no tocan dinero, permisos ni texto fiscal. Solo los ve la plataforma: la empresa NO ve ese historial («No, solo la plataforma lo ve», 2026-11-16).
+- **Por qué:** los escribe `scripts/plan-de-plataforma.ts` en `AuditoriaPlataforma` y la consola los muestra en el historial de la empresa; sin rótulo se vería la clave cruda. Los mensajes de error del núcleo (`PlanesError`) y las salidas del script quedan fuera del catálogo, como los de `politica-empresa.ts` (T2 mide texto en JSX, atributos y los mensajes de las funciones de resultado, no clases de error de núcleo ni `scripts/`).
+- **Costo de revertir:** bajo: volver a escribir los cuatro rótulos en `ACCION_DE_AUDITORIA` y borrar las cuatro entradas del catálogo; no hay migración ni datos.
+- **Dónde:** `src/core/textos/catalogo.ts`, `plataforma/src/app/instalaciones/[instalacion]/empresas/textos.ts`
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Sí, aceptados tal cual (Recomendada)» — 2026-11-16 — respuesta del dueño (AskUserQuestion) a la pregunta sobre los cuatro rótulos; registrada en `motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, sección «Textos de Planes: aceptación directa del dueño (2026-11-16)»
+
+### DEC-0016
+- **Fecha:** 2026-11-16
+- **Quién:** la sesión Sonnet de los lotes de reducción del catálogo de textos (lote E); aceptación directa del dueño.
+- **Qué decidió:** siete rótulos de dinero de columnas de los reportes, escritos idénticos en varios archivos de `src/app/(app)/reportes/` (21 apariciones en 10 archivos), pasan a una clave `columna.<tema>` cada uno con EXACTAMENTE las mismas palabras: Importe (8), Cobrado (3), Margen (2), Food cost % (2), Costo unitario (2), A precio de lista (2) y Margen Real (cobrado) (2). El cliente no ve ningún cambio. «Margen» se mira uno por uno: en los dos reportes significa lo mismo (monto con su porcentaje entre paréntesis).
+- **Por qué:** el dueño pidió reducir, inventariar y reutilizar los textos para que cada uno represente una sola cosa; son rótulos de dinero y por eso él decidió que pasen con las mismas palabras (`docs/diseno-textos-en-datos-2026-11-16.md`, familia D-4).
+- **Costo de revertir:** bajo: volver a escribir la palabra en cada columna y borrar las siete entradas; no hay migración ni datos.
+- **Dónde:** `src/core/textos/catalogo.ts`, `test/arquitectura/guardas/catalogo-de-textos.ts`
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Sí, mismas palabras (Recomendada)» — 2026-11-16 — chat del dueño con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, «Textos: cuatro respuestas del dueño sobre la lista única»)
+
+### DEC-0017
+- **Fecha:** 2026-11-16
+- **Quién:** la sesión Sonnet de los lotes de reducción del catálogo de textos; lote aceptado por el orquestador por delegación del dueño (lote A).
+- **Qué decidió:** el segundo lote del catálogo de textos: cuatro rechazos «No se encontró …» que hoy se escriben idénticos en varios casos de uso con el mismo código pasan a una clave cada uno, `rechazo.MEMBRESIA_NO_ENCONTRADA` («No se encontró esa membresía.»), `rechazo.SUCURSAL_NO_ENCONTRADA` («No se encontró esa sucursal.»), `rechazo.CONTEO_NO_ENCONTRADO` («No se encontró ese conteo.») y `rechazo.PRODUCTO_NO_ENCONTRADO` («No se encontró el producto.»), en 10 sitios de 10 archivos de `src/server/actions/`. Las frases quedan palabra por palabra: el cliente no ve ningún cambio. No toca dinero, permisos, texto fiscal ni decisión previa. Las otras frases que hoy usa el código `PRODUCTO_NO_ENCONTRADO` en otros archivos quedan literales hasta decidir su reducción.
+- **Por qué:** el dueño pidió reducir, inventariar y reutilizar los textos para que cada uno represente una sola cosa; son frases idénticas con el mismo código escritas varias veces (`docs/diseno-textos-en-datos-2026-11-16.md`, familia D-6).
+- **Costo de revertir:** bajo: volver a escribir la frase literal en cada `fracaso(...)` y borrar las cuatro entradas; no hay migración ni datos.
+- **Dónde:** `src/core/textos/catalogo.ts`, `src/server/actions/stock/casos-de-uso/set-seccion-habitual.ts`
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Los textos encargarte vos trata de reducir, textos, inventariar y empezar a reutilizar y que representen 1 sola cosa, definir primitivas e invariantes en texto igual que pedernal; Sí, confirmo esos límites (Recomendada)» — 2026-11-16 — chat del dueño con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, «Palabras literales del dueño» y «Respuesta literal del dueño»); lote aceptado por el orquestador por delegación (2026-11-16)
+
 ### DEC-0018
 - **Fecha:** 2026-11-16
 - **Quién:** la sesión Sonnet de los lotes del catálogo de textos (F1' de permisos); aceptación directa del dueño y forma aprobada por el orquestador.
@@ -155,3 +185,43 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 - **Dónde:** `test/arquitectura/permisos-descripciones.test.ts`, `test/textos/oraculo-de-permisos.ts`
 - **Estado:** ACEPTADA
 - **Cita del dueño:** «Sí, mismas palabras (Recomendada)» — 2026-11-16 — chat del dueño con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, «Textos: cuatro respuestas del dueño sobre la lista única»)
+
+### DEC-0019
+- **Fecha:** 2026-11-16
+- **Quién:** la sesión Sonnet de los lotes de reducción del catálogo de textos; lote aceptado por el orquestador por delegación del dueño (lote B).
+- **Qué decidió:** ocho encabezados neutros de columnas de los reportes, escritos idénticos en 20 archivos de `src/app/(app)/reportes/` (55 apariciones), pasan a una clave `columna.<tema>` cada uno: Producto, Cantidad, Sección, Proveedor, Insumo, Categoría, Unidades y Origen. Las palabras quedan idénticas: el cliente no ve ningún cambio. Quedan literales, por decisión del orquestador, «Estado» y «Detalle» (homónimos con significados distintos según el reporte) y todo rótulo de dinero, que tiene su propio lote con las respuestas del dueño. Se agrega la clase de clave `columna.` al guardián del catálogo.
+- **Por qué:** el dueño pidió reducir, inventariar y reutilizar los textos para que cada uno represente una sola cosa; son rótulos repetidos 2 a 20 veces (`docs/diseno-textos-en-datos-2026-11-16.md`, familia D-5).
+- **Costo de revertir:** bajo: volver a escribir la palabra en cada columna y borrar las ocho entradas y la clase `columna.`; no hay migración ni datos.
+- **Dónde:** `src/core/textos/catalogo.ts`, `test/arquitectura/guardas/catalogo-de-textos.ts`
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Los textos encargarte vos trata de reducir, textos, inventariar y empezar a reutilizar y que representen 1 sola cosa, definir primitivas e invariantes en texto igual que pedernal; Sí, confirmo esos límites (Recomendada)» — 2026-11-16 — chat del dueño con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, «Palabras literales del dueño» y «Respuesta literal del dueño»); lote aceptado por el orquestador por delegación (2026-11-16)
+
+### DEC-0020
+- **Fecha:** 2026-11-16
+- **Quién:** la sesión Sonnet de los lotes de reducción del catálogo de textos (lote C1); aceptación directa del dueño.
+- **Qué decidió:** el molde único «No se encontró {entidad}.» con el género de la cosa (`rechazo.NO_ENCONTRADO`, marcador `entidad`, tabla `ENTIDADES` en `src/core/textos/entidades.ts`), aplicado a los 9 casos de uso de `src/server/actions/auth/` (membresía, sucursal, usuario e invitación pendiente: 11 sitios). Lo que ve distinto el personal: «No se encontró esa membresía / esa sucursal / ese usuario / esa invitación pendiente.» pasa a «No se encontró la membresía / la sucursal / el usuario / la invitación pendiente.». Reemplaza las dos claves de auth del lote A (`rechazo.MEMBRESIA_NO_ENCONTRADA` y `rechazo.SUCURSAL_NO_ENCONTRADA`), que se borran.
+- **Por qué:** el dueño eligió un solo molde para «no se encontró» (`docs/diseno-textos-en-datos-2026-11-16.md`, D-6 y D-10); el género hace falta para escribir «el» y «la» bien.
+- **Costo de revertir:** bajo: volver a escribir las cuatro frases literales en los 9 archivos y sacar la clave, el tipo `entidad` y la tabla; no hay migración ni datos.
+- **Dónde:** `src/core/textos/catalogo.ts`, `src/core/textos/entidades.ts`
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Sí, un solo molde (Recomendada)» — 2026-11-16 — chat del dueño con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, «Textos: cuatro respuestas del dueño sobre la lista única»)
+
+### DEC-0021
+- **Fecha:** 2026-11-16
+- **Quién:** la sesión Sonnet de los lotes de reducción del catálogo de textos (lote C2); aceptación directa del dueño.
+- **Qué decidió:** el resto de los «No se encontró …» de casos de uso y guards sin otro frente (movimientos, stock, clientes, reportes, traspasos y los guards de conteo, sección y traspaso: 32 sitios en 25 archivos) pasan al molde único `rechazo.NO_ENCONTRADO` con el género de la cosa. Entran 14 entidades a `ENTIDADES`: cliente, depósito, destino, motivo, conteo, producto, sección, sección destino, sección de origen, categoría, traspaso, depósito habitual, fila de Frecuencia de conteo y fila de Stock Mínimo. Lo que ve distinto el personal: seis frases pasan de «ese/esa» a «el/la» («No se encontró el cliente / el conteo / el traspaso / el depósito habitual / la fila de Frecuencia de conteo / la fila de Stock Mínimo»); las otras ocho quedan palabra por palabra. Reemplaza las dos claves por código que quedaban del lote A (`rechazo.CONTEO_NO_ENCONTRADO` y `rechazo.PRODUCTO_NO_ENCONTRADO`), que se borran. Quedan literales, por pertenecer a otros frentes o llevar una cola que dice otra cosa: pos, catálogo, carta, compras, partes, permisos, `origen-de-copia`, las frases «en esta sucursal» de los guards de cuentas y las del rol de administrador y el proveedor inactivo.
+- **Por qué:** el dueño eligió un solo molde para «no se encontró»; con C1 ya existía la primitiva (`docs/diseno-textos-en-datos-2026-11-16.md`, D-6 y D-10).
+- **Costo de revertir:** bajo: volver a escribir las frases literales en los 25 archivos y sacar las 14 entidades; las pruebas que citan las seis frases cambiadas vuelven a su texto; no hay migración ni datos.
+- **Dónde:** `src/core/textos/catalogo.ts`, `src/core/textos/entidades.ts`
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Sí, un solo molde (Recomendada)» — 2026-11-16 — chat del dueño con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, «Textos: cuatro respuestas del dueño sobre la lista única»)
+
+### DEC-0022
+- **Fecha:** 2026-11-16
+- **Quién:** la sesión Sonnet de los lotes de reducción del catálogo de textos (lote D); aceptación directa del dueño.
+- **Qué decidió:** el rechazo por nombre repetido de los casos de uso de clientes (alta y edición: 4 sitios en 2 archivos) pasa a la frase única `rechazo.NOMBRE_REPETIDO`: «Ya existe {un/una} {entidad} llamado «{nombre}». Elegí otro nombre.» (marcador `entidad` con artículo indefinido, `{entidad:un}`). Lo que ve distinto el personal: antes «Ya existe un cliente llamado "X".», ahora «Ya existe un cliente llamado «X». Elegí otro nombre.» (comillas «» y la cola «Elegí otro nombre.»). «llamado» queda fijo, como lo escribió el dueño; hoy solo se repite por nombre un cliente (masculino). Los otros 12 sitios de `NOMBRE_REPETIDO` (carta y catálogo) quedan literales hasta que cierren esos frentes. Regenera el golden `dinero-tramo-c.golden.txt` (una línea: el mensaje de «cliente: alta repetida»), declarado en `caracterizaciones-congeladas.test.ts`.
+- **Por qué:** el dueño eligió una sola frase para «ya existe» (`docs/diseno-textos-en-datos-2026-11-16.md`, D-10); hoy hay 16 versiones con comillas y colas distintas.
+- **Costo de revertir:** bajo: volver a escribir la frase literal en los 4 sitios, la prueba y el golden y sacar la clave; no hay migración ni datos.
+- **Dónde:** `src/core/textos/catalogo.ts`, `src/server/actions/clientes/casos-de-uso/alta-cliente.ts`
+- **Estado:** ACEPTADA
+- **Cita del dueño:** «Sí, una sola frase (Recomendada)» — 2026-11-16 — chat del dueño con el orquestador (`motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`, «Textos: cuatro respuestas del dueño sobre la lista única»)

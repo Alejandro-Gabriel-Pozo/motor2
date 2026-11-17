@@ -4,6 +4,8 @@ import type { ComandoEliminarStockMinimo, ResultadoEliminarStockMinimo } from "@
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { borrarStockMinimo } from "@/server/persistencia/stock/stock-minimo";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 
 /**
  * Caso de uso «borrar una fila de stock mínimo» (Hito 4 de la pureza, bloque C de la pieza carta/catálogo/stock, paso H4C-21 — `docs/plan-hito-4-pureza.md` §3). Es
@@ -32,7 +34,7 @@ export async function eliminarStockMinimoCasoDeUso(
     where: { id },
     include: { producto: { select: { nombre: true } }, seccion: { select: { nombre: true } } },
   });
-  if (!fila || fila.sucursalId !== actor.sucursalId) return fracaso("NO_ENCONTRADA", "No se encontró esa fila de Stock Mínimo.");
+  if (!fila || fila.sucursalId !== actor.sucursalId) return fracaso("NO_ENCONTRADA", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.fila_de_stock_minimo }));
   await actor.transaccion(async (tx) => {
     await borrarStockMinimo(tx, { id });
     await registrarCambioAuditado(tx, {

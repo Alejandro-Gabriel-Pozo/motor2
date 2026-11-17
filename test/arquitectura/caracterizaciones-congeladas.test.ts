@@ -145,6 +145,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Parte P1, operador como Pedernal (pedido del dueño 2026-11-16, «como pedernal,»; CAMBIA COMPORTAMIENTO, deliberado): la semilla de `partes_ver` y `partes_editar` pasa de [admin] a [admin, operador] (`partes_desactivar` NO cambia: piso administrador). El operador pasa de no tener esas dos claves a tenerlas (ok en ver y editar) en la matriz de acceso. Revisado con `git diff -U0`: cambia SOLO lo de `partes_ver`/`partes_editar` y el rol operador; ningún otro permiso ni rol cambia.",
       },
+      {
+        blob: "22b61bd08eeb8349a96cd72a5c4a36cdbbaa7cf9",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `f17172aa` (la fusión de `caja-c1-pr-a` en `caja-c1-pr-b`, antes de las claves de la caja).
+        commit: "f17172aa",
+        motivo:
+          "Caja y cobro C1, PR-B (ADITIVO; seis claves nuevas, semilla solo `admin`, todo nace cerrado): `caja_ver`, `caja_abrir_sesion`, `caja_cerrar_sesion`, `caja_mover_efectivo`, `caja_anular_movimiento_ajeno` y `cobrar_cuenta` (de sucursal, módulo provisorio `salon`). Se suman a las listas de claves de cada bloque de la matriz de acceso (una línea por lista, mismas listas de antes con las seis claves de más; 224 líneas). Ninguna otra respuesta del guard ni ningún otro permiso cambia: el operador no recibe ninguna (todas «ver=false editar=false»).",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
@@ -287,6 +294,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Parte P1, operador como Pedernal (pedido del dueño 2026-11-16, «como pedernal,»; CAMBIA COMPORTAMIENTO, deliberado): la semilla de `partes_ver` y `partes_editar` pasa de [admin] a [admin, operador] (`partes_desactivar` NO cambia: piso administrador). Las filas `PERMISO operador:partes_ver` y `operador:partes_editar` pasan de ver=false editar=false a ver=true editar=true en las dos fotos. Revisado con `git diff -U0`: cambia SOLO lo de `partes_ver`/`partes_editar` y el rol operador; ningún otro permiso ni rol cambia.",
       },
+      {
+        blob: "30eb8c0f3e1cd2ebba1151189a35d412c72905e0",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `f17172aa` (la fusión de `caja-c1-pr-a` en `caja-c1-pr-b`, antes de las claves de la caja).
+        commit: "f17172aa",
+        motivo:
+          "Caja y cobro C1, PR-B (ADITIVO; seis claves nuevas, semilla solo `admin`, todo nace cerrado): `caja_ver`, `caja_abrir_sesion`, `caja_cerrar_sesion`, `caja_mover_efectivo`, `caja_anular_movimiento_ajeno` y `cobrar_cuenta` (de sucursal, módulo provisorio `salon`). `ACCIONES 133 a 139` (en las dos fotos) y las doce filas `PERMISO` por foto de las seis claves (admin ver=true editar=true; operador ver=false editar=false). Revisado con `git diff -U0`. Ninguna otra respuesta del guard ni ningún otro permiso cambia: el operador no recibe ninguna (todas «ver=false editar=false»).",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-aceptacion.golden.txt": {
@@ -385,6 +399,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "d261b95d",
         motivo:
           "«Ocultar» como Pedernal, E3c1 (docs/diseno-ocultar-como-pedernal-2026-11-15.md, I-6; CAMBIA SOLO LA LÍNEA `lecturas` de los pasos que venden por la vía directa y de agregar ítems): cada línea NUEVA de una venta de mostrador lee ahora `ocultamientoProducto.findMany` ×1 (para rechazar un producto oculto). Verificado con diff: al sacar ese token y el contador de `lecturas (N)`, el golden nuevo es IDÉNTICO al anterior; ni un resultado, ni una fila, ni una escritura, ni un mensaje cambian. El cierre de una cuenta NO hace la lectura (cobra lo ya cargado).",
+      },
+      {
+        blob: "e6a4262ec2af09e45be7af79f63f9470b4c855a5",
+        // El commit PADRE de este es 13405dba (main con la primitiva de cantidad exacta, #343), el último antes del cambio; el golden se regenera en el commit siguiente (A1b, frente 2).
+        commit: "13405dba",
+        motivo:
+          "A1b (cuenta exacta + 4 decimales fijos en el stock NUEVO; dueño, 2026-11-16: «Pasar a cuenta exacta como Pedernal» y «4 decimales fijos como Pedernal»; regenerado con REGENERAR_CARACTERIZACION_DE_VENTA=1; CAMBIA SOLO `cantidad` y `cantidadExacta` de las filas KARDEX de CONSUMO y su reversión): el stock se redondea a 4 decimales y no a los decimales de la unidad, así que un consumo que antes se escribía redondeado (por ejemplo cantidad 0,28 con cantidadExacta 0,275) ahora se escribe exacto (0,275 con cantidadExacta null; −1 con exacta −0,5 pasa a −0,5 con null). Verificado por programa: comparando cada par de líneas −/+ sin esas dos columnas son IDÉNTICAS (ni precios, ni orden, ni cantidad de filas, ni trazas, ni mensajes cambian). 14 líneas cambiadas.",
       },
     ],
   },
@@ -555,6 +576,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "3967f844",
         motivo:
           "Auditoría legible (CAMBIA SOLO el texto guardado en `valorNuevo` de la auditoría `campo=reparto` de la carga de una factura de proveedor, en 115 líneas AUDITORIA): `registrarCambioAuditado` guardaba un arreglo de objetos con `String(valor)` («[object Object]», ilegible); ahora un objeto plano o un arreglo se guarda como JSON compacto con las claves ordenadas, p. ej. `[{\"estado\":\"RECIBIDA\",\"importe\":320,\"porcentajeDeclaradoBp\":10000,\"sucursal\":\"Central\"}]`. Verificado: quitando `valorNuevo=…` de esas líneas, idéntico al anterior; ninguna otra línea cambia.",
+      },
+      {
+        blob: "8df708d8c06b4310a66a8bd90e0b458bfad6ca24",
+        // El commit PADRE de este es 13405dba (main con la primitiva de cantidad exacta, #343), el último antes del cambio; el golden se regenera en el commit siguiente (A1b, frente 2).
+        commit: "13405dba",
+        motivo:
+          "A1b (cuenta exacta + 4 decimales fijos en el stock NUEVO; dueño, 2026-11-16: «Pasar a cuenta exacta como Pedernal» y «4 decimales fijos como Pedernal»; regenerado con REGENERAR_CARACTERIZACION_DE_VENTA_AMPLIADA=1; CAMBIA SOLO `cantidad` y `cantidadExacta` de las filas KARDEX de CONSUMO y su reversión): el stock se redondea a 4 decimales y no a los decimales de la unidad, así que un consumo que antes se escribía redondeado (por ejemplo cantidad 0,28 con cantidadExacta 0,275) ahora se escribe exacto (0,275 con cantidadExacta null; −1 con exacta −0,5 pasa a −0,5 con null). Verificado por programa: comparando cada par de líneas −/+ sin esas dos columnas son IDÉNTICAS (ni precios, ni orden, ni cantidad de filas, ni trazas, ni mensajes cambian). 40 líneas cambiadas.",
       },
     ],
   },
@@ -995,6 +1023,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Nombre de cocina (ADITIVO; migración 20261115170000_nombre_de_cocina; regenerado con REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1): las filas PRODUCTO y las líneas ITEM suman `nombreDeCocina=null` (nadie tiene nombre de cocina en este mundo). Verificado por programa: sin esa columna el contenido es IDÉNTICO al blob anterior.",
       },
+      {
+        blob: "322721c0f9c21f71ee6b4e8f022528d50d6efa94",
+        // Un commit no puede llevar su propio hash: es el commit de este mismo cambio (lote D del catálogo de textos), que cambia la línea y declara su regeneración en el commit hijo.
+        commit: "0fb5d246",
+        motivo:
+          "Lote D del catálogo de textos (aceptado por el dueño el 2026-11-16: «Sí, una sola frase (Recomendada)»): el rechazo por nombre repetido del alta de un cliente pasa de «Ya existe un cliente llamado» con el nombre entre comillas rectas a «Ya existe un cliente llamado «Fulano». Elegí otro nombre.». Cambia SOLO esa línea del paso «cliente: alta repetida»; ningún dato ni efecto.",
+      },
     ],
   },
   "test/caracterizacion-precio-y-carta/precios.golden.txt": {
@@ -1276,6 +1311,20 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "4b8db032",
         motivo:
           "Frente 6, Secciones como lista simple (cambio de texto de ADMINISTRACIÓN, no de la carta pública; dueño, 2026-11-16: «Lista simple como Pedernal (Recomendada)»; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). En «Carta › Parametrización › Secciones» (a 1280 y a 375 px): los nombres de las secciones pasan a ser enlaces `[enlace: …]` a la pantalla de cada sección (`/carta/parametrizacion/secciones/[id]`), la ayuda suma «Tocá una sección para ver sus datos y sus productos.» y salen de esta pantalla «Datos de cada sección» (el formulario de cada sección, con las mismas acciones) y «Productos de cada sección» (la ficha de cada producto, que ya vivía en `/catalogo/productos/[id]/en-la-carta`): pasan a la pantalla de cada sección y a la ficha del producto. 10 líneas agregadas, 504 quitadas, todas de esa pantalla (revisado con git diff); la carta pública, el catálogo de opciones y el resto quedan idénticos.",
+      },
+      {
+        blob: "1cd6dc26fb5fe32d834278dffb5360ea74b7accf",
+        // El commit PADRE de este (d7a3dcc0) es el último antes de la regeneración; el texto lo cambió el commit que agrega esta entrada (Frente 6, «Nueva sección» con solo el nombre).
+        commit: "d7a3dcc0",
+        motivo:
+          "Frente 6, «Nueva sección de carta» con solo el nombre (cambio de texto de ADMINISTRACIÓN, no de la carta pública; dueño, 2026-11-16: «Sí, ese orden (Recomendada)», paso 1 «nueva sección con solo el nombre»; interruptor `ALTA_DE_SECCION_SOLO_NOMBRE`; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). En «Carta › Parametrización › Secciones» (a 1280 y a 375 px) el alta deja de mostrar «Título (opcional, si no se usa el nombre)», «Descripción (opcional)», «Imagen (URL https, opcional)» y «Orden» (el orden ya no se pide ni viaja en un campo: la página lo calcula al dibujarse, como la cantidad de secciones de ese momento; los otros datos se completan en la pantalla de la sección). 16 líneas quitadas, ninguna agregada, todas de ese formulario (revisado con git diff); la carta pública y el resto quedan idénticos.",
+      },
+      {
+        blob: "8d710c586464619cb03d4742f47146bcb2e5a2fc",
+        // El commit PADRE de este (7afd14dd) es el último antes de la regeneración; el texto lo cambió el commit que agrega esta entrada (Frente 6, paso 2: ayudas de la ficha del producto).
+        commit: "7afd14dd",
+        motivo:
+          "Frente 6, ayudas de la ficha del producto ocultas (cambio de texto de ADMINISTRACIÓN, no de la carta pública; dueño, 2026-11-16: «Sí, ese orden (Recomendada)», paso 2 «textos de la ficha del producto»; interruptor `FICHA_AYUDAS_VISIBLES`; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). En las opciones de venta del producto «Pizzas» (a 1280 y a 375 px) salen tres líneas: «Qué se elige al venderlo y cómo cambia el precio… Biblioteca de opciones», «No se borra nada: lo que admite de cada opción queda guardado.» y «Con el precio de lista de «…», sin descuentos. Es la forma que le da la carta pública…». 6 líneas quitadas, ninguna agregada, todas de esa pantalla (revisado con git diff); la carta pública y el resto quedan idénticos.",
       },
     ],
   },

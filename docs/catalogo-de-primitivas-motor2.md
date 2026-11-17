@@ -103,6 +103,9 @@ Una fila por modelo de `prisma/schema.prisma` (112 modelos, 18 primitivas o grup
 | `Empresa` | Empresa y sucursal |
 | `Sucursal` | Empresa y sucursal |
 | `ModuloEmpresa` | Empresa y sucursal |
+| `Plan` | Empresa y sucursal |
+| `VersionDePlan` | Empresa y sucursal |
+| `PlanDeEmpresa` | Empresa y sucursal |
 | `User` | Usuarios, roles y permisos |
 | `Account` | Usuarios, roles y permisos |
 | `Session` | Usuarios, roles y permisos |
@@ -165,3 +168,13 @@ Una fila por modelo de `prisma/schema.prisma` (112 modelos, 18 primitivas o grup
 | `Cobro` | Caja y cobro (C1) |
 | `ArqueoCaja` | Caja y cobro (C1) |
 | `ArqueoBillete` | Caja y cobro (C1) |
+| `CuentaDeCobro` | Caja y cobro (C3) |
+| `ValorDeLista` | Caja y cobro (C3) |
+| `JornadaDeSucursal` | Caja y cobro (C2) |
+| `ControlDeJornadaCerrada` | Caja y cobro (C2) |
+| `CorreccionDeMedio` | Caja y cobro (C2) |
+| `DeclaracionDeTotal` | Caja y cobro (C2) |
+| `ConformeDeJornada` | Caja y cobro (C2) |
+| `CierreDeCajaDeJornada` | Caja y cobro (C2b) |
+| `ConciliacionDeJornada` | Caja y cobro (C2b) |
+| `ConciliacionDeCobroPorOrigen` | Caja y cobro (C2b) |

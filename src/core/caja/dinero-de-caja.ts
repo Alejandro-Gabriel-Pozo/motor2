@@ -15,6 +15,18 @@ export function centavosDeImporte(importe: number): bigint | null {
   return BigInt(Math.round(importe * 100));
 }
 
+/**
+ * Un importe que llega como TEXTO decimal («1234.56») a centavos enteros, sin pasar nunca por `number`: lista de permitidos (dígitos, un punto opcional y uno o dos decimales; sin signo, sin espacios, sin separador de miles, sin ceros a la
+ * izquierda) y menor que el tope de la columna. `null` si el texto no cumple. Admite 0 (el que lo prohíbe lo mira después: el fondo admite 0, un cobro no).
+ */
+export function centavosDeTexto(texto: unknown): bigint | null {
+  if (typeof texto !== "string") return null;
+  const m = /^(0|[1-9][0-9]{0,11})(?:\.([0-9]{1,2}))?$/.exec(texto);
+  if (!m) return null;
+  const centavos = BigInt(m[1]!) * BigInt(100) + BigInt((m[2] ?? "").padEnd(2, "0"));
+  return centavos < TOPE_EN_CENTAVOS ? centavos : null;
+}
+
 /** El importe de una columna `Decimal(14,2)` (en pesos, 2 decimales) a partir de centavos enteros. Solo para escribir y mostrar: nunca para sumar. */
 export function importeDeCentavos(centavos: bigint): number {
   return Number(centavos) / 100;

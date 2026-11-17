@@ -5,7 +5,7 @@ import { texto } from "@/core/texto";
 import { mensajeSeccionDesactivada } from "@/core/features/movimientos/secciones.guard";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { validarCantidad } from "@/core/datos/cantidad";
-import { redondearACantidadDeUnidad, tieneStockReal } from "@/core/movimientos/public";
+import { DECIMALES_DE_STOCK, redondearACantidadDeUnidad, tieneStockReal } from "@/core/movimientos/public";
 import { calcularPayloadHash, esChoqueDeIndiceUnico, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { calcularSaldoPorLote, calcularSaldoTotal, obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
@@ -17,6 +17,8 @@ import type { ComandoConteoFisico, ResultadoConteoFisico } from "@/core/features
 import { cargarProductoConUnidadDeStock } from "@/server/persistencia/movimientos/cargar-producto-con-unidad-de-stock";
 import { cargarConteoFisicoPorClave, cargarGanadorDelConteo, escribirConteoFisico } from "@/server/persistencia/movimientos/escribir-conteo-fisico";
 import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 
 /**
  * Port de ACCIONES_CONTEO_FISICO (Stock.js:1066-1088): qué hacer con la
@@ -81,7 +83,7 @@ export async function registrarConteoFisicoCasoDeUso(
   // sección sea de ESTA sucursal, solo el permiso de quien llama — ver el
   // mismo chequeo en registrarMovimientoCasoDeUso/reclasificarStockCasoDeUso.
   const seccion = await obtenerSeccionPropia(comando.seccionId, actor.sucursalId, actor.db);
-  if (!seccion) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección.");
+  if (!seccion) return fracaso("SECCION_NO_ENCONTRADA", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.seccion }));
 
   const payloadHash = comando.claveIdempotencia
     ? calcularPayloadHash("CONTEO_FISICO", actor.sucursalId, { ...comando, claveIdempotencia: undefined })
@@ -127,7 +129,7 @@ export async function registrarConteoFisicoCasoDeUso(
     const saldoSistema = loteVencimiento
       ? await calcularSaldoPorLote(producto.id, comando.seccionId, loteVencimiento, actor.sucursalId, tx)
       : await calcularSaldoTotal(producto.id, comando.seccionId, actor.sucursalId, tx);
-    const diferencia = redondearACantidadDeUnidad(conteoReal - saldoSistema, producto.unidadStock.decimales);
+    const diferencia = redondearACantidadDeUnidad(conteoReal - saldoSistema, DECIMALES_DE_STOCK);
 
     const accionInfo = ACCIONES_CONTEO[comando.accion];
     const estado: EstadoConteo = diferencia === 0 ? "RESUELTO" : accionInfo.estado;
