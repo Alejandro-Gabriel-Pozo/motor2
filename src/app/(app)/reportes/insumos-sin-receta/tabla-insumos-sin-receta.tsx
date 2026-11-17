@@ -3,11 +3,12 @@
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaInsumoSinReceta } from "@/core/reportes/public";
+import { textoDe } from "@/core/textos/texto-de";
 
 const COLUMNAS: ColumnaReporte<FilaInsumoSinReceta>[] = [
   {
     clave: "producto",
-    etiqueta: "Producto",
+    etiqueta: textoDe("columna.producto"),
     valor: (f) => `${f.codigo} — ${f.producto}`,
     render: (f) => (
       <EnlaceInterno href={`/reportes/historial?productoId=${f.productoId}`} className="underline">
@@ -15,7 +16,7 @@ const COLUMNAS: ColumnaReporte<FilaInsumoSinReceta>[] = [
       </EnlaceInterno>
     ),
   },
-  { clave: "insumo", etiqueta: "Insumo", valor: (f) => f.insumoNombre ?? "", render: (f) => f.insumoNombre ?? "—" },
+  { clave: "insumo", etiqueta: textoDe("columna.insumo"), valor: (f) => f.insumoNombre ?? "", render: (f) => f.insumoNombre ?? "—" },
   {
     clave: "proveedor",
     etiqueta: "Tiene proveedor",

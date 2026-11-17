@@ -5,14 +5,14 @@ import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
-import { cargarCuentaDeCobro, cargarCuentaPorNombre, editarCuentaEnBase, existeSucursal } from "@/server/persistencia/caja/configuracion";
+import { cargarCuentaDeCobro, cargarCuentaPorNombre, editarCuentaEnBase, esChoqueDeUnaActivaPorSucursal, existeSucursal, hayOtraCuentaActivaEnSucursal } from "@/server/persistencia/caja/configuracion";
 
 /**
  * Caso de uso «editar una cuenta de cobro» (etapa C3; Pedernal `editarCuentaDeCobro`): cambia el nombre, el identificador externo o la sucursal; el TIPO no cambia nunca (la base lo impide). Lo ya cobrado no se toca.
  *
  * `import "server-only"` y SIN `"use server"`. Valida la forma y en UNA transacción SERIALIZABLE: la cuenta existe (`CUENTA_DE_COBRO_NO_ENCONTRADA`); el actor escribe en su sucursal actual y en la nueva
  * (`SUCURSAL_FUERA_DE_ALCANCE`); si lo pedido ya es lo que hay → ok sin escribir ni auditar (aunque la versión sea vieja: repetir una edición ya aplicada no es un conflicto); si no, la versión esperada tiene que ser la vigente
- * (`VERSION_DESACTUALIZADA`); otra cuenta con ese nombre → `CUENTA_DUPLICADA`; la sucursal nueva existe. Audita solo lo que cambió y nunca el valor del identificador externo.
+ * (`VERSION_DESACTUALIZADA`); otra cuenta con ese nombre → `CUENTA_DUPLICADA`; la sucursal nueva existe; si la cuenta está ACTIVA y se la pasa a otra sucursal que ya tiene otra cuenta activa → `SUCURSAL_YA_TIENE_CUENTA_ACTIVA` (una sola activa por sucursal, decisión del dueño 2026-11-16; el choque del índice se traduce al mismo rechazo). Audita solo lo que cambió y nunca el valor del identificador externo.
  *
  * @contract Cambia la cuenta una sola vez por versión, o no escribe nada.
  * @idempotency Por estado y por versión: repetir la edición ya aplicada devuelve la versión vigente sin escribir; dos ediciones a la vez con la misma versión: una gana y la otra ve `VERSION_DESACTUALIZADA`.
@@ -47,6 +47,8 @@ export async function editarCuentaDeCobroCasoDeUso(
       const conEseNombre = await cargarCuentaPorNombre(tx, actor.empresaId, nombre.valor);
       if (conEseNombre && conEseNombre.id !== actual.id) return fracaso("CUENTA_DUPLICADA", "Ya hay una cuenta de cobro con ese nombre.");
 
+      if (actual.activa && comando.sucursalId !== actual.sucursalId && (await hayOtraCuentaActivaEnSucursal(tx, actor.empresaId, comando.sucursalId, actual.id))) return fracaso("SUCURSAL_YA_TIENE_CUENTA_ACTIVA", "Esa sucursal ya tiene una cuenta de cobro activa: desactivala antes de activar o crear otra.");
+
       const escribio = await editarCuentaEnBase(tx, { empresaId: actor.empresaId, id: actual.id, versionEsperada: actual.version, ahora: actor.ahora, nombre: nombre.valor, identificadorExterno: identificador.valor, sucursalId: comando.sucursalId });
       if (!escribio) return fracaso("VERSION_DESACTUALIZADA", "La cuenta cambió: volvé a abrirla antes de editarla.");
 
@@ -64,5 +66,8 @@ export async function editarCuentaDeCobroCasoDeUso(
     undefined,
     undefined,
     true,
-  );
+  ).catch((e: unknown) => {
+    if (esChoqueDeUnaActivaPorSucursal(e)) return fracaso("SUCURSAL_YA_TIENE_CUENTA_ACTIVA" as const, "Esa sucursal ya tiene una cuenta de cobro activa: desactivala antes de activar o crear otra.");
+    throw e;
+  });
 }

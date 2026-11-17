@@ -1,9 +1,11 @@
 import "server-only";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
-import { redondearACantidadDeUnidad } from "@/core/movimientos/public";
+import { DECIMALES_DE_STOCK, redondearACantidadDeUnidad } from "@/core/movimientos/public";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { calcularSaldoPorLote, calcularSaldoTotal } from "@/server/lecturas/movimientos/saldos";
 import { exito, fracaso } from "@/core/resultado-caso";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 import type { ComoResolverConteo, ResultadoResolverConteo } from "@/core/features/movimientos/resolver-conteo.schema";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { cargarConteoFisico } from "@/server/persistencia/movimientos/cargar-conteo-fisico";
@@ -42,7 +44,7 @@ export async function resolverConteoPendienteCasoDeUso(
 ): Promise<ResultadoResolverConteo> {
   return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoResolverConteo> => {
     const conteo = await cargarConteoFisico(tx, conteoId);
-    if (!conteo || conteo.sucursalId !== actor.sucursalId) return fracaso("CONTEO_NO_ENCONTRADO", "No se encontró ese conteo.");
+    if (!conteo || conteo.sucursalId !== actor.sucursalId) return fracaso("CONTEO_NO_ENCONTRADO", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.conteo }));
     if (conteo.estado !== "PENDIENTE") return fracaso("CONTEO_NO_PENDIENTE", "Ese conteo no está pendiente.");
 
     if (comoResolver === "resuelto") {
@@ -59,7 +61,7 @@ export async function resolverConteoPendienteCasoDeUso(
     const saldoHoy = conteo.loteVencimiento
       ? await calcularSaldoPorLote(conteo.productoId, conteo.seccionId, conteo.loteVencimiento, actor.sucursalId, tx)
       : await calcularSaldoTotal(conteo.productoId, conteo.seccionId, actor.sucursalId, tx);
-    const diferencia = redondearACantidadDeUnidad(Number(conteo.conteoReal) - saldoHoy, producto.unidadStock.decimales);
+    const diferencia = redondearACantidadDeUnidad(Number(conteo.conteoReal) - saldoHoy, DECIMALES_DE_STOCK);
 
     if (diferencia === 0) {
       await actualizarEstadoDeConteo(tx, conteoId, {

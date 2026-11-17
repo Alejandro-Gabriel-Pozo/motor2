@@ -4,6 +4,7 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaDiferenciaAjuste } from "@/core/reportes/public";
 import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
+import { textoDe } from "@/core/textos/texto-de";
 
 /** El día de calendario de un instante en hora argentina (P1): `Operacion.fecha` es un instante; leerlo en UTC mostraba el día siguiente a partir de las 21:00. */
 const dia = (f: Date) => diaDeCalendario(f, ZONA_ARGENTINA);
@@ -35,7 +36,7 @@ function celdaProximoConteo(f: FilaDiferenciaAjuste) {
 const COLUMNAS: ColumnaReporte<FilaDiferenciaAjuste>[] = [
   {
     clave: "producto",
-    etiqueta: "Producto",
+    etiqueta: textoDe("columna.producto"),
     valor: (f) => `${f.codigo} — ${f.producto}`,
     render: (f) => (
       <EnlaceInterno href={`/reportes/historial?productoId=${f.productoId}`} className="underline">

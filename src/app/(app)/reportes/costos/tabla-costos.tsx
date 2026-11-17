@@ -28,7 +28,7 @@ const AYUDA_PRECIO_SUGERIDO =
 const COLUMNAS_PRODUCTOS: ColumnaReporte<FilaCostoProducto>[] = [
   {
     clave: "producto",
-    etiqueta: "Producto",
+    etiqueta: textoDe("columna.producto"),
     valor: (p) => `${p.productoCodigo} — ${p.productoNombre}`,
     render: (p) => (
       <EnlaceInterno href={`/reportes/historial?productoId=${p.productoId}`} className="underline">
@@ -90,7 +90,7 @@ const COLUMNAS_PRODUCTOS: ColumnaReporte<FilaCostoProducto>[] = [
 ];
 
 const COLUMNAS_INSUMOS: ColumnaReporte<FilaImpactoInsumo>[] = [
-  { clave: "insumo", etiqueta: "Insumo", valor: (i) => i.insumoNombre, render: (i) => i.insumoNombre },
+  { clave: "insumo", etiqueta: textoDe("columna.insumo"), valor: (i) => i.insumoNombre, render: (i) => i.insumoNombre },
   { clave: "platos", etiqueta: "Platos", alinear: "derecha", valor: (i) => i.cantidadPlatos, render: (i) => i.cantidadPlatos },
   {
     clave: "costoAcumulado",
@@ -106,7 +106,7 @@ const COLUMNAS_INSUMOS: ColumnaReporte<FilaImpactoInsumo>[] = [
     valor: (i) => i.costoUnitario,
     render: (i) => formatearMonto(i.costoUnitario),
   },
-  { clave: "proveedor", etiqueta: "Proveedor", valor: (i) => i.proveedorNombre ?? "", render: (i) => i.proveedorNombre ?? "—" },
+  { clave: "proveedor", etiqueta: textoDe("columna.proveedor"), valor: (i) => i.proveedorNombre ?? "", render: (i) => i.proveedorNombre ?? "—" },
 ];
 
 export function TablaCostosProductos({ filas }: { filas: FilaCostoProducto[] }) {

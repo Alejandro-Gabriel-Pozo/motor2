@@ -17,8 +17,16 @@ import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
 import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
+import { sumaExacta } from "../setup/suma-exacta";
 
 const RONDAS = 10;
+
+// A1b 2026-11-16: stock con 4 decimales fijos y cuenta exacta (como Pedernal). Antes este test usaba bollos de unidad con 0 decimales y
+// medias ventas de 0,5 (0,5 → 1 y 0): ahora 0,5 se escribe exacto (−0,5 y −0,5, sin deuda), así que el arrastre ya no actúa con eso. Para
+// seguir probando el arrastre y su concurrencia se usa un consumo de MÁS de 4 decimales: la receta lleva 0,0001 del insumo por unidad y
+// cada venta es de 0,5 → consumo exacto de 0,00005 (5 decimales). A 4 decimales eso es 0,0001 (el empate se aleja del cero) con resto de
+// 0,00005 a favor: la primera parte escribe −0,0001 y la segunda, con la deuda, 0. En total −0,0001: ni −0,0002 (duplicado) ni 0 (perdido).
+const CONSUMO_POR_UNIDAD = 0.0001;
 
 describe("Auditoría — concurrencia del arrastre de redondeo (Task #27)", () => {
   let sucursalId: string;
@@ -35,7 +43,7 @@ describe("Auditoría — concurrencia del arrastre de redondeo (Task #27)", () =
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
 
-  it(`${RONDAS} rondas de dos ventas de 0,5 EN PARALELO sobre la misma MP fresca: las dos tienen éxito SIEMPRE, Σ CONSUMO = -1 por ronda, y D vuelve a 0 al final de cada una`, async () => {
+  it(`${RONDAS} rondas de dos ventas de 0,5 EN PARALELO sobre la misma MP fresca: las dos tienen éxito SIEMPRE, Σ CONSUMO = -0,0001 por ronda, y D vuelve a 0 al final de cada una`, async () => {
     for (let ronda = 0; ronda < RONDAS; ronda++) {
       // Producto fresco por ronda (mismo criterio que concurrencia-casos-2-3.test.ts, Plan C2): con un insumo compartido entre
       // rondas, `asignarConsumosDeVenta` trataría los productos de rondas distintas como "hermanos" y podría repartir el consumo
@@ -46,7 +54,7 @@ describe("Auditoría — concurrencia del arrastre de redondeo (Task #27)", () =
         sucursalId
       );
       await prisma.recetaVersion.create({
-        data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadBolloId, mermaPorcentaje: 0 }] } },
+        data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: CONSUMO_POR_UNIDAD, unidadId: unidadBolloId, mermaPorcentaje: 0 }] } },
       });
       await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 20, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
@@ -64,23 +72,24 @@ describe("Auditoría — concurrencia del arrastre de redondeo (Task #27)", () =
 
       const filas = await prisma.movimientoStock.findMany({ where: { productoId: mp.id, proceso: "CONSUMO" }, orderBy: { creadoEn: "asc" } });
       expect(filas, `ronda ${ronda}`).toHaveLength(2);
-      for (const f of filas) expect(Number.isInteger(Number(f.cantidad)), `ronda ${ronda}`).toBe(true);
+      // Cada fila escrita tiene como máximo 4 decimales (A1b: el stock se guarda a 4 decimales fijos).
+      for (const f of filas) expect(Math.round(Number(f.cantidad) * 1e4) / 1e4, `ronda ${ronda}`).toBe(Number(f.cantidad));
 
-      const sumaEscrito = filas.reduce((s, f) => s + Number(f.cantidad), 0);
-      expect(sumaEscrito, `ronda ${ronda}: total consumido debe ser -1 (un bollo), nunca -2 ni 0`).toBe(-1);
-      expect(await calcularSaldoTotal(mp.id, seccionId, prisma), `ronda ${ronda}`).toBe(19); // 20 comprados - 1 bollo (2 medias)
+      const sumaEscrito = sumaExacta(filas.map((f) => Number(f.cantidad)));
+      expect(sumaEscrito, `ronda ${ronda}: total consumido debe ser -0,0001 (2 × 0,00005), nunca -0,0002 ni 0`).toBe(-0.0001);
+      expect(await calcularSaldoTotal(mp.id, seccionId, prisma), `ronda ${ronda}`).toBe(19.9999); // 20 comprados - 0,0001
 
       // Invariante D = Σcantidad − ΣcantidadExacta (schema.prisma, docstring de MovimientoStock.cantidadExacta), sumando solo las
-      // filas con cantidadExacta no nulo — acá las DOS filas de la ronda difieren de su exacto (0,5 ≠ 1 y 0,5 ≠ 0), así que las dos
+      // filas con cantidadExacta no nulo — acá las DOS filas de la ronda difieren de su exacto (0,0001 ≠ 0,00005 y 0 ≠ 0,00005), así que las dos
       // cuentan. Con ambas medias ya escritas, la deuda de este producto vuelve exactamente a 0: no queda ningún resto pendiente.
       const conArrastre = filas.filter((f) => f.cantidadExacta !== null);
-      expect(conArrastre, `ronda ${ronda}: las dos partes de 0,5 debían diferir de lo escrito`).toHaveLength(2);
-      const sumaExacto = conArrastre.reduce((s, f) => s + Number(f.cantidadExacta), 0);
-      const deuda = sumaEscrito - sumaExacto;
+      expect(conArrastre, `ronda ${ronda}: las dos partes de 0,00005 debían diferir de lo escrito`).toHaveLength(2);
+      const sumaExacto = sumaExacta(conArrastre.map((f) => Number(f.cantidadExacta)));
+      const deuda = sumaExacta([sumaEscrito, -sumaExacto]);
       expect(deuda, `ronda ${ronda}: D final`).toBe(0);
-      // Σescrito + D = Σexacto (despejando la fórmula de arriba) — Σexacto de esta ronda es -1 (dos partes de -0,5 cada una).
-      expect(sumaEscrito + deuda, `ronda ${ronda}`).toBe(sumaExacto);
-      expect(sumaExacto, `ronda ${ronda}`).toBe(-1);
+      // Σescrito + D = Σexacto (despejando la fórmula de arriba) — Σexacto de esta ronda es -0,0001 (dos partes de -0,00005 cada una).
+      expect(sumaExacta([sumaEscrito, deuda]), `ronda ${ronda}`).toBe(sumaExacto);
+      expect(sumaExacto, `ronda ${ronda}`).toBe(-0.0001);
     }
   });
 });

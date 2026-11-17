@@ -35,6 +35,8 @@ test("se abre en solo lectura y el modo edición no aplica nada hasta guardar; d
 
     await page.getByRole("button", { name: "Editar permisos" }).click();
     await expect(page.locator("[data-cambios-pendientes]")).toContainText("Sin cambios todavía");
+    // Frente 6, paso 3: en la edición se ven todas las acciones y el módulo es solo un título: ningún botón de módulo que no haga nada.
+    await expect(page.locator("[data-modulo-de-permisos] button")).toHaveCount(0);
     await page.locator(`[data-celda="${rol.id}:${ACCION}:ver"]`).click();
     await expect(page.locator("[data-cambios-pendientes]")).toContainText("1 cambio(s) sin guardar");
     expect(await estado(rol.id)).toEqual({ ver: false, editar: false }); // la base NO cambió

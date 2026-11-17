@@ -3,6 +3,8 @@ import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoSetStockMinimo, ResultadoSetStockMinimo } from "@/core/features/stock/stock-minimo.schema";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 import { cambiarMinimoSiSigueComoSeVio, guardarMinimoDeSeccion, guardarMinimoGlobal, leerMinimo } from "@/server/persistencia/stock/stock-minimo";
 import { decidirCambioDeMinimo } from "@/core/stock/public";
 import { formatearCantidad } from "@/core/formato-de-numero";
@@ -40,11 +42,11 @@ export async function setStockMinimoProductoCasoDeUso(
 ): Promise<ResultadoSetStockMinimo> {
   const { productoId, minimo, seccionId } = comando;
   const producto = await actor.db.producto.findUnique({ where: { id: productoId } });
-  if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró el producto.");
+  if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.producto }));
 
   if (seccionId) {
     const seccion = await actor.db.seccion.findUnique({ where: { id: seccionId } });
-    if (!seccion || seccion.sucursalId !== actor.sucursalId) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró el depósito.");
+    if (!seccion || seccion.sucursalId !== actor.sucursalId) return fracaso("SECCION_NO_ENCONTRADA", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.deposito }));
     if (comando.minimoVisto !== undefined) {
       return cambiarConElValorVisto(actor, { productoId, seccionId, minimo, visto: comando.minimoVisto }, `Stock mínimo de "${producto.nombre}" en "${seccion.nombre}"`);
     }

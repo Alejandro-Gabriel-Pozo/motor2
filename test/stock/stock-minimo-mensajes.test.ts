@@ -59,7 +59,7 @@ describe("stock mínimo: mensajes, orden de los chequeos y filas", () => {
   it("eliminar: la fila de OTRA sucursal no se encuentra (y no se borra); éxito", async () => {
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
     const ajena = await prisma.stockMinimoProducto.create({ data: { sucursalId: norte.id, productoId: mpId, minimo: 1 } });
-    expect(await eliminarStockMinimo(ajena.id)).toEqual({ ok: false, mensaje: "No se encontró esa fila de Stock Mínimo." });
+    expect(await eliminarStockMinimo(ajena.id)).toEqual({ ok: false, mensaje: "No se encontró la fila de Stock Mínimo." });
     await setStockMinimoProducto(mpId, 5);
     const propia = await prisma.stockMinimoProducto.findFirstOrThrow({ where: { sucursalId } });
     expect(await eliminarStockMinimo(propia.id)).toEqual({ ok: true, mensaje: "Stock mínimo eliminado." });

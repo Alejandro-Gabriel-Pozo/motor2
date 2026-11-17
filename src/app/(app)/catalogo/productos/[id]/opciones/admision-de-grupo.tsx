@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { FICHA_AYUDAS_VISIBLES } from "@/core/catalogo/public";
 import { LecturaDePrecio } from "@/components/catalogo/lectura-de-precio";
 import { CampoNumero } from "@/components/campo-numero";
 import { FormConResultado } from "@/components/form-con-resultado";
@@ -164,7 +165,7 @@ export function AdmisionDeGrupo({
           checked={seMuestraEnCarta}
           onChange={(e) => setSeMuestraEnCarta(e.target.checked)}
           etiqueta="Mostrar este grupo en la carta"
-          ayuda="Si lo destildás, la carta (en pantalla y en papel) no lo muestra en este producto: el mozo lo sigue eligiendo al vender y los reportes lo siguen separando. Solo se puede mientras ninguna opción cambie el precio."
+          ayuda={FICHA_AYUDAS_VISIBLES ? "Si lo destildás, la carta (en pantalla y en papel) no lo muestra en este producto: el mozo lo sigue eligiendo al vender y los reportes lo siguen separando. Solo se puede mientras ninguna opción cambie el precio." : undefined}
         />
       )}
       {esTamano && (
