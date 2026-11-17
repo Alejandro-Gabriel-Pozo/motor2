@@ -1,13 +1,19 @@
 import { randomUUID } from "node:crypto";
 import { Client } from "pg";
-import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
+// La lectura previa de la regla se envuelve en un espía que, por defecto, llama a la real: solo las pruebas «SOLO el índice frena» la sortean.
+vi.mock("../../src/server/persistencia/caja/configuracion", async (importarOriginal) => {
+  const real = await importarOriginal<typeof import("../../src/server/persistencia/caja/configuracion")>();
+  return { ...real, hayOtraCuentaActivaEnSucursal: vi.fn(real.hayOtraCuentaActivaEnSucursal) };
+});
 
 import { azarDelProceso } from "../../src/lib/azar";
 import { desactivarCuentaDeCobroCasoDeUso, reactivarCuentaDeCobroCasoDeUso } from "../../src/server/actions/caja/casos-de-uso/cambiar-estado-de-cuenta-de-cobro";
 import { crearCuentaDeCobroCasoDeUso } from "../../src/server/actions/caja/casos-de-uso/crear-cuenta-de-cobro";
 import { editarCuentaDeCobroCasoDeUso } from "../../src/server/actions/caja/casos-de-uso/editar-cuenta-de-cobro";
+import { hayOtraCuentaActivaEnSucursal } from "../../src/server/persistencia/caja/configuracion";
 import { baseDeEmpresa } from "../../src/server/sesion/base";
 import { entrarComo, sembrarSalon } from "../pos/salon-fixture";
 import { EMPRESA_POR_DEFECTO_ID as EMPRESA, limpiarBaseDeTest, prismaAdmin } from "../setup/test-db";
@@ -17,6 +23,9 @@ import { EMPRESA_POR_DEFECTO_ID as EMPRESA, limpiarBaseDeTest, prismaAdmin } fro
  * Cubre el caso de uso (crear, editar la sucursal, reactivar, desactivar, con carreras de verdad) y la BASE directo con SQL crudo y el rol real de la app (`motor2_app`).
  * MUTACIÓN que debe dejar esto en ROJO: quitar el índice (`DROP INDEX "CuentaDeCobro_una_activa_por_sucursal_key"`) deja en rojo «rechaza la segunda activa (23505 del índice exacto)…» (verificado el 2026-11-16: 1 de 11 en rojo; al restituirlo, 11 de 11
  * en verde). Las carreras del caso de uso NO se ponen en rojo con esa mutación: las arbitra la transacción SERIALIZABLE con la lectura previa (el índice es el respaldo y su choque se traduce al mismo código); por eso la barrera se mide en la prueba de la base.
+ * CADA CAPA POR SEPARADO (2026-11-17, verificado con mutación rojo/verde): (a) la lectura previa del caso de uso sola (se borra el índice dentro de la prueba y se restituye SIEMPRE en `finally`/`afterAll`; los archivos de vitest corren en serie, `fileParallelism: false`);
+ * (b) el índice solo (la lectura previa se sortea con un espía sobre `hayOtraCuentaActivaEnSucursal` y el 23505 se traduce al mismo rechazo). Mutación (a): hacer que `hayOtraCuentaActivaEnSucursal` devuelva siempre `false` deja en rojo SOLO (a) (1 de 14); mutación (b): desactivar la traducción
+ * del choque en `crearCuentaDeCobroCasoDeUso` deja en rojo SOLO (b) (1 de 14). Riesgo: si el proceso muere con el índice borrado, la base de pruebas queda sin él hasta la siguiente corrida de este archivo (su `beforeAll` lo restituye) o hasta `prisma migrate deploy` en una base nueva.
  */
 let s: Awaited<ReturnType<typeof sembrarSalon>>;
 const AHORA = new Date("2026-01-15T15:00:00.000Z");
@@ -141,6 +150,73 @@ describe("una sola cuenta activa por sucursal: los casos de uso", () => {
     expect(valores.filter((r) => r?.ok)).toHaveLength(1);
     expect(valores.filter((r) => r && !r.ok && r.codigo === CODIGO)).toHaveLength(1);
     expect(await activas(s.sucursalId)).toBe(1);
+  });
+});
+
+const INDICE = "CuentaDeCobro_una_activa_por_sucursal_key";
+// Misma definición que la migración 20261117118100_caja_c3b_una_cuenta_por_sucursal.
+const CREAR_INDICE = `CREATE UNIQUE INDEX IF NOT EXISTS "${INDICE}" ON "CuentaDeCobro"("empresaId", "sucursalId") WHERE "activa"`;
+
+/** Corre `fn` sin el índice (lo borra con el dueño) y lo restituye SIEMPRE, con la misma definición. Los archivos de vitest corren en serie (`fileParallelism: false`): nadie más usa la base mientras tanto. */
+async function sinElIndice<T>(fn: () => Promise<T>): Promise<T> {
+  await prismaAdmin.$executeRawUnsafe(`DROP INDEX IF EXISTS "${INDICE}"`);
+  try {
+    return await fn();
+  } finally {
+    await limpiarCuentas();
+    await prismaAdmin.$executeRawUnsafe(CREAR_INDICE);
+  }
+}
+const limpiarCuentas = () => prismaAdmin.$executeRawUnsafe(`DELETE FROM "CuentaDeCobro"`).catch(() => undefined);
+const hayIndice = async () => (await prismaAdmin.$queryRaw<{ n: number }[]>`SELECT count(*)::int AS n FROM pg_indexes WHERE indexname = ${INDICE}`)[0]?.n === 1;
+
+describe("cada capa frena por separado: la lectura previa del caso de uso y el índice de la base", () => {
+  // Si una corrida anterior se cortó con el índice borrado, se restituye antes de empezar.
+  beforeAll(async () => {
+    await prismaAdmin.$executeRawUnsafe(CREAR_INDICE);
+  });
+  afterAll(async () => {
+    await prismaAdmin.$executeRawUnsafe(CREAR_INDICE);
+  });
+
+  it("(a) SOLO la verificación del caso de uso frena: sin el índice, crear y reactivar una segunda activa dan el rechazo de regla", async () => {
+    await sinElIndice(async () => {
+      expect(await hayIndice()).toBe(false);
+      const a = idDe(await crear("Posnet 1"));
+      expect(await crear("Posnet 2")).toMatchObject({ ok: false, codigo: CODIGO });
+      const vieja = await prismaAdmin.cuentaDeCobro.create({ data: { id: randomUUID(), sucursalId: s.sucursalId, tipo: "QR", nombre: "Vieja", activa: false } });
+      expect(await reactivarCuentaDeCobroCasoDeUso(actor(), { cuentaDeCobroId: vieja.id })).toMatchObject({ ok: false, codigo: CODIGO });
+      expect(await activas(s.sucursalId)).toBe(1);
+      expect((await prismaAdmin.cuentaDeCobro.findUniqueOrThrow({ where: { id: a } })).activa).toBe(true);
+    });
+    expect(await hayIndice(), "el índice quedó restituido").toBe(true);
+  });
+
+  it("(b) SOLO el índice frena: con la lectura previa sorteada, el choque 23505 se traduce al MISMO rechazo (crear, reactivar y editar la sucursal), sin error crudo", async () => {
+    const real = (await vi.importActual<typeof import("../../src/server/persistencia/caja/configuracion")>("../../src/server/persistencia/caja/configuracion")).hayOtraCuentaActivaEnSucursal;
+    const norte = await otraSucursal();
+    const ambas = [s.sucursalId, norte.id];
+    vi.mocked(hayOtraCuentaActivaEnSucursal).mockResolvedValue(false);
+    try {
+      expect(await hayIndice()).toBe(true);
+      const a = idDe(await crear("Posnet 1"));
+      const n = idDe(await crear("Posnet Norte", norte.id, "TERMINAL", ambas));
+      const vieja = await prismaAdmin.cuentaDeCobro.create({ data: { id: randomUUID(), sucursalId: s.sucursalId, tipo: "QR", nombre: "Vieja", activa: false } });
+      expect(await crear("Posnet 2")).toMatchObject({ ok: false, codigo: CODIGO });
+      expect(await reactivarCuentaDeCobroCasoDeUso(actor(), { cuentaDeCobroId: vieja.id })).toMatchObject({ ok: false, codigo: CODIGO });
+      expect(await editarCuentaDeCobroCasoDeUso(actor(ambas), { cuentaDeCobroId: a, versionEsperada: 1, nombre: "Posnet 1", identificadorExterno: null, sucursalId: norte.id })).toMatchObject({ ok: false, codigo: CODIGO });
+      expect(vi.mocked(hayOtraCuentaActivaEnSucursal)).toHaveBeenCalled();
+      expect(await activas(s.sucursalId)).toBe(1);
+      expect(await activas(norte.id)).toBe(1);
+      expect((await prismaAdmin.cuentaDeCobro.findUniqueOrThrow({ where: { id: n } })).activa).toBe(true);
+    } finally {
+      vi.mocked(hayOtraCuentaActivaEnSucursal).mockImplementation(real);
+    }
+  });
+
+  it("(b') un choque de unicidad que NO es el de la regla (el nombre) no se disfraza: con otro tipo, el nombre repetido sigue siendo CUENTA_DUPLICADA", async () => {
+    idDe(await crear("Posnet 1"));
+    expect(await crear("POSNET 1", s.sucursalId, "QR")).toMatchObject({ ok: false, codigo: "CUENTA_DUPLICADA" });
   });
 });
 

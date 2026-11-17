@@ -189,6 +189,7 @@ Privilegios: la app lee y agrega `CuentaDeCobro` (UPDATE por columna: nombre, id
 | `caja.cuenta_de_cobro.duplicada` | Ya hay una cuenta de cobro con ese nombre. | `CUENTA_DUPLICADA` |
 | `caja.cuenta_de_cobro.nombre_invalido` | El nombre de la cuenta no es válido. | `NOMBRE_DE_CUENTA_INVALIDO` |
 | `caja.cuenta_de_cobro.identificador_invalido` | El identificador de la cuenta no es válido. | `IDENTIFICADOR_EXTERNO_INVALIDO` |
+| `caja.cuenta_de_cobro.sucursal_ya_tiene_activa` | Esa sucursal ya tiene una cuenta de cobro activa: desactivala antes de activar o crear otra. | `SUCURSAL_YA_TIENE_CUENTA_ACTIVA` (crear, reactivar y editar la sucursal de una cuenta activa) |
 | `caja.cuenta_de_cobro.sin_acceso` | No tenés acceso a esa sucursal. | `SUCURSAL_FUERA_DE_ALCANCE` |
 | `caja.cobro.cuenta_incompatible` | El medio de pago no admite ese tipo de cuenta de cobro. | `CUENTA_DE_COBRO_INCOMPATIBLE` |
 | `caja.cobro.cuenta_inactiva` | La cuenta de cobro está desactivada. | `CUENTA_DE_COBRO_INACTIVA` |
@@ -232,6 +233,7 @@ Privilegios: la app lee y agrega `CuentaDeCobro` (UPDATE por columna: nombre, id
 | Datos de antes | la migración FALLA (23505, sin cambiar nada) si alguna sucursal ya tiene dos activas; `verificacion-previa.sql` las lista y aborta con mensaje. Verificado en una base temporal (`test/aislamiento/caja-c3b-subir-bajar-subir.test.ts`). En producción no hay cuentas de cobro cargadas todavía: NO VERIFICADO (no se leyó ninguna base real) |
 | Sucursal sin cuenta | NO obliga a nada: la cuenta es OPCIONAL en el cobro. Un renglón con un medio de tarjeta, QR o transferencia SIN cuenta de cobro se acepta (queda en el grupo «sin cuenta» del arqueo); el caso de uso no asigna solo la cuenta activa de la sucursal. Verificado en el código (`validarParDeCobro`: `cuentaDeCobroId === null` → válido) y en el oráculo contra la base (estado `NINGUNA` = OK para todos los tipos). Cambiar eso (exigir cuenta o completarla sola) sería otra decisión del dueño: no se hizo |
 | Cambio de permisos | quien no escribe en la sucursal recibe `SUCURSAL_FUERA_DE_ALCANCE` antes que cualquier otra cosa; el chequeo de la activa lee con el alcance del actor y, si algo escapara, el índice rechaza igual |
+| Aplicación (checklist) | correr SIEMPRE `verificacion-previa.sql` ANTES de `prisma migrate deploy`: sobre una base con sucursales con más de una cuenta activa, el deploy falla con el error crudo de Postgres y deja la migración marcada como fallida |
 | Reversa | `down.sql` borra solo el índice (no pierde datos; bajarla dos veces no falla): la sucursal vuelve a poder tener varias activas |
 
 Pruebas: `test/caja/caja-c3b-una-cuenta-por-sucursal.test.ts` (casos de uso y base directa) y `test/aislamiento/caja-c3b-subir-bajar-subir.test.ts` (subir, bajar y subir); `m1-mostrador-subir-bajar-subir` lista la migración nueva en orden. Los tests de C3 que armaban varias activas en una sucursal se ajustaron sin debilitar ninguna regla (cuentas inactivas, o una sola activa por caso dentro de la transacción que se revierte en el oráculo).
