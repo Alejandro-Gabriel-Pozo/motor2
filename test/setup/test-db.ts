@@ -97,6 +97,9 @@ export async function limpiarBaseDeTest() {
   await prismaAdmin.modoDeOrdenDeSeccionCarta.deleteMany(); // O1: el modo de orden cuelga de la sucursal y de la sección (RESTRICT).
   await prismaAdmin.miembroDeFamilia.deleteMany(); // F1: los miembros cuelgan de la familia y del producto (RESTRICT).
   await prismaAdmin.familiaDeProducto.deleteMany();
+  await prismaAdmin.portalZona.deleteMany(); // Portal PR-A: las tarjetas y zonas cuelgan del portal y de la sucursal (RESTRICT).
+  await prismaAdmin.portalTarjeta.deleteMany();
+  await prismaAdmin.portalDeEmpresa.deleteMany();
   await prismaAdmin.opcionItemAgrupadoCarta.deleteMany();
   await prismaAdmin.itemAgrupadoCarta.deleteMany();
   await prismaAdmin.temaCartaSucursal.deleteMany();

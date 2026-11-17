@@ -6,6 +6,7 @@ import { prisma } from "./fixtures/db";
 import { abrirModulosDePermisos } from "./fixtures/plegables";
 import { crearMembresia } from "../setup/membresia";
 import { PRESENTACIONES_VISIBLES } from "../../src/core/catalogo/presentaciones-visibles";
+import { elegirClaseDelAlta } from "./fixtures/alta";
 
 /**
  * M.2 (P6): la clave fina `producto_campos_sensibles` en las pantallas de producto. El servidor ya la exige (P2 a P5); acá se mira lo que ve y puede hacer la persona en el navegador:
@@ -207,7 +208,7 @@ test("sin la clave, el alta se ve como la crea el servidor (precio 0, factor 1, 
     await expect(page.getByLabel("Activo en todas las sucursales")).toHaveCount(0);
     await expect(sinPoderVender(page)).toHaveCount(0);
 
-    await page.getByLabel("¿Qué es?").selectOption({ label: "Producto vendible" });
+    await elegirClaseDelAlta(page, "Producto vendible");
     // Frente 2: el alta no pide ni muestra el precio (ni editable ni en solo lectura): se carga después, en la pestaña «Precios».
     await expect(soloLectura(page, "precioVenta")).toHaveCount(0);
     await expect(page.getByLabel("Precio de venta", { exact: true })).toHaveCount(0);
@@ -309,7 +310,7 @@ test("M.2-A2: un rol con alta_producto pero SIN producto_editar ni la clave fina
   try {
     await page.goto("/catalogo/productos/nuevo");
     await expect(page.locator('input[name="nombre"]')).toBeVisible();
-    await page.getByLabel("¿Qué es?").selectOption({ label: "Producto vendible" });
+    await elegirClaseDelAlta(page, "Producto vendible");
     await expect(aviso(page)).toHaveCount(0);
     await expect(sinPoderVender(page)).toHaveCount(0);
     await expect(page.getByLabel("Activo en todas las sucursales")).toHaveCount(0);
@@ -360,7 +361,7 @@ test("accesibilidad (axe) sin la clave: la edición de una materia prima y de un
     await page.goto("/catalogo/productos/nuevo");
     await expect(page.locator('input[name="nombre"]')).toBeVisible();
     await sinViolaciones("alta de materia prima sin la clave");
-    await page.getByLabel("¿Qué es?").selectOption({ label: "Producto vendible" });
+    await elegirClaseDelAlta(page, "Producto vendible");
     await expect(soloLectura(page, "precioVenta")).toHaveCount(0); // Frente 2: el alta no muestra el precio
     await expect(sinPoderVender(page)).toHaveCount(0);
     await sinViolaciones("alta de producto de venta sin la clave");

@@ -114,3 +114,6 @@ export type { ClaveDeClaseDeAlta } from "./clase-de-alta";
 export { capacidadesDelProducto } from "./capacidades-del-producto";
 export { whereSeCompra } from "./se-compra-consulta";
 export { whereEsIngredienteDeReceta, whereLoConsumeUnaOpcion } from "./ingrediente-consulta";
+
+// Qué puede hacer un producto (se compra, se vende, stock propio, receta…), decidido en un solo lugar: E4-0 de la Reventa (docs/diseno-reventa-e4-2026-11-17.md §3). Hoy lo usa `tieneStockReal`; los demás circuitos pasan en E4-2 a E4-4.
+export { capacidadesDelProducto } from "./capacidades-del-producto";

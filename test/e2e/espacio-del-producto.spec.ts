@@ -5,6 +5,7 @@ import { capturar, expectObjetivosTactiles, expectSinDesborde } from "./fixtures
 import { abrirComoRol } from "./fixtures/rol-pos";
 import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
 import { ajustarCeldasDelAdmin } from "./fixtures/admin-con-filas";
+import { elegirClaseDelAlta } from "./fixtures/alta";
 
 /**
  * El ESPACIO DEL PRODUCTO (Fase 6, DEC-12), paso 2 «Opciones y precio»: la ventana «+ Nuevo grupo» (6.15c), que crea un grupo de la biblioteca, sus opciones y lo que el producto admite de ellas, todo en
@@ -330,7 +331,7 @@ for (const { ancho, alto } of [
     await page.getByRole("link", { name: "+ Nuevo producto" }).click();
     // Sin el campo de precio no hay nada que confirme que la clase «agarró» (si se elige antes de hidratar, la pantalla vuelve a «Materia prima»): se reintenta hasta ver un campo propio del producto de venta (el nombre de cocina).
     await expect(async () => {
-      await page.getByLabel("¿Qué es?").selectOption({ label: "Producto vendible" });
+      await elegirClaseDelAlta(page, "Producto vendible");
       await expect(page.getByLabel("Nombre de cocina")).toBeVisible({ timeout: 1500 });
     }).toPass({ timeout: 20_000 });
     await page.locator('input[name="nombre"]').fill(nombre);

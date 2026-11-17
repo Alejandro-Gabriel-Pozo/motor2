@@ -21,6 +21,7 @@ export const PUNTOS_DE_NOMBRE: Readonly<Record<string, PuntoDeNombre>> = {
   "src/core/features/clientes/clientes.guard.ts": { pedernal: ["RAZON_SOCIAL"], viejos: [], dato: "alta y edición de cliente" },
   "src/server/actions/clientes/casos-de-uso/actualizar-cliente.ts": { pedernal: ["RAZON_SOCIAL"], viejos: [], dato: "edición de cliente (estricta solo si cambia)" },
   "src/core/features/carta/secciones.guard.ts": { pedernal: ["ELECCION"], viejos: [], dato: "sección de carta" },
+  "src/core/features/carta/portal-de-empresa.guard.ts": { pedernal: ["ELECCION"], viejos: [], dato: "nombre de la tarjeta del portal de la empresa (PR-A: opcional; la línea superior y el título del portal usan sus propias reglas, de 1 a 40 y de 1 a 60)" },
   "src/server/actions/carta/casos-de-uso/guardar-seccion-carta.ts": { pedernal: ["ELECCION"], viejos: [], dato: "edición de sección de carta (estricta solo si cambia)" },
   "src/core/features/carta/familias.guard.ts": { pedernal: ["PRODUCTO"], viejos: [], dato: "familia de productos (F1: alta estricta; en la edición el guard solo recorta y el caso de uso aplica la estricta si el nombre cambia)" },
   "src/server/actions/carta/casos-de-uso/editar-familia-de-producto.ts": { pedernal: ["PRODUCTO"], viejos: [], dato: "edición de familia de productos (estricta solo si cambia)" },

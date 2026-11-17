@@ -132,7 +132,7 @@ describe("carta: solo lectura", () => {
 
   // Hito 4, H4C-0.5: también la persistencia de la carta (`src/server/persistencia/carta/`), adonde los casos de uso de 4.2 mudan las escrituras del descuento
   // y de las promos. Sin esto, la regla miraría solo `server/actions/carta` y quedaría ciega en cuanto la escritura salga de la acción.
-  it("las Server Actions de la carta (src/server/actions/carta) y su persistencia (src/server/persistencia/carta) solo escriben en las 18 tablas de carta (12 de siempre, 3 de GO-3b, 1 de O1 y 2 de F1)", () => {
+  it("las Server Actions de la carta (src/server/actions/carta) y su persistencia (src/server/persistencia/carta) solo escriben en las 21 tablas de carta (12 de siempre, 3 de GO-3b, 1 de O1, 2 de F1 y 3 del portal de la empresa PR-A)", () => {
     // `sucursalPublica`: el registro de tenants del portal (docs/plan-registro-tenants-2026-09-24.md, M6).
     // `temaCartaSucursal`: el tema visual de la carta (docs/plan-tema-carta-2026-09-24.md, M8).
     // `itemAgrupadoCarta` y `opcionItemAgrupadoCarta`: los ítems agrupados (docs/plan-agrupacion-items-carta-2026-09-24.md, M5).
@@ -145,6 +145,7 @@ describe("carta: solo lectura", () => {
     // GO-3b (ADR-032): `entradaDeCupo` y `opcionDeEntradaDeCupo` (las opciones de un lugar LISTA de un combo y su configuración fija) y `entradaDelDiaDeCupo` (el plato del día de la sucursal).
     // O1 (docs/diseno-carta-orden-permiso-y-precio-de-familia-2026-11-17.md): `modoDeOrdenDeSeccionCarta`, el modo de orden (alfabético o a mano) de una sección en una sucursal — admin de la carta, no público (la carta pública solo la LEE, en `server/lecturas/carta/menu.ts`).
     // F1 (docs/diseno-carta-familias-niveles-6-a-10-2026-11-17.md): `familiaDeProducto` y `miembroDeFamilia`, las familias de productos de la empresa (admin de la carta; nada las lee todavía en la carta pública).
+    // Portal de la empresa PR-A (docs/diseno-carta-portal-e-identidad-niveles-6-a-10-2026-11-17.md): `portalDeEmpresa`, `portalTarjeta` y `portalZona`, el portal nuevo (variantes A y B) — admin de la carta (`carta_portal`); la carta pública solo lo LEE, en `server/lecturas/carta/publica.ts`.
     const TABLAS_DE_CARTA = new Set([
       "seccionCarta",
       "contenidoCartaProducto",
@@ -164,6 +165,9 @@ describe("carta: solo lectura", () => {
       "modoDeOrdenDeSeccionCarta",
       "familiaDeProducto",
       "miembroDeFamilia",
+      "portalDeEmpresa",
+      "portalTarjeta",
+      "portalZona",
     ]);
     const acciones = [...archivos(join(SRC, "server/actions/carta")), ...archivos(join(SRC, "server/persistencia/carta"))];
     expect(acciones.length, "no se encontraron las acciones de la carta").toBeGreaterThan(0);
