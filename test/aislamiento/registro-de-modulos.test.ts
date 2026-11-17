@@ -203,7 +203,7 @@ describe("registro de módulos por empresa (P4)", () => {
     it("los dos triggers (por fila y por TRUNCATE) están, y motor2_app solo tiene SELECT", async () => {
       const triggers = await prismaAdmin.$queryRaw<Array<{ nombre: string }>>`
         SELECT tgname::text AS nombre FROM pg_trigger WHERE tgrelid = to_regclass('public."ModuloEmpresa"') AND NOT tgisinternal ORDER BY 1`;
-      expect(triggers.map((t) => t.nombre)).toEqual(["ModuloEmpresa_solo_plataforma_fila", "ModuloEmpresa_solo_plataforma_truncate"]);
+      expect(triggers.map((t) => t.nombre)).toEqual(["ModuloEmpresa_recepcion_pendientes_chk", "ModuloEmpresa_solo_plataforma_fila", "ModuloEmpresa_solo_plataforma_truncate"]);
       const privilegios = await prismaAdmin.$queryRaw<Array<{ privilegio: string }>>`
         SELECT privilege_type::text AS privilegio FROM information_schema.role_table_grants WHERE table_name = 'ModuloEmpresa' AND grantee = 'motor2_app' ORDER BY 1`;
       expect(privilegios.map((p) => p.privilegio)).toEqual(["SELECT"]);

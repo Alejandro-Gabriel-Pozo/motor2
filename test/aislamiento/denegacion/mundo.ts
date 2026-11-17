@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { limpiarBaseDeTest, prismaAdmin, prismaSinEmpresa, sembrarBase, EMPRESA_POR_DEFECTO_ID } from "../../setup/test-db";
 import { crearEmpresa } from "../../setup/crear-empresa";
 import { crearMembresia } from "../../setup/membresia";
-import { activarTodosLosModulos, fijarModulosActivos, MODULOS_VENDIBLES } from "../../setup/modulos";
+import { activarTodosLosModulos, encenderRecepcionDeCompras, fijarModulosActivos, MODULOS_VENDIBLES } from "../../setup/modulos";
 import { enElPasado, HORA_MS, DIA_MS } from "../../setup/tiempo";
 import { ZONA_ARGENTINA, diaDeCalendario, fechaDeColumnaDate, sumarDias } from "../../../src/core/tiempo/zona-horaria";
 
@@ -515,6 +515,8 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
     facturasPendientes[sufijo] = factura.id;
   }
   // Compras N3-a (recepción separada): la parte de ESTA sucursal de la factura «por recibir» nace PENDIENTE (el valor por defecto de la columna), sin compra ni stock.
+  // La base no deja nacer una parte pendiente con la recepción separada apagada (guarda de apagado, 20261117170000): la empresa la tiene encendida (fila de dueño, como `activarTodosLosModulos`).
+  await encenderRecepcionDeCompras(empresaId);
   await db.facturaProveedorSucursal.create({ data: { id: id("factura-por-recibir-parte"), empresaId, facturaProveedorId: facturasPendientes["factura-por-recibir"]!, sucursalId, porcentajeDeclaradoBp: 10000 } });
   // …y un renglón de mercadería (el producto de la empresa, habilitado en la sucursal) para que la confirmación tenga qué recibir: sin renglones el caso de uso responde «no tiene mercadería para recibir».
   const renglonPorRecibir = await db.facturaProveedorRenglon.create({
