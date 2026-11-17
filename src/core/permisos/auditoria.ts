@@ -80,7 +80,7 @@ export const ENTIDADES_AUDITABLES = [
   // y el después), `sucursalId` null (catálogo central). El contacto no deja fila.
   "Proveedor",
   // "FacturaProveedor" (E3a, ADR-041): la carga de una factura de proveedor repartida (`campo: "reparto"`, el reparto por sucursal en `valorNuevo`), la aceptación de la parte de una sucursal destino (`campo: "parteAceptada"`)
-  // y la anulación (`campo: "anuladaEn"`, con el motivo en la descripción) — `entidadId` es el id de la factura, `sucursalId` el de la sucursal de quien actúa (nunca la ajena).
+  // la confirmación de la recepción de una compra pendiente (`campo: "recepcion"`, Compras N3-a), el control por línea de esa recepción (`campo: "controlDeRecepcion"`, `valorNuevo` la cantidad de líneas, Compras N3-b), y la anulación (`campo: "anuladaEn"`, con el motivo en la descripción) — `entidadId` es el id de la factura, `sucursalId` el de la sucursal de quien actúa (nunca la ajena).
   "FacturaProveedor",
   // "TraspasoSucursal" (Pureza, decisión del dueño 2026-10-07): el alta de una solicitud de traspaso o de un envío directo — `entidadId` es el id del traspaso, `campo: "cantidad"`,
   // `valorAnterior: null`, con la `sucursalId` de quien lo crea (la de destino en una solicitud, la de origen en un envío directo).

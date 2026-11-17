@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { limpiarBaseDeTest, prismaAdmin, prismaSinEmpresa, sembrarBase, EMPRESA_POR_DEFECTO_ID } from "../../setup/test-db";
 import { crearEmpresa } from "../../setup/crear-empresa";
 import { crearMembresia } from "../../setup/membresia";
-import { activarTodosLosModulos } from "../../setup/modulos";
+import { activarTodosLosModulos, fijarModulosActivos, MODULOS_VENDIBLES } from "../../setup/modulos";
 import { enElPasado, HORA_MS, DIA_MS } from "../../setup/tiempo";
 import { ZONA_ARGENTINA, diaDeCalendario, fechaDeColumnaDate, sumarDias } from "../../../src/core/tiempo/zona-horaria";
 
@@ -125,6 +125,10 @@ export interface KitDeSucursal {
   propuestaParaAceptarId: string;
   /** Pagos X0: una factura de proveedor «pendiente de pago» sin pago (a esa se le declara el pago). */
   facturaPendienteDePagoId: string;
+  /** Compras N3-a: una factura de proveedor cuya parte de ESTA sucursal está PENDIENTE de recibir (a esa se le confirma la recepción). */
+  facturaPorRecibirId: string;
+  /** Compras N3-b: el renglón de mercadería de esa factura (2 unidades): lo que se controla y lo que entra en la confirmación. */
+  renglonPorRecibirId: string;
   /** Pagos X0: un pago VIGENTE de otra factura pendiente de pago (ese se anula). */
   pagoDeFacturaId: string;
   pagoConsignanteId: string;
@@ -185,6 +189,8 @@ const CAMPOS_DE_SUCURSAL_REGISTRO: Record<keyof KitDeSucursal, true> = {
   facturaEnviadaId: true,
   propuestaParaAceptarId: true,
   facturaPendienteDePagoId: true,
+  facturaPorRecibirId: true,
+  renglonPorRecibirId: true,
   pagoDeFacturaId: true,
   pagoConsignanteId: true,
   precioLocalId: true,
@@ -502,12 +508,18 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   }
   // Pagos X0: dos facturas «pendiente de pago» de la empresa (sin propuestas): una sin pago, para declararle uno, y otra con un pago vigente, para anularlo. El día de la factura es ayer; el pago, de ayer.
   const facturasPendientes: Record<string, string> = {};
-  for (const sufijo of ["factura-pendiente-de-pago", "factura-con-pago"]) {
+  for (const sufijo of ["factura-pendiente-de-pago", "factura-con-pago", "factura-por-recibir"]) {
     const factura = await db.facturaProveedor.create({
       data: { id: id(sufijo), empresaId, proveedorId: k.proveedorId, nroFactura: `Factura ${marca} ${sufijo}`, nroFacturaNormalizado: id(sufijo), fecha: enElPasado(DIA_MS), importeTotal: 100, condicionPago: "PENDIENTE_DE_PAGO", estado: "CONFIRMADA", confirmadaEn: enElPasado(DIA_MS), confirmadaPorId: miembro.id, creadoPorId: miembro.id },
     });
     facturasPendientes[sufijo] = factura.id;
   }
+  // Compras N3-a (recepción separada): la parte de ESTA sucursal de la factura «por recibir» nace PENDIENTE (el valor por defecto de la columna), sin compra ni stock.
+  await db.facturaProveedorSucursal.create({ data: { id: id("factura-por-recibir-parte"), empresaId, facturaProveedorId: facturasPendientes["factura-por-recibir"]!, sucursalId, porcentajeDeclaradoBp: 10000 } });
+  // …y un renglón de mercadería (el producto de la empresa, habilitado en la sucursal) para que la confirmación tenga qué recibir: sin renglones el caso de uso responde «no tiene mercadería para recibir».
+  const renglonPorRecibir = await db.facturaProveedorRenglon.create({
+    data: { id: id("factura-por-recibir-renglon"), empresaId, facturaProveedorId: facturasPendientes["factura-por-recibir"]!, orden: 1, naturaleza: "MERCADERIA", productoId: k.productoId, cantidadStock: 2, precioPorUnidadStock: 50, detalle: "Compra", precioTotal: 100 },
+  });
   const pagoDeFactura = await db.pagoDeFacturaProveedor.create({
     data: { id: id("pago-de-factura"), empresaId, facturaProveedorId: facturasPendientes["factura-con-pago"]!, fechaPago: enElPasado(DIA_MS), medio: "TRANSFERENCIA", claveIdempotencia: id("pago-de-factura-clave"), payloadHash: "h", resultadoMensaje: "Pago declarado.", creadoPorId: miembro.id },
   });
@@ -623,6 +635,8 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
     facturaEnviadaId: facturasE3a["factura-enviada"].facturaId,
     propuestaParaAceptarId: facturasE3a["factura-para-aceptar"].propuestaId,
     facturaPendienteDePagoId: facturasPendientes["factura-pendiente-de-pago"]!,
+    facturaPorRecibirId: facturasPendientes["factura-por-recibir"]!,
+    renglonPorRecibirId: renglonPorRecibir.id,
     pagoDeFacturaId: pagoDeFactura.id,
     pagoConsignanteId: pago.id,
     precioLocalId: precioLocal.id,
@@ -652,6 +666,9 @@ export async function sembrarMundo(): Promise<Mundo> {
   const rolAdminE1Id = base.admin.id;
   const rolOperadorE1Id = base.operador.id;
   await activarTodosLosModulos(e1Id);
+  // Compras N3-a: `recepcion_de_compras` nace apagado (`activarTodosLosModulos` no lo enciende). E1 lo tiene ENCENDIDO para que la puerta `confirmarRecepcionDeFactura` tenga control positivo; con él, cargar una factura de una sola parte propia deja la parte
+  // pendiente (las puertas de carga lo siguen rechazando con ids ajenos: la sección que viene en el pedido se valida igual).
+  await fijarModulosActivos(e1Id, [...MODULOS_VENDIBLES, "recepcion_de_compras"]);
   const miembroDeLaEmpresa = (usuarioId: string, empresaId: string) => prismaAdmin.usuarioEmpresa.create({ data: { usuarioId, empresaId } });
 
   // E1: tres sucursales (S1 = «Central» de sembrarBase) y los usuarios.

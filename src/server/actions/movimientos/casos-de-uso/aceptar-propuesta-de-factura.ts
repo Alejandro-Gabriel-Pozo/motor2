@@ -1,4 +1,5 @@
 import "server-only";
+import { mensajeFechaDeStockFueraDeRango } from "@/core/compras/public";
 import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
 import type { ComandoAceptarParteDeFactura, ResultadoAceptarParteDeFactura } from "@/core/features/compras/factura-proveedor.schema";
 import { mensajeSeccionDesactivada } from "@/core/features/movimientos/secciones.guard";
@@ -64,7 +65,7 @@ export async function aceptarPropuestaDeFacturaCasoDeUso(
     const diaStock = diaDeCalendario(comando.fechaStock, ZONA_ARGENTINA);
     const diaFactura = diaDeCalendario(factura.fecha, ZONA_ARGENTINA);
     const hoy = diaDeCalendario(actor.ahora, ZONA_ARGENTINA);
-    if (diaStock < diaFactura || diaStock > hoy) return fracaso("FECHA_FUERA_DE_RANGO", `La fecha de stock tiene que estar entre la fecha de la factura (${diaFactura}) y hoy (${hoy}).`);
+    if (diaStock < diaFactura || diaStock > hoy) return fracaso("FECHA_FUERA_DE_RANGO", mensajeFechaDeStockFueraDeRango(diaFactura, hoy));
 
     for (const r of propuesta.renglones) {
       if (!(await productoDisponibleEn(actor.sucursalId, r.productoId, tx))) {

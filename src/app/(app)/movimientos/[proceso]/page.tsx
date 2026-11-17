@@ -18,6 +18,7 @@ import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
 import { PanelMovimientoForm } from "./panel-movimiento-form";
 import { PanelCompraPorPasos } from "./panel-compra-por-pasos";
 import { BandejaParaAceptar } from "./bandeja-para-aceptar";
+import { PorRecibir } from "./por-recibir";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 const PROCESOS_QUE_SACAN_DE_UNA_SECCION_DADA_DE_BAJA: ReadonlySet<string> = new Set(["CONSUMO", "MERMA", "TRANSFERENCIA"]);
@@ -91,6 +92,7 @@ export default async function MovimientoPage({
     <div className="flex max-w-4xl flex-col gap-4">
       <h1 className="text-xl font-semibold">{delSelector ? `Registrar movimiento · ${delSelector.etiquetaCorta}` : config.titulo}</h1>
       {delSelector && <FilaDeMovimientos ctx={ctx} actual={delSelector.href} />}
+      {esCompra && <PorRecibir ctx={ctx} secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))} />}
       {esCompra && (
         <BandejaParaAceptar
           secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}

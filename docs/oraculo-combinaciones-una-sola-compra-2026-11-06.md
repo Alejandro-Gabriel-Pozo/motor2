@@ -118,7 +118,7 @@ Cada columna de `FacturaProveedor`, `FacturaProveedorSucursal`, `PagoDeFacturaPr
 | FacturaProveedor.creadoEn | no afecta: trazabilidad |
 | FacturaProveedorSucursal.operacionId | S |
 | FacturaProveedorSucursal.sucursalId | no afecta: ver «Partes ajenas» |
-| FacturaProveedorSucursal.estadoRecepcion | no afecta: constante RECIBIDA (guardián U-I6) |
+| FacturaProveedorSucursal.estadoRecepcion | no afecta: una parte PENDIENTE no tiene stock (para anular se comporta como S = INTACTO y la anulación la salta); ver `oraculo-combinaciones-compras-recepcion-2026-11-16.md` (Compras N3-a) |
 | FacturaProveedorSucursal.id | no afecta: identidad |
 | FacturaProveedorSucursal.empresaId | no afecta: aislamiento por empresa (RLS) |
 | FacturaProveedorSucursal.facturaProveedorId | no afecta: la relación con la cabecera |

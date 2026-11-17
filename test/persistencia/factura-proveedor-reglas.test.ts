@@ -160,8 +160,8 @@ describe("la migración deja las tres tablas, la columna del Kardex, los índice
     const conUpdate = async (tabla: string) =>
       (await prismaAdmin.$queryRawUnsafe<Array<{ columna: string }>>(`SELECT a.attname::text AS columna FROM pg_attribute a WHERE a.attrelid = '"${tabla}"'::regclass AND a.attnum > 0 AND NOT a.attisdropped AND has_column_privilege('motor2_app', a.attrelid, a.attnum, 'UPDATE') ORDER BY 1`)).map((c) => c.columna);
     expect(await conUpdate("FacturaProveedorRenglon"), "el renglón: ninguna columna con UPDATE").toEqual([]);
-    // La parte: solo la recepción (estado, fecha y persona); el porcentaje, la operación y la sucursal no se modifican.
-    expect(await conUpdate("FacturaProveedorSucursal"), "la parte: UPDATE solo de la recepción").toEqual(["estadoRecepcion", "recibidaEn", "recibidaPorId"]);
+    // La parte: solo la recepción (estado, fecha y persona) y, desde Compras N3-a (migración 20261117120000), la compra que se escribe al confirmarla (`operacionId`); el porcentaje y la sucursal no se modifican.
+    expect(await conUpdate("FacturaProveedorSucursal"), "la parte: UPDATE solo de la recepción y de la compra que la confirma").toEqual(["estadoRecepcion", "operacionId", "recibidaEn", "recibidaPorId"]);
   });
 
   it("el migration.sql y el down.sql avisan que requieren autorización, que la reversa puede perder datos y en qué orden se baja", () => {
