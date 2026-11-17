@@ -3,7 +3,7 @@
 
 ## CARTA PÚBLICA a 375 px (/carta-publica/e2e/lb-precio-y-carta)
 ### Barra superior
-  enlace «← MENÚ»
+  enlace «← PORTAL»
   botón «Imprimir carta»
 ### Páginas del deslizador (en orden): portada · índice · sección · sección · sección · sección
 ### Índice
@@ -58,22 +58,22 @@
 ### Tipografía computada (getComputedStyle: fontSize / fontWeight)
   barra superior · volver (enlace): 12px / 300
   portada · nombre (h1): 27.2px / 500
-  índice · título (h1): 19.2px / 500
+  índice · título (h1): 28.8px / 500
   índice · número de la sección: 11px / 300
   índice · nombre de la sección: 13.12px / 500
   banda · etiqueta «01 / NN» (p): 11px / 300
-  banda · título de la sección (h2): 15.2px / 500
-  forma «lista-sin-encabezado» «Pizza muzzarella» · nombre: 19px / 600
-  forma «tabla» «Milanesas» · nombre: 19px / 600
-  forma «simple» «Bife a la criolla» · nombre: 19px / 600
-  forma «simple» «Bife a la criolla» · precio del renglón: 19px / 600
-  forma «sin opciones» «Wok de verduras» · nombre: 19px / 600
-  forma «sin opciones» «Wok de verduras» · precio del renglón: 19px / 600
+  banda · título de la sección (h2): 22.4px / 500
+  forma «lista-sin-encabezado» «Pizza muzzarella» · nombre: 21.6px / 600
+  forma «tabla» «Milanesas» · nombre: 21.6px / 600
+  forma «simple» «Bife a la criolla» · nombre: 21.6px / 600
+  forma «simple» «Bife a la criolla» · precio del renglón: 21.6px / 700
+  forma «sin opciones» «Wok de verduras» · nombre: 21.6px / 600
+  forma «sin opciones» «Wok de verduras» · precio del renglón: 21.6px / 700
 ### Separadores entre productos (getComputedStyle: borderBottomColor de cada ítem de la lista de la sección, salvo el último)
-  tinta (--carta-ink): rgb(28, 27, 25)
+  tinta (--carta-ink): oklch(0.96 0.005 80)
   «Pizzas»: (un solo producto: sin separadores)
-  «Platos»: rgb(231, 229, 228) · rgb(231, 229, 228) · rgb(231, 229, 228)
-  «Cafetería»: rgb(231, 229, 228)
+  «Platos»: oklch(0.377993 0.00261018 80) · oklch(0.377993 0.00261018 80) · oklch(0.377993 0.00261018 80)
+  «Cafetería»: oklch(0.377993 0.00261018 80)
   «Bebidas»: (un solo producto: sin separadores)
 ### Escala única (DEC-35): cada rol, con su ÚNICO par tamaño / peso
   aclaracion-rotulo: 14px / 600
@@ -82,8 +82,8 @@
   etiqueta: 12px / 400
   opcion: 16px / 400
   opcion-precio: 16px / 600
-  precio: 19px / 600
-  producto: 19px / 600
+  precio: 21.6px / 700
+  producto: 21.6px / 600
 ### Impresión a 375 px (emulada)
   listas cortadas: 0
   pie: «Precios vigentes al «fecha» · http://carta.localhost/lb-precio-y-carta»
@@ -94,12 +94,12 @@
   etiqueta: 12px / 400
   opcion-precio: 14.6667px / 600
   opcion: 14.6667px / 400
-  precio: 16px / 600
+  precio: 16px / 700
   producto: 16px / 600
 
 ## CARTA PÚBLICA a 1280 px (/carta-publica/e2e/lb-precio-y-carta)
 ### Barra superior
-  enlace «← MENÚ»
+  enlace «← PORTAL»
   botón «Imprimir carta»
 ### Páginas del deslizador (en orden): portada · índice · sección · sección · sección · sección
 ### Índice
@@ -154,22 +154,22 @@
 ### Tipografía computada (getComputedStyle: fontSize / fontWeight)
   barra superior · volver (enlace): 12px / 300
   portada · nombre (h1): 33.6px / 500
-  índice · título (h1): 28px / 500
+  índice · título (h1): 28.8px / 500
   índice · número de la sección: 11px / 300
   índice · nombre de la sección: 15.2px / 500
   banda · etiqueta «01 / NN» (p): 11px / 300
-  banda · título de la sección (h2): 22.8px / 500
-  forma «lista-sin-encabezado» «Pizza muzzarella» · nombre: 19px / 600
-  forma «tabla» «Milanesas» · nombre: 19px / 600
-  forma «simple» «Bife a la criolla» · nombre: 19px / 600
-  forma «simple» «Bife a la criolla» · precio del renglón: 19px / 600
-  forma «sin opciones» «Wok de verduras» · nombre: 19px / 600
-  forma «sin opciones» «Wok de verduras» · precio del renglón: 19px / 600
+  banda · título de la sección (h2): 33.6px / 500
+  forma «lista-sin-encabezado» «Pizza muzzarella» · nombre: 21.6px / 600
+  forma «tabla» «Milanesas» · nombre: 21.6px / 600
+  forma «simple» «Bife a la criolla» · nombre: 21.6px / 600
+  forma «simple» «Bife a la criolla» · precio del renglón: 21.6px / 700
+  forma «sin opciones» «Wok de verduras» · nombre: 21.6px / 600
+  forma «sin opciones» «Wok de verduras» · precio del renglón: 21.6px / 700
 ### Separadores entre productos (getComputedStyle: borderBottomColor de cada ítem de la lista de la sección, salvo el último)
-  tinta (--carta-ink): rgb(28, 27, 25)
+  tinta (--carta-ink): oklch(0.96 0.005 80)
   «Pizzas»: (un solo producto: sin separadores)
-  «Platos»: rgb(231, 229, 228) · rgb(231, 229, 228) · rgb(231, 229, 228)
-  «Cafetería»: rgb(231, 229, 228)
+  «Platos»: oklch(0.377993 0.00261018 80) · oklch(0.377993 0.00261018 80) · oklch(0.377993 0.00261018 80)
+  «Cafetería»: oklch(0.377993 0.00261018 80)
   «Bebidas»: (un solo producto: sin separadores)
 ### Escala única (DEC-35): cada rol, con su ÚNICO par tamaño / peso
   aclaracion-rotulo: 14px / 600
@@ -178,8 +178,8 @@
   etiqueta: 12px / 400
   opcion: 16px / 400
   opcion-precio: 16px / 600
-  precio: 19px / 600
-  producto: 19px / 600
+  precio: 21.6px / 700
+  producto: 21.6px / 600
 ### Impresión a 1280 px (emulada)
   listas cortadas: 0
   pie: «Precios vigentes al «fecha» · http://carta.localhost/lb-precio-y-carta»
@@ -190,7 +190,7 @@
   etiqueta: 12px / 400
   opcion-precio: 14.6667px / 600
   opcion: 14.6667px / 400
-  precio: 16px / 600
+  precio: 16px / 700
   producto: 16px / 600
 
 ## ADMINISTRACIÓN a 1280 px: Opciones de venta del producto «Pizzas» (/catalogo/productos/<id de Pizzas>/opciones)

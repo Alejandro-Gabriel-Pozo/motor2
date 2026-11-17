@@ -116,3 +116,4 @@ export type { CartaParaMantener, ProductoParaMantener } from "./mantenimiento";
 export { opcionesParaLaCarta } from "./opciones-en-carta";
 // Fase 6, bloque 3 (6.18): lo que la vista previa de un producto en la carta recibe ya calculado (tipo; la calcula `server/consultas/carta/vista-previa-de-un-producto.ts`).
 export type { VistaPreviaDeLaCarta } from "./vista-previa-del-producto";
+export { LIBRO_ESTILO_MAQUETA, conDefaultsDeLaMaqueta } from "./libro-estilo-maqueta";
