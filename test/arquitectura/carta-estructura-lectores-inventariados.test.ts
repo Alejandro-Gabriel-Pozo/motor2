@@ -67,6 +67,8 @@ const ARCHIVOS_PERMITIDOS = [
   // y, en la persistencia, comprobar que un renglón pedido existe en esta sucursal y si la sección tiene ítems agrupados.
   "server/lecturas/carta/orden-de-renglones.ts",
   "server/persistencia/carta/orden-de-renglones.ts",
+  // F1 (familias de productos): el caso de uso «agregar un producto a una familia» pregunta si el producto ya está en un ítem agrupado (invariante TRANSITORIO «familia o ítem agrupado»: la base lo repite con un disparador); lee la opción por el producto, sin tocar nada.
+  "server/persistencia/carta/familias.ts",
 ];
 const LECTURA = /\b(seccionCarta|generoCarta|itemAgrupadoCarta|contenidoCartaProducto|opcionItemAgrupadoCarta)\s*\.\s*(find|count|aggregate|groupBy)/;
 /** Los modelos PROPIOS de la sucursal: SeccionCarta queda afuera a propósito (es de la empresa). */
