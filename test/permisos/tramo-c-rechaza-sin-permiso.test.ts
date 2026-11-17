@@ -64,6 +64,7 @@ import { agregarSucursalAlPortal, guardarSucursalPublica, moverSucursalEnMapa } 
 import { guardarTemaCarta } from "../../src/server/actions/carta/tema";
 import { copiarCartaDeSucursal, reemplazarCartaDeSucursal } from "../../src/server/actions/carta/copiar-carta";
 
+import { crearCategoriaDeTest } from "../setup/categoria-de-prueba";
 /**
  * Red del Hito 4, pieza «carta, catálogo y stock» (paso H4C-0.1 de `docs/plan-hito-4-pureza.md` §3), ANTES de mover ninguna de sus acciones a un caso de uso:
  * cada una de las 51 mutaciones de la pieza (17 archivos de `src/server/actions`, las 17 entradas «Fase 4» de esta pieza en `escrituras-fuera-de-persistencia.ts`)
@@ -363,7 +364,7 @@ beforeEach(async () => {
   const u = await prisma.unidad.create({ data: { nombre: "unidad", magnitud: "CANTIDAD", decimales: 0 } });
   const kg = await prisma.unidad.create({ data: { nombre: "kg", magnitud: "PESO", decimales: 2 } });
   const caja = await prisma.unidad.create({ data: { nombre: "caja", magnitud: "CANTIDAD", decimales: 0 } });
-  const categoria = await prisma.categoriaProducto.create({ data: { nombre: "Almacén" } });
+  const categoria = await crearCategoriaDeTest(prisma, { nombre: "Almacén" });
   const insumoHarina = await prisma.insumo.create({ data: { nombre: "Harina" } });
   const insumoQueso = await prisma.insumo.create({ data: { nombre: "Queso" } });
   const grupo = await prisma.grupo.create({ data: { nombre: "Secos" } });

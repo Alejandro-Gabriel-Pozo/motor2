@@ -11,6 +11,7 @@ import { actualizarActivaCategoriaProducto, crearCategoriaProducto } from "../..
 import { actualizarActivoGrupo, actualizarActivoInsumo, actualizarGrupoDeInsumo, crearInsumo } from "../../../src/server/actions/catalogo/insumos";
 import { actualizarActivaUnidad } from "../../../src/server/actions/catalogo/unidades";
 
+import { crearCategoriaDeTest } from "../../setup/categoria-de-prueba";
 /**
  * Caracterización de las 7 Server Actions del catálogo que NO tenían ningún test unitario (Hito 4, paso H4C-0.4 de `docs/plan-hito-4-pureza.md` §3), contra el
  * código viejo y antes de mudarlas a casos de uso en el bloque B: las dos de categorías (`crearCategoriaProducto`, `actualizarActivaCategoriaProducto`), tres de
@@ -55,7 +56,7 @@ describe("catálogo: las 7 acciones sin test unitario (caracterización)", () =>
   });
 
   it("actualizarActivaCategoriaProducto: desactiva y activa, refresca una vez cada una; un id que no existe no se encuentra (O.44)", async () => {
-    const c = await prisma.categoriaProducto.create({ data: { nombre: "Almacén" } });
+    const c = await crearCategoriaDeTest(prisma, { nombre: "Almacén" });
     expect(await actualizarActivaCategoriaProducto(c.id, false)).toEqual({ ok: true, mensaje: "Categoría desactivada." });
     expect((await prisma.categoriaProducto.findUniqueOrThrow({ where: { id: c.id } })).activo).toBe(false);
     expect(refrescos()).toBe(1);
@@ -123,7 +124,7 @@ describe("catálogo: las 7 acciones sin test unitario (caracterización)", () =>
   });
 
   it("ninguna de las 7 deja filas de auditoría (no son dinero)", async () => {
-    const c = await prisma.categoriaProducto.create({ data: { nombre: "Almacén" } });
+    const c = await crearCategoriaDeTest(prisma, { nombre: "Almacén" });
     const i = await prisma.insumo.create({ data: { nombre: "Harina" } });
     const g = await prisma.grupo.create({ data: { nombre: "Secos" } });
     const u = await prisma.unidad.create({ data: { nombre: "caja", magnitud: "CANTIDAD", decimales: 0 } });

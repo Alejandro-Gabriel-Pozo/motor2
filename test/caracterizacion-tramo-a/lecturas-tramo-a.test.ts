@@ -31,6 +31,7 @@ import { obtenerEstadoDeRecetaPropia } from "../../src/server/lecturas/catalogo/
 // Auth (las lecturas de los scripts de auditoría de cuentas)
 import { detectarCuentasDeGoogleSospechosas, medirPrecargadosSinGoogle } from "../../scripts/lecturas-de-auth";
 
+import { crearCategoriasDeTest } from "../setup/categoria-de-prueba";
 /**
  * Caracterización del tramo A (Fase 3, paso .0): no se edita al migrar.
  *
@@ -179,7 +180,7 @@ async function sembrarEscenario(): Promise<void> {
 
   // Catálogo: unidades, categorías, grupos, insumos, productos y disponibilidad.
   await prisma.unidad.createMany({ data: [{ id: "un-u", nombre: "unidad", magnitud: "CANTIDAD", decimales: 0 }, { id: "un-kg", nombre: "kg", magnitud: "PESO", decimales: 2 }] });
-  await prisma.categoriaProducto.createMany({ data: [{ id: "cat-platos", nombre: "Platos" }, { id: "cat-bebidas", nombre: "Bebidas" }] });
+  await crearCategoriasDeTest(prisma, [{ id: "cat-platos", nombre: "Platos" }, { id: "cat-bebidas", nombre: "Bebidas" }]);
   await prisma.grupo.create({ data: { id: "grp-lacteos", nombre: "Lácteos" } });
   await prisma.grupo.create({ data: { id: "grp-quesos", nombre: "Quesos", grupoPadreId: "grp-lacteos" } });
   await prisma.grupo.create({ data: { id: "grp-secos", nombre: "Secos" } });

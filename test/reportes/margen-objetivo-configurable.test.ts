@@ -12,6 +12,7 @@ import { FOOD_COST_OBJETIVO_PCT } from "../../src/core/reportes/margen-objetivo"
 import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
 import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
+import { crearCategoriaDeTest } from "../setup/categoria-de-prueba";
 /**
  * Margen objetivo configurable (Etapa 1): `guardarMargenObjetivo` fija el objetivo de la empresa o de una categoría (solo administración), y
  * `calcularCostosYMargenes` lo usa si se le pasan los objetivos cargados: categoría > empresa > 40 % por defecto.
@@ -40,8 +41,8 @@ describe("margen objetivo configurable", () => {
     adminId = admin.id;
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
 
-    categoriaPizzaId = (await prisma.categoriaProducto.create({ data: { nombre: "Pizzas" } })).id;
-    categoriaBebidaId = (await prisma.categoriaProducto.create({ data: { nombre: "Bebidas" } })).id;
+    categoriaPizzaId = (await crearCategoriaDeTest(prisma, { nombre: "Pizzas" })).id;
+    categoriaBebidaId = (await crearCategoriaDeTest(prisma, { nombre: "Bebidas" })).id;
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId: catalogo.insumo.id }, sucursalId);
     // Tres platos con el MISMO costo ($4000 sobre $10.000 = 40 %): solo cambia la categoría.
     const plato = async (codigo: string, categoriaId: string | null) => {

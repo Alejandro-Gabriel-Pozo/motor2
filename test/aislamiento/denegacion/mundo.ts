@@ -6,6 +6,7 @@ import { activarTodosLosModulos, encenderRecepcionDeCompras, fijarModulosActivos
 import { enElPasado, HORA_MS, DIA_MS } from "../../setup/tiempo";
 import { ZONA_ARGENTINA, diaDeCalendario, fechaDeColumnaDate, sumarDias } from "../../../src/core/tiempo/zona-horaria";
 
+import { crearCategoriaDeTest } from "../../setup/categoria-de-prueba";
 /**
  * El MUNDO de la matriz de denegación por defecto (GT-3b): lo que se siembra UNA vez por archivo de test (las puertas que se prueban no escriben nada, y la matriz lo verifica con la huella de toda la base)
  * y los ids que las puertas reciben en cada escenario.
@@ -250,7 +251,7 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
   const g = await unidad("g", "PESO", 0);
   // Una unidad con el marcador en el nombre: las de fábrica (kg, g…) son iguales en todas las empresas y no delatarían de dónde salió una lista.
   await db.unidad.create({ data: { id: id("unidad"), empresaId, nombre: `Unidad ${marca}`, magnitud: "CANTIDAD", decimales: 0 } });
-  const categoria = await db.categoriaProducto.create({ data: { id: id("categoria"), empresaId, nombre: `Categoría ${marca}` } });
+  const categoria = await crearCategoriaDeTest(db, { id: id("categoria"), empresaId, nombre: `Categoría ${marca}` });
   const grupo = await db.grupo.create({ data: { id: id("grupo"), empresaId, nombre: `Grupo ${marca}` } });
   const insumo = await db.insumo.create({ data: { id: id("insumo"), empresaId, nombre: `Insumo ${marca}`, grupoId: grupo.id } });
   const producto = (sufijo: string, tipo: "MP" | "PV", extra: object = {}) =>

@@ -3,6 +3,7 @@ import { limpiarBaseDeTest, replicarCartaDeSucursal, prisma, sembrarProductoDisp
 import { ofrecerSincronizarPrecio } from "../../src/core/carta/grupo-de-producto";
 import { resolverGrupoDeProducto } from "../../src/server/lecturas/carta/grupo-de-producto";
 
+import { crearCategoriaDeTest } from "../setup/categoria-de-prueba";
 /**
  * `resolverGrupoDeProducto` (docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8), contra Postgres real: la única lectura de las
  * tablas de carta desde Catálogo/Precio Local. Devuelve null si el producto no está agrupado; si lo está, sus hermanos con su precio
@@ -20,7 +21,7 @@ describe("resolverGrupoDeProducto", () => {
     const u = await prisma.unidad.create({ data: { nombre: "u", magnitud: "CANTIDAD", decimales: 0 } });
     central = (await prisma.sucursal.create({ data: { nombre: "Central" } })).id;
     otra = (await prisma.sucursal.create({ data: { nombre: "Otra" } })).id;
-    const cat = (await prisma.categoriaProducto.create({ data: { nombre: "Gaseosa 500 CC" } })).id;
+    const cat = (await crearCategoriaDeTest(prisma, { nombre: "Gaseosa 500 CC" })).id;
     const pv = async (codigo: string, nombre: string, precioVenta: number) =>
       (await sembrarProductoDisponible({ codigo, nombre, tipo: "PV", categoriaId: cat, precioVenta, unidadStockId: u.id }, central)).id;
     ids = {

@@ -16,6 +16,7 @@ import { resolverMenuCarta } from "../../src/server/lecturas/carta/menu";
 import { validarNombreItemAgrupadoCarta } from "../../src/core/carta/validaciones";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
+import { crearCategoriaDeTest } from "../setup/categoria-de-prueba";
 /**
  * Server Actions de los ítems agrupados de la carta (docs/plan-agrupacion-items-carta-2026-09-24.md, M5): exigen `carta`,
  * validan lo que termina en la carta pública, solo escriben en ItemAgrupadoCarta / OpcionItemAgrupadoCarta, y BLOQUEAN
@@ -39,8 +40,8 @@ describe("Server Actions de ítems agrupados", () => {
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
 
     unidadId = (await prisma.unidad.create({ data: { nombre: "u", magnitud: "CANTIDAD", decimales: 0 } })).id;
-    const cGas = (await prisma.categoriaProducto.create({ data: { nombre: "Gaseosa 500 CC" } })).id;
-    const cAgua = (await prisma.categoriaProducto.create({ data: { nombre: "Aguas" } })).id;
+    const cGas = (await crearCategoriaDeTest(prisma, { nombre: "Gaseosa 500 CC" })).id;
+    const cAgua = (await crearCategoriaDeTest(prisma, { nombre: "Aguas" })).id;
     sBebidas = (await prisma.seccionCarta.create({ data: { nombre: "Bebidas sin alcohol" } })).id;
     sOtras = (await prisma.seccionCarta.create({ data: { nombre: "Otras bebidas" } })).id;
     const pv = async (codigo: string, nombre: string, precioVenta: number, categoriaId = cGas) =>
