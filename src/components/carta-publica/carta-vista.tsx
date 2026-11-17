@@ -60,6 +60,7 @@ export function CartaVista({
       volver={estilo.volver}
       colorIconos={c.navIconos}
       redesEnLaPortada={portadaConAire}
+      precioFuerte={LIBRO_ESTILO_MAQUETA}
     >
       <Portada estilo={estilo} restauranteNombre={restauranteNombre} estiloLibro={LIBRO_ESTILO_MAQUETA} redes={redesSociales} />
 

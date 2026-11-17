@@ -241,6 +241,10 @@ body:has(main[data-panel]) {
   line-height: 1.25;
   font-variant-numeric: tabular-nums;
 }
+/* Libro al estilo de la maqueta (dueño, 2026-11-17: precio «blanco y negrita»): el atributo lo pone `NavegacionCarta` con el interruptor `LIBRO_ESTILO_MAQUETA`. */
+[data-precio-fuerte] .carta-rol-precio {
+  font-weight: 700;
+}
 .carta-shell .carta-rol-opcion {
   font-size: var(--carta-fs-opcion);
   font-weight: 400;

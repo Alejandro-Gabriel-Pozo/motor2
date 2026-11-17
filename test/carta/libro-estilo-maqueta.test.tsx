@@ -28,7 +28,8 @@ describe("conDefaultsDeLaMaqueta", () => {
   });
   it("lo cargado en el Tema manda y no se toca; el resto de las claves pasa igual", () => {
     const cargado = { color_fondo_dia: "#ffffff", color_marca: "#123456", carta_fuente_familia: "lora", hero_etiqueta_superior: "Restaurante" };
-    expect(conDefaultsDeLaMaqueta(cargado, true)).toEqual(cargado);
+    expect(conDefaultsDeLaMaqueta(cargado, true)).toMatchObject(cargado);
+    expect(conDefaultsDeLaMaqueta(cargado, true)).toMatchObject({ color_marca: "#123456", carta_fuente_familia: "lora", hero_etiqueta_superior: "Restaurante" });
   });
   it("apagado: devuelve los valores tal cual (un objeto vacío si no era un objeto)", () => {
     expect(conDefaultsDeLaMaqueta({ color_marca: "#123456" }, false)).toEqual({ color_marca: "#123456" });
@@ -110,5 +111,55 @@ describe("contacto y compartir NO dependen del estilo del libro (orquestador, 20
     }
     expect(salidas[0]).toEqual(salidas[1]);
     expect(salidas[0]).toMatchObject({ title: "Huinganco", openGraph: { images: ["https://ejemplo.test/logo.png"] } });
+  });
+});
+
+describe("respuestas del dueño, 2026-11-17: rótulo editable, letra, precio, textos de la portada", () => {
+  const conLibro = (v: Record<string, unknown>) => resolverEstiloCarta(conDefaultsDeLaMaqueta(v, true));
+  const sinLibro = (v: Record<string, unknown>) => resolverEstiloCarta(conDefaultsDeLaMaqueta(v, false));
+
+  it("rótulo de la barra superior: sin valor cargado dice «← Portal» (con el estilo) o «← Menú» (sin él); con valor cargado manda el de la empresa en los dos estados", () => {
+    expect(conLibro({}).volver.etiqueta).toBe("← Portal");
+    expect(sinLibro({}).volver.etiqueta).toBe("← Menú");
+    expect(conLibro({ topbar_back_label: "← Inicio" }).volver.etiqueta).toBe("← Inicio");
+    expect(sinLibro({ topbar_back_label: "← Inicio" }).volver.etiqueta).toBe("← Inicio");
+  });
+  it("letra: con el estilo, nombre, precio y títulos toman el tamaño de la maqueta; lo que la empresa cargó manda; sin el estilo, los de siempre", () => {
+    const e = conLibro({});
+    expect(e.valores.carta_fuente_item_nombre).toBe("1.35rem");
+    expect(e.valores.carta_fuente_item_precio).toBe("1.35rem");
+    expect(e.valores.carta_fuente_banda_titulo).toBe("1.4rem");
+    expect(e.valores.carta_fuente_indice_titulo).toBe("1.8rem");
+    expect(conLibro({ carta_fuente_item_nombre: "1.6rem" }).valores.carta_fuente_item_nombre).toBe("1.6rem");
+    expect(sinLibro({}).valores.carta_fuente_item_nombre).toBe("1.1875rem");
+  });
+  it("precio: blanco (tinta) con el estilo, color de marca sin él; un color de precio cargado manda siempre", async () => {
+    vi.resetModules();
+    vi.doUnmock("../../src/core/carta/libro-estilo-maqueta");
+    const { coloresDelItem } = await import("../../src/components/carta-publica/colores-del-item");
+    expect(coloresDelItem(false, conLibro({})).precio).toBe("var(--carta-ink)");
+    expect(coloresDelItem(false, conLibro({ color_item_precio: "#ff0000" })).precio).not.toBe("var(--carta-ink)"); // el cargado manda (ajustado a legible)
+    vi.resetModules();
+    vi.doMock("../../src/core/carta/libro-estilo-maqueta", async (original) => ({ ...(await original<typeof import("../../src/core/carta/libro-estilo-maqueta")>()), LIBRO_ESTILO_MAQUETA: false }));
+    const apagado = await import("../../src/components/carta-publica/colores-del-item");
+    expect(apagado.coloresDelItem(false, sinLibro({})).precio).toBe(apagado.MARCA_PARA_TEXTO);
+    vi.doUnmock("../../src/core/carta/libro-estilo-maqueta");
+  });
+  it("portada: con el texto de la guía cargado («DESLIZA PARA VER EL MENÚ») se ve ese texto y NO la estrella; sin cargar, no se dibuja ninguno de los dos", () => {
+    const con = renderToStaticMarkup(<Portada estilo={conLibro({ carta_texto_portada_cta: "DESLIZA PARA VER EL MENÚ" })} restauranteNombre="Huinganco" estiloLibro />);
+    expect(con).toContain("DESLIZA PARA VER EL MENÚ");
+    expect(con).not.toContain("✦");
+    const sin = renderToStaticMarkup(<Portada estilo={conLibro({})} restauranteNombre="Huinganco" estiloLibro />);
+    expect(sin).not.toContain("data-portada-cta");
+    expect(sin).not.toContain("✦");
+  });
+  it("portada: «Restaurante», subtítulo y separador salen del Tema; sin cargar no se dibujan", () => {
+    const cargado = renderToStaticMarkup(<Portada estilo={conLibro({ hero_etiqueta_superior: "Restaurante", restaurante_subtitulo: "Hoteles del Neuquén", carta_texto_portada_separador: "✦" })} restauranteNombre="Huinganco" estiloLibro />);
+    expect(cargado).toContain("Restaurante");
+    expect(cargado).toContain("Hoteles del Neuquén");
+    expect(cargado).toContain("✦");
+    const vacio = renderToStaticMarkup(<Portada estilo={conLibro({})} restauranteNombre="Huinganco" estiloLibro />);
+    expect(vacio).not.toContain("Hoteles del Neuquén");
+    expect(vacio).not.toContain("✦");
   });
 });

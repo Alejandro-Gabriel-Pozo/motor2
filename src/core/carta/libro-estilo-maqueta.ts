@@ -6,8 +6,9 @@
  *    verde y tipografía sans. Lo que la sucursal SÍ cargó en su Tema manda siempre (nada de lo guardado se pisa ni se toca). El resolvedor del tema (`resolverEstiloCarta`) no cambia;
  *  - la portada y las cabeceras de sección toman el aire de la maqueta (arco decorativo, contador con letras separadas, título en color claro) con las clases `[data-estilo-libro="maqueta"]` de `globals.css`.
  * Con `false` vuelve el libro de siempre (claro, con la tipografía y el color por defecto de antes).
- * Es SOLO PRESENTACIÓN: no cambia el servidor, la carta guardada, los permisos, los textos ni ninguna función. Lo que la maqueta trae de más (fila de contacto, perilla de tamaño de letra, ícono de compartir,
- * «extra de pago») NO entra: el libro sigue «para todos, como hoy». Lo comprueba `test/carta/libro-estilo-maqueta.test.ts` (los dos estados).
+ * Es SOLO PRESENTACIÓN: no cambia el servidor, la carta guardada, los permisos ni ninguna función. Respuestas del dueño (2026-11-17): el libro va «incluido» (sin permiso ni plan nuevo); el rótulo de la barra
+ * superior es el campo `topbar_back_label` que ya existía y «← Portal» pasa a ser su valor por defecto; «Restaurante», el subtítulo y el separador salen de campos del Tema que carga la empresa (sin cargar no se
+ * dibujan); la letra de nombres, precios y títulos iguala a la de la maqueta; el precio va en blanco y negrita. Lo comprueba `test/carta/libro-estilo-maqueta.test.tsx` (los dos estados).
  */
 export const LIBRO_ESTILO_MAQUETA: boolean = true;
 
@@ -16,6 +17,13 @@ export const DEFAULTS_DEL_LIBRO_MAQUETA: Readonly<Record<string, string>> = {
   color_fondo_dia: "#19191a",
   color_marca: "#6f7d52",
   carta_fuente_familia: "geist",
+  // Dueño, 2026-11-17: «Portal con una flechita en dirección izquierda (es editable, lo era antes)» (`topbar_back_label`, ya existía) y «si» a igualar el tamaño de letra de nombres, precios y títulos al de la maqueta
+  // (nombre y precio 1,2 em ≈ 1.35rem, título de sección 1,25 em ≈ 1.4rem, título del índice 1,6 em ≈ 1.8rem sobre la base de 18 px de la maqueta).
+  topbar_back_label: "← Portal",
+  carta_fuente_item_nombre: "1.35rem",
+  carta_fuente_item_precio: "1.35rem",
+  carta_fuente_banda_titulo: "1.4rem",
+  carta_fuente_indice_titulo: "1.8rem",
 };
 
 /**
