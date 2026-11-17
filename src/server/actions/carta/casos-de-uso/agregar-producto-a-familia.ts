@@ -13,7 +13,7 @@ import {
   leerMiembroVigenteDeProducto,
   leerProductoParaFamilia,
   posicionesVigentes,
-  productoEstaEnUnItemAgrupado,
+  productoEstaEnUnItemAgrupadoDeLaSucursal,
 } from "@/server/persistencia/carta/familias";
 
 /** La base acota la posición de un miembro de 1 a 1000 (CHECK): protección de la base, no una regla de negocio. */
@@ -36,9 +36,9 @@ function posicionParaElNuevo(vigentes: readonly number[]): number | null {
  *
  * Dentro de UNA transacción SERIALIZABLE: 1. la familia es de la empresa y se toma (`FOR UPDATE`; si no, `FAMILIA_NO_ENCONTRADA`); 2. el producto es de la empresa y de venta (`PRODUCTO_NO_ENCONTRADO` para los tres casos:
  * no existe, es de otra empresa o no es PV); 3. si ya es miembro vigente de ESTA familia, éxito sin escribir ni auditar (`yaEstaba`); si lo es de OTRA, `PRODUCTO_EN_OTRA_FAMILIA` (mensaje genérico: no revela cuál);
- * 4. si el `id` de miembro ya existe y es otra cosa, `ID_REUTILIZADO`; 5. cruce con el ítem agrupado (invariante TRANSITORIO, §6.4): si está en un ítem agrupado, `PRODUCTO_YA_AGRUPADO`; 6. la posición (máximo + 1) con
- * la familia tomada; 7. se crea el miembro; 8. la auditoría (`miembro`, de nada a verdadero), con el mismo `tx`. La base repite el cruce con un disparador (sin mirar el alcance de sucursal): si se lo saltea algún camino,
- * rechaza igual y acá se traduce a `PRODUCTO_YA_AGRUPADO`. Dos altas del mismo producto a familias distintas: gana una (único parcial por producto); la otra se repite y ve a la ganadora (`tambienChoqueDeUnico`).
+ * 4. si el `id` de miembro ya existe y es otra cosa, `ID_REUTILIZADO`; 5. cruce con el ítem agrupado (invariante TRANSITORIO, §6.4): si está en un ítem agrupado de la carta de la sucursal activa, `PRODUCTO_YA_AGRUPADO`; 6. la posición (máximo + 1) con
+ * la familia tomada; 7. se crea el miembro; 8. la auditoría (`miembro`, de nada a verdadero), con el mismo `tx`. La base repite el cruce con un disparador que mira TODAS las sucursales de la empresa (sin alcance): un ítem agrupado de otra sucursal, o
+ * cualquier camino que se saltee el chequeo de arriba, se rechaza igual y acá se traduce a `PRODUCTO_YA_AGRUPADO`. Dos altas del mismo producto a familias distintas: gana una (único parcial por producto); la otra se repite y ve a la ganadora (`tambienChoqueDeUnico`).
  *
  * @contract Deja al producto como miembro vigente de la familia, con su posición y su fila de auditoría: todo o nada.
  * @idempotency Por estado — si el producto ya es miembro vigente de la familia no se escribe ni se audita; el único parcial de la base impide dos familias a la vez.
@@ -47,7 +47,7 @@ function posicionParaElNuevo(vigentes: readonly number[]): number | null {
  * @ficha permiso=carta_secciones transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function agregarProductoAFamiliaCasoDeUso(
-  actor: Pick<ContextoDeAccion, "transaccion" | "usuarioId" | "ahora">,
+  actor: Pick<ContextoDeAccion, "transaccion" | "usuarioId" | "sucursalId" | "ahora">,
   comando: ComandoAgregarProductoAFamilia,
 ): Promise<ResultadoAgregarProductoAFamilia> {
   try {
@@ -67,7 +67,7 @@ export async function agregarProductoAFamiliaCasoDeUso(
           return fracaso("PRODUCTO_EN_OTRA_FAMILIA", `«${producto.nombre}» ya está en otra familia: quitalo de ahí primero.`);
         }
         if (await leerMiembroPorId(tx, comando.miembroId)) return fracaso("ID_REUTILIZADO", "El pedido no es válido: recargá la pantalla.");
-        if (await productoEstaEnUnItemAgrupado(tx, producto.id)) return fracaso("PRODUCTO_YA_AGRUPADO", MENSAJE_YA_AGRUPADO);
+        if (await productoEstaEnUnItemAgrupadoDeLaSucursal(tx, { sucursalId: actor.sucursalId, productoId: producto.id })) return fracaso("PRODUCTO_YA_AGRUPADO", MENSAJE_YA_AGRUPADO);
 
         const posicion = posicionParaElNuevo(await posicionesVigentes(tx, familia.id));
         if (posicion === null) return fracaso("DATO_INVALIDO", "La familia no admite más productos.");

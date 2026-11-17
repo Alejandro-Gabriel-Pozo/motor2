@@ -19,8 +19,8 @@ import { claveDeNombreDeCarta } from "../nombre-en-carta";
  *  6. Todos con medidas pero ninguna en común (se comparan POR NOMBRE, sin distinguir mayúsculas ni tildes) → `SUELTOS`.
  *  7. Hasta 3 medidas distintas en total → `TABLA`; más de 3 → `LISTA`.
  *
- * SUPUESTO declarado (el dueño lo corrige): «con precio» es un número finito MAYOR que cero (el precio de venta de Motor2 nace en 0: cero es «todavía sin precio» y no se muestra ni se inventa). Esta
- * función no mira cuánto vale cada celda de la tabla: eso es el precio por medida de cada producto (etapa F4).
+ * Pregunta abierta para el dueño (no es una decisión cerrada): ¿un producto con precio cero «tiene precio»? Hoy se trata como «todavía sin precio» (queda fuera de la fila), porque el precio de venta de Motor2 nace en cero y la carta no
+ * inventa un precio; «con precio» es entonces un número finito mayor que cero. Esta función no mira cuánto vale cada celda de la tabla: eso es el precio por medida de cada producto (etapa F4).
  */
 
 /** Las formas de salir permitidas, en la lista cerrada. */

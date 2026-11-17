@@ -205,6 +205,20 @@ describe("familias de productos (etapa F1)", () => {
       expect(await auditorias("MiembroDeFamilia")).toBe(1);
     });
 
+    it("un ítem agrupado de OTRA sucursal (que el alcance de quien actúa no ve) también bloquea: lo rechaza la base con su disparador y el caso de uso lo traduce a PRODUCTO_YA_AGRUPADO, sin escribir nada", async () => {
+      const id = await crear("Gaseosas");
+      const sucursalB = (await prisma.sucursal.create({ data: { nombre: "Norte" } })).id;
+      const fanta = await pv("Fanta");
+      const item = await prisma.itemAgrupadoCarta.create({ data: { sucursalId: sucursalB, nombre: "Gaseosa 500", seccionCartaId: seccionId } });
+      await prisma.opcionItemAgrupadoCarta.create({ data: { sucursalId: sucursalB, itemAgrupadoCartaId: item.id, productoId: fanta } });
+      // El actor solo ve la sucursal A: el chequeo amable no lo encuentra, y la base sí.
+      expect(await actor().db.opcionItemAgrupadoCarta.count({ where: { productoId: fanta } })).toBe(0);
+      const r = await agregar(id, fanta);
+      expect(r).toMatchObject({ ok: false, codigo: "PRODUCTO_YA_AGRUPADO" });
+      expect(await prisma.miembroDeFamilia.count()).toBe(0);
+      expect(await auditorias("MiembroDeFamilia")).toBe(0);
+    });
+
     it(`concurrencia real (${ITERACIONES} vueltas): dos agregan el MISMO producto a familias DISTINTAS → gana una y la otra PRODUCTO_EN_OTRA_FAMILIA; el producto queda en una sola`, async () => {
       const a = await crear("Gaseosas");
       const b = await crear("Aguas");

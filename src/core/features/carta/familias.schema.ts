@@ -6,9 +6,6 @@ import type { ResultadoCaso } from "@/core/resultado-caso";
  * La familia es de la EMPRESA (la empresa sale del contexto del servidor, nunca del comando). Los ids de las filas nuevas los genera el servidor (uuid): un reintento no crea dos.
  */
 
-/** Tope de largo del nombre de una familia (el de la ficha PRODUCTO de `fichas-de-texto.ts`; también lo exige la base con un CHECK). */
-export const LARGO_MAXIMO_NOMBRE_DE_FAMILIA = 120;
-
 /** Comando «crear una familia» (CU-F1): solo el nombre. Los dos interruptores NACEN APAGADOS (todo nace cerrado). `id` es el uuid con el que se crearía la fila. */
 export interface ComandoCrearFamiliaDeProducto {
   id: string;

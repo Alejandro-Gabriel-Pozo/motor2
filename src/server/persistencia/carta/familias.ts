@@ -1,5 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
+import { whereCartaDeSucursal } from "@/core/carta/public";
 
 /**
  * Lecturas y escrituras de las FAMILIAS DE PRODUCTOS (`FamiliaDeProducto` y `MiembroDeFamilia`; etapa F1, docs/diseno-carta-familias-niveles-6-a-10-2026-11-17.md). Mismo contrato que el resto de `server/persistencia/`:
@@ -84,9 +85,12 @@ export async function posicionesVigentes(tx: Tx, familiaId: string): Promise<num
   return filas.map((f) => f.posicion);
 }
 
-/** ¿El producto está en algún ítem agrupado (de cualquier sucursal que el alcance deje ver)? Es el chequeo del caso de uso: la base lo repite, sin mirar el alcance, con su disparador. */
-export async function productoEstaEnUnItemAgrupado(tx: Tx, productoId: string): Promise<boolean> {
-  return (await tx.opcionItemAgrupadoCarta.findFirst({ where: { productoId }, select: { id: true } })) !== null;
+/**
+ * ¿El producto está en algún ítem agrupado de la carta de ESTA sucursal (activo o no)? Es el chequeo AMABLE del caso de uso (la carta de cada sucursal es propia, `whereCartaDeSucursal`, y la RLS por sucursal tampoco deja ver más). La RED es la base:
+ * su disparador mira TODAS las sucursales de la empresa, sin alcance, y el caso de uso traduce su rechazo al mismo resultado.
+ */
+export async function productoEstaEnUnItemAgrupadoDeLaSucursal(tx: Tx, args: { sucursalId: string; productoId: string }): Promise<boolean> {
+  return (await tx.opcionItemAgrupadoCarta.findFirst({ where: { ...whereCartaDeSucursal(args.sucursalId), productoId: args.productoId }, select: { id: true } })) !== null;
 }
 
 /** Alta de un miembro vigente. El `id` lo manda la aplicación (uuid). Si el producto ya es miembro de otra familia, o está en un ítem agrupado, la base rechaza. */

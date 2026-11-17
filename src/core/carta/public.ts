@@ -19,7 +19,7 @@ export { nombreDeCarta, precioDeCarta } from "./armar-menu";
 // O1 (orden de renglones): el modo de orden de una sección por sucursal y la única regla que ordena (la usan la carta, la lectura de gestión, el guard y los casos de uso).
 export { MODOS_DE_ORDEN_DE_SECCION, MODO_DE_ORDEN_POR_DEFECTO, esModoDeOrdenDeSeccion, modoVigente, ordenarRenglonesDeSeccion, type ModoDeOrdenDeSeccion } from "./orden-de-seccion";
 // F1 (familias de productos): la forma en que sale una familia en la carta de una sucursal (derivada, no se guarda); la regla única que usarán la carta (etapa F4) y la ficha de gestión.
-export { FORMAS_DE_SALIR, MAXIMO_DE_COLUMNAS_DE_TABLA, formaDeSalir, type EntradaDeLaForma, type FormaDeSalir, type MiembroParaLaForma } from "./familias/forma-de-salir";
+export { FORMAS_DE_SALIR, MAXIMO_DE_COLUMNAS_DE_TABLA, formaDeSalir, type MiembroParaLaForma } from "./familias/forma-de-salir";
 export { nombreParaMostrar } from "./nombre-para-mostrar";
 export { buscarChoqueEntreNombres, claveDeNombreDeCarta, estadoDelNombreDeCarta, mensajeDeChoqueDeNombre, type ChoqueDeNombre, type NombreUsadoEnLaCarta } from "./nombre-en-carta";
 export { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, type AudienciaDePromo } from "./promo-sucursal";
