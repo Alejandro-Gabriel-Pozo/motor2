@@ -1,10 +1,10 @@
 {
   "regla": "tope-de-lineas",
   "meta": "0 (ningún archivo de src/ pasa de 400 líneas: cada uno se parte por responsabilidad en un trabajo aparte)",
-  "total": 2202,
+  "total": 2199,
   "entradas": 17,
   "porTipo": {
-    "lineas-sobre-400": 2202
+    "lineas-sobre-400": 2199
   },
   "cuentas": {
     "src/app/(app)/carta/agrupados/page.tsx": {
@@ -32,7 +32,7 @@
       "lineas-sobre-400": 106
     },
     "src/core/features/catalogo/opciones-de-venta.guard.ts": {
-      "lineas-sobre-400": 157
+      "lineas-sobre-400": 154
     },
     "src/core/movimientos/origen-venta.ts": {
       "lineas-sobre-400": 16

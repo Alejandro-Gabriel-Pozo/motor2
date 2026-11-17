@@ -43,6 +43,10 @@ model User {
   opcionesApagadasEnSucursal OpcionApagadaEnSucursal[]
   entradasDelDiaActualizadas EntradaDelDiaDeCupo[]
   ocultamientosActualizados  OcultamientoProducto[]
+  sesionesDeCajaAbiertas     SesionCaja[]           @relation("SesionCajaAbiertaPor")
+  sesionesDeCajaCerradas     SesionCaja[]           @relation("SesionCajaCerradaPor")
+  movimientosDeCaja          MovimientoCaja[]       @relation("MovimientoCajaCreadoPor")
+  cobranzas                  Cobranza[]             @relation("CobranzaCreadaPor")
   recetasDeCombinacionCreadas RecetaDeCombinacionVersion[]
   ventas                     Venta[]
   facturasProvCreadas        FacturaProveedor[]   @relation("FacturaProveedorCreadaPor")
@@ -150,6 +154,14 @@ model Sucursal {
   frecuenciasConteo        FrecuenciaConteoProducto[]
   disponibilidadesProducto DisponibilidadProducto[]
   ocultamientosProducto    OcultamientoProducto[]
+  cajas                    Caja[]
+  cuentasDeCobro           CuentaDeCobro[]
+  sesionesDeCaja           SesionCaja[]
+  movimientosDeCaja        MovimientoCaja[]
+  cobranzas                Cobranza[]
+  cobros                   Cobro[]
+  arqueosDeCaja            ArqueoCaja[]
+  billetesDeArqueo         ArqueoBillete[]
   traspasosComoOrigen      TraspasoSucursal[]            @relation("TraspasoOrigen")
   traspasosComoDestino     TraspasoSucursal[]            @relation("TraspasoDestino")
   pagosConsignante         PagoConsignante[]
@@ -520,7 +532,7 @@ model DisponibilidadProducto {
 /// Los dos índices únicos PARCIALES (una marca de empresa por producto; una por sucursal) los declara la migración a mano: Prisma no los expresa.
 /// Todavía NO la lee ni la escribe ningún código: se conecta por etapas (caso de uso, ventas, stock, pantalla).
 model OcultamientoProducto {
-  id               String    @id
+  id               String    @id @db.Uuid
   empresaId        String    @default(dbgenerated("app_empresa_actual()"))
   empresa          Empresa   @relation(fields: [empresaId], references: [id])
   productoId       String
@@ -1475,18 +1487,20 @@ model MovimientoStock {
   /// CONSUMO de una venta (`registrar-venta.ts`, `cargarDeudaDeRedondeo`/`arrastre-redondeo.ts`) y en su reversión (`anularVenta`) —
   /// `null` en todo lo demás, y también en un CONSUMO cuya cantidad exacta ya coincidía con lo escrito (sin ruido que guardar).
   ///
-  /// EL PROBLEMA: redondear cada parte de consumo de CADA venta por separado (a los decimales de `Unidad.decimales` del insumo) sin
-  /// memoria entre ventas hace que el Kardex se aleje del consumo real cuanto más fraccionada es la venta — con una unidad de 0
-  /// decimales, dos ventas de 0,5 escribían 1 + 1 = 2 en vez de 1.
+  /// EL PROBLEMA: redondear cada parte de consumo de CADA venta por separado sin memoria entre ventas hace que el Kardex se aleje del
+  /// consumo real cuanto más fraccionada es la venta — con una unidad de 0 decimales, dos ventas de 0,5 escribían 1 + 1 = 2 en vez
+  /// de 1 (filas ANTIGUAS: hasta A1b, 2026-11-16, se redondeaba a `Unidad.decimales` del insumo). Desde A1b el stock se redondea a
+  /// 4 decimales FIJOS con cuenta exacta (empate alejándose del cero), así que el arrastre solo actúa con partes de más de 4 decimales;
+  /// las filas antiguas siguen aportando su deuda.
   ///
   /// LA FÓRMULA: `cantidadExacta` es la magnitud EXACTA (con el mismo signo que `cantidad`) de la parte que esta fila representa,
   /// ANTES de redondear — nunca la acumulada. La deuda de un producto en una sucursal, en cualquier momento, es
   /// `D = Σcantidad − ΣcantidadExacta` (sumando solo las filas CONSUMO con `cantidadExacta` no nulo — las nulas aportan 0 por
   /// definición, ya que ahí `cantidad` YA es la magnitud exacta). Antes de escribir una parte nueva, se redondea `D + exacto` (no
-  /// `exacto` a secas) a los decimales del insumo, y la deuda pasa a ser `D + exacto − escrito` — así el Kardex sigue siendo enteros
-  /// exactos en su unidad (ninguna fila pierde ni gana precisión), pero el TOTAL de la sucursal converge al consumo real en vez de
+  /// `exacto` a secas) a 4 decimales, con piso en 0 (nunca se escribe una cantidad negativa), y la deuda pasa a ser
+  /// `D + exacto − escrito` — así cada fila es un múltiplo exacto de 0,0001, pero el TOTAL de la sucursal converge al consumo real en vez de
   /// redondear cada parte de forma independiente. El alcance de la deuda es (sucursal, producto consumido): puede cruzar secciones y
-  /// lotes (una sección puede escribir el sobrante que "le tocó" a otra), nunca más de ±1 unidad de la unidad de stock del insumo —
+  /// lotes (una sección puede escribir el sobrante que "le tocó" a otra), nunca más de media unidad (0,0001 / 2) de las nuevas, ni de ±1 unidad de las antiguas —
   /// corregible con Conteo Físico, igual que cualquier redondeo de reparto. Columna aditiva, sin backfill: arranca en `null` para
   /// todo lo existente, así que la deuda de cualquier producto antes de este cambio es 0 (arreglo solo hacia adelante).
   cantidadExacta Decimal? @db.Decimal(20, 8)
@@ -2435,6 +2449,8 @@ model Cuenta {
   agregados        AgregadoDeCuenta[]
   /// M2: la cabecera de venta de esta cuenta, una vez cerrada (a lo sumo una: `Venta.cuentaId` es único por empresa). `null` = abierta, o cerrada antes de M2.
   venta            Venta?
+  /// Caja C1: el cobro de esta cuenta cerrada (a lo sumo uno; sin fila = sin cobrar). Se agrega, nunca se edita.
+  cobranza         Cobranza?
 
   /// Cuántos comensales se sentaron (docs/plan-comensales-y-limite-mesas-2026-09-26.md). Obligatorio y SIN valor por defecto al abrir
   /// la cuenta (`abrirCuenta`) — un default sesgaría la métrica de rotación que existe para medir (Reportes › Rotación de mesas).
@@ -2627,6 +2643,15 @@ model Empresa {
   productoRel                    Producto[]
   disponibilidadProductoRel      DisponibilidadProducto[]
   ocultamientoProductoRel        OcultamientoProducto[]
+  cajas                          Caja[]
+  cuentasDeCobro                 CuentaDeCobro[]
+  mediosDePago                   MedioDePago[]
+  sesionesDeCaja                 SesionCaja[]
+  movimientosDeCaja              MovimientoCaja[]
+  cobranzas                      Cobranza[]
+  cobros                         Cobro[]
+  arqueosDeCaja                  ArqueoCaja[]
+  billetesDeArqueo               ArqueoBillete[]
   insumoRel                      Insumo[]
   grupoRel                       Grupo[]
   categoriaProductoRel           CategoriaProducto[]
@@ -2674,6 +2699,7 @@ model Empresa {
   cuentaItemRel                  CuentaItem[]
   ejemplarTicketRel              EjemplarTicket[]
   moduloEmpresaRel               ModuloEmpresa[]
+  planDeEmpresaRel               PlanDeEmpresa[]
   invitacionRel                  Invitacion[]
   invitacionSucursalRel          InvitacionSucursal[]
   agregadoDeCuentas              AgregadoDeCuenta[]
@@ -2738,6 +2764,60 @@ model ModuloEmpresa {
   actualizadoEn DateTime     @default(now()) @updatedAt
 
   @@unique([empresaId, modulo])
+}
+
+/// Plan (frente 4, M1; «Planes con versiones desde el inicio, como Pedernal», 2026-11-16): un paquete de la plataforma, global y SIN precio. Solo la escribe `motor2_plataforma` (RLS `solo_plataforma` + REVOKE a la app + trigger). El `codigo` no cambia nunca y un plan no se borra: se RETIRA. `claveIdempotencia`/`payloadHash`: un reintento con la misma clave y la misma entrada devuelve lo ya hecho.
+model Plan {
+  id                String          @id @db.Uuid
+  codigo            String          @unique
+  /// `ACTIVO` | `RETIRADO` (CHECK).
+  estado            String          @default(dbgenerated("'ACTIVO'"))
+  claveIdempotencia String          @unique @db.Uuid
+  payloadHash       String
+  creadoEn          DateTime        @default(dbgenerated("now()")) @db.Timestamptz(3)
+  versiones         VersionDePlan[]
+}
+
+/// Una versión de un plan. BORRADOR (a lo sumo uno por plan, se edita) → PUBLICADA (INMUTABLE: ningún UPDATE ni DELETE, ni del dueño, por trigger). `modulos` es el TECHO de módulos vendibles de la versión; M1 NO lo aplica todavía al guard ni al menú (M1b). `numero` es NULL mientras es borrador y el siguiente del plan al publicarse (lo exige la base).
+model VersionDePlan {
+  id                String          @id @db.Uuid
+  planId            String          @db.Uuid
+  plan              Plan            @relation(fields: [planId], references: [id], onDelete: Restrict)
+  /// `BORRADOR` | `PUBLICADA` (CHECK).
+  estado            String          @default(dbgenerated("'BORRADOR'"))
+  numero            Int?
+  nombreComercial   String
+  modulos           String[]
+  motivo            String?
+  claveIdempotencia String          @unique @db.Uuid
+  payloadHash       String
+  creadoEn          DateTime        @default(dbgenerated("now()")) @db.Timestamptz(3)
+  publicadaEn       DateTime?       @db.Timestamptz(3)
+  publicadaPor      String?
+  asignaciones      PlanDeEmpresa[]
+
+  @@unique([planId, numero])
+}
+
+/// Qué versión de plan tiene una empresa. SOLO SE AGREGA (ningún UPDATE ni DELETE, ni del dueño): el número es el siguiente de la empresa (lo exige la base) y el plan VIGENTE se CALCULA (la asignación de número mayor que ya empezó), nunca se marca. Sin default de `empresaId`: escribe la plataforma, siempre indicando la empresa. La app solo LEE la de su empresa. Orígenes: `TRANSICION` (la migración), `ALTA`, `CAMBIO`.
+model PlanDeEmpresa {
+  id                String        @id @db.Uuid
+  empresaId         String
+  empresa           Empresa       @relation(fields: [empresaId], references: [id])
+  versionDePlanId   String        @db.Uuid
+  versionDePlan     VersionDePlan @relation(fields: [versionDePlanId], references: [id], onDelete: Restrict)
+  numero            Int
+  aplicaDesde       DateTime      @db.Timestamptz(3)
+  origen            String
+  motivo            String
+  /// Quién la asignó: el email del administrador de plataforma (texto, sin FK: no es un `User`) o `migracion:…`.
+  asignadoPor       String
+  claveIdempotencia String        @unique @db.Uuid
+  payloadHash       String
+  creadoEn          DateTime      @default(dbgenerated("now()")) @db.Timestamptz(3)
+
+  @@unique([empresaId, numero])
+  @@index([versionDePlanId])
 }
 
 enum EstadoInvitacion {
@@ -4090,4 +4170,260 @@ model CombinacionEnLinea {
 
   @@unique([empresaId, id])
   @@index([combinacionId])
+}
+
+// ===================================================================
+// CAJA Y COBRO, etapa C1 (docs/diseno-caja-y-cobro-paridad-pedernal-2026-11-16.md). Tablas nuevas con el molde de Datos (E-0): id uuid que genera la app, instantes TIMESTAMPTZ(3), SIN DELETE,
+// historial que solo agrega, clave de reintento. Dinero `Decimal(14,2)` en pesos (confirmado por el dueño 2026-11-16). Las reglas que la base hace cumplir van en la migración, a mano.
+// ===================================================================
+
+/// La caja de una sucursal: el lugar donde se cobra. C1 = UNA por sucursal (índice único `Caja_una_por_sucursal_key`; la etapa C4 lo reemplaza por la perilla de cantidad). Nunca se borra.
+model Caja {
+  id         String   @id @db.Uuid
+  empresaId  String   @default(dbgenerated("app_empresa_actual()"))
+  empresa    Empresa  @relation(fields: [empresaId], references: [id])
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  nombre     String
+  creadoEn   DateTime @default(now()) @db.Timestamptz(3)
+
+  sesiones SesionCaja[]
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, sucursalId], map: "Caja_una_por_sucursal_key")
+}
+
+/// Un medio de pago de la empresa. `tipo` cerrado (CHECK: EFECTIVO, TARJETA_DEBITO, TARJETA_CREDITO, TRANSFERENCIA, QR, OTRO) e inmutable; un solo EFECTIVO por empresa, que no se desactiva.
+/// La app solo cambia `nombre`, `activo`, `actualizadoEn` y `version`.
+model MedioDePago {
+  id            String   @id @db.Uuid
+  empresaId     String   @default(dbgenerated("app_empresa_actual()"))
+  empresa       Empresa  @relation(fields: [empresaId], references: [id])
+  tipo          String
+  nombre        String?
+  activo        Boolean  @default(true)
+  creadoEn      DateTime @default(now()) @db.Timestamptz(3)
+  actualizadoEn DateTime @default(now()) @db.Timestamptz(3)
+  version       Int      @default(1)
+  /// C3: qué datos opcionales pide al cobrar (todos nacen en false; techo por tipo con CHECK `MedioDePago_datos_chk`: src/core/caja/medios.ts, `DATOS_ADMITIDOS_POR_MEDIO`).
+  pideCupon     Boolean  @default(false)
+  pideUltimos4  Boolean  @default(false)
+  pideMarca     Boolean  @default(false)
+  pideCuotas    Boolean  @default(false)
+  pideDni       Boolean  @default(false)
+
+  movimientos MovimientoCaja[]
+  cobros      Cobro[]
+  arqueos     ArqueoCaja[]
+
+  @@unique([empresaId, id])
+}
+
+/// Una sesión de caja: abierta con un fondo inicial, cerrada con el arqueo. A lo sumo UNA sin cerrar por caja (índice único parcial). `fechaDeNegocio` y `zonaHoraria` se sellan al abrir y no cambian.
+/// La clave de reintento (`claveIdempotencia`, única por empresa) y la huella del pedido hacen que abrir dos veces el mismo gesto sea una sola sesión. C1 no tiene «en cierre» ni jornada (etapa C2).
+model SesionCaja {
+  id                String    @id @db.Uuid
+  empresaId         String    @default(dbgenerated("app_empresa_actual()"))
+  empresa           Empresa   @relation(fields: [empresaId], references: [id])
+  sucursalId        String
+  sucursal          Sucursal  @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  cajaId            String    @db.Uuid
+  caja              Caja      @relation(fields: [empresaId, cajaId], references: [empresaId, id])
+  /// ABIERTA | CERRADA (CHECK). Solo cambia de ABIERTA a CERRADA, una vez (disparador).
+  estado            String
+  fechaDeNegocio    DateTime  @db.Date
+  zonaHoraria       String
+  abiertaEn         DateTime  @default(now()) @db.Timestamptz(3)
+  abiertaPorId      String
+  abiertaPor        User      @relation("SesionCajaAbiertaPor", fields: [abiertaPorId], references: [id])
+  cerradaEn         DateTime? @db.Timestamptz(3)
+  cerradaPorId      String?
+  cerradaPor        User?     @relation("SesionCajaCerradaPor", fields: [cerradaPorId], references: [id])
+  observacion       String?
+  claveIdempotencia String
+  huella            String
+
+  movimientos MovimientoCaja[]
+  cobranzas   Cobranza[]
+  arqueos     ArqueoCaja[]
+  billetes    ArqueoBillete[]
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, claveIdempotencia])
+  @@index([cajaId])
+}
+
+/// Un movimiento de dinero de una sesión. SOLO SE AGREGA (sin UPDATE ni DELETE): una anulación es otro movimiento, espejo del que anula (`anulaAId`, a lo sumo una vez). `importe` lleva signo
+/// (CHECK por clase): FONDO_INICIAL ≥ 0; COBRO e INGRESO_MANUAL > 0; EGRESO_MANUAL < 0; ANULACION ≠ 0. Moneda única: pesos.
+model MovimientoCaja {
+  id                String          @id @db.Uuid
+  empresaId         String          @default(dbgenerated("app_empresa_actual()"))
+  empresa           Empresa         @relation(fields: [empresaId], references: [id])
+  sucursalId        String
+  sucursal          Sucursal        @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  sesionId          String          @db.Uuid
+  sesion            SesionCaja      @relation(fields: [empresaId, sesionId], references: [empresaId, id])
+  /// FONDO_INICIAL | COBRO | INGRESO_MANUAL | EGRESO_MANUAL | ANULACION (CHECK).
+  clase             String
+  medioDePagoId     String          @db.Uuid
+  medioDePago       MedioDePago     @relation(fields: [empresaId, medioDePagoId], references: [empresaId, id])
+  importe           Decimal         @db.Decimal(14, 2)
+  motivo            String?
+  anulaAId          String?         @db.Uuid
+  anulaA            MovimientoCaja? @relation("MovimientoCajaAnulacion", fields: [empresaId, anulaAId], references: [empresaId, id])
+  anulaciones       MovimientoCaja[] @relation("MovimientoCajaAnulacion")
+  /// C3: la cuenta de cobro por donde entró el dinero; NULL = «sin cuenta» (el efectivo nunca lleva).
+  cuentaDeCobroId   String?         @db.Uuid
+  cuentaDeCobro     CuentaDeCobro?  @relation(fields: [empresaId, cuentaDeCobroId], references: [empresaId, id])
+  claveIdempotencia String?
+  creadoEn          DateTime        @default(now()) @db.Timestamptz(3)
+  creadoPorId       String
+  creadoPor         User            @relation("MovimientoCajaCreadoPor", fields: [creadoPorId], references: [id])
+
+  cobro Cobro?
+
+  @@unique([empresaId, id])
+  @@index([sesionId])
+}
+
+/// El cobro de una cuenta cerrada: una sola por cuenta (único). Congela el `total` cobrable (el de la venta al cerrar, con el descuento del cliente) y la suma de sus renglones (`Cobro`) tiene
+/// que dar ese total al centavo (disparador diferido). Solo se agrega.
+model Cobranza {
+  id                String     @id @db.Uuid
+  empresaId         String     @default(dbgenerated("app_empresa_actual()"))
+  empresa           Empresa    @relation(fields: [empresaId], references: [id])
+  sucursalId        String
+  sucursal          Sucursal   @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  cuentaId          String
+  cuenta            Cuenta     @relation(fields: [empresaId, cuentaId], references: [empresaId, id])
+  sesionId          String     @db.Uuid
+  sesion            SesionCaja @relation(fields: [empresaId, sesionId], references: [empresaId, id])
+  total             Decimal    @db.Decimal(14, 2)
+  claveIdempotencia String
+  huella            String
+  creadoEn          DateTime   @default(now()) @db.Timestamptz(3)
+  creadoPorId       String
+  creadoPor         User       @relation("CobranzaCreadaPor", fields: [creadoPorId], references: [id])
+
+  cobros Cobro[]
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, cuentaId])
+  @@unique([empresaId, claveIdempotencia])
+  @@index([sesionId])
+}
+
+/// Un renglón del cobro: un medio y un importe, 1 a 1 con su movimiento de caja de clase COBRO. Solo se agrega.
+model Cobro {
+  id            String         @id @db.Uuid
+  empresaId     String         @default(dbgenerated("app_empresa_actual()"))
+  empresa       Empresa        @relation(fields: [empresaId], references: [id])
+  sucursalId    String
+  sucursal      Sucursal       @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  cobranzaId    String         @db.Uuid
+  cobranza      Cobranza       @relation(fields: [empresaId, cobranzaId], references: [empresaId, id])
+  orden         Int
+  medioDePagoId String         @db.Uuid
+  medioDePago   MedioDePago    @relation(fields: [empresaId, medioDePagoId], references: [empresaId, id])
+  movimientoId  String         @db.Uuid
+  movimiento    MovimientoCaja @relation(fields: [empresaId, movimientoId], references: [empresaId, id])
+  importe       Decimal        @db.Decimal(14, 2)
+  /// C3: la cuenta de cobro del renglón (igual a la de su movimiento) y los datos opcionales del cobro (solo los que el medio pidió; el DNI y los últimos 4 son datos personales: nunca van a la auditoría).
+  cuentaDeCobroId  String?        @db.Uuid
+  cuentaDeCobro    CuentaDeCobro? @relation(fields: [empresaId, cuentaDeCobroId], references: [empresaId, id])
+  cupon            String?
+  ultimos4         String?        @db.Char(4)
+  marcaDeTarjetaId String?        @db.Uuid
+  marcaDeTarjeta   ValorDeLista?  @relation(fields: [marcaDeTarjetaId], references: [id])
+  cuotas           Int?           @db.SmallInt
+  dni              String?
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, cobranzaId, orden])
+  @@unique([empresaId, movimientoId])
+}
+
+/// El arqueo de una sesión cerrada, por medio de pago: lo esperado (calculado en el cierre) contra lo contado (EFECTIVO: por billetes y monedas) o «conforme» (los demás medios). `diferencia` se calcula
+/// (contado − esperado, en la consulta: NO se guarda) y nadie la escribe. Solo se agrega.
+model ArqueoCaja {
+  id            String      @id @db.Uuid
+  empresaId     String      @default(dbgenerated("app_empresa_actual()"))
+  empresa       Empresa     @relation(fields: [empresaId], references: [id])
+  sucursalId    String
+  sucursal      Sucursal    @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  sesionId      String      @db.Uuid
+  sesion        SesionCaja  @relation(fields: [empresaId, sesionId], references: [empresaId, id])
+  medioDePagoId String      @db.Uuid
+  medioDePago   MedioDePago @relation(fields: [empresaId, medioDePagoId], references: [empresaId, id])
+  esperado      Decimal     @db.Decimal(14, 2)
+  /// NULL con `conforme` (no se contó, se dio por bueno); el efectivo siempre se cuenta.
+  contado       Decimal?    @db.Decimal(14, 2)
+  contadoMonedas Decimal?   @db.Decimal(14, 2)
+  conforme      Boolean     @default(false)
+  /// C3: el arqueo se lleva por (medio, cuenta); NULL = «sin cuenta». El índice único de la base es NULLS NOT DISTINCT (Prisma no lo modela).
+  cuentaDeCobroId String?   @db.Uuid
+  cuentaDeCobro   CuentaDeCobro? @relation(fields: [empresaId, cuentaDeCobroId], references: [empresaId, id])
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, sesionId, medioDePagoId, cuentaDeCobroId], map: "ArqueoCaja_empresaId_sesionId_medioDePagoId_cuentaDeCobroId_key")
+}
+
+/// Los billetes contados de una sesión, por denominación (CHECK: la lista de `src/core/caja/arqueo.ts`, las 10 de la planilla del dueño). Solo se agrega.
+model ArqueoBillete {
+  id           String     @id @db.Uuid
+  empresaId    String     @default(dbgenerated("app_empresa_actual()"))
+  empresa      Empresa    @relation(fields: [empresaId], references: [id])
+  sucursalId   String
+  sucursal     Sucursal   @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  sesionId     String     @db.Uuid
+  sesion       SesionCaja @relation(fields: [empresaId, sesionId], references: [empresaId, id])
+  denominacion Int
+  cantidad     Int
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, sesionId, denominacion])
+}
+
+// ===================================================================
+// CAJA Y COBRO, etapa C3 (docs/diseno-caja-c3-cuenta-de-cobro-y-marcas-2026-11-16.md): la cuenta de cobro y la lista global de marcas de tarjeta, como las decidió Pedernal.
+// ===================================================================
+
+/// Por dónde entra el dinero electrónico: una terminal (posnet), un QR o una cuenta bancaria, de UNA sucursal. `tipo` cerrado e inmutable (CHECK + disparador); nombre único por empresa sin mayúsculas; el
+/// identificador externo (número de terminal o alias, nunca credenciales) es opcional. Se desactiva y reactiva, nunca se borra. Es opcional en el cobro («sin cuenta» es un grupo del arqueo).
+model CuentaDeCobro {
+  id                   String   @id @db.Uuid
+  empresaId            String   @default(dbgenerated("app_empresa_actual()"))
+  empresa              Empresa  @relation(fields: [empresaId], references: [id])
+  sucursalId           String
+  sucursal             Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  /// TERMINAL | QR | CUENTA_BANCARIA (CHECK).
+  tipo                 String
+  nombre               String
+  identificadorExterno String?
+  activa               Boolean  @default(true)
+  creadoEn             DateTime @default(now()) @db.Timestamptz(3)
+  actualizadoEn        DateTime @default(now()) @db.Timestamptz(3)
+  version              Int      @default(1)
+
+  movimientos MovimientoCaja[]
+  cobros      Cobro[]
+  arqueos     ArqueoCaja[]
+
+  @@unique([empresaId, id])
+}
+
+/// Una lista del sistema que administra la PLATAFORMA y ven todas las empresas (GLOBAL: sin empresaId ni RLS; la app solo lee, por privilegios). Hoy una sola lista, `MARCAS_DE_TARJETA`, sembrada en la
+/// migración (Visa, Mastercard, American Express, Cabal, Naranja X y «Otra», fija: no se renombra ni se desactiva). Nunca se borra; un valor desactivado no se ofrece en cobros nuevos y se conserva en los ya cobrados.
+/// El nombre es único por lista sin distinguir mayúsculas ni acentos (índice con collation ICU, a mano).
+model ValorDeLista {
+  id            String   @id @db.Uuid
+  lista         String
+  nombre        String
+  activo        Boolean  @default(true)
+  fija          Boolean  @default(false)
+  creadoEn      DateTime @default(now()) @db.Timestamptz(3)
+  actualizadoEn DateTime @default(now()) @db.Timestamptz(3)
+  version       Int      @default(1)
+
+  cobrosConEstaMarca Cobro[]
 }

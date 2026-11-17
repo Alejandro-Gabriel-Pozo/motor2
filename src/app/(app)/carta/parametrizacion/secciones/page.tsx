@@ -11,10 +11,10 @@ import { FormConResultado } from "@/components/form-con-resultado";
 import { AvisoSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { FilaDeCarta } from "@/components/fila-de-carta";
 import { EnlaceInterno } from "@/components/enlace-interno";
-import { PESTANAS_DE_CARTA } from "@/core/carta/public";
+import { ALTA_DE_SECCION_SOLO_NOMBRE, PESTANAS_DE_CARTA } from "@/core/carta/public";
 import { EncabezadoDeCarta } from "../../encabezado-de-carta";
 import estilos from "../../carta-mant.module.css";
-import { CamposSeccion, GrupoDeLaCarta } from "../formularios";
+import { CamposDeAltaDeSeccion, GrupoDeLaCarta } from "../formularios";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { OrdenarSecciones } from "./ordenar-secciones";
@@ -44,6 +44,8 @@ export default async function SeccionesDeCartaPage() {
   const puedeEditarSecciones = nivelSecciones.editar;
   // La hora se fija acá, en el borde (O.22-c).
   const [datos, carta] = await Promise.all([cargarAdminCarta(ctx.sucursalId, ctx.db, new Date()), cargarCartaParaMantener(ctx.db, ctx.sucursalId)]);
+  // DA5: una sección nueva cae al final (orden = cuántas hay); con el alta de solo el nombre no hay campo de orden, lo pone esta página.
+  const ordenDeLaSeccionNueva = datos.secciones.length;
   /** Un producto fuera de las secciones: su nombre, con el enlace a su ficha de carta. */
   const filaDeProducto = (p: ProductoParaMantener) => (
     <li key={p.id} className="text-sm max-md:min-h-11" data-contenido-carta={p.nombre}>
@@ -87,14 +89,14 @@ export default async function SeccionesDeCartaPage() {
             accion={async (fd: FormData) => {
               "use server";
               return refrescarSiOk(
-                await guardarSeccionCarta({ nombre: campo(fd, "nombre"), titulo: campo(fd, "titulo"), descripcion: campo(fd, "descripcion"), imagenUrl: campo(fd, "imagenUrl"), orden: campo(fd, "orden") })
+                await guardarSeccionCarta({ nombre: campo(fd, "nombre"), titulo: campo(fd, "titulo"), descripcion: campo(fd, "descripcion"), imagenUrl: campo(fd, "imagenUrl"), orden: ALTA_DE_SECCION_SOLO_NOMBRE ? String(ordenDeLaSeccionNueva) : campo(fd, "orden") })
               );
             }}
             className="grid max-w-2xl grid-cols-1 gap-2 rounded border border-dashed p-3 sm:grid-cols-2"
           >
             <h3 className="text-sm font-medium sm:col-span-2">Nueva sección de carta</h3>
             {/* DA5: una sección nueva cae al final por defecto (orden = cuántas hay). */}
-            <CamposSeccion ordenSugerido={datos.secciones.length} />
+            <CamposDeAltaDeSeccion ordenSugerido={datos.secciones.length} />
             <div className="sm:col-span-2">
               <BotonDeServidor type="submit" tamano="compacto">
                 Crear sección

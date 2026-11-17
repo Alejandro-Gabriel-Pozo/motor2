@@ -33,11 +33,17 @@ test("cargar la carta desde el admin la publica en la carta pública", async ({ 
     // 1. Sección de carta nueva: Parametrización › Secciones (los formularios de siempre).
     await page.goto("/carta/parametrizacion/secciones");
     const nuevaSeccion = page.locator("form", { has: page.getByRole("heading", { name: "Nueva sección de carta" }) });
+    // El alta pide solo el nombre (Frente 6, `ALTA_DE_SECCION_SOLO_NOMBRE`); el título y el orden se completan en la pantalla de la sección.
     await nuevaSeccion.getByLabel("Nombre", { exact: true }).fill(nombreSeccion);
-    await nuevaSeccion.getByLabel(/^Título/).fill("Del fuego");
-    await nuevaSeccion.getByLabel("Orden").fill("1");
+    await expect(nuevaSeccion.getByLabel(/^Título/)).toHaveCount(0);
     await nuevaSeccion.getByRole("button", { name: "Crear sección" }).click();
     await expect(nuevaSeccion.getByRole("status")).toHaveText(`Sección de carta "${nombreSeccion}" creada.`);
+    await page.locator(`[data-seccion-orden="${nombreSeccion}"]`).getByRole("link", { name: nombreSeccion }).click();
+    await page.getByLabel(/^Título/).fill("Del fuego");
+    await page.getByLabel("Orden").fill("1");
+    await page.getByRole("button", { name: "Guardar sección" }).click();
+    await expect.poll(async () => (await prisma.seccionCarta.findFirstOrThrow({ where: { nombre: nombreSeccion } })).titulo).toBe("Del fuego");
+    await page.goto("/carta/parametrizacion/secciones");
 
     // Ya no existe el bloque "Qué categoría va en cada sección": la categoría no ubica nada en la carta.
     await expect(page.getByRole("heading", { name: "Qué categoría va en cada sección" })).toHaveCount(0);

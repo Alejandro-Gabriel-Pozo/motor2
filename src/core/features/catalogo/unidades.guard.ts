@@ -28,7 +28,7 @@ const decimalesValidos = (decimales: number): boolean => Number.isInteger(decima
  * desconocida no tiene default y cae en el mismo rechazo de los decimales, como antes). Que el nombre esté libre lo resuelve el caso de uso.
  */
 export function guardComandoCrearUnidad(datos: { nombre: unknown; magnitud: MagnitudUnidad; decimales?: number }): ResultadoDato<ComandoCrearUnidad> {
-  const nombre = nombreDeCatalogo(datos.nombre, "El nombre de la unidad no puede estar vacío.", "El nombre de la unidad");
+  const nombre = nombreDeCatalogo(datos.nombre, "El nombre de la unidad no puede estar vacío.");
   if (!nombre.ok) return rechazar(nombre.codigo, nombre.mensaje);
 
   const decimales = datos.decimales ?? DECIMALES_DEFAULT_POR_MAGNITUD[datos.magnitud];

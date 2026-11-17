@@ -436,7 +436,12 @@ describe("registrarMovimiento", () => {
     expect(await calcularSaldoTotal(pv.id, seccionAId, prisma)).toBe(1);
   });
 
-  it("Producción: dos líneas que consumen 0.3 c/u de un insumo con decimales=0 no exigen stock (hallazgo post-cierre 2026-09-28, docs/pendientes-sesion-2026-09-27.md: antes se sumaba el consumo CRUDO de consumosReceta para validar stock — 0.3+0.3=0.6, 'insuficiente' con saldo 0 — aunque lo que realmente se persiste es cada consumo YA redondeado a los decimales de su insumo, 0+0=0)", async () => {
+  // A1b 2026-11-16: stock con 4 decimales fijos y cuenta exacta; antes el consumo se redondeaba a los decimales del insumo (g: 0), así que
+  // 0,3 g por línea daba 0 + 0 con saldo 0. Ahora 0,3 se escribe exacto y SÍ exige stock (ver la prueba de abajo). Para seguir probando la
+  // intención original (se valida contra lo que realmente se persiste, ya redondeado, y no contra la suma cruda) se produce 0,0001 de cada
+  // pan: el consumo es 0,0001 × 0,3 = 0,00003 por línea, que a 4 decimales es 0; la suma cruda (0,00006) redondearía a 0,0001 y se
+  // rechazaría con saldo 0, la redondeada es 0 + 0 = 0.
+  it("Producción: dos líneas que consumen 0.00003 c/u de un insumo (se redondea a 0 con 4 decimales) no exigen stock (hallazgo post-cierre 2026-09-28, docs/pendientes-sesion-2026-09-27.md: antes se sumaba el consumo CRUDO de consumosReceta para validar stock — 0.00003+0.00003=0.00006 → 0.0001, 'insuficiente' con saldo 0 — aunque lo que realmente se persiste es cada consumo YA redondeado, 0+0=0)", async () => {
     const salPizca = await sembrarProductoDisponible({ codigo: "MP_SALPIZCA", nombre: "Sal (pizca)", tipo: "MP", unidadStockId: unidadGId }, sucursalId);
     const pv1 = await sembrarProductoDisponible({ codigo: "PV_PAN1", nombre: "Pan 1", tipo: "PV", unidadStockId: unidadKgId, seProduce: true }, sucursalId);
     const pv2 = await sembrarProductoDisponible({ codigo: "PV_PAN2", nombre: "Pan 2", tipo: "PV", unidadStockId: unidadKgId, seProduce: true }, sucursalId);
@@ -447,16 +452,47 @@ describe("registrarMovimiento", () => {
       data: { productoId: pv2.id, version: 1, ingredientes: { create: [{ insumoProductoId: salPizca.id, cantidad: 0.3, unidadId: unidadGId, mermaPorcentaje: 0 }] } },
     });
 
-    // Sin ninguna Compra de salPizca: el saldo disponible es 0. Cada línea, aislada, redondea su consumo (0.3g, decimales:0) a 0 antes
+    // Sin ninguna Compra de salPizca: el saldo disponible es 0. Cada línea, aislada, redondea su consumo (0.00003, 4 decimales) a 0 antes
     // de persistir — el requerimiento REAL es 0+0=0. Antes del fix, el paso de validación sumaba las cantidades SIN redondear
-    // (0.3+0.3=0.6) y rechazaba "Stock insuficiente" contra un saldo de 0, aunque la escritura real no iba a necesitar nada.
+    // (0.00003+0.00003=0.00006) y rechazaba "Stock insuficiente" contra un saldo de 0, aunque la escritura real no iba a necesitar nada.
     const resultado = await registrarMovimiento({
+      proceso: "PRODUCCION", fecha: new Date(), seccionId: seccionAId,
+      items: [{ productoId: pv1.id, cantidad: 0.0001 }, { productoId: pv2.id, cantidad: 0.0001 }],
+      claveIdempotencia: crypto.randomUUID(),
+    });
+    expect(resultado.ok, resultado.mensaje).toBe(true);
+    expect(await calcularSaldoTotal(salPizca.id, seccionAId, prisma)).toBe(0);
+  });
+
+  // A1b 2026-11-16 (prueba nueva): el comportamiento que cambió de verdad. Dos líneas que consumen 0,3 c/u de un insumo de unidad sin
+  // decimales (g) ya NO se redondean a 0: el stock es a 4 decimales fijos, el requerimiento real es 0,3 + 0,3 = 0,6 y con saldo 0 se
+  // rechaza por stock insuficiente (antes pasaba sin mover nada, escribiendo 0 y 0).
+  it("Producción: dos líneas que consumen 0.3 c/u de un insumo de unidad sin decimales ya exigen stock (A1b: 0,3 + 0,3 = 0,6 exacto, no 0 + 0)", async () => {
+    const salPizca = await sembrarProductoDisponible({ codigo: "MP_SALPIZCA_EXACTA", nombre: "Sal (pizca exacta)", tipo: "MP", unidadStockId: unidadGId }, sucursalId);
+    const pv1 = await sembrarProductoDisponible({ codigo: "PV_PAN1_EXACTO", nombre: "Pan 1 exacto", tipo: "PV", unidadStockId: unidadKgId, seProduce: true }, sucursalId);
+    const pv2 = await sembrarProductoDisponible({ codigo: "PV_PAN2_EXACTO", nombre: "Pan 2 exacto", tipo: "PV", unidadStockId: unidadKgId, seProduce: true }, sucursalId);
+    for (const pv of [pv1, pv2]) {
+      await prisma.recetaVersion.create({
+        data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: salPizca.id, cantidad: 0.3, unidadId: unidadGId, mermaPorcentaje: 0 }] } },
+      });
+    }
+    const sinStock = await registrarMovimiento({
       proceso: "PRODUCCION", fecha: new Date(), seccionId: seccionAId,
       items: [{ productoId: pv1.id, cantidad: 1 }, { productoId: pv2.id, cantidad: 1 }],
       claveIdempotencia: crypto.randomUUID(),
     });
-    expect(resultado.ok).toBe(true);
+    expect(sinStock.ok).toBe(false);
     expect(await calcularSaldoTotal(salPizca.id, seccionAId, prisma)).toBe(0);
+
+    // Con 1 g de saldo alcanza: consume exactamente 0,3 + 0,3 (sin redondear a la unidad) y queda 0,4.
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: salPizca.id, cantidad: 1, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
+    const conStock = await registrarMovimiento({
+      proceso: "PRODUCCION", fecha: new Date(), seccionId: seccionAId,
+      items: [{ productoId: pv1.id, cantidad: 1 }, { productoId: pv2.id, cantidad: 1 }],
+      claveIdempotencia: crypto.randomUUID(),
+    });
+    expect(conStock.ok, conStock.mensaje).toBe(true);
+    expect(await calcularSaldoTotal(salPizca.id, seccionAId, prisma)).toBe(0.4);
   });
 
   it("Producción de un insumo en consignación genera Consumo + Liquidación (cantidad 0, importe según precioConsignacion)", async () => {

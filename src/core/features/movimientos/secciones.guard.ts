@@ -11,8 +11,8 @@ import type { ComandoActualizarRespaldoSeccion, ComandoCrearSeccion, ComandoReno
  * nunca se validaron: sin guard (`SIN_GUARD`).
  */
 
-/** El nombre de una sección: recortado, no vacío (con el texto de cada acción), charset y largo de catálogo con la etiqueta «El nombre de la sección». */
-const nombreDeSeccion = (nombre: unknown, mensajeVacio: string): ResultadoDato<string> => nombreDeCatalogo(nombre, mensajeVacio, "El nombre de la sección");
+/** El nombre de una sección: recortado, no vacío (con el texto de cada acción), charset y largo de la ficha ELECCION. */
+const nombreDeSeccion = (nombre: unknown, mensajeVacio: string): ResultadoDato<string> => nombreDeCatalogo(nombre, mensajeVacio);
 
 /** Guard del alta de una sección: EXACTAMENTE lo que antes era lo primero de `crearSeccion`, con los MISMOS textos. Que el nombre esté libre lo resuelve el caso de uso. */
 export function guardComandoCrearSeccion(entrada: { nombre: unknown }): ResultadoDato<ComandoCrearSeccion> {

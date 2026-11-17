@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import { ModulosDeEmpresaError, normalizarPedidoDeModulos, planDeCambioDeModulos, type CambioDeModulosHecho, type CambioDeModulosPedido } from "@/core/features/empresa/cambio-de-modulos";
 import { auditarCambioDePlataforma, type AutorDeCambioDePlataforma } from "./auditar-cambio-de-plataforma";
 
@@ -39,4 +39,10 @@ export async function cambiarModulosDeEmpresa(db: PrismaClient, pedido: CambioDe
 
     return { empresaId: empresa.id, cambiados: plan.cambiados, activos: plan.activos, efectivos: plan.efectivos };
   });
+}
+
+/** Los módulos vendibles que la empresa tiene ACTIVOS en el registro. Es el único lector del registro de la plataforma (lo usa también `planes.ts` para avisar qué módulos quedarían fuera del techo de un plan). */
+export async function modulosActivosDelRegistro(tx: Prisma.TransactionClient, empresaId: string): Promise<string[]> {
+  const filas = await tx.moduloEmpresa.findMany({ where: { empresaId, estado: "ACTIVO" }, select: { modulo: true } });
+  return filas.map((f) => f.modulo);
 }

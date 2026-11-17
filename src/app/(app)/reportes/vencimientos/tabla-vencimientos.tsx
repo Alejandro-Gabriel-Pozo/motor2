@@ -3,6 +3,7 @@
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { obtenerReporteVencimientosDatos } from "@/server/consultas/reportes/vencimientos";
+import { textoDe } from "@/core/textos/texto-de";
 
 const AYUDA_ESTADO_CONCILIACION =
   "Un lote que tenía saldo contado y en el conteo siguiente desapareció (quedó en 0 o sin contar) — se compara cuánto desapareció contra cuánto se vendió/consumió en el mismo período. Consistente: las ventas+consumos alcanzan o superan lo desaparecido, explica la baja. Revisar: desapareció más de lo que se vendió o consumió — puede ser merma sin registrar, robo o un conteo mal cargado.";
@@ -13,7 +14,7 @@ type FilaConciliacion = Awaited<ReturnType<typeof obtenerReporteVencimientosDato
 const COLUMNAS_LOTES: ColumnaReporte<FilaLote>[] = [
   {
     clave: "producto",
-    etiqueta: "Producto",
+    etiqueta: textoDe("columna.producto"),
     valor: (l) => `${l.productoCodigo} — ${l.productoNombre}`,
     render: (l) => (
       <EnlaceInterno href={`/reportes/historial?productoId=${l.productoId}`} className="underline">
@@ -21,7 +22,7 @@ const COLUMNAS_LOTES: ColumnaReporte<FilaLote>[] = [
       </EnlaceInterno>
     ),
   },
-  { clave: "seccion", etiqueta: "Sección", valor: (l) => l.seccionNombre, render: (l) => l.seccionNombre },
+  { clave: "seccion", etiqueta: textoDe("columna.seccion"), valor: (l) => l.seccionNombre, render: (l) => l.seccionNombre },
   { clave: "vence", etiqueta: "Vence", tipoFecha: "dia", valor: (l) => l.loteVencimiento.toISOString().slice(0, 10), render: (l) => l.loteVencimiento.toISOString().slice(0, 10) },
   {
     clave: "dias",
@@ -34,10 +35,10 @@ const COLUMNAS_LOTES: ColumnaReporte<FilaLote>[] = [
 ];
 
 const COLUMNAS_CONCILIACION: ColumnaReporte<FilaConciliacion>[] = [
-  { clave: "producto", etiqueta: "Producto", valor: (c) => c.productoNombre, render: (c) => c.productoNombre },
-  { clave: "seccion", etiqueta: "Sección", valor: (c) => c.seccionNombre, render: (c) => c.seccionNombre },
+  { clave: "producto", etiqueta: textoDe("columna.producto"), valor: (c) => c.productoNombre, render: (c) => c.productoNombre },
+  { clave: "seccion", etiqueta: textoDe("columna.seccion"), valor: (c) => c.seccionNombre, render: (c) => c.seccionNombre },
   { clave: "lote", etiqueta: "Lote", tipoFecha: "dia", valor: (c) => c.loteVencimiento.toISOString().slice(0, 10), render: (c) => c.loteVencimiento.toISOString().slice(0, 10) },
-  { clave: "cantidad", etiqueta: "Cantidad", alinear: "derecha", valor: (c) => c.cantidadDesaparecida, render: (c) => c.cantidadDesaparecida },
+  { clave: "cantidad", etiqueta: textoDe("columna.cantidad"), alinear: "derecha", valor: (c) => c.cantidadDesaparecida, render: (c) => c.cantidadDesaparecida },
   {
     clave: "periodo",
     etiqueta: "Período",

@@ -23,6 +23,7 @@ describe("ocultarProductoCasoDeUso", () => {
 
   /** El contexto de quien opera en la sucursal `sucursalId`; con `empresa` la transacción se ensancha a las dos (lo hace la acción). */
   const actor = (sucursalId: string, empresa = false) => ({
+    empresaId: EMPRESA_POR_DEFECTO_ID,
     usuarioId,
     sucursalId,
     sucursalNombre: sucursalId === sucursalA ? "Centro" : "Norte",
@@ -103,6 +104,18 @@ describe("ocultarProductoCasoDeUso", () => {
     expect(await pedir(sucursalA, { alcance: "EMPRESA", puedeEnLaEmpresa: true }, true)).toMatchObject({ ok: false, codigo: "TIENE_EXISTENCIA" });
     expect(await marcas(), "la rechazada no dejó su marca; queda la del local").toHaveLength(1);
     expect(await pedir(sucursalA, { oculto: false })).toMatchObject({ ok: true });
+  });
+
+  it("EMPRESA con el contexto SIN ensanchar (como llega de la acción): el caso de uso mismo ensancha la lectura y ve la existencia de OTRO local; la marca de la empresa se escribe igual", async () => {
+    await mover(seccionB, sucursalB, 4);
+    const sinEnsanchar = (c: Partial<ComandoOcultarProducto>) => ocultarProductoCasoDeUso(actor(sucursalA), { productoId, alcance: "EMPRESA", oculto: true, marcaId: randomUUID(), puedeEnLaEmpresa: true, ...c });
+    expect(await sinEnsanchar({})).toMatchObject({ ok: false, codigo: "TIENE_EXISTENCIA" });
+    expect(await marcas(), "el rechazo deshizo todo").toHaveLength(0);
+    await mover(seccionB, sucursalB, -4);
+    expect(await sinEnsanchar({})).toMatchObject({ ok: true, datos: { yaEstaba: false } });
+    expect(await marcas()).toMatchObject([{ sucursalId: null, oculto: true }]);
+    expect(await sinEnsanchar({}), "doble clic: la segunda es «ya estaba»").toMatchObject({ ok: true, datos: { yaEstaba: true } });
+    expect(await auditoria()).toHaveLength(1);
   });
 
   it("EMPRESA: solo administración con alcance total; sin eso, SIN_PERMISO y no se toca nada; con él, la marca queda con sucursalId nulo y se audita", async () => {
