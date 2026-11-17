@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { ACCIONES, nivelMinimoDeAccion, type AccionClave, type NivelDeAccion } from "../../src/core/permisos/acciones";
-import { nivelAlcanzaElPiso } from "../../src/core/permisos/jerarquia";
+import { ACCIONES, type AccionClave, type NivelDeAccion } from "../../src/core/permisos/acciones";
 import { CAMPOS, hallarLectores, type Hallado } from "./guardas/campos-sensibles";
 import { inventariarFuente } from "./guardas/inventario";
+import { alcanzaElResguardo, resguardoAlcanza, resguardoDe } from "./guardas/resguardo-de-clave";
 
 /**
  * GT-2, el tramo «GRUPOS DE DATOS» (tanda T14 del plan de endurecimiento de seguridad; fila O.86b de `docs/pureza-integracion.md`). El otro tramo, los pares «acción equivalente», es
@@ -48,7 +48,7 @@ const D_B =
   "Decisión D-B del dueño (2026-10-07, S-42): el último precio de compra de la empresa a un proveedor lo ve quien compra (`proceso_compra`, piso operario) para precargar el carrito; la clave del proceso se elige en tiempo de ejecución (`ACCION_POR_PROCESO`). Se deja (decidido).";
 const POR_DENTRO_DEL_PERIODO =
   "Usa el reporte del período (`obtenerReportePorPeriodo`, que arma las compras por proveedor) para sus totales y márgenes y NO dibuja ni proveedor ni factura: falso positivo del recorrido por archivos.";
-const COSTEO_INTERNO = "Arma el catálogo en memoria con el consignante para COSTEAR; su pantalla no dibuja el consignante ni el costo de consignación como tal (la clave de su reporte es de piso administrador).";
+const COSTEO_INTERNO = "Arma el catálogo en memoria con el consignante para COSTEAR; su pantalla no dibuja el consignante ni el costo de consignación como tal (la clave de su reporte su clave la da solo el gerente).";
 
 const GRUPOS: Readonly<Record<string, Grupo>> = {
   "proveedor y N.º de factura de una compra": {
@@ -57,12 +57,12 @@ const GRUPOS: Readonly<Record<string, Grupo>> = {
     campos: ["Operacion.nroFactura", "Operacion.proveedor", "Operacion.proveedorId"],
     puertas: {
       [`${APP}/reportes/historial/page.tsx`]: { clave: "reporte_historial_importes" },
-      [`${APP}/reportes/compras/page.tsx`]: { clave: "reporte_compras", motivo: "«Compras registradas» ES el listado de las compras con su proveedor y su factura; es de piso administrador, igual que los datos comerciales del historial." },
-      [`${APP}/reportes/devoluciones/page.tsx`]: { clave: "reporte_devoluciones", motivo: "«Devoluciones» muestra a qué proveedor se devolvió; es de piso administrador." },
-      [`${APP}/reportes/periodo/page.tsx`]: { clave: "reporte_periodo", motivo: "«Período» dibuja «Compras por proveedor»; es de piso administrador." },
-      [`${APP}/catalogo/proveedores/[id]/page.tsx`]: { clave: "proveedores", motivo: "La ficha del proveedor lista lo que se le compró (última oferta por producto); es de piso administrador." },
-      [`${APP}/catalogo/proveedores/[id]/editar/page.tsx`]: { clave: "proveedores", motivo: "La edición de la ficha del proveedor lista lo que se le compró; es de piso administrador." },
-      [`${APP}/catalogo/proveedores/comparativa/page.tsx`]: { clave: "comparar_precios", motivo: "La comparativa de precios por proveedor (D-B: `comparar_precios`, piso administrador)." },
+      [`${APP}/reportes/compras/page.tsx`]: { clave: "reporte_compras", motivo: "«Compras registradas» ES el listado de las compras con su proveedor y su factura; su clave la da solo el gerente, igual que los datos comerciales del historial." },
+      [`${APP}/reportes/devoluciones/page.tsx`]: { clave: "reporte_devoluciones", motivo: "«Devoluciones» muestra a qué proveedor se devolvió; su clave la da solo el gerente." },
+      [`${APP}/reportes/periodo/page.tsx`]: { clave: "reporte_periodo", motivo: "«Período» dibuja «Compras por proveedor»; su clave la da solo el gerente." },
+      [`${APP}/catalogo/proveedores/[id]/page.tsx`]: { clave: "proveedores", motivo: "La ficha del proveedor lista lo que se le compró (última oferta por producto); su clave la da solo el gerente." },
+      [`${APP}/catalogo/proveedores/[id]/editar/page.tsx`]: { clave: "proveedores", motivo: "La edición de la ficha del proveedor lista lo que se le compró; su clave la da solo el gerente." },
+      [`${APP}/catalogo/proveedores/comparativa/page.tsx`]: { clave: "comparar_precios", motivo: "La comparativa de precios por proveedor (D-B: `comparar_precios`, la da solo el gerente)." },
       [`${APP}/movimientos/[proceso]/page.tsx`]: { clave: null, motivo: D_B },
     },
     pordentro: {
@@ -79,7 +79,7 @@ const GRUPOS: Readonly<Record<string, Grupo>> = {
     puertas: {
       [`${APP}/catalogo/proveedores/comparativa/page.tsx`]: { clave: "comparar_precios" },
       [`${APP}/catalogo/proveedores/[id]/page.tsx`]: { clave: "comparar_precios" },
-      [`${APP}/catalogo/proveedores/[id]/editar/page.tsx`]: { clave: "proveedores", motivo: "La edición de la ficha del proveedor precarga lo que se le compró; es de piso administrador, igual que la comparativa." },
+      [`${APP}/catalogo/proveedores/[id]/editar/page.tsx`]: { clave: "proveedores", motivo: "La edición de la ficha del proveedor precarga lo que se le compró; su clave la da solo el gerente, igual que la comparativa." },
       [`${APP}/movimientos/[proceso]/page.tsx`]: { clave: null, motivo: D_B },
     },
     pordentro: {},
@@ -129,13 +129,12 @@ const clavesLiterales = (archivo: string): Set<string> => {
 
 const { hallados } = hallarLectores(RAIZ);
 const catalogo = new Map<string, NivelDeAccion>(ACCIONES.map((a) => [a.clave, a.nivelMinimo]));
-const pisoDe = (k: AccionClave) => nivelMinimoDeAccion(k);
 
 describe("GT-2 — grupos de datos con sus claves (puertas hermanas)", () => {
-  it("las claves y los campos de cada grupo existen, y la clave propia es de piso administrador o más", () => {
+  it("las claves y los campos de cada grupo existen, y la clave propia no es libre (la da solo el gerente, o es de gobierno)", () => {
     for (const [nombre, g] of Object.entries(GRUPOS)) {
       expect(catalogo.has(g.clave), `${nombre}: la clave propia «${g.clave}» no está en el catálogo`).toBe(true);
-      expect(nivelAlcanzaElPiso(pisoDe(g.clave), "administrador"), `${nombre}: «${g.clave}» es de piso ${pisoDe(g.clave)}; un dato de dinero o de un proveedor no puede quedar al alcance de un operario`).toBe(true);
+      expect(alcanzaElResguardo(g.clave, "administrador"), `${nombre}: «${g.clave}» es de resguardo ${resguardoDe(g.clave)}; un dato de dinero o de un proveedor no puede quedar de libre reparto (PISOS-65: semilla solo admin y solo el gerente la da)`).toBe(true);
       for (const c of g.campos ?? []) expect(c in CAMPOS, `${nombre}: «${c}» no está en la lista de campos sensibles (GT-1)`).toBe(true);
       expect(g.campos?.length || g.lectores?.length, `${nombre}: sin alcance`).toBeGreaterThan(0);
       for (const [r, motivo] of Object.entries(g.excluir ?? {})) expect(motivo.length, `${nombre}: ${r}`).toBeGreaterThan(30);
@@ -149,14 +148,14 @@ describe("GT-2 — grupos de datos con sus claves (puertas hermanas)", () => {
     expect(puertas, `${nombre}: una puerta nueva a este dato se declara en \`puertas\` con su clave (o en \`pordentro\` con su motivo); una que ya no lo alcanza sale de la lista`).toEqual(declaradas);
   });
 
-  it.each(Object.entries(GRUPOS))("«%s»: cada puerta pide la clave que declara, de un piso que alcanza el de la clave propia, y cada desvío tiene su motivo", (nombre, g) => {
+  it.each(Object.entries(GRUPOS))("«%s»: cada puerta pide la clave que declara, de un resguardo que alcanza el de la clave propia, y cada desvío tiene su motivo", (nombre, g) => {
     for (const [archivo, puerta] of Object.entries(g.puertas)) {
       if (puerta.clave === null) {
         expect((puerta.motivo ?? "").length, `${archivo}: una clave dinámica no se compara con el piso: necesita motivo`).toBeGreaterThan(40);
         continue;
       }
       expect(clavesLiterales(archivo), `${nombre}: ${archivo} no pide «${puerta.clave}»`).toContain(puerta.clave);
-      expect(nivelAlcanzaElPiso(pisoDe(puerta.clave), pisoDe(g.clave)), `${nombre}: ${archivo} pide «${puerta.clave}» (piso ${pisoDe(puerta.clave)}), por debajo de «${g.clave}» (piso ${pisoDe(g.clave)})`).toBe(true);
+      expect(resguardoAlcanza(puerta.clave, resguardoDe(g.clave)), `${nombre}: ${archivo} pide «${puerta.clave}» (resguardo ${resguardoDe(puerta.clave)}), por debajo de «${g.clave}» (resguardo ${resguardoDe(g.clave)})`).toBe(true);
       if (puerta.clave !== g.clave) expect((puerta.motivo ?? "").length, `${nombre}: ${archivo} pide «${puerta.clave}» y no la propia «${g.clave}»: falta el motivo`).toBeGreaterThan(30);
     }
     for (const [archivo, motivo] of Object.entries(g.pordentro)) expect(motivo.length, `${nombre}: ${archivo}`).toBeGreaterThan(30);

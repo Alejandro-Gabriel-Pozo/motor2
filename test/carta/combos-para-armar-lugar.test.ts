@@ -4,6 +4,7 @@ import { agregarEntradaDeCupoCasoDeUso } from "../../src/server/actions/carta/ca
 import { actorDeCombos, sembrarCombosGo3b, type EscenarioDeCombosGo3b } from "../setup/combos-go3b";
 import { limpiarBaseDeTest, prisma } from "../setup/test-db";
 
+import { crearCategoriaDeTest } from "../setup/categoria-de-prueba";
 /**
  * Promo «a elegir» (etapa N1, PR B): lo que la pantalla de ADMINISTRACIÓN lee para armar un lugar (`cargarCombosDeLaCarta`) contra Postgres real, como `motor2_app` con el alcance de la sucursal A. Fija: de cada
  * producto de venta, DE DÓNDE sale en la carta de ESTA sucursal (suelto en una sección, dentro de un ítem agrupado —que manda sobre su contenido suelto— o «no está en la carta»), su categoría, y todos los grupos que
@@ -39,7 +40,7 @@ describe("lo que la administración lee para armar el lugar de una promo", () =>
   });
 
   it("trae la categoría del producto y TODOS los grupos que admite con sus límites, con el adicional marcado", async () => {
-    const categoria = await prisma.categoriaProducto.create({ data: { nombre: "Bebidas calientes" } });
+    const categoria = await crearCategoriaDeTest(prisma, { nombre: "Bebidas calientes" });
     await prisma.producto.update({ where: { id: e.cafeId }, data: { categoriaId: categoria.id } });
     const productos = await leer();
     expect(productos.find((p) => p.productoId === e.milanesaId)).toMatchObject({ categoria: null, gruposAElegir: [] });

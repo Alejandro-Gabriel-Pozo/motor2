@@ -8,6 +8,7 @@ import { azarDelProceso } from "../../src/lib/azar";
 import type { EntradaProducto } from "../../src/core/features/catalogo/productos.schema";
 import { guardComandoDatosDeProducto } from "../../src/core/features/catalogo/productos.guard";
 
+import { crearCategoriaDeTest } from "../setup/categoria-de-prueba";
 /**
  * Hallazgo O.175 (GT-3b, cerrado): cuatro acciones rechazaban un id de OTRA empresa con una excepción CRUDA de Prisma (clave foránea compuesta por empresa, `P2003`) en lugar de `{ ok: false }`
  * con el rechazo de pertenencia. No cruzaba nada (la base lo impide y no se escribe una fila), pero el cliente recibía un error genérico.
@@ -50,7 +51,7 @@ describe("O.175: ids de otra empresa en categoría, insumo, unidades, proveedor 
     const e = "empresa_b";
     ajeno = {
       unidadId: (await prismaAdmin.unidad.create({ data: { empresaId: e, nombre: "kg B", magnitud: "PESO", decimales: 2 } })).id,
-      categoriaId: (await prismaAdmin.categoriaProducto.create({ data: { empresaId: e, nombre: "Categoría B" } })).id,
+      categoriaId: (await crearCategoriaDeTest(prismaAdmin, { empresaId: e, nombre: "Categoría B" })).id,
       insumoId: (await prismaAdmin.insumo.create({ data: { empresaId: e, nombre: "Insumo B" } })).id,
       proveedorId: (await prismaAdmin.proveedor.create({ data: { empresaId: e, codigo: "PRV_B", nombre: "Proveedor B" } })).id,
       grupoId: (await prismaAdmin.grupo.create({ data: { empresaId: e, nombre: "Grupo B" } })).id,

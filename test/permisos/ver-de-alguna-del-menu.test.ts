@@ -71,7 +71,7 @@ describe("requierePermisoVerDeAlgunaDelMenu: pasa si y solo si pasa el gate de V
     expect([...gate.visibles]).toEqual(["motivos_merma"]);
   });
 
-  it("el operador (piso operario) no llega a ninguna de estas claves de piso administrador: se niega con el motivo de la primera", async () => {
+  it("el operador de fábrica (sin la fila: estas claves son de las 65, de fábrica solo del admin, PISOS-65) no llega a ninguna: se niega con el motivo de la primera", async () => {
     const { operador, sucursalId } = await montar();
     const gate = await requierePermisoVerDeAlgunaDelMenu(operador.id, EMPRESA_POR_DEFECTO_ID, sucursalId, CLAVES, prisma);
     const primera = await requierePermisoVer(operador.id, sucursalId, "secciones", prisma);

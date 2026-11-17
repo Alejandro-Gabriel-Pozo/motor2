@@ -8,6 +8,7 @@ import { nivelMinimoDeAccion, claveEnCatalogo, esAccionSoloVer } from "@/core/pe
 import { agruparAccionesPorModulo } from "@/core/permisos/agrupar-acciones-por-modulo";
 import { PERMISOS_PLEGADOS } from "@/core/permisos/matrices-plegadas";
 import { etiquetaDelPiso } from "@/core/permisos/jerarquia";
+import { textoDe } from "@/core/textos/texto-de";
 import {
   esCeldaFija,
   esCeldaFueraDeNivel,
@@ -261,7 +262,7 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
                   const celda = (cual: "ver" | "editar", encendido: boolean, difiere: boolean) => {
                     const etiqueta = `${r.nombre}: ${a.clave}, ${cual === "ver" ? "ver" : "editar"}`;
                     const fondo = difiere ? "rounded bg-aviso/30 px-1" : "px-1";
-                    if (fueraDeNivel) return <span title="Esta acción es de un nivel más alto que el de este rol: no se le puede dar" aria-label={`${etiqueta}: no aplica`}>🚫</span>;
+                    if (fueraDeNivel) return <span title={textoDe("rechazo.ACCION_DE_GOBIERNO")} aria-label={`${etiqueta}: no aplica`}>🚫</span>;
                     if (!editando) return <span aria-label={`${etiqueta}: ${encendido ? "sí" : "no"}`}>{marca(encendido)}</span>;
                     if (fija) return <span title="El rol administrador siempre conserva este permiso" aria-label={`${etiqueta}: fijo`}>🔒</span>;
                     return (
@@ -300,7 +301,7 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
         </table>
       </div>
       {(editando || MATRICES_AYUDAS_VISIBLES) && (<p className="text-xs text-tinta-tenue">
-        Tocar «Editar» también prende «Ver», y sacar «Ver» saca «Editar» (Ver ⊇ Editar). «gestion_permisos», «gestion_roles», «gestion_usuarios», «activar_usuario_sucursal», «notas_usuario_sucursal» y «apagar_cuenta_empresa» siempre conservan Editar para el rol administrador (🔒). Las acciones con «Piso» no se le pueden dar a un rol de un nivel más bajo (🚫): las de piso «administrador» y «administrador de sistema» (el gobierno de la empresa: usuarios, roles, permisos, sucursales y auditoría) no se le dan a un rol de nivel operario, y las de piso «gerente» las tiene solo el gerente.
+        Tocar «Editar» también prende «Ver», y sacar «Ver» saca «Editar» (Ver ⊇ Editar). «gestion_permisos», «gestion_roles», «gestion_usuarios», «activar_usuario_sucursal», «notas_usuario_sucursal» y «apagar_cuenta_empresa» siempre conservan Editar para el rol administrador (🔒). Las acciones con «Piso» no se le pueden dar a un rol de un nivel más bajo (🚫): las de piso «administrador de sistema» (el gobierno de la empresa: usuarios, roles, permisos, sucursales y auditoría) no se le dan a un rol de nivel operario, y las de piso «gerente» las tiene solo el gerente.
         {" Las claves de solo ver (los reportes) no tienen «Editar»: se muestran con un guion."}
         {editando && " Lo marcado en amarillo es lo que cambiaste."}
       </p>)}

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { Prisma } from "@prisma/client";
 import { limpiarBaseDeTest, prisma } from "../../setup/test-db";
+import { crearCategoriaDeTest } from "../../setup/categoria-de-prueba";
 import {
   obtenerFichaProducto,
   obtenerProductoOpcion,
@@ -41,7 +42,7 @@ describe("server/consultas/catalogo/productos", () => {
     sucursalB = (await prisma.sucursal.create({ data: { nombre: "Sucursal B" } })).id;
     kg = await prisma.unidad.create({ data: { nombre: "kg", magnitud: "PESO", decimales: 2 } });
     bolsa = await prisma.unidad.create({ data: { nombre: "bolsa", magnitud: "CANTIDAD", decimales: 0 } });
-    categoriaId = (await prisma.categoriaProducto.create({ data: { nombre: "Almacén" } })).id;
+    categoriaId = (await crearCategoriaDeTest(prisma, { nombre: "Almacén" })).id;
     grupoId = (await prisma.grupo.create({ data: { nombre: "Harinas" } })).id;
     insumoId = (await prisma.insumo.create({ data: { nombre: "Harina", grupoId } })).id;
     proveedorId = (await prisma.proveedor.create({ data: { codigo: "PRV_CONS01", nombre: "Molino Consignador" } })).id;

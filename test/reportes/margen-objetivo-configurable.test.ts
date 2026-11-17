@@ -12,6 +12,7 @@ import { FOOD_COST_OBJETIVO_PCT } from "../../src/core/reportes/margen-objetivo"
 import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
 import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
+import { crearCategoriaDeTest } from "../setup/categoria-de-prueba";
 /**
  * Margen objetivo configurable (Etapa 1): `guardarMargenObjetivo` fija el objetivo de la empresa o de una categoría (solo administración), y
  * `calcularCostosYMargenes` lo usa si se le pasan los objetivos cargados: categoría > empresa > 40 % por defecto.
@@ -40,8 +41,8 @@ describe("margen objetivo configurable", () => {
     adminId = admin.id;
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
 
-    categoriaPizzaId = (await prisma.categoriaProducto.create({ data: { nombre: "Pizzas" } })).id;
-    categoriaBebidaId = (await prisma.categoriaProducto.create({ data: { nombre: "Bebidas" } })).id;
+    categoriaPizzaId = (await crearCategoriaDeTest(prisma, { nombre: "Pizzas" })).id;
+    categoriaBebidaId = (await crearCategoriaDeTest(prisma, { nombre: "Bebidas" })).id;
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId: catalogo.insumo.id }, sucursalId);
     // Tres platos con el MISMO costo ($4000 sobre $10.000 = 40 %): solo cambia la categoría.
     const plato = async (codigo: string, categoriaId: string | null) => {
@@ -132,13 +133,17 @@ describe("margen objetivo configurable", () => {
       expect(await prisma.margenObjetivo.count()).toBe(0);
     });
 
-    it("ni siquiera un rol que no es de administración, aunque se le habilite la clave: el piso de nivel lo corta", async () => {
+    it("PISOS-65: un rol que no es de administración, con la fila que le da el gerente, SÍ guarda: el piso ya no la cierra, la cierra la falta de fila", async () => {
       const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId, rolId: operadorRolId });
-      await prisma.permisoRol.updateMany({ where: { rolId: operadorRolId, accionClave: "margen_objetivo_editar" }, data: { puedeVer: true, puedeEditar: true } });
+      await prisma.permisoRol.upsert({
+        where: { rolId_accionClave: { rolId: operadorRolId, accionClave: "margen_objetivo_editar" } },
+        update: { puedeVer: true, puedeEditar: true },
+        create: { rolId: operadorRolId, accionClave: "margen_objetivo_editar", puedeVer: true, puedeEditar: true },
+      });
       await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
       const r = await guardarMargenObjetivo(null, 30);
-      expect(r.ok).toBe(false);
-      expect(await prisma.margenObjetivo.count()).toBe(0);
+      expect(r.ok, r.mensaje).toBe(true);
+      expect(await prisma.margenObjetivo.count()).toBe(1);
     });
   });
 
