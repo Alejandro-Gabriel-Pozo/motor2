@@ -60,7 +60,8 @@ describe("guardián del oráculo de la jornada: ninguna dimensión sin declarar"
     for (const [tabla, declaradas] of Object.entries(COLUMNAS_SUMADAS_A_OTRAS_TABLAS)) {
       for (const columna of Object.keys(declaradas)) expect(columnasDe(tabla), `${tabla}.${columna}`).toContain(columna);
     }
-    const c1SesionCaja = ["abiertaEn", "abiertaPorId", "cajaId", "cerradaEn", "cerradaPorId", "claveIdempotencia", "empresaId", "estado", "fechaDeNegocio", "huella", "id", "observacion", "sucursalId", "zonaHoraria"];
+    // «cierreIniciadoEn» y «cierreIniciadoPorId» las sumó C1b (estado EN_CIERRE) y las declara su oráculo (`oraculo-de-estados-de-sesion.ts`); no cambian la jornada: se cuentan como ya declaradas.
+    const c1SesionCaja = ["abiertaEn", "abiertaPorId", "cajaId", "cerradaEn", "cerradaPorId", "cierreIniciadoEn", "cierreIniciadoPorId", "claveIdempotencia", "empresaId", "estado", "fechaDeNegocio", "huella", "id", "observacion", "sucursalId", "zonaHoraria"];
     // «cuentaDeCobroId» la sumó C3 y la declara su oráculo (`oraculo-de-combinaciones-del-cobro.ts`, dimensión 4); acá se cuenta como columna ya declarada.
     const c1MovimientoCaja = ["anulaAId", "claveIdempotencia", "clase", "creadoEn", "creadoPorId", "cuentaDeCobroId", "empresaId", "id", "importe", "medioDePagoId", "motivo", "sesionId", "sucursalId"];
     expect(columnasDe("SesionCaja"), "una columna nueva de SesionCaja sin declarar").toEqual([...c1SesionCaja, ...Object.keys(COLUMNAS_SUMADAS_A_OTRAS_TABLAS.SesionCaja as object)].sort());

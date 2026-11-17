@@ -11,6 +11,7 @@ import { anularMovimientoCasoDeUso } from "../../src/server/actions/caja/casos-d
 import { cancelarAuditoriaCasoDeUso } from "../../src/server/actions/caja/casos-de-uso/cancelar-auditoria";
 import { cerrarJornadaCasoDeUso } from "../../src/server/actions/caja/casos-de-uso/cerrar-jornada";
 import { cerrarSesionCasoDeUso } from "../../src/server/actions/caja/casos-de-uso/cerrar-sesion";
+import { iniciarCierreDeSesion } from "../../src/server/actions/caja/casos-de-uso/iniciar-cierre";
 import { cobrarCuentaCasoDeUso } from "../../src/server/actions/caja/casos-de-uso/cobrar-cuenta";
 import { corregirMedioDeCobroCasoDeUso } from "../../src/server/actions/caja/casos-de-uso/corregir-medio-de-cobro";
 import { darConformeGeneralCasoDeUso } from "../../src/server/actions/caja/casos-de-uso/dar-conforme-general";
@@ -49,8 +50,11 @@ async function cuentaCerrada(cantidad = 1, precio = 3000) {
 const efectivoId = async () => (await prismaAdmin.medioDePago.findFirstOrThrow({ where: { tipo: "EFECTIVO" } })).id;
 const medio = (tipo: "TARJETA_DEBITO" | "TARJETA_CREDITO" | "QR" | "TRANSFERENCIA", extra: { activo?: boolean } = {}) => prismaAdmin.medioDePago.create({ data: { id: randomUUID(), empresaId: EMPRESA, tipo, ...extra } });
 const cobrar = (cuentaId: string, renglones: { medioDePagoId: string; importeEnCentavos: bigint }[], total: number, ahora = AHORA) => cobrarCuentaCasoDeUso(actor(ahora), { claveIdempotencia: randomUUID(), cuentaId, totalVistoEnCentavos: c(total), renglones }, azarDelProceso);
-const cerrarSesion = (sesionId: string, billetes: Record<number, number> = {}, monedas = 0, ahora = AHORA) =>
-  cerrarSesionCasoDeUso(actor(ahora), { sesionId, conteo: { billetes: billetes as never, monedasEnCentavos: c(monedas) }, conformeDeLosDemasMedios: true, observacion: null }, azarDelProceso);
+// C1b: la sesión se cierra desde EN_CIERRE; iniciar el cierre es idempotente (con la sesión ya en cierre o cerrada no cambia nada).
+const cerrarSesion = async (sesionId: string, billetes: Record<number, number> = {}, monedas = 0, ahora = AHORA) => {
+  await iniciarCierreDeSesion(actor(ahora), { sesionId });
+  return cerrarSesionCasoDeUso(actor(ahora), { sesionId, conteo: { billetes: billetes as never, monedasEnCentavos: c(monedas) }, conformeDeLosDemasMedios: true, observacion: null }, azarDelProceso);
+};
 
 const iniciar = (fecha = D) => iniciarAuditoriaCasoDeUso(actor(), { fechaDeNegocio: fecha });
 const cancelar = (fecha = D) => cancelarAuditoriaCasoDeUso(actor(), { fechaDeNegocio: fecha });
@@ -679,6 +683,7 @@ describe("idempotencia y concurrencia (carreras de verdad)", () => {
       await entrarComo(s.admin);
       const a = await abrir(0);
       if (!a.ok) throw new Error("no abrió");
+      expect((await iniciarCierreDeSesion(actor(), { sesionId: a.datos.sesionId })).ok).toBe(true); // C1b: se cierra desde EN_CIERRE
       await Promise.allSettled([iniciarAuditoriaCasoDeUso(actor(), { fechaDeNegocio: D }), cerrarSesionCasoDeUso(actor(), { sesionId: a.datos.sesionId, conteo: { billetes: {}, monedasEnCentavos: c(0) }, conformeDeLosDemasMedios: false, observacion: null }, azarDelProceso)]);
       const j = await jornadaDe();
       const sesion = await prismaAdmin.sesionCaja.findUniqueOrThrow({ where: { id: a.datos.sesionId } });

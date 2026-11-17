@@ -22,7 +22,7 @@ export type { DatoDelCobro, DatosQuePideElMedio, TipoDeCuenta, TipoDeMedio } fro
 export { MAXIMO_DE_RENGLONES_DE_COBRO, repartirCobro } from "./cobro";
 export type { RenglonDeCobro } from "./cobro";
 export { TOPE_EN_CENTAVOS, centavosDeImporte, centavosDeTexto, importeDeCentavos, textoDeCentavos } from "./dinero-de-caja";
-export { CLASES_DE_MOVIMIENTO, importeValidoParaClase, signoDeClase } from "./sesion";
+export { CLASES_DE_MOVIMIENTO, decidirCancelarCierre, decidirCerrar, decidirIniciarCierre, decidirMovimiento, estadoDeSesion, importeValidoParaClase, signoDeClase } from "./sesion";
 export type { ClaseDeMovimiento } from "./sesion";
 // Etapa C2 (docs/diseno-caja-c2-jornada-y-cierre-del-dia-2026-11-16.md): la jornada, el cierre del día, la fecha de negocio con hora de corte y los controles.
 export { explicacionDesdeTexto } from "./explicacion";
