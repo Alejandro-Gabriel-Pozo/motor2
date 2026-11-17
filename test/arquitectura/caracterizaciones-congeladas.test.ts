@@ -849,6 +849,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "M2 de la merma sobre el bruto (migración 20261117140000_base_de_cantidad_en_versiones; ADITIVA, nada la lee todavía; regenerado con REGENERAR_CARACTERIZACION_TRAMO_A=1): la lectura `catalogo.obtenerEstadoDeRecetaPropia` devuelve la fila de RecetaVersion entera y suma `baseDeCantidad: \"NETA\"` (el valor por defecto de todo lo ya cargado). Ninguna otra lectura ni conteo de consultas cambia.",
       },
+      {
+        blob: "fc93e82e75d4eee578cfb782b44a641433318a32",
+        // El commit PADRE de este es f7fa3bf6 (el libro de la carta integrado con main, justo antes de regenerar este golden).
+        commit: "f7fa3bf6",
+        motivo:
+          "Libro de la carta al estilo de la maqueta de Pedernal (Frente 6, PR #391; SOLO PRESENTACIÓN, interruptor LIBRO_ESTILO_MAQUETA; regenerado con REGENERAR_CARACTERIZACION_TRAMO_A=1): cambian SOLO las líneas del tema de la carta pública que la sucursal no cargó (`carta.resolverEmpresaCarta`, `carta.resolverCartaPublica` central y norte): fondo y marca por defecto de la maqueta, tipografía geist, tamaños de letra de nombre, precio y títulos, rótulo «← Portal» del botón de volver, y las variables CSS que de ahí salen. Dueño, 2026-11-16: «Sí, igualar al de la maqueta»; 2026-11-17: «Portal con una flechita…», «si» (letra), «blanco y negrita». Ningún dato guardado, permiso ni dinero cambia.",
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {
@@ -1402,6 +1409,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "8e336b9f",
         motivo:
           "Frente 6, paso 4: pantallas candidatas a baja ocultas sin borrar (cambio de texto de ADMINISTRACIÓN, no de la carta pública; dueño, 2026-11-16: «Sí, ocultarlas sin borrar (Recomendada)»; interruptor `CANDIDATAS_A_BAJA_VISIBLES`; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). En las pantallas de «Carta › Parametrización» y de la ficha de contenido de la carta (a 1280 y a 375 px) salen cuatro líneas: dos veces «[enlace: Ítems agrupados]» y dos veces «[enlace: Géneros (carpetas del selector del POS) ›]». 4 líneas quitadas, ninguna agregada, todas de esas pantallas (revisado con git diff); la carta pública y el resto quedan idénticos.",
+      },
+      {
+        blob: "3fb599d69709bc2762339823ab836ad1bba3effc",
+        // El commit PADRE de este es f4770a5a (el libro con los tests ajustados, integrado con main a continuación; el blob es el del golden ya con la unión de los cambios del paso 4 y del libro).
+        commit: "f4770a5a",
+        motivo:
+          "Libro de la carta al estilo de la maqueta de Pedernal (Frente 6, PR #391; SOLO PRESENTACIÓN, interruptor LIBRO_ESTILO_MAQUETA; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1): cambian SOLO líneas de presentación de la carta pública sin tema cargado: el rótulo «← PORTAL» del botón de volver, el tamaño de nombre y precio (19 px → 21,6 px) y de los títulos del índice y de la banda, el peso 700 del precio del renglón, la tinta base (`--carta-ink`) y los colores de las líneas. Dueño, 2026-11-17: «Portal con una flechita…», «si» (letra), «blanco y negrita». Ningún texto de producto, precio ni dato cambia.",
       },
     ],
   },
