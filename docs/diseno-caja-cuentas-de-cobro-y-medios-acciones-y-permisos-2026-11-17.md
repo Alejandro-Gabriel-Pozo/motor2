@@ -110,3 +110,7 @@ El dueño delegó estas tres preguntas en Pedernal («Preguntale a Pedernal, seg
 **Cómo se construye:** (1) las 3 lecturas de administración, ya, sin permiso nuevo; (2) las 8 acciones finas con sus 8 claves, apiladas sobre #429, en UNA sola migración de permisos (aditiva, con `down.sql` y `verificacion-previa.sql`, sin aplicar a ninguna base real), sin tocar ningún piso existente y sobre el lote A (PISOS-65).
 
 **Estado:** DISEÑO confirmado; la construcción va en PR aparte.
+
+## 11. Estado de la construcción (2026-11-17)
+
+Construidas: las 8 acciones, las 8 claves y las DOS lecturas `leerCuentasDeCobroDeAdministracion` y `leerMediosDeCobroDeAdministracion`. **NO construida, paso aparte con nombre:** `leerMarcasDeTarjeta` (lista global sin empresa, bajo `caja_ver`): su control positivo de la matriz de denegación no puede llevar el marcador propio y exige subir el techo `SIN_MARCA_PROPIA` (38 a 39); el techo es del dueño y requiere que lo autorice.
