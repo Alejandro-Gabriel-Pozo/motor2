@@ -36,10 +36,10 @@ for (const ancho of [375, 1366]) {
       await expect(page.getByRole("heading", { name: "Identidad de la carta", level: 1 })).toBeVisible();
       const pantalla = page.locator("[data-tema-simple]");
       await expect(pantalla).toBeVisible();
-      // Solo los siete campos: ni tipografía, ni rubro, lema, descripción o portada.
-      await expect(pantalla.locator("input[name]:not([type=radio])")).toHaveCount(6);
+      // Solo los diez campos (el color de marca por paleta, más 9 de texto): rubro, lugar y foto de portada incluidos; ni tipografía, ni lema, ni descripción.
+      await expect(pantalla.locator("input[name]:not([type=radio])")).toHaveCount(9);
       await expect(page.getByText("Tipografía")).toHaveCount(0);
-      await expect(page.getByText("Subtítulo")).toHaveCount(0);
+      await expect(page.getByText("Descripción")).toHaveCount(0);
 
       const azul = pantalla.getByLabel("Azul");
       await esperarHidratado(azul);
@@ -52,6 +52,9 @@ for (const ancho of [375, 1366]) {
 
       await pantalla.getByLabel("Nombre").fill("Hotel de prueba");
       await pantalla.getByLabel("Instagram").fill("hoteldeprueba");
+      await pantalla.getByLabel("Rubro").fill("Hotel y spa");
+      await pantalla.getByLabel("Lugar").fill("Huinganco, Neuquén");
+      await pantalla.getByLabel("Foto de portada").fill("https://cdn.example.com/portada.jpg");
       // «Otro color» mal escrito: el campo lo marca.
       await pantalla.getByLabel("Otro color").check();
       await pantalla.getByLabel("Color principal (por ejemplo #0e7490)").fill("azul");
@@ -69,12 +72,15 @@ for (const ancho of [375, 1366]) {
       await expect(page.getByRole("status").filter({ hasText: "guardado" })).toBeVisible();
 
       const fila = await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId } });
-      expect(fila.valores).toEqual({ hero_ink: "claro", carta_texto_portada_cta: "Ver la carta", color_marca: "#1f4e79", marca_derivada: "oscura", restaurante_nombre: "Hotel de prueba", restaurante_instagram: "hoteldeprueba" });
+      expect(fila.valores).toEqual({ hero_ink: "claro", carta_texto_portada_cta: "Ver la carta", color_marca: "#1f4e79", marca_derivada: "oscura", restaurante_nombre: "Hotel de prueba", restaurante_instagram: "hoteldeprueba", hero_etiqueta_superior: "Hotel y spa", restaurante_subtitulo: "Huinganco, Neuquén", hero_imagen_fondo_url: "https://cdn.example.com/portada.jpg" });
       expect(fila.aplicarEnCarta).toBe(true);
 
       await page.reload();
       await expect(page.getByLabel("Azul")).toBeChecked();
       await expect(page.getByLabel("Nombre")).toHaveValue("Hotel de prueba");
+      await expect(page.getByLabel("Rubro")).toHaveValue("Hotel y spa");
+      await expect(page.getByLabel("Lugar")).toHaveValue("Huinganco, Neuquén");
+      await expect(page.getByLabel("Foto de portada")).toHaveValue("https://cdn.example.com/portada.jpg");
       expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     } finally {
       await prisma.temaCartaSucursal.deleteMany({ where: { sucursalId } });

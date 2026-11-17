@@ -108,6 +108,32 @@ describe("guardado simple del tema de la carta", () => {
     });
   });
 
+  describe("rubro, lugar y foto de portada", () => {
+    const PORTADA = { hero_etiqueta_superior: "Hotel y spa", restaurante_subtitulo: "Huinganco, Neuquén", hero_imagen_fondo_url: "https://cdn.example.com/portada.jpg" };
+
+    it("se guardan tal cual, sin tocar lo demás; guardarlos de nuevo no versiona; vaciar uno lo saca", async () => {
+      await prisma.temaCartaSucursal.create({ data: { sucursalId: centralId, valores: { hero_ink: "claro" }, aplicarEnCarta: true } });
+      expect((await guardar({ ...PORTADA })).ok).toBe(true);
+      expect(await guardado()).toMatchObject({ hero_ink: "claro", ...PORTADA });
+      const version = await versionVigente();
+      expect((await guardar({ ...PORTADA }, version)).ok).toBe(true);
+      expect(await versionVigente()).toBe(version);
+      await guardar({ ...PORTADA, restaurante_subtitulo: "" });
+      const v = (await guardado()) as Record<string, unknown>;
+      expect(v.restaurante_subtitulo).toBeUndefined();
+      expect(v.hero_etiqueta_superior).toBe("Hotel y spa");
+      expect(v.hero_ink).toBe("claro");
+    });
+
+    it("dos guardados a la vez de la foto con la misma versión: gana uno y la fila queda con una sola foto", async () => {
+      await prisma.temaCartaSucursal.create({ data: { sucursalId: centralId, valores: {}, aplicarEnCarta: true } });
+      const version = await versionVigente();
+      const rs = await Promise.all([guardar({ hero_imagen_fondo_url: "https://a.example.com/1.jpg" }, version), guardar({ hero_imagen_fondo_url: "https://a.example.com/2.jpg" }, version)]);
+      expect(rs.filter((r) => r.ok)).toHaveLength(1);
+      expect(["https://a.example.com/1.jpg", "https://a.example.com/2.jpg"]).toContain(((await guardado()) as Record<string, unknown>).hero_imagen_fondo_url);
+    });
+  });
+
   describe("mezcla: lo cargado manda", () => {
     it("con 58+ claves ya cargadas, guardar un color nuevo cambia solo las claves de la pantalla simple: lo demás queda idéntico y `aplicarEnCarta` también", async () => {
       const previo = { ...TODO_LO_AJENO_CARGADO, clave_vieja: "que el catálogo ya no conoce", color_item_precio: "no es un color;", color_marca: "#17562f", restaurante_nombre: "Viejo", marca_derivada: "si" };
@@ -280,6 +306,10 @@ describe("guardado simple del tema de la carta", () => {
       ["restaurante_footer_maps_url", "javascript:alert(1)"],
       ["restaurante_logo_url", "http://x.com/logo.png"],
       ["restaurante_nombre", "x".repeat(121)],
+      ["hero_etiqueta_superior", "x".repeat(121)],
+      ["restaurante_subtitulo", "con\nsalto"],
+      ["hero_imagen_fondo_url", "http://x.com/portada.jpg"],
+      ["hero_imagen_fondo_url", "javascript:alert(1)"],
     ])("%s = %j", async (clave, valor) => {
       await guardar({ color_marca: "#1f4e79" });
       const antes = await fila();
