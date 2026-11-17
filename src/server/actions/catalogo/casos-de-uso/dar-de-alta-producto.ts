@@ -1,4 +1,5 @@
 import "server-only";
+import { restriccionDeClaveForanea } from "@/core/datos/errores-de-base";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { guardAlicuotaIvaDelProducto, MENSAJE_SIN_PERMISO_ALICUOTA_IVA, MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES } from "@/core/features/catalogo/productos.guard";
@@ -137,7 +138,8 @@ export async function darDeAltaProductoCasoDeUso(
       { id: producto.id, nombre: producto.nombre },
     );
   } catch (e) {
-    if (esErrorDeUnicidad(e)) return fracaso("CODIGO_REPETIDO", "Ya existe un producto con ese código.");
+    // El índice único del NOMBRE (sin distinguir mayúsculas) también rechaza el nombre de un producto que todavía no está disponible (un producto de venta nace sin precio y no disponible): ese choque es de nombre, no de código.
+    if (esErrorDeUnicidad(e)) return /Producto_nombre_lower_key/.test(`${restriccionDeClaveForanea(e)} ${JSON.stringify((e as { meta?: unknown }).meta ?? "")}`) ? fracaso("YA_EXISTE", "Ya existe un producto con ese nombre.") : fracaso("CODIGO_REPETIDO", "Ya existe un producto con ese código.");
     // O.175: un id de OTRA empresa (o inexistente) en la categoría, el insumo, las unidades o el proveedor lo rechaza la clave foránea compuesta de la base: se traduce a «No se encontró …». Sin transacción acá, el INSERT fallido no aborta nada.
     const rechazo = rechazoDeReferenciaDeProducto(e);
     if (rechazo) return fracaso("REFERENCIA_NO_ENCONTRADA", rechazo);

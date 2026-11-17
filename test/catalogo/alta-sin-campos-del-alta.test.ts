@@ -57,3 +57,26 @@ describe("alta sin categoría, insumo, unidad de compra, factor, paso de venta n
     expect({ categoriaId: despues.categoriaId, insumoId: despues.insumoId, unidadCompraId: despues.unidadCompraId, factor: Number(despues.factorConversion) }).toEqual({ categoriaId, insumoId, unidadCompraId: gId, factor: 25 });
   });
 });
+
+/**
+ * El nombre repetido de un producto de venta que todavía NO está disponible (nace sin precio y no disponible, A1): el chequeo previo mira solo lo disponible, así que lo rechaza el índice único del nombre.
+ * Ese choque tiene que decir «nombre», no «código» (maqueta de Pedernal, estado «Nombre repetido»: «Ya existe un producto con ese nombre»).
+ */
+describe("alta: nombre repetido de un producto que todavía no está disponible", () => {
+  beforeEach(async () => {
+    await limpiarBaseDeTest();
+    const base = await sembrarBase();
+    await sembrarCatalogoBase();
+    const admin = await crearUsuarioConMembresia({ email: "admin2@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+    await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
+  });
+
+  it("el segundo alta del mismo nombre (aunque cambie la mayúscula) se rechaza diciendo «nombre» y no crea otro", async () => {
+    const unidadId = (await prismaAdmin.unidad.findFirstOrThrow()).id;
+    const pedido = (nombre: string) => ({ nombre, tipo: "PV", unidadStockId: unidadId, factorConversion: 1, precioVenta: 0 }) as Parameters<typeof darDeAltaProducto>[0];
+    expect((await darDeAltaProducto(pedido("Medialuna"))).ok).toBe(true);
+    const r = await darDeAltaProducto(pedido("medialuna"));
+    expect(r).toEqual({ ok: false, mensaje: "Ya existe un producto con ese nombre." });
+    expect(await prismaAdmin.producto.count({ where: { nombre: { in: ["Medialuna", "medialuna"] } } })).toBe(1);
+  });
+});
