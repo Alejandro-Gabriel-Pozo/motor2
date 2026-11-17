@@ -40,7 +40,7 @@ const comunes = {
   presentacionesIniciales: [],
 };
 const harina: ProductoExistente = { id: "p1", codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: "u-kg", unidadCompraId: "u-kg", factorConversion: 1, precioVenta: 0, observaciones: null };
-const dibujar = (Form: typeof ProductoForm, existente?: ProductoExistente) => renderToStaticMarkup(<Form {...comunes} productoExistente={existente} />);
+const dibujar = (Form: typeof ProductoForm, existente?: ProductoExistente) => renderToStaticMarkup(<Form {...comunes} altaComoPedernal={false} productoExistente={existente} />);
 
 const AYUDAS = [
   "El tipo no se puede cambiar una vez creado el producto",

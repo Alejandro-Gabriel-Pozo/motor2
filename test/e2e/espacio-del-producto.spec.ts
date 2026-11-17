@@ -328,7 +328,7 @@ for (const { ancho, alto } of [
     // 1) El alta: desde la lista de productos.
     await page.goto("/catalogo/productos");
     await page.getByRole("link", { name: "+ Nuevo producto" }).click();
-    await page.getByRole("radio", { name: "Producto de venta (PV)" }).check();
+    await page.getByLabel("¿Qué es?").selectOption({ label: "Producto vendible" });
     await page.locator('input[name="nombre"]').fill(nombre);
     await page.getByLabel("Unidad de stock").selectOption({ label: "unidad" });
     await page.getByRole("textbox", { name: "Precio de venta" }).fill("18000");
