@@ -82,7 +82,7 @@ export interface DestinoDeRenglon {
   cambiado: boolean;
 }
 
-export type DecisionDeDestinos = { ok: true; destinos: DestinoDeRenglon[] } | { ok: false; codigo: CodigoDeBloqueoDeDestino; mensaje: string };
+type DecisionDeDestinos = { ok: true; destinos: DestinoDeRenglon[] } | { ok: false; codigo: CodigoDeBloqueoDeDestino; mensaje: string };
 
 /**
  * El destino de cada renglón al confirmar: primero el bloqueo (si falta un depósito de uso especial, nada entra) y, si no, la sección propuesta de cada línea (la primera activa por nombre del uso que pide su control) contra la elegida por quien confirma

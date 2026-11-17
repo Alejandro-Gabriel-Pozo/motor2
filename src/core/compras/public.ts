@@ -30,7 +30,7 @@ export {
   seccionPropuestaParaUso,
   usoPropuestoPorElControl,
 } from "./destino-de-recepcion";
-export type { CodigoDeBloqueoDeDestino, DecisionDeDestinos, DestinoDeRenglon, LineaParaElDestino, SeccionParaElDestino, UsoDeSeccion } from "./destino-de-recepcion";
+export type { CodigoDeBloqueoDeDestino, DestinoDeRenglon, LineaParaElDestino, SeccionParaElDestino, UsoDeSeccion } from "./destino-de-recepcion";
 export { decidirAnulacionDeFactura, decidirCorreccionDeDatos } from "./reglas-de-la-factura";
 export {
   CONDICIONES_DE_CONTROL,

@@ -18,10 +18,10 @@ export { productoCartesiano };
 export type FilaDeDestino = { M: string; K: string; U: string; X: string };
 
 /** Los valores de la dimensión K como llegan a la regla (`null` = sin control). */
-export const CONDICION_DE_LA_FILA: Record<string, CondicionDeControl | null> = { SIN_CONTROL: null, CONFORME: "CONFORME", CON_OBSERVACIONES: "CON_OBSERVACIONES", RECHAZADA: "RECHAZADA" };
+const CONDICION_DE_LA_FILA: Record<string, CondicionDeControl | null> = { SIN_CONTROL: null, CONFORME: "CONFORME", CON_OBSERVACIONES: "CON_OBSERVACIONES", RECHAZADA: "RECHAZADA" };
 
 /** Cuántos depósitos activos de cada uso especial tiene la sucursal según la dimensión U. */
-export const CANTIDAD_DE_ESPECIALES: Record<string, number> = { NINGUNA: 0, UNA: 1, VARIAS: 2 };
+const CANTIDAD_DE_ESPECIALES: Record<string, number> = { NINGUNA: 0, UNA: 1, VARIAS: 2 };
 
 /** Los nombres ordenan como el oráculo dice: «la primera por nombre» de cada uso es la «1» (y los normales, «A» antes que «B»). */
 export interface MundoDeLaFila {
