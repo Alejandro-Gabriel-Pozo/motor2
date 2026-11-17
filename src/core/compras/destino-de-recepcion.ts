@@ -74,7 +74,7 @@ export interface LineaParaElDestino {
 }
 
 /** Lo que queda en la auditoría por renglón: la sección propuesta por el control (`null` si la sucursal no tiene una activa de ese uso), la elegida y si se la cambió. */
-export interface DestinoDeRenglon {
+interface DestinoDeRenglon {
   renglonId: string;
   seccionPropuestaId: string | null;
   seccionElegidaId: string;
