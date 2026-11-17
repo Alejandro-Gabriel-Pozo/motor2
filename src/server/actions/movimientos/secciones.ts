@@ -58,10 +58,13 @@ export async function listarSeccionesParaPanel(sucursalId: string) {
   return ctx.db.seccion.findMany({ where: { sucursalId }, orderBy: { nombre: "asc" } });
 }
 
-/** Alta de una sección nueva. Admin-only ('secciones'): define el catálogo cerrado que van a usar todos los operadores de esa sucursal. */
-export async function crearSeccion(nombre: string): Promise<ResultadoConId> {
+/**
+ * Alta de una sección nueva. Admin-only ('secciones'): define el catálogo cerrado que van a usar todos los operadores de esa sucursal. Con su `uso` (normal por defecto, cuarentena o rechazo; solo se elige acá, no se edita). El piso de `secciones` es el nivel «administrador»
+ * (administrador y gerente): lo mismo que Pedernal (gerente y administrador configuran el uso de un depósito).
+ */
+export async function crearSeccion(nombre: string, uso?: string): Promise<ResultadoConId> {
   return conPermiso<ResultadoConId>("secciones", async (ctx) => {
-    const comando = guardComandoCrearSeccion({ nombre });
+    const comando = guardComandoCrearSeccion({ nombre, uso });
     if (!comando.ok) return error(comando.mensaje);
     const r = await crearSeccionCasoDeUso(ctx, comando.valor);
     // Se llama desde un closure "use server" de la página, sin redirigir: sin esto la tabla no cambia en un navegador real (ver refrescar.ts).

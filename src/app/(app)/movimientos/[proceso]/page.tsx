@@ -92,7 +92,7 @@ export default async function MovimientoPage({
     <div className="flex max-w-4xl flex-col gap-4">
       <h1 className="text-xl font-semibold">{delSelector ? `Registrar movimiento · ${delSelector.etiquetaCorta}` : config.titulo}</h1>
       {delSelector && <FilaDeMovimientos ctx={ctx} actual={delSelector.href} />}
-      {esCompra && <PorRecibir ctx={ctx} secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))} />}
+      {esCompra && <PorRecibir ctx={ctx} secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre, uso: s.uso }))} />}
       {esCompra && (
         <BandejaParaAceptar
           secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}

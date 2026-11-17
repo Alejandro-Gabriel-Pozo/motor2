@@ -17,6 +17,20 @@ export {
   normalizarCorreccion,
   validarCorreccion,
 } from "./correccion";
+export {
+  ETIQUETA_DE_USO_DE_SECCION,
+  MENSAJE_SIN_DEPOSITO_DE_CUARENTENA,
+  MENSAJE_SIN_DEPOSITO_DE_RECHAZO,
+  USOS_DE_SECCION,
+  USO_PROPUESTO_POR_CONTROL,
+  bloqueoPorFaltaDeDeposito,
+  decidirDestinosDeRecepcion,
+  esUsoDeSeccion,
+  ordenarSeccionesPorNombre,
+  seccionPropuestaParaUso,
+  usoPropuestoPorElControl,
+} from "./destino-de-recepcion";
+export type { CodigoDeBloqueoDeDestino, DecisionDeDestinos, DestinoDeRenglon, LineaParaElDestino, SeccionParaElDestino, UsoDeSeccion } from "./destino-de-recepcion";
 export { decidirAnulacionDeFactura, decidirCorreccionDeDatos } from "./reglas-de-la-factura";
 export {
   CONDICIONES_DE_CONTROL,

@@ -1271,6 +1271,10 @@ model Seccion {
   /// hoy no se excluye ninguna, pero queda la herramienta). No afecta a la sección HABITUAL de un producto (la preferencia
   /// explícita manda) ni a la venta de mostrador (ahí la sección la elige una persona). Ver docs/plan-seccion-habitual-stock-2026-09-25.md.
   sirveDeRespaldoEnVentas Boolean  @default(true)
+  /// Uso del depósito (Compras, depósitos de RECHAZO y CUARENTENA, etapa (i); docs/diseno-compras-cuarentena-y-rechazo-2026-11-17.md): NORMAL | CUARENTENA | RECHAZO (CHECK `Seccion_uso_chk`). Se elige al CREAR y no cambia
+  /// (disparador `Seccion_uso_inmutable_chk`). Sin unicidad por sucursal: puede haber varias de un mismo uso. En esta etapa decide a qué sección se PROPONE cada línea al confirmar una recepción; excluirlas de lo
+  /// disponible es la etapa (ii).
+  uso                     String   @default("NORMAL")
 
   operacionesTransferenciaDestino Operacion[]               @relation("OperacionSeccionDestino")
   movimientos                     MovimientoStock[]

@@ -10,7 +10,16 @@ import { Campo } from "@/ui/primitivas/campo";
 import { Selector } from "@/ui/primitivas/selector";
 import { CampoFecha } from "@/ui/componentes/selectores/campo-fecha";
 import { formatearCantidad } from "@/core/formato-de-numero";
-import { ETIQUETA_DE_CONDICION_DE_CONTROL, LARGO_MAXIMO_DE_LA_OBSERVACION, type CondicionDeControl } from "@/core/compras/public";
+import {
+  ETIQUETA_DE_CONDICION_DE_CONTROL,
+  LARGO_MAXIMO_DE_LA_OBSERVACION,
+  bloqueoPorFaltaDeDeposito,
+  ordenarSeccionesPorNombre,
+  seccionPropuestaParaUso,
+  usoPropuestoPorElControl,
+  type CondicionDeControl,
+  type UsoDeSeccion,
+} from "@/core/compras/public";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 
 /**
@@ -132,7 +141,9 @@ export interface CompraPorRecibirVista {
   renglones: RenglonPorRecibirVista[];
 }
 
-type Seccion = { id: string; nombre: string };
+/** Una sección ACTIVA de la sucursal con su uso (la lista de la pantalla trae solo las activas). */
+type Seccion = { id: string; nombre: string; uso: UsoDeSeccion };
+const comoActivas = (secciones: readonly Seccion[]) => secciones.map((s) => ({ ...s, activa: true }));
 type ControlEditable = { condicion: string; observacion: string; cantidadSegunRemito: string };
 
 const OPCIONES_DE_CONTROL = [
@@ -153,10 +164,18 @@ function textoDelControl(c: NonNullable<RenglonPorRecibirVista["control"]>): str
   return `${etiqueta}${c.observacion ? `: ${c.observacion}` : ""}${c.cantidadSegunRemito !== null ? ` · según remito: ${textoDeCantidad(c.cantidadSegunRemito)}` : ""}`;
 }
 
+/** El control GUARDADO de un renglón como condición (`null` = «no se constató»): es el que usa el servidor para proponer el destino; lo que se está tipeando y todavía no se guardó no cuenta. */
+const condicionGuardada = (r: RenglonPorRecibirVista): CondicionDeControl | null =>
+  r.control && r.control.condicion in ETIQUETA_DE_CONDICION_DE_CONTROL ? (r.control.condicion as CondicionDeControl) : null;
+
 function TarjetaDeCompraPorRecibir({ compra, secciones, puedeControlar, puedeConfirmar }: { compra: CompraPorRecibirVista; secciones: Seccion[]; puedeControlar: boolean; puedeConfirmar: boolean }) {
   const router = useRouter();
-  const primeraSeccion = secciones[0]?.id ?? "";
-  const [destinos, setDestinos] = useState<Record<string, string>>(() => Object.fromEntries(compra.renglones.map((r) => [r.renglonId, primeraSeccion])));
+  const primeraSeccion = ordenarSeccionesPorNombre(secciones)[0]?.id ?? "";
+  // Solo lo que la persona cambió a mano: lo demás sigue a la sección propuesta por el control (que cambia al guardar un control nuevo).
+  const [elegidos, setElegidos] = useState<Record<string, string>>({});
+  const propuestaDe = (r: RenglonPorRecibirVista): string | null => seccionPropuestaParaUso(usoPropuestoPorElControl(condicionGuardada(r)), comoActivas(secciones))?.id ?? null;
+  const destinoDe = (r: RenglonPorRecibirVista): string => elegidos[r.renglonId] ?? propuestaDe(r) ?? primeraSeccion;
+  const bloqueo = bloqueoPorFaltaDeDeposito(compra.renglones.map(condicionGuardada), comoActivas(secciones));
   const [controles, setControles] = useState<Record<string, ControlEditable>>({});
   const [mensaje, setMensaje] = useState<{ variante: "exito" | "error" | "informacion"; texto: string } | null>(null);
   const [pending, startTransition] = useTransition();
@@ -164,7 +183,7 @@ function TarjetaDeCompraPorRecibir({ compra, secciones, puedeControlar, puedeCon
   const cambiarControl = (renglonId: string, cambio: Partial<ControlEditable>) =>
     setControles((c) => ({ ...c, [renglonId]: { ...(c[renglonId] ?? { condicion: "", observacion: "", cantidadSegunRemito: "" }), ...cambio } }));
 
-  const entradasParaEnviar = compra.renglones.map((r) => ({ renglonId: r.renglonId, seccionId: destinos[r.renglonId] ?? "" }));
+  const entradasParaEnviar = compra.renglones.map((r) => ({ renglonId: r.renglonId, seccionId: destinoDe(r) }));
   const controlesParaGuardar = compra.renglones
     .filter((r) => r.control === null && (controles[r.renglonId]?.condicion ?? "") !== "")
     .map((r) => {
@@ -249,14 +268,24 @@ function TarjetaDeCompraPorRecibir({ compra, secciones, puedeControlar, puedeCon
                 </div>
               )}
               {puedeConfirmar && (
-                <div className="w-52">
-                  <Selector etiqueta="Depósito" tamano="compacto" value={destinos[r.renglonId] ?? ""} onChange={(e) => setDestinos((d) => ({ ...d, [r.renglonId]: e.target.value }))}>
-                    {secciones.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.nombre}
-                      </option>
-                    ))}
-                  </Selector>
+                <div className="flex flex-wrap items-end gap-2">
+                  <div className="w-52">
+                    <Selector etiqueta="Depósito" tamano="compacto" value={destinoDe(r)} onChange={(e) => setElegidos((d) => ({ ...d, [r.renglonId]: e.target.value }))}>
+                      {secciones.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.nombre}
+                        </option>
+                      ))}
+                    </Selector>
+                  </div>
+                  <p className="pb-2 text-xs text-tinta-tenue" data-testid="destino-propuesto">
+                    {propuestaDe(r) ? `Propuesto por el control: ${secciones.find((s) => s.id === propuestaDe(r))?.nombre ?? ""}` : ""}
+                    {destinoDe(r) !== propuestaDe(r) && (
+                      <strong data-testid="destino-cambiado">
+                        {propuestaDe(r) ? " · " : ""}cambiado
+                      </strong>
+                    )}
+                  </p>
                 </div>
               )}
             </li>
@@ -272,10 +301,15 @@ function TarjetaDeCompraPorRecibir({ compra, secciones, puedeControlar, puedeCon
       )}
       {puedeConfirmar && (
         <div>
-          <Boton tamano="compacto" onClick={confirmar} disabled={pending || entradasParaEnviar.some((e) => !e.seccionId)}>
+          <Boton tamano="compacto" onClick={confirmar} disabled={pending || bloqueo !== null || entradasParaEnviar.some((e) => !e.seccionId)}>
             {pending ? "Confirmando..." : "Confirmar recepción"}
           </Boton>
         </div>
+      )}
+      {puedeConfirmar && bloqueo && (
+        <Aviso variante="error" forma="en-linea" data-testid="bloqueo-por-falta-de-deposito">
+          {bloqueo.mensaje}
+        </Aviso>
       )}
       {mensaje && (
         <Aviso variante={mensaje.variante} forma="en-linea">
@@ -306,7 +340,7 @@ export function BandejaPorRecibir({
       <p className="text-xs text-tinta-tenue">
         Compras cargadas que todavía no entraron al stock.
         {puedeControlar ? " Controlá cómo llegó cada línea y guardá el control." : ""}
-        {puedeConfirmar ? " Confirmá la recepción cuando llegue la mercadería: ahí entra al depósito que elijas." : ""}
+        {puedeConfirmar ? " Confirmá la recepción cuando llegue la mercadería: ahí entra al depósito que elijas (el control propone uno: la mercadería rechazada va al depósito de rechazo y la que tiene observaciones, al de cuarentena)." : ""}
       </p>
       <ul className="flex flex-col gap-2">
         {compras.map((c) => (
