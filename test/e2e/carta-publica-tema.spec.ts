@@ -99,7 +99,7 @@ test.describe("carta pública: colores del tema (claves de color, C8 y tinta bas
         await page.setViewportSize(vp);
         await page.goto(carta.ruta);
         const portada = page.locator(".carta-pagina").first();
-        expect(await color(portada)).toBe("rgb(255, 255, 255)");
+        expect(await color(portada)).toBe("oklch(0.96 0.005 80)"); // la tinta base de un fondo oscuro (con el libro la portada sin fondo propio toma la tinta de la carta)
         expect(await color(portada.getByText("Deslizá"))).toBe("rgb(224, 224, 224)");
         expect(await portada.getByText("Deslizá").evaluate((n) => getComputedStyle(n).opacity)).toBe("1");
         // La raíz pinta el fondo del tema (antes quedaba el blanco de `.carta-shell`).
@@ -168,10 +168,10 @@ test.describe("carta pública: colores del tema (claves de color, C8 y tinta bas
       await page.goto(carta.ruta);
       await page.getByRole("button", { name: "Página siguiente" }).click();
       const numero = page.locator("[data-carta-indice-lista] li").first().locator("span").first();
-      expect(await color(numero)).toBe("rgb(146, 64, 14)"); // --carta-primary por defecto
+      expect(await color(numero)).toBe("rgb(124, 137, 98)"); // --carta-primary-texto: la marca verde de la maqueta (libro), acercada a la tinta para leerse
       await page.locator("[data-ir-a]").first().click();
       await expect(page.locator("[data-carta-banda] p").first()).toHaveText("01 / 03");
-      expect(await page.locator("[data-carta-libro]").evaluate((n) => getComputedStyle(n).backgroundColor)).toBe("rgb(255, 255, 255)");
+      expect(await page.locator("[data-carta-libro]").evaluate((n) => getComputedStyle(n).backgroundColor)).toBe("rgb(25, 25, 26)"); // #19191a, el fondo oscuro de la maqueta (libro)
       expect(await color(page.getByText(`E2E Promo 1 ${carta.marca}`))).toBe("rgb(28, 27, 25)");
     } finally {
       await carta.limpiar();
@@ -560,10 +560,10 @@ test.describe("carta pública: familia tipográfica (carta_fuente_familia)", () 
     }
   }
 
-  test("por defecto: Playfair en títulos, nombres y precios; sans en los textos chicos", async ({ page, sucursalId }) => {
+  test("por defecto (libro al estilo de la maqueta): Geist en títulos, nombres y precios y en los textos chicos", async ({ page, sucursalId }) => {
     const carta = await crearCarta(sucursalId, { secciones: 3, valores: TEXTOS });
     try {
-      await verificar(page, carta, /Playfair/);
+      await verificar(page, carta, /Geist/); // sin `carta_fuente_familia` cargada, el libro toma la sans de la maqueta (`LIBRO_ESTILO_MAQUETA`)
     } finally {
       await carta.limpiar();
     }
@@ -581,7 +581,7 @@ test.describe("carta pública: familia tipográfica (carta_fuente_familia)", () 
   test("un valor libre (Comic Sans MS) cae a Playfair: no se cuela como font-family", async ({ page, sucursalId }) => {
     const carta = await crearCarta(sucursalId, { secciones: 3, valores: { ...TEXTOS, carta_fuente_familia: "Comic Sans MS" } });
     try {
-      await verificar(page, carta, /Playfair/);
+      await verificar(page, carta, /Geist/); // sin `carta_fuente_familia` cargada, el libro toma la sans de la maqueta (`LIBRO_ESTILO_MAQUETA`)
     } finally {
       await carta.limpiar();
     }
