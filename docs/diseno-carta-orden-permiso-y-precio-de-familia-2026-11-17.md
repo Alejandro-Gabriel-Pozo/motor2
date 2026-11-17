@@ -94,6 +94,13 @@ Dos Server Actions en `src/server/actions/carta/` (envoltorio + guard + caso de 
 **Pruebas obligatorias:** (a) **concurrencia:** dos «reordenar» simultáneos → uno gana, el otro `ORDEN_DESACTUALIZADO`, resultado final de uno solo; dos «fijar modo»; (b) **idempotencia:** el mismo reordenamiento dos veces escribe y audita una sola vez; fijar el mismo modo dos veces; (c) **atomicidad:** falla forzada en la mitad no deja cambios; (d) **aislamiento:** una sucursal no ve ni cambia el modo/orden de otra; otra empresa responde como «no existe»; (e) **permiso:** operador rechazado, gerente y administrador permitidos; (f) **sin regresión:** con una base sin filas la carta pública sale idéntica (el golden de la carta real ya existe y no se toca).
 **Operación:** se despliega apagado por no tener efecto (sin fila no cambia nada); revertir = `down.sql` + marcar la migración revertida.
 
+### Declaraciones de la implementación de O1 (2026-11-17, a pedido del verificador)
+
+- **`actualizadoPorId` sin llave foránea (diferencia declarada).** En `ModoDeOrdenDeSeccionCarta` el autor del último cambio es texto sin FK a `User`. Otras tablas lo declaran con FK y `onDelete: Restrict`; acá no se hizo porque tocar `User` quedaba fuera del carril de O1. El autor NO se pierde: cada cambio de modo y de orden deja su fila en `RegistroAuditoria` con `actorId`. Costo de corregirlo: una migración aditiva que agregue la FK (con verificación previa de que no haya ids huérfanos). Queda pendiente de decisión.
+- **Permiso adicional `carta_items_agrupados`.** Cubierto por `test/carta/orden-de-renglones-permiso-agrupados.test.ts`: con `carta_contenido_producto` y sin `carta_items_agrupados`, reordenar o cambiar el modo de una sección con un ítem agrupado se rechaza sin escribir nada; con las dos claves corre. Con el control quitado (`void gate;`) los dos casos de rechazo ponen la suite en rojo.
+- **Módulo apagado: sin prueba propia (pendiente declarado).** Las dos acciones heredan el rechazo por módulo de la envoltura de `contenido-producto.ts`, ya cubierto por la matriz de denegación; falta una prueba por acción que lo demuestre para O1.
+- **Único de la base.** `UNIQUE (sucursalId, seccionCartaId)` está cubierto por el test de migración (subir/bajar/subir) y por el caso de concurrencia «dos ALFABETICO a la vez desde cero → UNA fila»; son dos capas (base y caso de uso), sin test aparte que intente insertar la fila duplicada con SQL directo.
+
 ### Tabla «¿qué pasa si…?»
 
 | Situación | Resultado |

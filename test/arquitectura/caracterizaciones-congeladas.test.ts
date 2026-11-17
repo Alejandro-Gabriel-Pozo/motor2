@@ -793,6 +793,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Nombre de cocina (ADITIVO; migración 20261115170000_nombre_de_cocina): la fila PRODUCTO de la lectura del estado de la receta propia suma `nombreDeCocina: null` (nadie tiene nombre de cocina en este mundo). Una sola línea agregada, a mano sobre el golden anterior: ningún otro campo ni conteo de consultas cambia.",
       },
+      {
+        blob: "6b32b67ab08eb771c7abea723f89898a39962679",
+        // El commit PADRE de este es 4db6539a (U1 integrada con main 7a8e9809, justo antes de regenerar este golden con la columna nueva).
+        commit: "4db6539a",
+        motivo:
+          "U1 de las unidades como Pedernal (migración 20261117130000_unidad_codigo_fijo; ADITIVA; regenerado con REGENERAR_CARACTERIZACION_TRAMO_A=1): la lectura `catalogo.obtenerEstadoDeRecetaPropia` devuelve el modelo Unidad entero (Prisma) y el objeto `unidad` suma `codigoFijo: null` (toda unidad existente queda «pendiente de completar»). Ninguna otra lectura ni conteo de consultas cambia. Ninguna pantalla usa el campo; lo devuelve la lectura porque Prisma trae la fila completa.",
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {
@@ -1029,6 +1036,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "0fb5d246",
         motivo:
           "Lote D del catálogo de textos (aceptado por el dueño el 2026-11-16: «Sí, una sola frase (Recomendada)»): el rechazo por nombre repetido del alta de un cliente pasa de «Ya existe un cliente llamado» con el nombre entre comillas rectas a «Ya existe un cliente llamado «Fulano». Elegí otro nombre.». Cambia SOLO esa línea del paso «cliente: alta repetida»; ningún dato ni efecto.",
+      },
+      {
+        blob: "0b465d78551f40cfd613e93df75b7519d37aa4e0",
+        // El commit PADRE de este es c84370de (U1 antes de integrar main con el lote D de textos; el golden fusionado suma la línea de #379 y la columna `codigoFijo`, por eso el blob cambió).
+        commit: "c84370de",
+        motivo:
+          "U1 de las unidades como Pedernal (migración 20261117130000_unidad_codigo_fijo; ADITIVA, nada la lee todavía; regenerado con REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1): las filas UNIDAD suman `codigoFijo=null` (toda unidad existente queda «pendiente de completar»). Ninguna otra línea cambia: precios, descuentos, promos y costos siguen idénticos.",
       },
     ],
   },

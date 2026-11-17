@@ -270,6 +270,7 @@ export const CATALOGO = {
     fuente: { decision: "DEC-0019" },
   },
   // Lote D (DEC-0022): «Ya existe {un/una} … llamado «X». Elegí otro nombre.», una sola frase (aceptado por el dueño). Hoy lo usan los casos de uso de `clientes/`; el resto de los NOMBRE_REPETIDO son de carta y catálogo.
+  // OJO: «llamado» es fijo (palabra del dueño): solo con entidades MASCULINAS hasta que el dueño decida el femenino (`test/textos/nombre-repetido-genero.test.ts` lo hace cumplir).
   "rechazo.NOMBRE_REPETIDO": {
     porDefecto: "Ya existe {entidad:un} llamado «{nombre}». Elegí otro nombre.",
     marcadores: { entidad: "entidad", nombre: "texto" },

@@ -59,6 +59,10 @@ const COLUMNAS_AUDITADAS: { archivo: string; entidad: (typeof ENTIDADES_AUDITABL
   { archivo: "src/server/actions/carta/casos-de-uso/guardar-solo-salon-promo-carta.ts", entidad: "PromoCarta", campos: ["soloSalon"] },
   // CARTA-MANT F3: «Ordenar» las secciones de la empresa, una fila por sección que cambió de lugar.
   { archivo: "src/server/actions/carta/casos-de-uso/ordenar-secciones-carta.ts", entidad: "SeccionCarta", campos: ["orden"] },
+  // O1 (orden de renglones): el modo de orden de una sección en la sucursal, y el `orden` de cada renglón (producto o ítem agrupado) que cambia de lugar al reordenar.
+  { archivo: "src/server/actions/carta/casos-de-uso/fijar-modo-de-orden-de-seccion.ts", entidad: "ModoDeOrdenDeSeccionCarta", campos: ["modo"] },
+  { archivo: "src/server/actions/carta/casos-de-uso/auditar-orden-de-producto-en-carta.ts", entidad: "ContenidoCartaProducto", campos: ["orden"] },
+  { archivo: "src/server/actions/carta/casos-de-uso/auditar-orden-de-item-agrupado-en-carta.ts", entidad: "ItemAgrupadoCarta", campos: ["orden"] },
 ];
 
 /** Los literales de texto de `campo: "<literal>"` y de `entidad: "<literal>"` que hay en el código (propiedades de un literal de objeto). */

@@ -179,13 +179,37 @@ describe("iniciar y cancelar el cierre: marcas, auditoría y repetición", () =>
     expect(await prismaAdmin.registroAuditoria.count({ where: { entidad: "SesionCaja", campo: "cierre", valorAnterior: "EN_CIERRE" } })).toBe(1);
   });
 
-  it("datos faltantes: iniciar, cancelar y cerrar sin sesión (o de otra sucursal) dan SESION_NO_ENCONTRADA y no escriben", async () => {
+  it("datos faltantes: iniciar, cancelar y cerrar una sesión que no existe dan SESION_NO_ENCONTRADA y no escriben", async () => {
     const otra = randomUUID();
     const antes = await prismaAdmin.registroAuditoria.count();
     expect(await iniciar(otra)).toMatchObject({ ok: false, codigo: "SESION_NO_ENCONTRADA" });
     expect(await cancelar(otra)).toMatchObject({ ok: false, codigo: "SESION_NO_ENCONTRADA" });
     expect(await cerrar(otra, {})).toMatchObject({ ok: false, codigo: "SESION_NO_ENCONTRADA" });
     expect(await prismaAdmin.registroAuditoria.count()).toBe(antes);
+  });
+
+  it("una sesión REAL de OTRA sucursal: con alcance sobre las dos (el RLS no la oculta), iniciar, cancelar y cerrar dan SESION_NO_ENCONTRADA por el chequeo del caso de uso y la sesión ajena no cambia", async () => {
+    const norte = await prismaAdmin.sucursal.create({ data: { id: `norte-${randomUUID()}`, empresaId: EMPRESA, nombre: "Norte" } });
+    const alcance = baseDeEmpresa(EMPRESA, { lectura: [s.sucursalId, norte.id], escritura: [s.sucursalId, norte.id] });
+    const comoSucursal = (sucursalId: string) => ({ usuarioId: s.admin.id, empresaId: EMPRESA, sucursalId, ahora: AHORA, empresaZonaHoraria: "America/Argentina/Buenos_Aires", ...alcance });
+    const deNorte = await abrirSesionCasoDeUso(comoSucursal(norte.id), { claveIdempotencia: randomUUID(), fondoEnCentavos: c(100_00) }, azarDelProceso);
+    if (!deNorte.ok) throw new Error(`no abrió la de Norte: ${deNorte.codigo}`);
+    const id = deNorte.datos.sesionId;
+    expect((await prismaAdmin.sesionCaja.findUniqueOrThrow({ where: { id } })).sucursalId).toBe(norte.id);
+    const desdeCentral = comoSucursal(s.sucursalId);
+    const foto = async () => ({ sesion: await prismaAdmin.sesionCaja.findUniqueOrThrow({ where: { id } }), auditorias: await prismaAdmin.registroAuditoria.count() });
+    const antes = await foto();
+    // ABIERTA: iniciar y cerrar no la tocan desde Central.
+    expect(await iniciarCierreDeSesion(desdeCentral, { sesionId: id })).toMatchObject({ ok: false, codigo: "SESION_NO_ENCONTRADA" });
+    expect(await cancelarCierreDeSesion(desdeCentral, { sesionId: id })).toMatchObject({ ok: false, codigo: "SESION_NO_ENCONTRADA" });
+    expect(await foto()).toEqual(antes);
+    // EN_CIERRE (la inició quien está en Norte): cancelar y cerrar desde Central tampoco.
+    expect((await iniciarCierreDeSesion(comoSucursal(norte.id), { sesionId: id })).ok).toBe(true);
+    const enCierre = await foto();
+    expect(await cancelarCierreDeSesion(desdeCentral, { sesionId: id })).toMatchObject({ ok: false, codigo: "SESION_NO_ENCONTRADA" });
+    expect(await cerrarSesionCasoDeUso(desdeCentral, { sesionId: id, conteo: { billetes: {}, monedasEnCentavos: c(0) }, conformeDeLosDemasMedios: true, observacion: null }, azarDelProceso)).toMatchObject({ ok: false, codigo: "SESION_NO_ENCONTRADA" });
+    expect(await foto()).toEqual(enCierre);
+    expect(enCierre.sesion.estado).toBe("EN_CIERRE");
   });
 
   it("error parcial: cerrar con «conforme» faltante deja la sesión EN_CIERRE, sin arqueo escrito, y el reintento completo cierra", async () => {
