@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { rutaOfrecida } from "@/core/navegacion/candidatas-a-baja";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
@@ -63,7 +64,7 @@ export default async function OpcionesDeVentaPage() {
           </p>
         </div>
 
-        {puedeEditar && enUso.length > 0 && (
+        {puedeEditar && enUso.length > 0 && rutaOfrecida("/catalogo/opciones/limpiar") && (
           <Link
             href="/catalogo/opciones/limpiar"
             data-enlace-limpiar=""

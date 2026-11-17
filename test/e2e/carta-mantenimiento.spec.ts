@@ -151,7 +151,7 @@ async function recorrer(page: Page, d: Awaited<ReturnType<typeof sembrar>>, anch
 
   // ---------- Pestañas de la entrada «Carta» (DEC-24: reemplazan las puertas Mantenimiento / Parametrización) ----------
   const pestanas = page.getByRole("navigation", { name: "Carta", exact: true });
-  await expect(pestanas.getByRole("link")).toHaveText(["Hoy", "Secciones y géneros", "Ítems agrupados"]);
+  await expect(pestanas.getByRole("link")).toHaveText(["Hoy", "Secciones y géneros"]); // «Ítems agrupados» está oculta (Frente 6, paso 4: `CANDIDATAS_A_BAJA_VISIBLES` apagado)
   await expect(pestanas.getByRole("link", { name: "Hoy" })).toHaveAttribute("aria-current", "page");
   if (celular) await expectObjetivosTactiles(pestanas.getByRole("link"), "pestañas de Carta");
   await pestanas.getByRole("link", { name: "Secciones y géneros" }).click();

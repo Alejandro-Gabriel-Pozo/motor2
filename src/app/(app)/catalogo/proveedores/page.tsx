@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { rutaOfrecida } from "@/core/navegacion/candidatas-a-baja";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { CajaDesplazable } from "@/components/catalogo/caja-desplazable";
@@ -44,9 +45,11 @@ export default async function ProveedoresPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-xl font-semibold">Proveedores</h1>
         <div className="flex flex-wrap items-center gap-4">
-          <EnlaceInterno href="/catalogo/proveedores/comparativa" className="text-sm underline">
-            Comparativa de precios →
-          </EnlaceInterno>
+          {rutaOfrecida("/catalogo/proveedores/comparativa") && (
+            <EnlaceInterno href="/catalogo/proveedores/comparativa" className="text-sm underline">
+              Comparativa de precios →
+            </EnlaceInterno>
+          )}
           {puedeDarDeAlta && (
             <Link href="/catalogo/proveedores/nuevo" className={claseDeBoton()}>
               + Nuevo proveedor

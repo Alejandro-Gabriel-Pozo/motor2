@@ -28,21 +28,22 @@ const puede = (...claves: AccionClave[]): ReadonlySet<AccionClave> => new Set(cl
 const grupo = (id: string) => GRUPOS_NAV.find((g) => g.id === id)!;
 
 describe("el grupo Movimientos del menú real", () => {
-  it("son cinco ítems, en este orden: los directos, la entrada del selector, la carga sin ticket y el conteo", () => {
+  // Frente 6, paso 4: «Carga de ventas sin ticket» está oculta del menú (`CANDIDATAS_A_BAJA_VISIBLES` apagado); su ruta sigue resolviendo su acción (`RUTAS_FUERA_DEL_MENU`).
+  it("son cuatro ítems, en este orden: los directos, la entrada del selector y el conteo", () => {
     expect(grupo("movimientos").items.map((i) => [i.href, i.label])).toEqual([
       ["/movimientos/merma", "Merma"],
       ["/movimientos/compra", "Compra"],
       ["/movimientos", "Registrar movimiento"],
-      ["/movimientos/venta", "Carga de ventas sin ticket"],
       ["/movimientos/conteo-fisico", "Conteo físico"],
     ]);
   });
 
-  it("«Registrar movimiento» es un ítem algunaDe con las claves del selector; «Carga de ventas sin ticket» conserva la clave de la venta", () => {
+  it("«Registrar movimiento» es un ítem algunaDe con las claves del selector; «Carga de ventas sin ticket» (oculta del menú) conserva la clave de la venta", () => {
     const entrada = grupo("movimientos").items.find((i) => i.href === "/movimientos")!;
     expect(entrada.accion).toBeUndefined();
     expect([...(entrada.algunaDe ?? [])].sort()).toEqual([...CLAVES_DEL_SELECTOR].sort());
-    expect(grupo("movimientos").items.find((i) => i.href === "/movimientos/venta")).toMatchObject({ accion: "proceso_venta" });
+    expect(grupo("movimientos").items.find((i) => i.href === "/movimientos/venta")).toBeUndefined();
+    expect(accionDeRuta("/movimientos/venta")).toBe("proceso_venta");
   });
 
   it("la entrada se ve con UNA sola de las claves (también solo con stock_reclasificar) y desaparece sin ninguna", () => {
@@ -95,7 +96,7 @@ describe("las rutas que cuelgan de «Registrar movimiento» (lista real)", () =>
   });
 
   it("los directos y las pantallas que se quedaron en el menú se resaltan a sí mismas", () => {
-    for (const href of ["/movimientos/merma", "/movimientos/compra", "/movimientos/venta", "/movimientos/conteo-fisico", "/stock/consolidado"]) {
+    for (const href of ["/movimientos/merma", "/movimientos/compra", "/movimientos/conteo-fisico", "/stock/consolidado"]) {
       expect(hrefActivoDelMenu(href, COMPLETO, TODOS), href).toBe(href);
     }
     expect(hrefActivoDelMenu("/movimientos", COMPLETO, TODOS)).toBe("/movimientos");

@@ -1,4 +1,5 @@
 import { BotonDeServidor } from "@/components/boton-de-servidor";
+import { rutaOfrecida } from "@/core/navegacion/candidatas-a-baja";
 import { CampoNumero } from "@/components/campo-numero";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { FormConResultado } from "@/components/form-con-resultado";
@@ -113,11 +114,18 @@ export function ContenidoDelProducto({
         )}
         {p.agrupadoEn && (
           <p className="mt-2 text-sm text-tinta-suave">
-            Sale en la carta dentro de «{p.agrupadoEn}» (
-            <EnlaceInterno href="/carta/agrupados" className="underline">
-              Ítems agrupados de la carta
-            </EnlaceInterno>
-            ): mientras esté agrupado, el contenido de acá no se usa.
+            Sale en la carta dentro de «{p.agrupadoEn}»
+            {rutaOfrecida("/carta/agrupados") && (
+              <>
+                {" "}
+                (
+                <EnlaceInterno href="/carta/agrupados" className="underline">
+                  Ítems agrupados de la carta
+                </EnlaceInterno>
+                )
+              </>
+            )}
+            : mientras esté agrupado, el contenido de acá no se usa.
           </p>
         )}
         {!puedeEditar ? (
