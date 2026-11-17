@@ -39,7 +39,7 @@ Convenciones que valen para TODAS (verificadas, anexo A §cabecera): `empresaId`
 
 ## Modelos por primitiva
 
-Una fila por modelo de `prisma/schema.prisma` (113 modelos, 18 primitivas o grupos). Es la tabla que lee el guardián: la primera columna es el nombre exacto del modelo entre comillas invertidas.
+Una fila por modelo de `prisma/schema.prisma` (115 modelos, 18 primitivas o grupos). Es la tabla que lee el guardián: la primera columna es el nombre exacto del modelo entre comillas invertidas.
 
 | Modelo | Primitiva |
 |---|---|
@@ -84,6 +84,8 @@ Una fila por modelo de `prisma/schema.prisma` (113 modelos, 18 primitivas o grup
 | `ContenidoCartaProducto` | Carta |
 | `ItemAgrupadoCarta` | Carta |
 | `ModoDeOrdenDeSeccionCarta` | Carta |
+| `FamiliaDeProducto` | Carta |
+| `MiembroDeFamilia` | Carta |
 | `GeneroCarta` | Carta |
 | `OpcionItemAgrupadoCarta` | Carta |
 | `SucursalPublica` | Carta |

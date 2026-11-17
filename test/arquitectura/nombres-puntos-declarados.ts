@@ -22,6 +22,8 @@ export const PUNTOS_DE_NOMBRE: Readonly<Record<string, PuntoDeNombre>> = {
   "src/server/actions/clientes/casos-de-uso/actualizar-cliente.ts": { pedernal: ["RAZON_SOCIAL"], viejos: [], dato: "edición de cliente (estricta solo si cambia)" },
   "src/core/features/carta/secciones.guard.ts": { pedernal: ["ELECCION"], viejos: [], dato: "sección de carta" },
   "src/server/actions/carta/casos-de-uso/guardar-seccion-carta.ts": { pedernal: ["ELECCION"], viejos: [], dato: "edición de sección de carta (estricta solo si cambia)" },
+  "src/core/features/carta/familias.guard.ts": { pedernal: ["PRODUCTO"], viejos: [], dato: "familia de productos (F1: alta estricta; en la edición el guard solo recorta y el caso de uso aplica la estricta si el nombre cambia)" },
+  "src/server/actions/carta/casos-de-uso/editar-familia-de-producto.ts": { pedernal: ["PRODUCTO"], viejos: [], dato: "edición de familia de productos (estricta solo si cambia)" },
   "src/core/features/catalogo/opciones-de-venta.guard.ts": { pedernal: ["ELECCION"], viejos: [], dato: "grupo y opción de venta, «se lee en la carta como» y descripción (E-1c: todo con la ficha ELECCION; la descripción baja de 120 a 80, dueño 2026-11-16, «Bajar a 80»)" },
   "src/server/actions/catalogo/casos-de-uso/editar-grupo-de-opciones.ts": { pedernal: ["ELECCION"], viejos: [], dato: "edición de grupo de opciones (estricta solo si cambia)" },
   "src/server/actions/catalogo/casos-de-uso/editar-opcion-de-grupo.ts": { pedernal: ["ELECCION"], viejos: [], dato: "edición de opción (estricta solo si cambia)" },
