@@ -1,4 +1,5 @@
-import { clienteConEmpresaDePrueba, EMPRESA_TESTIGO_ID } from "./empresa-de-prueba";
+import { clienteConEmpresaDePrueba, EMPRESA_DE_PRUEBA_ID, EMPRESA_TESTIGO_ID } from "./empresa-de-prueba";
+import { encenderRecepcionDeCompras } from "./modulos";
 import { prisma, sembrarBase, sembrarCatalogoBase, sembrarSeccion } from "./test-db";
 import { urlDeSembradoDeVitest } from "./rol-de-pruebas";
 
@@ -24,6 +25,8 @@ export async function sembrarEscenarioDeFactura(): Promise<EscenarioDeFactura> {
   const seccionA = (await sembrarSeccion(sucursalA, "Depósito")).id;
   const seccionB = (await sembrarSeccion(sucursalB, "Depósito")).id;
   const usuarioId = (await prisma.user.create({ data: { email: "administrativo@test.com" } })).id;
+  // La base no deja nacer una parte pendiente con la recepción separada apagada (guarda de apagado): estos fixtures siembran partes pendientes a mano.
+  await encenderRecepcionDeCompras(EMPRESA_DE_PRUEBA_ID);
   const proveedorId = (await prisma.proveedor.create({ data: { codigo: "PRV_1", nombre: "Distribuidora Sur" } })).id;
   const productoId = (await prisma.producto.create({ data: { codigo: "MP_A", nombre: "Harina", tipo: "MP", unidadStockId: kg.id, insumoId: insumo.id } })).id;
   return { usuarioId, sucursalA, sucursalB, seccionA, seccionB, proveedorId, productoId };
@@ -32,6 +35,7 @@ export async function sembrarEscenarioDeFactura(): Promise<EscenarioDeFactura> {
 /** Lo que la empresa TESTIGO (otra empresa) tiene: su sucursal, su proveedor, su producto y su cabecera de factura, para probar que nada cruza. */
 export async function sembrarAjeno(usuarioId: string) {
   const testigo = clienteConEmpresaDePrueba(urlDeSembradoDeVitest(), EMPRESA_TESTIGO_ID);
+  await encenderRecepcionDeCompras(EMPRESA_TESTIGO_ID);
   const unidad = await testigo.unidad.create({ data: { nombre: "kg", magnitud: "PESO", decimales: 2 } });
   const insumo = await testigo.insumo.create({ data: { nombre: "Harina" } });
   const sucursal = await testigo.sucursal.create({ data: { nombre: "Testigo" } });
