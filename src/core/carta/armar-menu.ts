@@ -24,6 +24,7 @@
 
 import { esUrlHttpsPermitida } from "@/core/datos/url";
 import { aplicarDescuentoDeProducto } from "./descuento-producto";
+import { compararNombresDeCarta as comparar, ordenarRenglonesDeSeccion } from "./orden-de-seccion";
 import { opcionesParaLaCarta, type GrupoCartaV1, type OpcionesSinCostoCartaV1, type ResumenDePreciosParaCarta } from "./opciones-en-carta";
 import { FILAS_SUGERIDAS_EN_CARTA, presentacionDelProducto, type PresentacionCartaV1, type TablaDePreciosParaCarta } from "./presentacion-en-carta";
 
@@ -197,6 +198,8 @@ export interface EntradaArmarMenu {
    * obligatorio sin nada para elegir) no sale en la carta.
    */
   opcionesDeProductos?: readonly OpcionesDeProductoEntrada[];
+  /** O1 (opcional: sin esto, o sin fila de una sección, sale como siempre): el modo de orden de cada sección EN ESTA sucursal; solo `ALFABETICO` cambia algo (`ordenarRenglonesDeSeccion`, `orden-de-seccion.ts`). */
+  modosDeOrden?: readonly { seccionCartaId: string; modo: string }[];
 }
 
 export interface OpcionesDeProductoEntrada {
@@ -330,8 +333,6 @@ function limpiarTags(tags: readonly string[]): string[] {
   return salida;
 }
 
-const comparar = (a: string, b: string) => a.localeCompare(b, "es");
-
 // ---------------------------------------------------------------------------------------------------------------------
 // Armado
 // ---------------------------------------------------------------------------------------------------------------------
@@ -341,7 +342,7 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
   const descuentoPorProducto = new Map((entrada.descuentos ?? []).map((d) => [d.productoId, d.porcentaje]));
   // Solo llegan las secciones ACTIVAS: un seccionCartaId que no está acá es de una sección apagada (o no tiene).
   const nombreDeSeccion = new Map(entrada.secciones.map((s) => [s.id, s.nombre]));
-
+  const modoDeOrdenPorSeccion = new Map((entrada.modosDeOrden ?? []).map((m) => [m.seccionCartaId, m.modo])); // O1: sin entrada = `A_MANO`, como siempre
   type ItemConOrden = { item: ItemCartaV1; orden: number };
   const itemsPorSeccion = new Map<string, ItemConOrden[]>();
   const ubicar = (seccionId: string, item: ItemCartaV1, orden: number) => {
@@ -458,8 +459,7 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
   const secciones: SeccionCartaV1[] = [...entrada.secciones]
     .sort((a, b) => a.orden - b.orden || comparar(a.nombre, b.nombre))
     .map((s) => {
-      // Sueltos y agrupados comparten la misma escala de orden dentro de la sección: `orden` → nombre.
-      const items = (itemsPorSeccion.get(s.id) ?? []).sort((a, b) => a.orden - b.orden || comparar(a.item.nombre, b.item.nombre)).map((x) => x.item);
+      const items = ordenarRenglonesDeSeccion(itemsPorSeccion.get(s.id) ?? [], modoDeOrdenPorSeccion.get(s.id), (x) => ({ nombre: x.item.nombre, orden: x.orden })).map((x) => x.item); // sueltos y agrupados en la misma escala
       const promos = (promosPorSeccion.get(s.id) ?? []).sort((a, b) => a.orden - b.orden || comparar(a.titulo, b.titulo));
       return {
         id: s.id,

@@ -165,6 +165,7 @@ model Sucursal {
   frecuenciasConteo        FrecuenciaConteoProducto[]
   disponibilidadesProducto DisponibilidadProducto[]
   ocultamientosProducto    OcultamientoProducto[]
+  modosDeOrdenDeSeccion    ModoDeOrdenDeSeccionCarta[]
   cajas                    Caja[]
   cuentasDeCobro           CuentaDeCobro[]
   sesionesDeCaja           SesionCaja[]
@@ -571,6 +572,30 @@ model OcultamientoProducto {
   @@index([productoId])
 }
 
+/// Cómo se ordenan los renglones de una sección de carta en UNA sucursal (docs/diseno-carta-orden-permiso-y-precio-de-familia-2026-11-17.md, O1): `ALFABETICO` (por nombre) o `A_MANO` (por `orden` y después nombre). SIN FILA = `A_MANO`: es
+/// lo que la carta hace hoy, así que la carta real no cambia hasta que alguien elige. Nunca se borra: el modo se sobrescribe (con `version`) y la historia es la auditoría. `id` lo manda la aplicación (uuid nativo); `modo` con CHECK;
+/// `actualizadoPorId` es el usuario que lo cambió (sin FK: la auditoría lo nombra). Pasar a alfabético NO toca `orden` de los renglones: el orden a mano se conserva.
+model ModoDeOrdenDeSeccionCarta {
+  id               String       @id @db.Uuid
+  empresaId        String       @default(dbgenerated("app_empresa_actual()"))
+  empresa          Empresa      @relation(fields: [empresaId], references: [id])
+  sucursalId       String
+  sucursal         Sucursal     @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  seccionCartaId   String
+  seccionCarta     SeccionCarta @relation(fields: [empresaId, seccionCartaId], references: [empresaId, id])
+  /// ALFABETICO | A_MANO (CHECK).
+  modo             String
+  actualizadoPorId String
+  /// Cuándo cambió por última vez (reloj inyectado de la acción; sin default a propósito).
+  actualizadoEn    DateTime     @db.Timestamptz(3)
+  version          Int          @default(1)
+  creadoEn         DateTime     @default(now()) @db.Timestamptz(3)
+
+  @@unique([sucursalId, seccionCartaId])
+  @@unique([empresaId, id])
+  @@index([seccionCartaId])
+}
+
 /// Nombre interno histórico "Familia" (Catalogo.js:180-197) — de cara al
 /// usuario ya es "Insumo" desde v2.3.0; se adopta el nombre nuevo también
 /// acá para no arrastrar la confusión al código nuevo.
@@ -663,6 +688,9 @@ model Unidad {
   activa    Boolean        @default(true)
   /// 0-6, validado en la capa de aplicación (Catalogo.js:2777).
   decimales Int            @default(2)
+  /// Cuál de las 14 unidades fijas de Pedernal es esta (U1, `docs/diseno-unidades-de-medida-como-pedernal-2026-11-15.md` §6.1): NULL = «pendiente de completar» (toda unidad existente; sigue
+  /// funcionando como hoy). CHECK `Unidad_codigoFijo_chk` con la lista cerrada de `src/core/catalogo/unidades-de-medida.ts`. Se rellena por base (U1b, autorización expresa), nunca acá.
+  codigoFijo String?
 
   productosPorUnidadCompra      Producto[]             @relation("ProductoUnidadCompra")
   productosPorUnidadStock       Producto[]             @relation("ProductoUnidadStock")
@@ -1991,6 +2019,8 @@ model SeccionCarta {
   /// Cupos de promos ARMABLES que eligen de ESTA sección (Task #16) — no es lo mismo que `promos` (la promo en sí, ubicada
   /// en su PROPIA sección): una promo de la sección "Menús" puede tener un cupo que elige de "Postres".
   cuposDePromo PromoCartaCupo[]
+  /// El modo de orden de esta sección en cada sucursal (sin fila = A_MANO, como hoy).
+  modosDeOrden ModoDeOrdenDeSeccionCarta[]
 
   @@unique([empresaId, nombre])
   @@unique([empresaId, id])
@@ -2661,6 +2691,7 @@ model Empresa {
   productoRel                    Producto[]
   disponibilidadProductoRel      DisponibilidadProducto[]
   ocultamientoProductoRel        OcultamientoProducto[]
+  modosDeOrdenDeSeccionRel       ModoDeOrdenDeSeccionCarta[]
   cajas                          Caja[]
   cuentasDeCobro                 CuentaDeCobro[]
   mediosDePago                   MedioDePago[]

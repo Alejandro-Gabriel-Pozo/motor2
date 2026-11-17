@@ -16,6 +16,7 @@ export const FAMILIAS = {
   carta: { nombre: "carta", filtro: (p) => p.tipo === "accion" && p.archivo.startsWith("actions/carta/") },
   stock: { nombre: "stock y movimientos", filtro: (p) => p.tipo === "accion" && /^actions\/(movimientos|stock|traspasos|reportes)\//.test(p.archivo) },
   pos: { nombre: "POS", filtro: (p) => p.tipo === "accion" && p.archivo.startsWith("actions/pos/") },
+  caja: { nombre: "caja", filtro: (p) => p.tipo === "accion" && p.archivo.startsWith("actions/caja/") },
   consultas: { nombre: "consultas de las páginas", filtro: (p) => p.tipo === "consulta" },
   lecturas: { nombre: "lecturas de los casos de uso", filtro: (p) => p.tipo === "lectura" },
 } as const satisfies Record<string, Familia>;

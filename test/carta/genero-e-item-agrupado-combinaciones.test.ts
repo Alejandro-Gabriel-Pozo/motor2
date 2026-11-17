@@ -175,6 +175,9 @@ describe("guardianes: una dimensión nueva sin declarar hace fallar", () => {
     "server/consultas/carta/ventas-por-seccion.ts": "aplica",
     "server/lecturas/carta/choque-de-nombre.ts": "aplica",
     "server/lecturas/carta/componentes-de-promo.ts": "aplica",
+    // O1 (orden de renglones): sin el interruptor no hay ítems agrupados en la carta, así que no son renglones de ninguna sección (lectura de gestión y comprobación del permiso de los ítems agrupados).
+    "server/lecturas/carta/orden-de-renglones.ts": "aplica",
+    "server/persistencia/carta/orden-de-renglones.ts": "aplica",
     "server/lecturas/carta/grupo-de-producto.ts": "aplica",
     "server/lecturas/catalogo/filtros-de-productos.ts": "aplica",
     "server/actions/carta/casos-de-uso/agregar-producto-a-la-carta.ts": "aplica",
