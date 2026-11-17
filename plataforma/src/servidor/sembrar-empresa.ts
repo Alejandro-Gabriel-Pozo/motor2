@@ -17,8 +17,8 @@ export async function sembrarEmpresa(tx: Prisma.TransactionClient, empresaId: st
 
   await tx.accion.createMany({ data: plan.acciones, skipDuplicates: true });
 
-  const rolAdmin = await tx.rol.create({ data: { empresaId, nombre: ROLES_DE_FABRICA[0].nombre, clave: ROLES_DE_FABRICA[0].clave } });
-  const rolOperador = await tx.rol.create({ data: { empresaId, nombre: ROLES_DE_FABRICA[1].nombre, clave: ROLES_DE_FABRICA[1].clave } });
+  const rolAdmin = await tx.rol.create({ data: { empresaId, nombre: ROLES_DE_FABRICA[0].nombreInicial, clave: ROLES_DE_FABRICA[0].clave } });
+  const rolOperador = await tx.rol.create({ data: { empresaId, nombre: ROLES_DE_FABRICA[1].nombreInicial, clave: ROLES_DE_FABRICA[1].clave } });
   await tx.permisoRol.createMany({ data: matrizDeFabrica(empresaId, { admin: rolAdmin.id, operador: rolOperador.id }) });
 
   await tx.unidad.createMany({ data: plan.unidades });

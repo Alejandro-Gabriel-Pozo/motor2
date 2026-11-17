@@ -1,4 +1,5 @@
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { rutaOfrecida } from "@/core/navegacion/candidatas-a-baja";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/server/acceso/gate";
@@ -63,9 +64,11 @@ export default async function SeccionesDeCartaPage() {
       <div className={estilos.contenido}>
         <div className={estilos.pad}>
           {/* DEC-24: la pestaña «Secciones y géneros» reúne dos pantallas; esta lleva a la otra. */}
-          <EnlaceInterno href="/carta/parametrizacion/generos" className={`${estilos.boton} ${estilos.botonSuave} ${estilos.volver}`}>
-            Géneros (carpetas del selector del POS) ›
-          </EnlaceInterno>
+          {rutaOfrecida("/carta/parametrizacion/generos") && (
+            <EnlaceInterno href="/carta/parametrizacion/generos" className={`${estilos.boton} ${estilos.botonSuave} ${estilos.volver}`}>
+              Géneros (carpetas del selector del POS) ›
+            </EnlaceInterno>
+          )}
           {!puedeEditarSecciones && <AvisoSoloLectura />}
           <OrdenarSecciones
             secciones={datos.secciones.map((x) => ({ id: x.id, nombre: x.nombre, activa: x.activa, orden: x.orden }))}

@@ -21,7 +21,7 @@ const CASOS = [
   { ruta: "/stock/reclasificar", nombre: "Registrar movimiento" },
   // Los directos y las entradas mudadas siguen resaltándose a sí mismas.
   { ruta: "/movimientos/merma", nombre: "Merma" },
-  { ruta: "/movimientos/venta", nombre: "Carga de ventas sin ticket" },
+  // «Carga de ventas sin ticket» ya no es ítem del menú (Frente 6, paso 4: `CANDIDATAS_A_BAJA_VISIBLES` apagado); la pantalla sigue abriéndose por su dirección.
   // DEC-27: Stock tiene dos entradas; sus pestañas y editores resaltan la entrada (Depósitos, aunque su URL empiece con /movimientos, resalta Configuración).
   { ruta: "/stock/consolidado", nombre: "Existencias" },
   { ruta: "/stock/alertas", nombre: "Existencias" },

@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { rutaOfrecida } from "@/core/navegacion/candidatas-a-baja";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
@@ -65,11 +66,15 @@ export default async function PreciosDelProductoPage({ params }: { params: Promi
           {producto.esBase
             ? `Se vende por opción: el precio guardado (${formatearMonto(datos.precioBase)}) no se cobra, rige el precio final de cada opción.`
             : `Precio de lista en «${ctx.sucursalNombre}»: ${formatearMonto(datos.precioBase)}.`}{" "}
-          {puedeEditarElPrecio && !producto.esBase ? "Las otras sucursales se comparan y se cambian en " : "El precio de cada sucursal se cambia en "}
-          <EnlaceInterno href="/movimientos/precio-local" className="underline">
-            Precio local
-          </EnlaceInterno>
-          .
+          {rutaOfrecida("/movimientos/precio-local") && (
+            <>
+              {puedeEditarElPrecio && !producto.esBase ? "Las otras sucursales se comparan y se cambian en " : "El precio de cada sucursal se cambia en "}
+              <EnlaceInterno href="/movimientos/precio-local" className="underline">
+                Precio local
+              </EnlaceInterno>
+              .
+            </>
+          )}
         </p>
 
         {puedeEditarElPrecio && !producto.esBase ? (

@@ -13,6 +13,7 @@ const NOMBRES_RESERVADOS: Readonly<Record<string, string>> = {
   admin: CLAVE_ROL_ADMIN,
   administrador: CLAVE_ROL_ADMIN,
   operador: CLAVE_ROL_OPERADOR,
+  empleado: CLAVE_ROL_OPERADOR,
   operario: CLAVE_ROL_OPERADOR,
   gerente: SIN_ROL_DUENO,
 };

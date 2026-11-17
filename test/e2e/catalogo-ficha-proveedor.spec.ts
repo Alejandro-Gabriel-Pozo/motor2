@@ -33,9 +33,9 @@ test("la lista lleva a la ficha, que muestra los datos y los enlaces a los repor
   await expect(page.getByText("Juan Pérez")).toBeVisible();
   await expect(page.getByText("30 días")).toBeVisible();
   await expect(page.getByText("Entrega los martes")).toBeVisible();
-  // Es solo lectura: no hay formulario, y el enlace a la comparativa está.
+  // Es solo lectura: no hay formulario. El enlace a la comparativa está OCULTO (Frente 6, paso 4: `CANDIDATAS_A_BAJA_VISIBLES` apagado); la pantalla sigue abriéndose por su dirección.
   await expect(page.locator("main form")).toHaveCount(0);
-  await expect(page.locator('a[href="/catalogo/proveedores/comparativa"]')).toHaveCount(1);
+  await expect(page.locator('a[href="/catalogo/proveedores/comparativa"]')).toHaveCount(0);
   await expect(page.locator(`a[href="/reportes/compras?proveedorId=${proveedor.id}"]`)).toHaveCount(1);
 });
 
