@@ -103,7 +103,7 @@ export function PortalVista({ sucursales, empresaNombre, estilo, hrefDe, modo }:
       <Cuerpo className="mx-auto px-6 pb-10 pt-4" style={{ maxWidth: layout.modo === "mapa" ? 648 : 576 }}>
         {publico && !hayTitulo && <h1 className="sr-only">Sucursales</h1>}
         {sucursales.length === 0 ? (
-          <p className="carta-rol-aclaracion text-center">Todavía no hay cartas publicadas.</p>
+          <p className="portal-vacio carta-rol-aclaracion text-center">Todavía no hay cartas publicadas.</p>
         ) : (
           <>
             {layout.modo === "mapa" && estilo.imagenFondo && (

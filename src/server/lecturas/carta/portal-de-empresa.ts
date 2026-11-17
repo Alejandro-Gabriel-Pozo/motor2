@@ -1,5 +1,5 @@
 import "server-only";
-import { esVarianteDePortal, sonPartesDeImagenValidas, urlDeImagenExterna, type DatosDelPortal, type PartesDeImagen, type TarjetaDePortal, type ZonaDePortal } from "@/core/carta/public";
+import { esVarianteDePortal, sonPartesDeImagenValidas, urlDeImagenExterna, type DatosDelPortal, type PartesDeImagen, type RegistroPublicoParaSembrar, type TarjetaDePortal, type ZonaDePortal } from "@/core/carta/public";
 import type { Db } from "@/lib/db-tipos";
 
 /**
@@ -118,5 +118,21 @@ export async function consultarPortalDeEmpresa(db: Db, args: { empresaId: string
     tarjetas: portal.tarjetas.map((t) => ({ sucursalId: t.sucursalId, nombreDeLaSucursal: nombreDe(t.sucursalId), orden: t.orden, visible: t.visible, nombre: t.nombre, telefono: t.telefono, foto: conDireccion(t.foto) })),
     zonas: portal.zonas.map((z) => ({ sucursalId: z.sucursalId, nombreDeLaSucursal: nombreDe(z.sucursalId), x: z.x / 100, y: z.y / 100, ancho: z.ancho / 100, alto: z.alto / 100, visible: z.visible })),
     pendientes,
+  };
+}
+
+/**
+ * Lo que la empresa YA tiene cargado y se necesita para crear su portal nuevo sin cambiarlo (`sembrarTarjetasDelPortal`): el Json `PortalCartaEmpresa.valores` y TODOS los registros públicos de sucursal (también los no publicados), con `empresaId` explícito además del RLS.
+ * Se lee dentro de la misma transacción del alta (la pantalla simple, `casos-de-uso/guardar-colores-del-portal.ts`).
+ */
+export async function leerLoCargadoDelPortal(db: Db, empresaId: string): Promise<{ valoresJson: unknown; registros: RegistroPublicoParaSembrar[] }> {
+  const [json, publicas] = await Promise.all([
+    db.portalCartaEmpresa.findFirst({ where: { empresaId }, select: { valores: true } }),
+    db.sucursalPublica.findMany({ where: { empresaId }, select: { sucursalId: true, publicada: true, etiqueta: true, orden: true, posX: true, posY: true, posW: true, posH: true, sucursal: { select: { activo: true } } } }),
+  ]);
+  const numero = (d: { toNumber(): number } | null): number | null => (d === null ? null : d.toNumber());
+  return {
+    valoresJson: json?.valores ?? null,
+    registros: publicas.map((p) => ({ sucursalId: p.sucursalId, publicada: p.publicada, activa: p.sucursal.activo, orden: p.orden, etiqueta: p.etiqueta, posX: numero(p.posX), posY: numero(p.posY), posW: numero(p.posW), posH: numero(p.posH) })),
   };
 }

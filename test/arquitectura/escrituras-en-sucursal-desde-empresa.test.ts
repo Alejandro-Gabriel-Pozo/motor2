@@ -104,6 +104,13 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
     puertas: ["carta/portal-empresa.ts|guardarPortalDeEmpresa"],
     motivo: "el portal es de la empresa entera (`carta_portal`, piso administrador: gerente y administrador, decisión del dueño del 2026-11-17 «Gerente y administrador, como Pedernal (Recomendada)»): una tarjeta o zona por sucursal se administra desde una sola pantalla, sin depender de la activa; el caso de uso verifica que cada sucursal sea de la empresa (otra empresa = «no encontrada»)",
   },
+  // Colores del portal (pantalla simple, 2026-11-17): al CREAR el portal nuevo siembra una tarjeta por cada registro público de la empresa (`PortalTarjeta`, una por sucursal) para que el portal se vea igual; misma clave y mismo alcance que el guardado completo del portal.
+  "carta/casos-de-uso/guardar-colores-del-portal.ts": {
+    ata: "EMPRESA_ENTERA",
+    ensanches: [],
+    puertas: ["carta/portal-empresa.ts|guardarColoresDelPortal"],
+    motivo: "el portal es de la empresa entera (`carta_portal`: gerente y administrador, decisión del dueño del 2026-11-17 «Gerente y administrador, como Pedernal (Recomendada)»): al crearlo se siembra una tarjeta por cada sucursal con registro público DE LA EMPRESA (se leen con el `empresaId` explícito y la RLS; ninguna es de otra empresa), sin depender de la activa",
+  },
   // ── Gobierno de las sucursales (claves `administrador_sistema` de empresa) ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
   "auth/casos-de-uso/actualizar-activo-sucursal.ts": {
     ata: "EMPRESA_ENTERA",

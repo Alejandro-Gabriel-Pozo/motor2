@@ -50,7 +50,8 @@ const PUBLICACION_CARTA: Readonly<Record<string, readonly string[]>> = {
   PortalCartaEmpresa: ["valores"],
   // Portal de la empresa como Pedernal (PR-A, lectura dual): se LEE en el servidor para armar las tarjetas y el estilo del portal con la forma de siempre (`EntradaPortalCarta` y `EstiloPortal`); no sale ningún campo propio (ni el código, ni la versión, ni quién lo creó, ni el teléfono ni la foto de la tarjeta:
   // la pantalla que los muestra es del Frente 6). `colorDetras` tampoco se lee todavía: no tiene dónde dibujarse.
-  PortalDeEmpresa: ["colorEncabezado", "colorPagina", "id", "imagenCuenta", "imagenExtension", "imagenIdPublico", "imagenProveedor", "imagenVersion", "lineaSuperior", "logoVisible", "titulo", "variante"],
+  // `colorDetras`: el tercer fondo del portal («Colores del portal», 2026-11-17, dueño: «Sí, los tres fondos elegibles.»); es un color que la empresa elige para que lo vea el público, igual que el encabezado y la página.
+  PortalDeEmpresa: ["colorDetras", "colorEncabezado", "colorPagina", "id", "imagenCuenta", "imagenExtension", "imagenIdPublico", "imagenProveedor", "imagenVersion", "lineaSuperior", "logoVisible", "titulo", "variante"],
   PortalTarjeta: ["nombre", "orden", "sucursalId", "visible"],
   PortalZona: ["alto", "ancho", "sucursalId", "visible", "x", "y"],
   PrecioLocalProducto: ["habilitado", "precio", "productoId"],
