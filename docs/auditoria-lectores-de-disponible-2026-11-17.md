@@ -38,14 +38,21 @@ Estado: INVENTARIO FACTUAL (solo lectura sobre `origin/main` 9e5c9fe9), hecho po
 2. **Escrituras:** no hay punto único en la app; la red común es la base: un disparador `BEFORE INSERT` sobre `MovimientoStock` (mismo patrón que el de producto oculto) que lea `Seccion.uso` y rechace según `MovimientoStock.proceso`. Costo: migración aditiva con `down.sql`.
 3. **Reportes:** no hay función común. Alternativa: un helper compartido `whereSeccionDisponible(sucursalId)` (como `whereDisponibleEn` o `whereSeccionHabitualVigente`, que ya existen en el core) que cada `groupBy` sume a su `where`.
 
-## Decisiones que NO son técnicas (para el dueño, una a la vez, no frenan lo demás)
-- ¿La valuación (inventario valorizado) incluye lo que está en rechazo/cuarentena?
-- ¿Lo de RECHAZO/CUARENTENA cuenta contra el stock mínimo de la sección (alertas)?
-- ¿El consolidado excluye o muestra una columna por uso?
-Recomendación del orquestador de Compras (PROPUESTA, no decidida): consolidado con columna por uso; valuación incluyéndolo y mostrándolo aparte; alertas sin contarlo. Hasta que el dueño responda se construye lo que es regla de Pedernal ya confirmada (no vender ni descontar de ahí) y no se toca lo demás.
+## Decisiones
+- Valuación y consolidado: se adoptan como Pedernal (arriba), sin preguntar («Sí, todo como Pedernal», dueño, vía orquestador).
+- **Única pregunta que Pedernal no responde (para el dueño):** el stock mínimo. Pedernal no tiene stock mínimo; Motor2 sí. ¿La mercadería que está en rechazo o en cuarentena debe contar para llegar al mínimo de la sección? Ejemplo: mínimo de 10 kg de harina, hay 4 kg en el depósito normal y 8 kg en cuarentena. Si cuenta, no avisa faltante (12 ≥ 10); si no cuenta, avisa que faltan 6 kg. Recomendada: que NO cuente (coherente con «no suma a lo disponible»). Mientras no responda, las alertas siguen como hoy (cada sección contra su propio mínimo) y no se toca ese lector.
+
+## Qué hace Pedernal en las tres lecturas (agregado 2026-11-17; origen/main de ZuluHub-ERP y ZuluHub-docs)
+- **Valorización: Pedernal INCLUYE todos los usos y no los muestra aparte.** `valorizacion` une saldo con depósito sin condición sobre `uso` (ERP `src/modulos/stock/persistencia/costos.ts:212-245`; `consultas/costos.ts:60-90`). Ningún documento lo define (NO DEFINIDO en docs). Adopción propuesta: igual que Pedernal (Motor2 valoriza todo, sin desglose), declarando que es el comportamiento del código de Pedernal sin documento que lo respalde.
+- **Stock mínimo: Pedernal NO lo tiene** (ni código ni diseño: solo «futuro» en `catalogo-y-stock.md:125` y `00-vidrieras-por-modulo.md:186`). NO DEFINIDO. Motor2 sí lo tiene (`consultas/stock/stock-minimo.ts`, alertas): es una pregunta para el dueño.
+- **Consolidado / existencias: Pedernal lista una fila por (artículo, depósito)** con `existencia`, `uso` y `disponible`; cuarentena y rechazo salen en su fila con su cantidad real y `disponible = 0` (ERP `consultas/existencias.ts:21-117`; `stock.html:360`: «los depósitos de cuarentena y rechazo se marcan y no suman a lo disponible»). No hay consolidado por producto ni por sucursal. Adopción propuesta: Motor2 marca la sección por uso y no suma RECHAZO/CUARENTENA a lo disponible.
+- **«Disponible»** (ERP `dominio/disponibilidad.ts:3-23`, `lectura-de-lotes.ts:91-94`): solo cuenta depósitos de uso NORMAL (más reglas de lote y vencimiento que Motor2 resuelve aparte); la venta rechaza un depósito que no sea NORMAL (`salida-por-venta.ts:324-338`). Fuentes del dueño: CYN 118 (08/11/2026) «no suma al disponible» y fila 208 de decisiones, 16/11.
+
+## Movimientos permitidos en depósitos CUARENTENA y RECHAZO (VERIFICADO contra el SQL de Pedernal, 0030:665-668, 0064:52-56, 0084:237-242)
+Solo: TRANSFERENCIA, AJUSTE, AJUSTE_POR_CONTEO, ANULACION, ENTRADA con motivo COMPRA y origen RECEPCION, y SALIDA con motivo DEVOLUCION_A_PROVEEDOR y origen DEVOLUCION_A_PROVEEDOR. Todo otro ingreso o egreso se rechaza (`renglon_deposito_de_uso_restringido`). Las ANULACIONES siempre están permitidas y son el espejo exacto del original (`0030:801-820`); no se anula una anulación ni un conteo. Un depósito inactivo no admite ningún movimiento.
+Pendiente de mapear (NO VERIFICADO): cómo distingue Motor2 una anulación (contra-asiento de signo inverso, sin proceso propio) de una entrada normal.
 
 ## NO VERIFICADO
-- La lista exacta de movimientos permitidos en depósitos de calidad de Pedernal (0064 y 0084) no se contrastó con el SQL; el agente leyó solo la ficha `deposito-y-su-uso.md`. Pedernal permite ahí: TRANSFERENCIA, AJUSTE, AJUSTE_POR_CONTEO, ANULACION y, para compras, ENTRADA con motivo COMPRA y origen RECEPCION; la salida por DEVOLUCION_A_PROVEEDOR (0084).
 - El mapeo de los 16 procesos de Motor2 a esos nombres es inferido. Las anulaciones son contra-asientos con el signo inverso (sin proceso propio): una regla por `proceso` en la base no las distingue de una entrada normal sin leer cómo se marca la anulación en `MovimientoStock` (no verificado).
 - No se evaluó cuántos tests cubren cada lector; no se leyeron a fondo `consultas/stock/en-transito.ts`, `sugerencia-clase-a.ts`, `rendimiento-recetas.ts` (730+ líneas, solo los saldos por corte) ni los scripts de siembra.
 
