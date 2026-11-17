@@ -5,11 +5,14 @@ import type {
   ComandoAbrirSesion,
   ComandoAnularMovimiento,
   ComandoCerrarSesion,
+  ComandoCancelarCierre,
   ComandoCobrarCuenta,
+  ComandoIniciarCierre,
   ComandoMovimientoManual,
   EntradaDeAbrirSesion,
   EntradaDeAnularMovimiento,
   EntradaDeCerrarSesion,
+  EntradaDeCierreDeSesion,
   EntradaDeCobrarCuenta,
   EntradaDeMovimientoManual,
 } from "./caja.schema";
@@ -128,6 +131,13 @@ function conteoDeBilletes(billetes: unknown, monedas: unknown): ConteoDeBilletes
   }
   const centavosDeMonedas = importeEnCentavos(monedas, true);
   return centavosDeMonedas === null ? null : { billetes: cantidades, monedasEnCentavos: centavosDeMonedas };
+}
+
+/** «Iniciar» o «cancelar» el cierre de la caja (C1b): solo la sesión (UUID); el resto lo decide el caso de uso por el estado. */
+export function guardComandoCierreDeSesion(entrada: EntradaDeCierreDeSesion): ResultadoDeGuardDeCaja<ComandoIniciarCierre & ComandoCancelarCierre> {
+  if (!esObjetoPlano(entrada)) return rechazo("ENTRADA_INVALIDA", "entrada");
+  if (!esUuid(entrada.sesionId)) return rechazo("IDENTIFICADOR_INVALIDO", "sesionId");
+  return { ok: true, valor: { sesionId: entrada.sesionId } };
 }
 
 /** «Cerrar la caja con arqueo»: la sesión, el conteo (billetes y monedas), el «conforme» de los demás medios (booleano) y la observación (opcional, 1 a 500). */

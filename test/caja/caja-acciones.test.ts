@@ -3,7 +3,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { abrirSesionDeCaja, anularMovimientoDeCaja, cerrarSesionDeCaja, cobrarCuenta, registrarMovimientoDeCaja } from "../../src/server/actions/caja/caja";
+import { abrirSesionDeCaja, anularMovimientoDeCaja, cancelarCierreDeSesionDeCaja, cerrarSesionDeCaja, iniciarCierreDeSesionDeCaja, cobrarCuenta, registrarMovimientoDeCaja } from "../../src/server/actions/caja/caja";
 import { ultimaSesionDeLaCaja, leerCobranzasDeSesion, leerCuentasSinCobrar, leerEstadoDeCaja, leerMediosDeCobro } from "../../src/server/actions/caja/lecturas-de-caja";
 import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { entrarComo, sembrarCuenta, sembrarSalon } from "../pos/salon-fixture";
@@ -27,6 +27,9 @@ async function rolCon(nombre: string, claves: readonly Clave[]) {
   await prisma.permisoRol.createMany({ data: claves.map((accionClave) => ({ rolId: rol.id, accionClave, puedeVer: true, puedeEditar: true })) });
   return rol;
 }
+
+/** C1b: la sesión se cierra desde EN_CIERRE y la etapa no trae Server Action para iniciar el cierre: el test la deja en cierre por la base (el caso de uso se prueba en en-cierre-c1b.test.ts). */
+const iniciarElCierre = (sesionId: string) => prismaAdmin.sesionCaja.update({ where: { id: sesionId }, data: { estado: "EN_CIERRE", cierreIniciadoEn: new Date(), cierreIniciadoPorId: s.admin.id } });
 
 const foto = async () => ({
   sesiones: await prismaAdmin.sesionCaja.count(),
@@ -105,11 +108,31 @@ const ACCIONES: Accion[] = [
     },
   },
   {
+    nombre: "iniciarCierreDeSesionDeCaja",
+    exige: "caja_cerrar_sesion",
+    exacto: "admin",
+    preparar: async () => {
+      const sesionId = await abrirComoAdmin("0");
+      return () => iniciarCierreDeSesionDeCaja({ sesionId });
+    },
+  },
+  {
+    nombre: "cancelarCierreDeSesionDeCaja",
+    exige: "caja_cerrar_sesion",
+    exacto: "admin",
+    preparar: async () => {
+      const sesionId = await abrirComoAdmin("0");
+      await iniciarElCierre(sesionId);
+      return () => cancelarCierreDeSesionDeCaja({ sesionId });
+    },
+  },
+  {
     nombre: "cerrarSesionDeCaja",
     exige: "caja_cerrar_sesion",
     exacto: "admin",
     preparar: async () => {
       const sesionId = await abrirComoAdmin("0");
+      await iniciarElCierre(sesionId);
       return () => cerrarSesionDeCaja({ sesionId, ...conteoVacio });
     },
   },
@@ -185,6 +208,7 @@ describe("el operador de caja cobra pero no cierra la caja", () => {
     const cuenta = await cuentaCerrada();
     await como(s.admin);
     expect(await cobrarCuenta({ claveIdempotencia: randomUUID(), cuentaId: cuenta.id, totalVisto: "6000", renglones: [{ medioDePagoId: await efectivoId(), importe: "6000" }] })).toMatchObject({ ok: true });
+    await iniciarElCierre(sesionId);
     // Esperado en efectivo: 100 de fondo + 6000 de cobro = 6100. Se cuenta 6000 (3 de 2000) + 90 de monedas = 6090: faltan 10 pesos = -1000 centavos.
     const r = await cerrarSesionDeCaja({ sesionId, billetes: { "2000": 3 }, monedas: "90", conformeDeLosDemasMedios: false, observacion: "Faltó vuelto" });
     expect(r).toMatchObject({ ok: true, yaEstabaCerrada: false, diferenciaEnEfectivoEnCentavos: "-1000" });
@@ -381,9 +405,11 @@ describe("las lecturas de la caja piden `caja_ver` en la sucursal activa", () =>
 
     it("la última cerrada con su arqueo: esperado, contado, diferencia con signo (centavos), billetes y monedas", async () => {
       const primera = await abrirComoAdmin("100");
+      await iniciarElCierre(primera);
       await como(s.admin);
       expect(await cerrarSesionDeCaja({ sesionId: primera, billetes: { "100": 1 }, monedas: "0", conformeDeLosDemasMedios: false, observacion: null })).toMatchObject({ ok: true });
       const segunda = await abrirComoAdmin("100");
+      await iniciarElCierre(segunda);
       await como(s.admin);
       // Esperado 100; se cuentan 2 de 20 + 1 de 100 = 140 + 5.50 de monedas = 145.50: sobran 45.50 = 4550 centavos.
       expect(await cerrarSesionDeCaja({ sesionId: segunda, billetes: { "100": 1, "20": 2 }, monedas: "5.50", conformeDeLosDemasMedios: false, observacion: "Sobró" })).toMatchObject({ ok: true });
@@ -396,6 +422,7 @@ describe("las lecturas de la caja piden `caja_ver` en la sucursal activa", () =>
 
     it("una diferencia negativa conserva el signo; otra sucursal no ve la sesión de ésta", async () => {
       const sesion = await abrirComoAdmin("100");
+      await iniciarElCierre(sesion);
       await como(s.admin);
       await cerrarSesionDeCaja({ sesionId: sesion, billetes: { "20": 1 }, monedas: "0", conformeDeLosDemasMedios: false, observacion: null });
       expect((await ultimaSesionDeLaCaja())?.arqueos[0]?.diferenciaEnCentavos).toBe("-8000");
@@ -404,5 +431,108 @@ describe("las lecturas de la caja piden `caja_ver` en la sucursal activa", () =>
       await como(adminNorte);
       expect(await ultimaSesionDeLaCaja()).toBeNull();
     });
+  });
+});
+
+describe("iniciar y cancelar el cierre de la caja (C1b): repetición, concurrencia y permisos", () => {
+  const auditoriasDeCierre = (campo: string) => prismaAdmin.registroAuditoria.count({ where: { entidad: "SesionCaja", campo } });
+  const estadoDe = async (id: string) => (await prismaAdmin.sesionCaja.findUniqueOrThrow({ where: { id } })).estado;
+
+  it("doble clic en «iniciar el cierre»: el primero lo inicia, el segundo dice que ya estaba (sin error, sin segunda auditoría)", async () => {
+    const sesionId = await abrirComoAdmin("100");
+    expect(await iniciarCierreDeSesionDeCaja({ sesionId })).toMatchObject({ ok: true, sesionId, yaEstabaEnCierre: false });
+    const antes = await foto();
+    expect(await iniciarCierreDeSesionDeCaja({ sesionId })).toMatchObject({ ok: true, sesionId, yaEstabaEnCierre: true });
+    expect(await foto()).toEqual(antes);
+    expect(await auditoriasDeCierre("cierre_iniciado")).toBe(1);
+    expect(await estadoDe(sesionId)).toBe("EN_CIERRE");
+  });
+
+  it("dos «iniciar» A LA VEZ: los dos responden bien, uno solo escribe y queda una auditoría", async () => {
+    const sesionId = await abrirComoAdmin("100");
+    const rs = await Promise.allSettled([iniciarCierreDeSesionDeCaja({ sesionId }), iniciarCierreDeSesionDeCaja({ sesionId })]);
+    const valores = rs.map((r) => (r.status === "fulfilled" ? r.value : null));
+    expect(valores.every((v) => v?.ok === true), JSON.stringify(rs)).toBe(true);
+    expect(valores.filter((v) => v?.yaEstabaEnCierre === false)).toHaveLength(1);
+    expect(await auditoriasDeCierre("cierre_iniciado")).toBe(1);
+    expect(await estadoDe(sesionId)).toBe("EN_CIERRE");
+  });
+
+  it("cancelar sin cierre iniciado: ok, ya estaba abierta, no escribe ni audita; cancelar tras iniciar la deja abierta y vuelve a entrar plata", async () => {
+    const sesionId = await abrirComoAdmin("100");
+    const antes = await foto();
+    expect(await cancelarCierreDeSesionDeCaja({ sesionId })).toMatchObject({ ok: true, yaEstabaAbierta: true });
+    expect(await foto()).toEqual(antes);
+    expect(await iniciarCierreDeSesionDeCaja({ sesionId })).toMatchObject({ ok: true, yaEstabaEnCierre: false });
+    expect(await registrarMovimientoDeCaja({ claveIdempotencia: randomUUID(), sesionId, sentido: "INGRESO", importe: "10", motivo: "Cambio" })).toMatchObject({ ok: false, codigo: "CAJA_EN_CIERRE" });
+    expect(await cancelarCierreDeSesionDeCaja({ sesionId })).toMatchObject({ ok: true, yaEstabaAbierta: false });
+    expect(await auditoriasDeCierre("cierre_cancelado")).toBe(1);
+    expect(await estadoDe(sesionId)).toBe("ABIERTA");
+    expect(await registrarMovimientoDeCaja({ claveIdempotencia: randomUUID(), sesionId, sentido: "INGRESO", importe: "10", motivo: "Cambio" })).toMatchObject({ ok: true });
+  });
+
+  it("sesión inexistente, de otra sucursal o ya cerrada: códigos cerrados y nada cambia; un id mal formado se rechaza por formato", async () => {
+    const sesionId = await abrirComoAdmin("0");
+    const antes = await foto();
+    expect(await iniciarCierreDeSesionDeCaja({ sesionId: randomUUID() })).toMatchObject({ ok: false, codigo: "SESION_NO_ENCONTRADA" });
+    expect(await cancelarCierreDeSesionDeCaja({ sesionId: randomUUID() })).toMatchObject({ ok: false, codigo: "SESION_NO_ENCONTRADA" });
+    expect(await iniciarCierreDeSesionDeCaja({ sesionId: "no-es-uuid" })).toMatchObject({ ok: false, codigo: "IDENTIFICADOR_INVALIDO", campo: "sesionId" });
+    expect(await cancelarCierreDeSesionDeCaja({ sesionId: "no-es-uuid" })).toMatchObject({ ok: false, codigo: "IDENTIFICADOR_INVALIDO", campo: "sesionId" });
+    expect(await foto()).toEqual(antes);
+    await iniciarElCierre(sesionId);
+    expect(await cerrarSesionDeCaja({ sesionId, ...conteoVacio })).toMatchObject({ ok: true });
+    expect(await iniciarCierreDeSesionDeCaja({ sesionId })).toMatchObject({ ok: false, codigo: "SESION_CERRADA" });
+    expect(await cancelarCierreDeSesionDeCaja({ sesionId })).toMatchObject({ ok: false, codigo: "SESION_CERRADA" });
+  });
+
+  it("COBRO contra INICIAR EL CIERRE a la vez: o el cobro entra y el cierre lo ve, o el cierre gana y el cobro recibe CAJA_EN_CIERRE; nunca a medias ni un error crudo", async () => {
+    for (let vuelta = 0; vuelta < 3; vuelta++) {
+      await limpiarBaseDeTest();
+      s = await sembrarSalon();
+      const sesionId = await abrirComoAdmin("100");
+      const cuenta = await cuentaCerrada();
+      await como(s.admin);
+      const pedido = { claveIdempotencia: randomUUID(), cuentaId: cuenta.id, totalVisto: "6000", renglones: [{ medioDePagoId: await efectivoId(), importe: "6000" }] };
+      const rs = await Promise.allSettled([cobrarCuenta(pedido), iniciarCierreDeSesionDeCaja({ sesionId })]);
+      expect(rs.every((r) => r.status === "fulfilled"), `vuelta ${vuelta}: ${JSON.stringify(rs)}`).toBe(true);
+      const [cobro, cierre] = rs.map((r) => (r as PromiseFulfilledResult<{ ok: boolean; codigo?: string }>).value);
+      expect(cierre, `vuelta ${vuelta}`).toMatchObject({ ok: true });
+      expect(await estadoDe(sesionId), `vuelta ${vuelta}`).toBe("EN_CIERRE");
+      const cobranzas = await prismaAdmin.cobranza.count();
+      if (cobro.ok) expect(cobranzas, `vuelta ${vuelta}: el cobro entró`).toBe(1);
+      else {
+        expect(cobro.codigo, `vuelta ${vuelta}`).toBe("CAJA_EN_CIERRE");
+        expect(cobranzas, `vuelta ${vuelta}: el cobro rechazado no deja nada`).toBe(0);
+      }
+      // Lo esperado en efectivo que ve el cierre es exactamente fondo + lo cobrado (sin cobros fantasma ni a medias).
+      const efectivo = (await leerEstadoDeCaja()).sesionAbierta;
+      expect(efectivo?.efectivoEsperadoEnCentavos, `vuelta ${vuelta}`).toBe(cobro.ok ? "610000" : "10000");
+    }
+  });
+
+  it("el permiso se pierde a mitad: quien ya inició el cierre y ya no tiene acceso no puede cancelarlo (rechaza o lleva al login) y la base no cambia; sin el permiso exacto también rechazan", async () => {
+    const sesionId = await abrirComoAdmin("0");
+    expect(await iniciarCierreDeSesionDeCaja({ sesionId })).toMatchObject({ ok: true });
+    await como(actores["menos-caja_cerrar_sesion"]!);
+    const antes = await foto();
+    expect(await cancelarCierreDeSesionDeCaja({ sesionId })).toMatchObject({ ok: false, mensaje: dichoPorPermiso });
+    expect(await foto()).toEqual(antes);
+    await como(s.admin);
+    await prismaAdmin.usuarioSucursal.updateMany({ where: { usuarioId: s.admin.id }, data: { activo: false } });
+    await expect(cancelarCierreDeSesionDeCaja({ sesionId })).rejects.toThrow();
+    await expect(iniciarCierreDeSesionDeCaja({ sesionId })).rejects.toThrow();
+    expect(await foto()).toEqual(antes);
+    expect(await estadoDe(sesionId)).toBe("EN_CIERRE");
+  });
+
+  it("la lectura de estado ve la sesión EN_CIERRE como «en cierre» (con cuándo se inició) y ABIERTA como abierta", async () => {
+    const sesionId = await abrirComoAdmin("100");
+    expect((await leerEstadoDeCaja()).sesionAbierta).toMatchObject({ id: sesionId, estado: "ABIERTA", cierreIniciadoEn: null });
+    expect(await iniciarCierreDeSesionDeCaja({ sesionId })).toMatchObject({ ok: true });
+    const enCierre = (await leerEstadoDeCaja()).sesionAbierta;
+    expect(enCierre).toMatchObject({ id: sesionId, estado: "EN_CIERRE", efectivoEsperadoEnCentavos: "10000" });
+    expect(enCierre?.cierreIniciadoEn).toBeInstanceOf(Date);
+    expect(await cancelarCierreDeSesionDeCaja({ sesionId })).toMatchObject({ ok: true });
+    expect((await leerEstadoDeCaja()).sesionAbierta).toMatchObject({ estado: "ABIERTA", cierreIniciadoEn: null });
   });
 });

@@ -569,6 +569,8 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   const fondoDeCaja = (sesionId: string, importe: string) => db.movimientoCaja.create({ data: { id: randomUUID(), empresaId, sucursalId, sesionId, clase: "FONDO_INICIAL", medioDePagoId: k.medioEfectivoId, importe, creadoPorId: miembro.id } });
   const sesionCerrada = await abrirSesionDeCaja(enElPasado(3 * HORA_MS));
   await fondoDeCaja(sesionCerrada.id, "3000.00");
+  // C1b: el conteo entra solo con la sesión EN_CIERRE.
+  await db.sesionCaja.update({ where: { id: sesionCerrada.id }, data: { estado: "EN_CIERRE", cierreIniciadoEn: enElPasado(2.5 * HORA_MS), cierreIniciadoPorId: miembro.id } });
   await db.arqueoCaja.create({ data: { id: randomUUID(), empresaId, sucursalId, sesionId: sesionCerrada.id, medioDePagoId: k.medioEfectivoId, esperado: "3000.00", contado: "3000.00", contadoMonedas: "0.00", conforme: false } });
   await db.arqueoBillete.create({ data: { id: randomUUID(), empresaId, sucursalId, sesionId: sesionCerrada.id, denominacion: 1000, cantidad: 3 } });
   await db.sesionCaja.update({ where: { id: sesionCerrada.id }, data: { estado: "CERRADA", cerradaEn: enElPasado(2 * HORA_MS), cerradaPorId: miembro.id, observacion: `Cierre ${marca}` } });
