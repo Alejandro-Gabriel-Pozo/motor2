@@ -17,7 +17,7 @@ Motor2 ya tiene dos funciones propias que Pedernal **no construyó**: el reporte
 | M3d-1 | Que el reporte «Rendimiento de recetas» y el cálculo del bruto teórico sigan siendo correctos con versiones brutas (hoy multiplican la merma sobre la cantidad escrita) | Consecuencia de N-2, N-3, N-5, N-9 (diseño de merma §1: dueño 2026-11-13 «Bruto, cargo el bruto…», 2026-11-14 «Marcar cada receta con «cómo se cargó»…», 2026-11-15 «La misma regla que las recetas») | **CONFIRMADA** (derivada) |
 | M3d-2 | «Un valor calibrado nunca se aplica solo»: «Usar este valor» exige el clic y la confirmación | Dueño, 2026-11-08, chat: «el 75 es correcto» (`catalogo-y-niveles-maqueta.md` decisión 75, `ZuluHub-docs`) | **CONFIRMADA** |
 | M3d-3 | Que exista la **calibración por sucursal** (cantidad y merma propias de una línea en la sucursal activa, sin tocar la receta central) | Dueño, 2026-09-26: autorizó la tabla `RendimientoLocalIngrediente`, el permiso `calibrar_rendimiento_local` y que «la merma se congela junto con la cantidad» (`docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md`, «Decisiones de autorización YA RESUELTAS por el dueño del producto»); y 2026-11-08 «el 74 es correcto» (receta versionada, receta propia, «merma y rendimiento por línea») | **CONFIRMADA** (existe y está autorizada; **no** es una función de Pedernal) |
-| M3d-4 | Que la cantidad calibrada de una línea de una receta **bruta** sea también bruta | **No hay cita**: el dueño fijó el 2026-09-26 que «`cantidad` es SIEMPRE el estimado NETO» (D4), antes de decidir el 2026-11-13 cargar el bruto | **PENDIENTE** (la pregunta de §8) |
+| M3d-4 | Que la cantidad calibrada de una línea de una receta **bruta** sea también bruta | «Si el numer que guarsa también tiene que ser bruto» (dueño, 2026-11-17, chat con el orquestador, registrado en `motor2-docs`), respuesta a la pregunta de §8. **Corrige** lo fijado el 2026-09-26 («`cantidad` es SIEMPRE el estimado NETO», D4) solo para las recetas cargadas en bruto; para las netas esa autorización se mantiene | **CONFIRMADA** |
 
 **Alcance.** Entra: el reporte de rendimiento (bruto teórico, estimado, desvío, rótulos), «Usar este valor» y «Volver al valor central», la calibración al guardar una versión nueva (arrastre), la comparación entre sucursales y los rótulos «Neto»/«Bruto» de las pantallas de receta e historial. **No entra:** escribir versiones brutas y convertir (M3b: exige la confirmación expresa del dueño, diseño de merma §11 texto X), stock y costo (M3a, hecho), la ficha impresa (M3c, hecha), merma de lote de producción, desarme, nada de tablas nuevas.
 
@@ -37,8 +37,8 @@ Contexto: una sucursal activa por pedido (la acción de calibrar **nunca** recib
 |---|---|---|
 | CU-1 | Ver el reporte de una receta **neta** | Igual a hoy (el bruto teórico es `cantidad × (1 + merma/100)`) |
 | CU-2 | Ver el reporte de una receta **bruta** | El bruto teórico es la `cantidad` (sin sumar la merma otra vez); el «neto» se muestra derivado (`cantidad × (100 − merma)/100`, como Pedernal) |
-| CU-3 | «Usar este valor» sobre una línea de receta **neta** | Calibra la línea de ESTA sucursal en neto, como hoy (D4 del plan de 2026-09-26); no cambia nada de lo ya confirmado |
-| CU-4 | «Usar este valor» sobre una línea de receta **bruta** | **PENDIENTE** (§8): propuesta: calibra el bruto estimado tal cual |
+| CU-3 | «Usar este valor» sobre una línea de receta **neta** | Calibra la línea de ESTA sucursal en **neto**, como hoy (D4 del plan de 2026-09-26, que se mantiene para las recetas netas); no cambia nada de lo ya confirmado |
+| CU-4 | «Usar este valor» sobre una línea de receta **bruta** | Calibra el bruto estimado tal cual, sin convertir (coincide con lo que descuenta stock y costo). **CONFIRMADA** (§8) |
 | CU-5 | «Volver al valor central» | Sin cambios: deja los dos campos en `null` y lo audita |
 | CU-6 | Guardar una versión **central** nueva que tiene calibraciones de sucursales | Hoy se arrastran si la unidad no cambió (D3). Con versiones de distinta base: ver §5, R-6 |
 | CU-7 | Comparar el bruto entre sucursales | Cada lado se pasa a bruto con la base de **su** versión (ya decidido en el diseño de merma §15) |
@@ -61,7 +61,7 @@ Contexto: una sucursal activa por pedido (la acción de calibrar **nunca** recib
 | R-4 | La calibración se rechaza si la línea ya no es la vigente de su receta (reporte desactualizado) | **CONFIRMADA** (ya en el código) |
 | R-5 | En una versión bruta la merma es menor que 100; con 100 o más se rechaza, no se acota | **CONFIRMADA** (N-4: dueño 2026-11-13 y 2026-11-14) |
 | R-6 | Al guardar una versión central nueva con calibraciones: base igual → se arrastran como hoy; base distinta (la vieja neta, la nueva bruta) → se **convierten** con la regla única del diseño de merma I13 y se muestran en la vista previa; si no se pueden convertir (dato fuera de rango) se descartan y se auditan | **PROPUESTA** (deriva de N-8 «Al editarla se convierte a bruto» y del diseño de merma I9, I13, I15) |
-| R-7 | La cantidad calibrada de una línea de receta **bruta** es bruta | **PENDIENTE** (§8) |
+| R-7 | La cantidad calibrada de una línea de receta **bruta** es **bruta**; la de una receta **neta** sigue neta (la calibración hereda la base de la línea) | **CONFIRMADA** («Si el numer que guarsa también tiene que ser bruto» (dueño, 2026-11-17, chat con el orquestador, registrado en `motor2-docs`)) |
 | R-8 | Estas funciones **no se tocan** para nada que no sea la base: ni textos, ni permisos, ni pantallas nuevas, ni opciones | **CONFIRMADA** (regla «Lo que el dueño no pidió no entra») |
 | R-9 | Hoy ningún camino escribe BRUTA: hasta M3b todo esto es lectura equivalente (resultado idéntico al de hoy con la marca en NETA) | **PROPUESTA** (diseño de merma I2, M3a) |
 
@@ -78,6 +78,17 @@ Contexto: una sucursal activa por pedido (la acción de calibrar **nunca** recib
 | Datos faltantes | Sin marca legible: **cierra** con error; nunca se asume una base | Ídem |
 | Cambio de permisos | Se chequea en el servidor en cada llamada (`calibrar_rendimiento_local`) | `guardar_receta` en cada llamada |
 
+### «¿Qué pasa si…?» con la base y las calibraciones (agregado el 2026-11-17)
+
+| Situación | Resultado | Estado |
+|---|---|---|
+| Una receta cargada en **neta** tiene calibraciones de sucursal | **Se mantienen en neto** (autorización del 2026-09-26). M3d no convierte nada por sí sola | **CONFIRMADA** |
+| Una receta cargada en **bruto** se calibra con «Usar este valor» | Se guarda el **bruto** estimado tal cual; la merma congelada se guarda como dato, sin multiplicar | **CONFIRMADA** («Si el numer que guarsa también tiene que ser bruto», 2026-11-17) |
+| Una receta **neta** se edita y la versión nueva nace **bruta** (N-8 «Al editarla se convierte a bruto», dueño 2026-11-15) y tenía calibraciones guardadas | Cada calibración se **convierte** con la regla única de conversión del diseño de merma (la misma de las líneas), con vista previa y la confirmación estricta que ya exige ese diseño; sin confirmación se rechaza y se devuelve la vista previa. Nunca en silencio | **PROPUESTA** (deriva de N-8 y N-9 «La misma regla que las recetas»; el dueño no habló de las calibraciones en particular) |
+| La conversión de una calibración no se puede hacer (dato fuera de rango, o cambió la unidad de la línea) | Se **descarta y se audita** («Se descartó la calibración de «Norte» para X: …»), como ya se hace ante un cambio de unidad, y la vista previa lo dice | **PROPUESTA** (precedente: D3 del plan de 2026-09-26) |
+| La misma edición llega dos veces | Una sola versión nueva; la segunda se rechaza por versión esperada y no convierte dos veces | **PROPUESTA** (el control por versión esperada ya existe) |
+| Se mira una versión vieja neta del historial | No se reescribe ninguna versión; cada una conserva la base con que nació (N-5) | **CONFIRMADA** |
+
 ## 6. Qué hace Pedernal hoy (leído, 2026-11-17)
 
 - **Receta:** guarda el **bruto** (`composicion`/componente: «se carga el BRUTO; neto = bruto × (1 − merma)», dueño 2026-11-13); el neto sale solo de `netoDeBruto` (`ZuluHub-ERP` `26c7fc5`, `src/modulos/stock/dominio/merma.ts`), con un solo redondeo a 4 decimales; la merma menor que 100 se impone también en la base (`componente_perdida_ck`).
@@ -93,18 +104,17 @@ Contexto: una sucursal activa por pedido (la acción de calibrar **nunca** recib
 | «Usar este valor» escribe la calibración de la sucursal y Pedernal diría «Pasar a la receta» (abre la edición) | Mismo origen; en las dos el valor nunca se aplica solo | **CONFIRMADA** |
 | Motor2 mantiene dos niveles (receta propia **y** calibración); Pedernal solo receta propia | Ídem | **CONFIRMADA** |
 
-## 8. Pregunta abierta (una sola, para quien no programa)
+## 8. Pregunta que estaba abierta y su respuesta (2026-11-17)
 
-**«Cuando una sucursal ajusta, con “Usar este valor”, cuánto de un ingrediente usa en su cocina, y esa receta está cargada como “lo que sale de la cámara” (bruto), ¿el número que se guarda también tiene que ser “lo que sale de la cámara”?»**
+**Pregunta** (la hizo el orquestador general al dueño): «Cuando una sucursal ajusta, con “Usar este valor”, cuánto de un ingrediente usa en su cocina, y esa receta está cargada como “lo que sale de la cámara” (bruto), ¿el número que se guarda también tiene que ser “lo que sale de la cámara”?»
 
-- Contexto: el 2026-09-26 vos dijiste que ese número es «SIEMPRE el estimado neto» (lo que lleva el plato). El 2026-11-13 decidiste cargar las recetas como bruto. Las dos decisiones no pueden valer a la vez para una receta bruta.
-- **Recomendada: sí, bruto.** Así el número que se calibra es el mismo que descuenta stock y costo, y no hace falta convertir cada vez (menos riesgo de errores de redondeo). Para las recetas viejas (neto) no cambia nada.
-- Costo de decidir al revés (neto siempre): hay que convertir cada calibración al guardarla y al leerla, y aparecen restos de redondeo.
-- Hasta la respuesta: R-7 y CU-4 quedan **PENDIENTE**; no se construye nada de esa parte.
+**Respuesta literal** (dueño, 2026-11-17, chat con el orquestador, registrada en `motor2-docs`): «Si el numer que guarsa también tiene que ser bruto».
+
+**Resultado: CONFIRMADA.** El número calibrado es **bruto** cuando la receta está cargada en bruto (coincide con lo que descuenta stock y costo). Corrige lo del 2026-09-26 («SIEMPRE el estimado neto») solo para las recetas brutas; las netas mantienen la autorización original. No quedan preguntas abiertas en los niveles 1 a 5.
 
 ## 9. Lo que sigue (sin tablas ni migraciones)
 
-1. Respuesta del dueño a §8.
-2. Con R-7 confirmada: pasos chicos y reversibles, todos de código sobre la marca ya existente (M2): (a) el bruto teórico y el estimado del reporte leen la base, (b) «Usar este valor» escribe según la base, (c) el arrastre convierte con la vista previa, (d) los rótulos.
+1. (hecho) Respuesta del dueño a §8.
+2. Niveles 1 a 5 confirmados; falta que se mergee este documento y que el orquestador general confirme la etapa de código. Antes de tocar tablas (niveles 6 a 10): modelo, migración aditiva con `down.sql` y plan de verificación; hoy no se prevé tabla nueva (la marca ya existe, M2), a confirmar en el nivel 6. Luego pasos chicos y reversibles, todos de código sobre la marca ya existente (M2): (a) el bruto teórico y el estimado del reporte leen la base, (b) «Usar este valor» escribe según la base, (c) el arrastre convierte con la vista previa, (d) los rótulos.
 3. Pruebas con el método de siempre: oráculo escrito aparte, mutaciones por sitio, y la tabla «¿qué pasa si…?» de §5.
 4. Sugerencias (no implementadas): retirar la calibración por sucursal si, con las recetas reales, nadie la usa y la receta propia alcanza (regla de poda; hoy no hay recetas reales a mano para medir el uso).
