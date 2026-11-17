@@ -86,6 +86,7 @@ export interface ProductoParaConteo {
   nombre: string;
   tipo: Parameters<typeof tieneStockReal>[0];
   seProduce: boolean;
+  claseDeUso?: string | null;
   unidadStock: { nombre: string; decimales: number };
 }
 
@@ -104,7 +105,7 @@ export function armarFilasStockParaConteo(
   const filas: FilaStockParaConteo[] = [];
   for (const g of gruposConSaldo) {
     const p = productoPorId.get(g.productoId);
-    if (!p || !disponibilidad.get(p.id) || !tieneStockReal(p.tipo, p.seProduce)) continue;
+    if (!p || !disponibilidad.get(p.id) || !tieneStockReal(p.tipo, p.seProduce, p.claseDeUso)) continue;
     filas.push({
       productoId: p.id,
       productoCodigo: p.codigo,

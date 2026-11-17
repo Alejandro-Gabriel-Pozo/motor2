@@ -51,10 +51,10 @@ describe("COMPRA: productoValidoParaProceso contra el oráculo", () => {
     expect(productoValidoParaProceso("COMPRA", { tipo: "SERVICIO" as TipoProducto, seProduce: false, esConsignacion: false, claseDeUso: "REVENTA" })).toBe(false);
   });
 
-  it("los otros procesos no cambian: la REVENTA no altera la regla de PRODUCCION ni la de CONSUMO (esos circuitos son de E4-3)", () => {
+  it("la REVENTA no altera la regla de PRODUCCION; CONSUMO pasó a admitirla en E4-3a (lleva stock propio, `stock-propio-equivalencia.test.ts`)", () => {
     const reventa = { tipo: "PV" as const, seProduce: false, esConsignacion: false, claseDeUso: "REVENTA" };
     expect(productoValidoParaProceso("PRODUCCION", reventa)).toBe(false);
-    expect(productoValidoParaProceso("CONSUMO", reventa)).toBe(false); // `tieneStockReal` sigue mirando tipo y seProduce hasta E4-3
+    expect(productoValidoParaProceso("CONSUMO", reventa)).toBe(true);
   });
 });
 

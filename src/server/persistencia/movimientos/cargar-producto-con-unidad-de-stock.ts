@@ -17,12 +17,13 @@ export interface ProductoConUnidadDeStock {
   nombre: string;
   tipo: TipoProducto;
   seProduce: boolean;
+  claseDeUso: string | null;
   unidadStock: Unidad;
 }
 
 export async function cargarProductoConUnidadDeStock(tx: Prisma.TransactionClient, productoId: string): Promise<ProductoConUnidadDeStock | null> {
   return tx.producto.findUnique({
     where: { id: productoId },
-    select: { id: true, nombre: true, tipo: true, seProduce: true, unidadStock: true },
+    select: { id: true, nombre: true, tipo: true, seProduce: true, claseDeUso: true, unidadStock: true },
   });
 }

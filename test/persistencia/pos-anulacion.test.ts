@@ -39,7 +39,7 @@ describe("persistencia de la anulación de un ítem enviado", () => {
         anulaAItemId: null,
         mesaNumero: 4,
         cuentaCerradaEn: null,
-        producto: { nombre: "Muzzarella", tipo: "MP", seProduce: false, pasoVenta: 0.25, decimales: 2 },
+        producto: { nombre: "Muzzarella", tipo: "MP", seProduce: false, claseDeUso: null, pasoVenta: 0.25, decimales: 2 },
         anulaciones: [{ cantidad: -0.5 }],
         promoCuenta: null,
       });

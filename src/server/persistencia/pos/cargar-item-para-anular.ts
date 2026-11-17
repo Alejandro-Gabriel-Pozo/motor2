@@ -27,6 +27,7 @@ export interface ItemParaAnular {
     nombre: string;
     tipo: TipoProducto;
     seProduce: boolean;
+    claseDeUso: string | null;
     /** `Producto.pasoVenta` (venta fraccionada, Task #25); `null` sin paso. */
     pasoVenta: number | null;
     /** Decimales de la unidad de stock del producto (`validarCantidadPedido`). */
@@ -52,7 +53,7 @@ export async function cargarItemParaAnular(tx: Prisma.TransactionClient, args: {
   const item = await tx.cuentaItem.findFirst({
     where: { id: args.cuentaItemId, cuenta: { mesa: { sucursalId: args.sucursalId } } },
     include: {
-      producto: { select: { tipo: true, nombre: true, pasoVenta: true, seProduce: true, unidadStock: { select: { decimales: true } } } },
+      producto: { select: { tipo: true, nombre: true, pasoVenta: true, seProduce: true, claseDeUso: true, unidadStock: { select: { decimales: true } } } },
       cuenta: { include: { mesa: { select: { numero: true } } } },
       anulaciones: { select: { cantidad: true } },
       promoCuenta: { select: { id: true, titulo: true } },
@@ -89,6 +90,7 @@ export async function cargarItemParaAnular(tx: Prisma.TransactionClient, args: {
       nombre: item.producto.nombre,
       tipo: item.producto.tipo,
       seProduce: item.producto.seProduce,
+      claseDeUso: item.producto.claseDeUso,
       pasoVenta: item.producto.pasoVenta !== null ? Number(item.producto.pasoVenta) : null,
       decimales: item.producto.unidadStock.decimales,
     },

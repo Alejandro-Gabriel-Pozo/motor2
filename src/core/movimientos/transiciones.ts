@@ -111,8 +111,14 @@ export function esSignoFijo(proceso: Proceso): boolean {
 }
 
 /** Port de tieneStockReal_ (Movimientos.js:564-566). */
-export function tieneStockReal(tipo: TipoProducto, seProduce: boolean): boolean {
-  return capacidadesDelProducto({ tipo, seProduce }).tieneStockPropio; // E4-0: el mismo resultado de siempre (MP, o PV que se produce), decidido en el núcleo único
+export function tieneStockReal(tipo: TipoProducto, seProduce: boolean, claseDeUso?: string | null): boolean {
+  return capacidadesDelProducto({ tipo, seProduce, claseDeUso }).tieneStockPropio; // E4-0/E4-3a: MP, PV que se produce o Reventa, decidido en el núcleo único
+}
+
+/** La venta descuenta el stock PROPIO del producto vendido, no el de una receta: un PV que se produce o una Reventa (E4-3a). Una MP no se vende, así que acá es falso. */
+export function seVendeDeSuStockPropio(tipo: TipoProducto, seProduce: boolean, claseDeUso?: string | null): boolean {
+  const c = capacidadesDelProducto({ tipo, seProduce, claseDeUso });
+  return c.seVende && c.tieneStockPropio;
 }
 
 /**
@@ -140,7 +146,7 @@ export function productoValidoParaProceso(
 
   if (proceso === "PRODUCCION") return producto.seProduce;
 
-  if (t.requiereStockReal && !tieneStockReal(producto.tipo, producto.seProduce)) return false;
+  if (t.requiereStockReal && !tieneStockReal(producto.tipo, producto.seProduce, producto.claseDeUso)) return false;
 
   // Sesión "consignación" (Movimientos.js:593-603): no se puede devolver al
   // consignante algo que no se recibió en consignación, y viceversa — un

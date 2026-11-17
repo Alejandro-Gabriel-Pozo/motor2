@@ -17,6 +17,7 @@ import { DECIMALES_DE_STOCK, redondearACantidadDeUnidad } from "@/core/movimient
 export interface LineaArmada {
   productoId: string;
   nombre: string;
+  /** La venta descuenta su STOCK PROPIO (FEFO) y no una receta: un PV que se produce o una Reventa (E4-3a; el nombre quedó de cuando solo era lo primero). */
   seProduce: boolean;
   cantidadVendida: number;
   precioVenta: number;

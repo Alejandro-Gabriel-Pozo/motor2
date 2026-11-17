@@ -56,7 +56,7 @@ export async function cargarProductosComoComponentes(
           nombre: p.nombre,
           tipo: p.tipo,
           precioVenta: Number(p.precioVenta),
-          seProduce: p.seProduce,
+          seProduce: origen.get(p.id)?.seProduce ?? p.seProduce,
           alicuota: alicuotaDe(p.alicuotaIvaVenta),
           esAnclaDeAdicional: admite.anclaDeOpcionId !== null,
           ingredientesDeLaRecetaVigente: origen.get(p.id)?.ingredientesDeLaRecetaVigente ?? 0,
