@@ -9,9 +9,10 @@ test("cada clase del alta se guarda con el tipo y «se produce» de siempre, y e
   await page.setViewportSize({ width: 375, height: 812 });
   const marca = Date.now();
   const casos = [
-    { clase: "Materia prima", nombre: `E2E Alta MP ${marca}`, tipo: "MP", seProduce: false },
-    { clase: "Elaborado", nombre: `E2E Alta Elaborado ${marca}`, tipo: "MP", seProduce: true },
-    { clase: "Producto vendible", nombre: `E2E Alta Vendible ${marca}`, tipo: "PV", seProduce: false },
+    { clase: "Materia prima", nombre: `E2E Alta MP ${marca}`, tipo: "MP", seProduce: false, claseDeUso: "MATERIA_PRIMA" },
+    { clase: "Insumo", nombre: `E2E Alta Insumo ${marca}`, tipo: "MP", seProduce: false, claseDeUso: "INSUMO" },
+    { clase: "Elaborado", nombre: `E2E Alta Elaborado ${marca}`, tipo: "MP", seProduce: true, claseDeUso: "ELABORADO" },
+    { clase: "Producto vendible", nombre: `E2E Alta Vendible ${marca}`, tipo: "PV", seProduce: false, claseDeUso: "VENDIBLE" },
   ] as const;
   try {
     for (const c of casos) {
@@ -21,13 +22,15 @@ test("cada clase del alta se guarda con el tipo y «se produce» de siempre, y e
       await expect(page.getByLabel("Activo en todas las sucursales")).toHaveCount(0);
       await expect(page.getByLabel(/Se produce/)).toHaveCount(0);
       await expect(page.getByLabel("Producto de venta (PV)")).toHaveCount(0);
+      // Reventa todavía no se puede guardar (E4): no se ofrece.
+      await expect(page.getByLabel("¿Qué es?").locator("option", { hasText: "Reventa" })).toHaveCount(0);
       await page.getByLabel("¿Qué es?").selectOption({ label: c.clase });
       await page.locator('input[name="nombre"]').fill(c.nombre);
       await page.getByLabel("Unidad de stock").selectOption({ label: "unidad" });
       await page.getByRole("button", { name: "Crear producto" }).click();
       await page.waitForURL(/\/catalogo\/productos\/[^/?]+\?guardado=alta/);
       const guardado = await prisma.producto.findFirstOrThrow({ where: { nombre: c.nombre } });
-      expect({ tipo: guardado.tipo, seProduce: guardado.seProduce }, c.clase).toEqual({ tipo: c.tipo, seProduce: c.seProduce });
+      expect({ tipo: guardado.tipo, seProduce: guardado.seProduce, claseDeUso: guardado.claseDeUso }, c.clase).toEqual({ tipo: c.tipo, seProduce: c.seProduce, claseDeUso: c.claseDeUso });
       if (c.tipo === "MP") {
         const disponibilidad = await prisma.disponibilidadProducto.findFirst({ where: { productoId: guardado.id, sucursalId } });
         expect(disponibilidad?.disponible, `${c.clase}: nace disponible en la sucursal`).toBe(true);
