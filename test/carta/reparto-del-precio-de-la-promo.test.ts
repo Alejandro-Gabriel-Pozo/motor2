@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { importeDeLinea } from "../../src/core/moneda";
-import { repartoDelPrecioDeLaPromo, textoDeLaFilaDelReparto, type ParteParaRepartir } from "../../src/core/carta/reparto-del-precio-de-la-promo";
+import { repartoDelPrecioDeLaPromo, textoDeLaFilaDelReparto, type ParteParaRepartir } from "../../src/core/pos/reparto-del-precio-de-la-promo";
 
 /**
  * «Reparto del precio» de una promo (solo lectura, detrás de `ARMADO_DE_PROMO_COMO_PEDERNAL`). La función es PURA y reparte con `prorratearPrecioPromo` (el mismo que congela el precio al vender): acá se fija el

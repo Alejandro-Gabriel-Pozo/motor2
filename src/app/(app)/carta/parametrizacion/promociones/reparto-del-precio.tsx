@@ -1,4 +1,5 @@
-import { TEXTO_DEL_REPARTO, TEXTO_DEL_REPARTO_CON_RANGO, TEXTO_NO_SE_REPARTE, TEXTO_SIN_PRODUCTOS, repartoDelPrecioDeLaPromo, textoDeLaFilaDelReparto, type ParteParaRepartir } from "@/core/carta/public";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { TEXTO_DEL_REPARTO, TEXTO_DEL_REPARTO_CON_RANGO, TEXTO_NO_SE_REPARTE, TEXTO_SIN_PRODUCTOS, repartoDelPrecioDeLaPromo, textoDeLaFilaDelReparto, type ParteParaRepartir } from "@/core/pos/public";
 
 /**
  * «Reparto del precio» de una promo (solo lectura; detrás de `ARMADO_DE_PROMO_COMO_PEDERNAL`, lo decide la página): la parte del precio de la promo en ESTA sucursal (`precio`) que le toca a cada
@@ -17,9 +18,9 @@ export function RepartoDelPrecio({ precio, partes }: { precio: number; partes: r
           {TEXTO_NO_SE_REPARTE}: {reparto.sinProducto.join(", ")}.
         </p>
       ) : reparto.tipo === "error" ? (
-        <p className="text-sm text-error" role="alert">
+        <Aviso variante="error" forma="en-linea">
           {reparto.mensaje}
-        </p>
+        </Aviso>
       ) : (
         <>
           <ul className="flex flex-col text-sm">
