@@ -192,13 +192,14 @@ describe("S-15: las Server Actions de lectura devuelven solo lo que la pantalla 
       expect(JSON.stringify(filas)).not.toMatch(/30-70000000-1|ventas@lacteos|30 dias|Tel/);
     });
 
-    it("la lista de sucursales de Administración devuelve id, nombre y si está activa (antes: la fila entera)", async () => {
+    it("la lista de sucursales de Administración devuelve id, nombre, si está activa y su hora de corte (C2c; antes: la fila entera)", async () => {
       const filas = await listarSucursales();
       expect(filas.map((s) => Object.keys(s).sort())).toEqual([
-        ["activo", "id", "nombre"],
-        ["activo", "id", "nombre"],
+        ["activo", "horaDeCorte", "id", "nombre"],
+        ["activo", "horaDeCorte", "id", "nombre"],
       ]);
       expect(filas.map((s) => s.nombre)).toEqual(["Central", "Sucursal B"]);
+      expect(filas.map((s) => s.horaDeCorte)).toEqual(["00:00", "00:00"]);
     });
   });
 });
