@@ -12,7 +12,7 @@ function dominioBase(baseURL: string | undefined): string {
 }
 
 test.describe("carta de la empresa única en el dominio base", () => {
-  test("/ es el portal y /<sucursal> la carta, sin el slug de la empresa en la URL; ← Menú vuelve a /", async ({ page, sucursalId, baseURL }) => {
+  test("/ es el portal y /<sucursal> la carta, sin el slug de la empresa en la URL; ← Portal vuelve a /", async ({ page, sucursalId, baseURL }) => {
     const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
     const slug = `e2e-unica-${marca}`;
     await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
@@ -28,7 +28,7 @@ test.describe("carta de la empresa única en el dominio base", () => {
       await expect(page).toHaveURL(`${host}/${slug}`);
       await expect(page.locator(".carta-slider")).toBeVisible();
 
-      await page.getByRole("link", { name: "← Menú" }).click();
+      await page.getByRole("link", { name: "← Portal" }).click();
       await expect(page).toHaveURL(`${host}/`);
 
       const directa = await page.goto(`${host}/${slug}`);

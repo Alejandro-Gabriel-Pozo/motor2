@@ -134,7 +134,7 @@ test.describe("carta pública: colores del tema (claves de color, C8 y tinta bas
     }
   });
 
-  test("topbar: el texto, color y tamaño de 'volver' salen del tema; sin tema queda '← Menú' de 12px tenue", async ({ page, sucursalId }) => {
+  test("topbar: el texto, color y tamaño de 'volver' salen del tema; sin tema queda '← Portal' de 12px tenue", async ({ page, sucursalId }) => {
     const carta = await crearCarta(sucursalId, { secciones: 2, valores: TEMA_OSCURO });
     try {
       for (const vp of [MOBILE, DESKTOP]) {
@@ -152,7 +152,7 @@ test.describe("carta pública: colores del tema (claves de color, C8 y tinta bas
     const sin = await crearCarta(sucursalId, { secciones: 2 });
     try {
       await page.goto(sin.ruta);
-      const volver = page.locator("[data-carta-topbar]").getByText("← Menú");
+      const volver = page.locator("[data-carta-topbar]").getByText("← Portal");
       await expect(volver).toBeVisible();
       expect(await volver.evaluate((el) => getComputedStyle(el).fontSize)).toBe("12px");
       expect(await volver.evaluate((el) => getComputedStyle(el).opacity)).toBe("0.6");
@@ -556,7 +556,7 @@ test.describe("carta pública: familia tipográfica (carta_fuente_familia)", () 
       expect(await familia(page.locator("[data-carta-banda] h2").first()), `título de la banda ${vp.width}`).toMatch(titulos);
       expect(await familia(page.locator("[data-carta-banda] p").first()), `etiqueta de la banda ${vp.width}`).toMatch(/Geist/);
       expect(await familia(page.getByRole("button", { name: "Índice" })), `botón Índice ${vp.width}`).toMatch(/Geist/);
-      expect(await familia(page.locator("[data-carta-topbar]").getByText("← Menú")), `botón volver ${vp.width}`).toMatch(/Geist/);
+      expect(await familia(page.locator("[data-carta-topbar]").getByText("← Portal")), `botón volver ${vp.width}`).toMatch(/Geist/);
     }
   }
 

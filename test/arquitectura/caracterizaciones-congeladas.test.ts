@@ -835,6 +835,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "M2 de la merma sobre el bruto (migración 20261117140000_base_de_cantidad_en_versiones; ADITIVA, nada la lee todavía; regenerado con REGENERAR_CARACTERIZACION_TRAMO_A=1): la lectura `catalogo.obtenerEstadoDeRecetaPropia` devuelve la fila de RecetaVersion entera y suma `baseDeCantidad: \"NETA\"` (el valor por defecto de todo lo ya cargado). Ninguna otra lectura ni conteo de consultas cambia.",
       },
+      {
+        blob: "fc93e82e75d4eee578cfb782b44a641433318a32",
+        // El commit PADRE de este es f7fa3bf6 (el libro de la carta integrado con main, justo antes de regenerar este golden).
+        commit: "f7fa3bf6",
+        motivo:
+          "Libro de la carta al estilo de la maqueta de Pedernal (Frente 6, PR #391; SOLO PRESENTACIÓN, interruptor LIBRO_ESTILO_MAQUETA; regenerado con REGENERAR_CARACTERIZACION_TRAMO_A=1): cambian SOLO las líneas del tema de la carta pública que la sucursal no cargó (`carta.resolverEmpresaCarta`, `carta.resolverCartaPublica` central y norte): fondo y marca por defecto de la maqueta, tipografía geist, tamaños de letra de nombre, precio y títulos, rótulo «← Portal» del botón de volver, y las variables CSS que de ahí salen. Dueño, 2026-11-16: «Sí, igualar al de la maqueta»; 2026-11-17: «Portal con una flechita…», «si» (letra), «blanco y negrita». Ningún dato guardado, permiso ni dinero cambia.",
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {
