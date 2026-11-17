@@ -9,6 +9,8 @@ import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 import { registrarFacturaProveedorCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/registrar-factura-proveedor";
 import { confirmarRecepcionDeFacturaCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/confirmar-recepcion-de-factura";
+import { registrarControlDeRecepcionCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/registrar-control-de-recepcion";
+import { azarDelProceso } from "../../src/lib/azar";
 import { anularFacturaProveedorCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/anular-factura-proveedor";
 import { mediodiaDelDia, ZONA_ARGENTINA, diaDeCalendario, sumarDias } from "../../src/core/tiempo/zona-horaria";
 import { MENSAJE_RECEPCION_YA_RECIBIDA } from "../../src/core/compras/public";
@@ -130,5 +132,27 @@ describe("confirmar contra anular, a la vez", () => {
       expect(await prisma.operacion.count({ where: { proceso: "AJUSTE" } })).toBe(0);
       expect(await prisma.movimientoStock.count()).toBe(0);
     }
+  });
+});
+
+describe("dos controles del MISMO renglón a la vez (N3-b)", () => {
+  const renglonesDe = (facturaId: string) => prisma.facturaProveedorRenglon.findMany({ where: { facturaProveedorId: facturaId, productoId: { not: null } }, orderBy: { orden: "asc" } });
+  const controlar = (facturaId: string, renglonId: string, condicion: "CONFORME" | "RECHAZADA") =>
+    registrarControlDeRecepcionCasoDeUso(actor(), { facturaId, controles: [{ renglonId, condicion, observacion: condicion === "CONFORME" ? null : "Llegó roto" }] }, azarDelProceso);
+
+  it.each([2, 6])("%i controles simultáneos del mismo renglón: gana UNO, los demás reciben YA_CONTROLADA y queda UNA sola fila (la del ganador, sin pisar)", async (cuantos) => {
+    const facturaId = await cargarPendiente("A-00001-00000400");
+    const [renglon] = await renglonesDe(facturaId);
+
+    const resultados = await Promise.all(Array.from({ length: cuantos }, (_, i) => controlar(facturaId, renglon!.id, i % 2 === 0 ? "CONFORME" : "RECHAZADA")));
+
+    const ganadores = resultados.filter((r) => r.ok);
+    expect(ganadores).toHaveLength(1);
+    const perdedores = resultados.filter((r) => !r.ok);
+    expect(perdedores).toHaveLength(cuantos - 1);
+    for (const r of perdedores) expect(r).toMatchObject({ ok: false, codigo: "YA_CONTROLADA" });
+    const filas = await prisma.controlDeLineaDeRecepcion.findMany({ where: { facturaProveedorRenglonId: renglon!.id } });
+    expect(filas).toHaveLength(1);
+    expect(await prisma.registroAuditoria.count({ where: { entidadId: facturaId, campo: "controlDeRecepcion" } })).toBe(1);
   });
 });

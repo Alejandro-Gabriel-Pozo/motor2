@@ -39,6 +39,7 @@ class ParteYaRecibida extends Error {}
  *  3. arma una línea del Kardex por entrada desde los renglones guardados (el precio TOTAL del renglón se reparte en proporción exacta a la cantidad; el precio por unidad, el lote y el detalle, TAL CUAL), escribe la compra y marca la parte RECIBIDA con su compra, con `WHERE estado = 'PENDIENTE'`:
  *     si no tocó ninguna fila, ganó otra confirmación y se deshace todo (no queda compra huérfana); la segunda barrera es el disparador de la base (una parte recibida no vuelve atrás);
  *  4. audita (`FacturaProveedor`, campo `recepcion`, de PENDIENTE a RECIBIDA: quién (`actorId`), cuándo (el registro) y, en la descripción, las secciones y la fecha de stock).
+ * Un choque del único de la compra (`Operacion_factura_unica_vigente_key`) es la carrera perdida contra otra confirmación de la misma parte (leo el estado, valido y recién después inserto una clave única): se reintenta y el reintento ve «ya recibida».
  * Idempotente por ESTADO, sin clave de reintento: confirmar dos veces devuelve «ya recibida» sin crear stock de nuevo.
  *
  * @contract Confirma la recepción de la parte pendiente de una sucursal exactamente una vez: entra su stock con la fecha elegida, o no entra nada.
@@ -143,7 +144,7 @@ export async function confirmarRecepcionDeFacturaCasoDeUso(
     });
 
     return exito(`Recepción confirmada: ${escritas.movimientos} movimiento(s) entraron al stock de esta sucursal con fecha ${diaStock}.`, { operacionId: operacion.id, movimientos: escritas.movimientos });
-  }).catch((e): ResultadoConfirmarRecepcionDeFactura => {
+  }, undefined, undefined, true).catch((e): ResultadoConfirmarRecepcionDeFactura => {
     if (e instanceof ParteYaRecibida) return fracaso("YA_RECIBIDA", MENSAJE_RECEPCION_YA_RECIBIDA);
     throw e;
   });
