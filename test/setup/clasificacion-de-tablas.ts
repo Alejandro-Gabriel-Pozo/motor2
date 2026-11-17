@@ -18,7 +18,7 @@ import { join } from "node:path";
 export type ClaseDeTabla = "POR_EMPRESA" | "DE_EMPRESA_ESCRITA_POR_LA_PLATAFORMA" | "GLOBAL" | "EMPRESA" | "CONSOLA";
 
 const POR_EMPRESA = [
-  "ArqueoBillete", "ArqueoCaja", "Caja", "Cobranza", "Cobro", "CuentaDeCobro", "MedioDePago", "MovimientoCaja", "SesionCaja",
+  "ArqueoBillete", "ArqueoCaja", "Caja", "Cobranza", "Cobro", "CuentaDeCobro", "MedioDePago", "ModoDeOrdenDeSeccionCarta", "MovimientoCaja", "SesionCaja",
   "ConformeDeJornada", "ControlDeJornadaCerrada", "CorreccionDeMedio", "DeclaracionDeTotal", "JornadaDeSucursal",
   "CierreDeCajaDeJornada", "ConciliacionDeJornada", "ConciliacionDeCobroPorOrigen",
   "AgregadoDeCuenta", "CapacidadSucursal", "CategoriaProducto", "CentroDeCostos", "Cliente", "CombinacionDeProducto", "CombinacionEnLinea", "ConceptoDeGasto", "ConsumoDeOpcion", "ContenidoCartaProducto", "ConteoFisico", "ControlDeLineaDeRecepcion", "Cuenta", "CuentaItem", "DescuentoProductoSucursal", "DestinoConsumo", "DisponibilidadProducto", "DistribucionCostoLinea", "DistribucionCostoVersion",
@@ -130,7 +130,7 @@ export type DeclaracionDeAlcance =
 
 /** `sucursalId` NOT NULL con FK a `Sucursal`: la fila es de una sola sucursal. */
 const ALCANCE_PROPIA = [
-  "ArqueoBillete", "ArqueoCaja", "Caja", "Cobranza", "Cobro", "CuentaDeCobro", "MovimientoCaja", "SesionCaja",
+  "ArqueoBillete", "ArqueoCaja", "Caja", "Cobranza", "Cobro", "CuentaDeCobro", "ModoDeOrdenDeSeccionCarta", "MovimientoCaja", "SesionCaja",
   "ConformeDeJornada", "ControlDeJornadaCerrada", "CorreccionDeMedio", "DeclaracionDeTotal", "JornadaDeSucursal",
   "CierreDeCajaDeJornada", "ConciliacionDeJornada", "ConciliacionDeCobroPorOrigen",
   "ConteoFisico", "ContenidoCartaProducto", "DescuentoProductoSucursal", "DisponibilidadProducto", "EjemplarTicket", "EntradaDelDiaDeCupo", "FacturaProveedorSucursal", "FrecuenciaConteoProducto", "GeneroCarta", "ImputacionDeGasto", "ItemAgrupadoCarta", "Mesa",

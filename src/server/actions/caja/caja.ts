@@ -1,7 +1,7 @@
 "use server";
 
-import { guardComandoAbrirSesion, guardComandoAnularMovimiento, guardComandoCerrarSesion, guardComandoCobrarCuenta, guardComandoMovimientoManual, type RechazoDeGuardDeCaja } from "@/core/features/caja/caja.guard";
-import type { EntradaDeAbrirSesion, EntradaDeAnularMovimiento, EntradaDeCerrarSesion, EntradaDeCobrarCuenta, EntradaDeMovimientoManual } from "@/core/features/caja/caja.schema";
+import { guardComandoAbrirSesion, guardComandoAnularMovimiento, guardComandoCerrarSesion, guardComandoCierreDeSesion, guardComandoCobrarCuenta, guardComandoMovimientoManual, type RechazoDeGuardDeCaja } from "@/core/features/caja/caja.guard";
+import type { EntradaDeAbrirSesion, EntradaDeAnularMovimiento, EntradaDeCerrarSesion, EntradaDeCierreDeSesion, EntradaDeCobrarCuenta, EntradaDeMovimientoManual } from "@/core/features/caja/caja.schema";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { azarDelProceso } from "@/lib/azar";
 import { requierePermiso } from "@/server/acceso/gate";
@@ -9,8 +9,10 @@ import { conPermiso } from "../con-permiso";
 import { type ResultadoAccion } from "../tipos";
 import { abrirSesionCasoDeUso } from "./casos-de-uso/abrir-sesion";
 import { anularMovimientoCasoDeUso } from "./casos-de-uso/anular-movimiento";
+import { cancelarCierreDeSesion } from "./casos-de-uso/cancelar-cierre";
 import { cerrarSesionCasoDeUso } from "./casos-de-uso/cerrar-sesion";
 import { cobrarCuentaCasoDeUso } from "./casos-de-uso/cobrar-cuenta";
+import { iniciarCierreDeSesion } from "./casos-de-uso/iniciar-cierre";
 import { registrarMovimientoManualCasoDeUso } from "./casos-de-uso/registrar-movimiento-manual";
 
 /**
@@ -29,6 +31,10 @@ export type ResultadoDeCaja = ResultadoAccion & {
   cobranzaId?: string;
   /** El reintento con la misma clave devolvió lo ya hecho. */
   yaExistia?: boolean;
+  /** Solo al iniciar el cierre: la caja ya estaba en cierre (repetir no escribe). */
+  yaEstabaEnCierre?: boolean;
+  /** Solo al cancelar el cierre: la caja ya estaba abierta (repetir no escribe). */
+  yaEstabaAbierta?: boolean;
   /** Solo al cerrar: la caja ya estaba cerrada con el mismo conteo. */
   yaEstabaCerrada?: boolean;
   /** Solo en un egreso: superó el efectivo esperado (se permite; es un aviso). */
@@ -60,6 +66,8 @@ function extras(r: { ok: boolean }): Omit<ResultadoDeCaja, "ok" | "mensaje"> {
     cobranzaId: id("cobranzaId"),
     yaExistia: booleano("yaExistia"),
     yaEstabaCerrada: booleano("yaEstabaCerrada"),
+    yaEstabaEnCierre: booleano("yaEstabaEnCierre"),
+    yaEstabaAbierta: booleano("yaEstabaAbierta"),
     superaElEfectivo: booleano("superaElEfectivo"),
     totalActualEnCentavos: texto("totalActualEnCentavos"),
     faltaEnCentavos: texto("faltaEnCentavos"),
@@ -96,6 +104,26 @@ export async function anularMovimientoDeCaja(entrada: EntradaDeAnularMovimiento)
     if (!comando.ok) return rechazoDeGuard(comando);
     const puedeAnularAjenos = (await requierePermiso(ctx.usuarioId, ctx.sucursalId, "caja_anular_movimiento_ajeno", ctx.db)).ok;
     const r = await anularMovimientoCasoDeUso(ctx, comando.valor, puedeAnularAjenos, azarDelProceso);
+    return { ...aResultadoAccion(r), ...extras(r) };
+  });
+}
+
+/** «Iniciar el cierre» de la caja (C1b): la sesión pasa a EN_CIERRE y no entra más plata hasta cancelarlo o cerrarla. Mismo permiso que cerrar. Repetirlo no escribe (`yaEstabaEnCierre`). */
+export async function iniciarCierreDeSesionDeCaja(entrada: EntradaDeCierreDeSesion): Promise<ResultadoDeCaja> {
+  return conPermiso("caja_cerrar_sesion", async (ctx) => {
+    const comando = guardComandoCierreDeSesion(entrada);
+    if (!comando.ok) return rechazoDeGuard(comando);
+    const r = await iniciarCierreDeSesion(ctx, { sesionId: comando.valor.sesionId });
+    return { ...aResultadoAccion(r), ...extras(r) };
+  });
+}
+
+/** «Cancelar el cierre» de la caja (C1b): la sesión EN_CIERRE vuelve a ABIERTA. Mismo permiso que cerrar. Repetirlo no escribe (`yaEstabaAbierta`). */
+export async function cancelarCierreDeSesionDeCaja(entrada: EntradaDeCierreDeSesion): Promise<ResultadoDeCaja> {
+  return conPermiso("caja_cerrar_sesion", async (ctx) => {
+    const comando = guardComandoCierreDeSesion(entrada);
+    if (!comando.ok) return rechazoDeGuard(comando);
+    const r = await cancelarCierreDeSesion(ctx, { sesionId: comando.valor.sesionId });
     return { ...aResultadoAccion(r), ...extras(r) };
   });
 }
