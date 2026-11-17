@@ -99,10 +99,14 @@ Las de C3 y C3b (no se repiten): una sola cuenta de cobro **activa** por sucursa
 
 (1) **Oráculo rol × piso × clave** de las 8 claves (gerente con rol admin, administrador, operador con y sin fila, rol propio con y sin fila, sin membresía) contra la decisión de acceso real y por las acciones con usuarios reales. (2) **Matriz de denegación por defecto:** las 8 acciones y las 3 lecturas con su control positivo (familia «caja»). (3) **Concurrencia e idempotencia por las acciones reales** (dos altas simultáneas, desactivar/reactivar, doble clic, versión). (4) **Goldens de gobierno** actualizados (zona restringida: se declara en el PR). (5) **Mutaciones:** quitar el permiso de una acción → rojo; usar la clave equivocada → rojo; quitar la validación del guard → rojo. (6) **Combinaciones (regla del 2026-10-28):** (clave) × (rol) × (fila) × (piso); guardián que falla si aparece una clave `caja_*` nueva sin declarar.
 
-## 10. Preguntas abiertas para el dueño
+## 10. Decisiones de la etapa B (2026-11-17)
 
-- **Q-B1 (pisos):** ¿las ocho claves nacen de piso **operario** (la empresa decide a quién delegarlas; semilla solo el administrador), según tu regla del 2026-11-17? Pedernal las tiene para gerente y administrador. PROPUESTA: operario. (La misma pregunta vale para `caja_registrar_ajuste`, nacida de piso administrador en #400.)
-- **Q-B2:** ¿está bien que ver los datos del cobro (DNI, últimos 4) quede bajo `caja_ver`, sin clave aparte, como Pedernal (`cajas.ver`)? PROPUESTA: sí.
-- **Q-B3:** ¿ocho claves (una por acción, como Pedernal) o dos (una por medios y una por cuentas)? PROPUESTA: ocho, por paridad.
+El dueño delegó estas tres preguntas en Pedernal («Preguntale a Pedernal, según sus reglas…», relayado por el orquestador general el 2026-11-17) y Pedernal contestó con su código (`ZuluHub-ERP` `src/capacidades/permisos/empresa.ts:139-166`, `src/modulos/caja/consultas/declaraciones.ts:3-9`). Estado: CONFIRMADA por delegación del dueño en Pedernal.
 
-**Estado:** DISEÑO. No se escribe `acciones.ts`, migración de semilla ni acciones hasta que el orquestador confirme con la respuesta del dueño. **Lo que no necesita permiso nuevo ya se puede construir:** las 3 lecturas de administración bajo `caja_ver` (con su inventario, oráculo y pruebas) pueden salir antes de los permisos.
+- **Q-B3, CONFIRMADA:** OCHO claves (crear, editar, reactivar y desactivar × medios de pago y cuentas de cobro), como Pedernal. `medios_de_pago.editar` cubre elegir qué datos opcionales pide cada medio.
+- **Q-B1, CONFIRMADA:** semilla igual a Pedernal: gerente y administrador (rol `admin`; el operador ninguna). **Piso operario** (Pedernal: administrador), por la decisión del dueño PISOS-65 (2026-11-17: la empresa decide fila por fila): DIFERENCIA declarada con esa cita. Igual para el ajuste de caja (`caja_registrar_ajuste`: en #429 nace de piso operario; Pedernal: gerente y administrador).
+- **Q-B2, CONFIRMADA:** las lecturas van con `caja_ver`, sin clave «ver» propia (Pedernal exige `cajas.ver`, los tres roles). Los datos del cobro (DNI, cupón) también bajo `caja_ver`; en Pedernal esa restricción no está decidida (Q15 de E3): queda como está.
+
+**Cómo se construye:** (1) las 3 lecturas de administración, ya, sin permiso nuevo; (2) las 8 acciones finas con sus 8 claves, apiladas sobre #429, en UNA sola migración de permisos (aditiva, con `down.sql` y `verificacion-previa.sql`, sin aplicar a ninguna base real), sin tocar ningún piso existente y sobre el lote A (PISOS-65).
+
+**Estado:** DISEÑO confirmado; la construcción va en PR aparte.
