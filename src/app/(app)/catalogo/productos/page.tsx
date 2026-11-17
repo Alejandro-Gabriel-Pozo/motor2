@@ -16,6 +16,7 @@ import {
   ETIQUETA_DEL_MODO,
   ETIQUETA_DEL_TIPO,
   MODOS_FILTRABLES,
+  CLASES_NUEVAS_VISIBLES,
   TIPOS_FILTRABLES,
   consultaDeLosFiltros,
   hayFiltrosDeProductos,
@@ -80,7 +81,7 @@ export default async function ProductosPage({
       <FiltrosDeLaListaDeProductos
         accion="/catalogo/productos"
         filtros={filtros}
-        clases={TIPOS_FILTRABLES.map((v) => ({ valor: v, etiqueta: ETIQUETA_DEL_TIPO[v] }))}
+        clases={TIPOS_FILTRABLES.filter((v) => v !== "reventa" || CLASES_NUEVAS_VISIBLES).map((v) => ({ valor: v, etiqueta: ETIQUETA_DEL_TIPO[v] }))}
         estados={ESTADOS_FILTRABLES.map((v) => ({ valor: v, etiqueta: ETIQUETA_DEL_ESTADO[v] }))}
         etiquetaDeLaBusqueda={porReferencia ? "Buscar por nombre, código o cómo lo llama el proveedor" : "Buscar por nombre o código"}
         marcadorDeLaBusqueda={porReferencia ? "Nombre, código o lo que dice la factura…" : "Buscar por código o nombre…"}

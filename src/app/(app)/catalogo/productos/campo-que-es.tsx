@@ -1,7 +1,7 @@
 "use client";
 
 import { AyudaDeFicha } from "@/components/catalogo/ayuda-de-ficha";
-import { CLASES_DE_ALTA, CLAVES_DE_CLASE_DE_ALTA, type ClaveDeClaseDeAlta } from "@/core/catalogo/public";
+import { CLASES_DE_ALTA, CLAVES_OFRECIDAS_EN_PANTALLA, type ClaveDeClaseDeAlta } from "@/core/catalogo/public";
 import { Selector } from "@/ui/primitivas/selector";
 
 /**
@@ -26,8 +26,8 @@ export function CampoQueEs({ editando, clase, alCambiar }: { editando: boolean; 
   }
   return (
     <div className="flex flex-col gap-1">
-      <Selector etiqueta="¿Qué es?" name="queEs" value={clase} onChange={(e) => alCambiar(CLAVES_DE_CLASE_DE_ALTA.find((c) => c === e.target.value) ?? "MATERIA_PRIMA")}>
-        {CLAVES_DE_CLASE_DE_ALTA.map((c) => (
+      <Selector etiqueta="¿Qué es?" name="queEs" value={clase} onChange={(e) => alCambiar(CLAVES_OFRECIDAS_EN_PANTALLA.find((c) => c === e.target.value) ?? "MATERIA_PRIMA")}>
+        {CLAVES_OFRECIDAS_EN_PANTALLA.map((c) => (
           <option key={c} value={c}>
             {CLASES_DE_ALTA[c].nombre}
           </option>

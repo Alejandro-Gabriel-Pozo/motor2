@@ -26,6 +26,10 @@ export const CLASES_DE_ALTA = {
 export type ClaveDeClaseDeAlta = keyof typeof CLASES_DE_ALTA;
 /** Orden en que se ofrecen (el de Pedernal). */
 export const CLAVES_DE_CLASE_DE_ALTA: readonly ClaveDeClaseDeAlta[] = ["MATERIA_PRIMA", "INSUMO", "REVENTA", "ELABORADO", "VENDIBLE"];
+/** Interruptor (todo nace cerrado): Insumo y Reventa se ven en el desplegable «¿Qué es?» y el chip «Reventa» de la lista solo con él encendido; apagado la pantalla ofrece lo de siempre (Materia prima, Elaborado, Producto vendible). El servidor ya las admite. */
+export const CLASES_NUEVAS_VISIBLES: boolean = false;
+/** Las clases que la PANTALLA ofrece hoy (en el orden de Pedernal). */
+export const CLAVES_OFRECIDAS_EN_PANTALLA: readonly ClaveDeClaseDeAlta[] = CLAVES_DE_CLASE_DE_ALTA.filter((c) => CLASES_NUEVAS_VISIBLES || (c !== "INSUMO" && c !== "REVENTA"));
 
 /**
  * La clase de un producto ya guardado: la que tiene escrita (`claseDeUso`, E1/E2) si es de las que se ofrecen; si no (todo lo cargado antes de las clases), la que sale de lo que

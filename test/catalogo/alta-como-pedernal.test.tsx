@@ -12,7 +12,7 @@ vi.mock("../../src/server/actions/catalogo/categorias-producto", () => ({ crearC
 vi.mock("../../src/server/actions/catalogo/proveedores", () => ({ altaProveedor: vi.fn() }));
 
 import { ProductoForm, type ProductoExistente } from "../../src/app/(app)/catalogo/productos/producto-form";
-import { ALTA_DE_PRODUCTO_COMO_PEDERNAL, CLASES_DE_ALTA, CLAVES_DE_CLASE_DE_ALTA, claseDeAltaDe } from "../../src/core/catalogo/public";
+import { ALTA_DE_PRODUCTO_COMO_PEDERNAL, CLASES_DE_ALTA, CLASES_NUEVAS_VISIBLES, CLAVES_DE_CLASE_DE_ALTA, CLAVES_OFRECIDAS_EN_PANTALLA, claseDeAltaDe } from "../../src/core/catalogo/public";
 import { CampoAlicuotaIva } from "../../src/app/(app)/catalogo/productos/campo-alicuota-iva";
 import { CLASES_DE_ALTA_ESPERADAS } from "./alta-como-pedernal.reglas";
 
@@ -47,7 +47,8 @@ describe("alta de producto como Pedernal (M3 de la pantalla «Producto nuevo»)"
     const html = alta();
     expect(html).toContain("¿Qué es?");
     expect(CLAVES_DE_CLASE_DE_ALTA).toEqual(CLASES_DE_ALTA_ESPERADAS.map((c) => c.clave));
-    const posiciones = CLASES_DE_ALTA_ESPERADAS.map((c) => html.indexOf(`>${c.nombre}</option>`));
+    const ofrecidas = CLASES_DE_ALTA_ESPERADAS.filter((c) => CLAVES_OFRECIDAS_EN_PANTALLA.includes(c.clave));
+    const posiciones = ofrecidas.map((c) => html.indexOf(`>${c.nombre}</option>`));
     expect(posiciones.every((p) => p >= 0), `Falta alguna opción: ${posiciones}`).toBe(true);
     expect([...posiciones].sort((a, b) => a - b)).toEqual(posiciones);
     // Nace «cerrado»: la elegida es la primera (Materia prima) y solo se muestra su descripción.
@@ -67,8 +68,13 @@ describe("alta de producto como Pedernal (M3 de la pantalla «Producto nuevo»)"
     expect(renderToStaticMarkup(<ProductoForm {...comunes} productoExistente={existente({})} />)).toContain('name="factorConversion"');
   });
 
-  it("Insumo (E2) y Reventa (E4-5) se ofrecen, entre Insumo y Elaborado, como en Pedernal", () => {
+  it("Insumo (E2) y Reventa (E4-5): con el interruptor `CLASES_NUEVAS_VISIBLES` apagado NO se ofrecen (nace cerrado); encendido, van entre Materia prima y Elaborado, como en Pedernal", () => {
     const html = alta();
+    if (!CLASES_NUEVAS_VISIBLES) {
+      expect(html).not.toContain(">Insumo</option>");
+      expect(html).not.toContain(">Reventa</option>");
+      return;
+    }
     expect(html).toContain(">Insumo</option>");
     expect(html).toContain(">Reventa</option>");
     expect(html.indexOf(">Insumo</option>")).toBeLessThan(html.indexOf(">Reventa</option>"));
