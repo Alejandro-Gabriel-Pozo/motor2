@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { createRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { AreaDeTexto } from "../../src/ui/primitivas/area-de-texto";
 
 /**
@@ -96,3 +96,6 @@ describe("AreaDeTexto", () => {
     expect((area.props as { ref: unknown }).ref).toBe(ref);
   });
 });
+
+// V5: este archivo prueba las AYUDAS FIJAS cuando se ven (con el interruptor apagado no se dibujan: `test/ui/ayudas-fijas-interruptor.test.tsx`).
+vi.mock("../../src/ui/primitivas/ayudas-fijas-visibles", () => ({ AYUDAS_FIJAS_VISIBLES: true }));

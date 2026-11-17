@@ -1,3 +1,4 @@
+import { AYUDAS_FIJAS_VISIBLES } from "./ayudas-fijas-visibles";
 import { useId, type InputHTMLAttributes, type ReactNode, type Ref } from "react";
 
 /**
@@ -45,6 +46,8 @@ interface PropsDeEnvolturaDeCampo {
   requerido?: boolean;
   /** Texto fijo bajo el control (no desaparece al tipear, a diferencia de un placeholder). */
   ayuda?: ReactNode;
+  /** Aviso CONDICIONAL bajo el control (un permiso que falta, un estado: «Ya está en la lista.»): se dibuja SIEMPRE, no depende de `AYUDAS_FIJAS_VISIBLES`. */
+  aviso?: ReactNode;
   /** Texto que el sistema calcula a partir de lo tipeado («En la carta se verá: …»); se anuncia con cortesía (`aria-live="polite"`). */
   lectura?: ReactNode;
   /** Mensaje de error ya redactado para el usuario; si viene, el control queda marcado como inválido. */
@@ -58,13 +61,15 @@ interface PropsDeEnvolturaDeCampo {
 const ASPECTO_DEL_CONTROL =
   "w-full rounded-[0.625rem] border-2 bg-superficie px-3 text-base text-tinta focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-foco disabled:bg-superficie-suave disabled:text-tinta-tenue";
 
-export function EnvolturaDeCampo({ id, etiqueta, etiquetaOculta = false, requerido = false, ayuda, lectura, error, invalido = false, children }: PropsDeEnvolturaDeCampo) {
+export function EnvolturaDeCampo({ id, etiqueta, etiquetaOculta = false, requerido = false, ayuda, aviso, lectura, error, invalido = false, children }: PropsDeEnvolturaDeCampo) {
   const generado = useId();
   const idControl = id ?? generado;
   const idAyuda = `${idControl}-ayuda`;
+  const idAviso = `${idControl}-aviso`;
+  const ayudaVisible = AYUDAS_FIJAS_VISIBLES ? ayuda : null;
   const idLectura = `${idControl}-lectura`;
   const idError = `${idControl}-error`;
-  const descripcion = [ayuda ? idAyuda : null, lectura ? idLectura : null, error ? idError : null].filter(Boolean).join(" ") || undefined;
+  const descripcion = [ayudaVisible ? idAyuda : null, aviso ? idAviso : null, lectura ? idLectura : null, error ? idError : null].filter(Boolean).join(" ") || undefined;
   const marcado = Boolean(error) || invalido;
   return (
     <div className="flex flex-col gap-1">
@@ -80,9 +85,14 @@ export function EnvolturaDeCampo({ id, etiqueta, etiquetaOculta = false, requeri
         "aria-invalid": marcado ? true : undefined,
         className: `${ASPECTO_DEL_CONTROL} ${marcado ? "border-error" : "border-borde-control"}`,
       })}
-      {ayuda ? (
+      {ayudaVisible ? (
         <p id={idAyuda} className="text-xs text-tinta-suave">
-          {ayuda}
+          {ayudaVisible}
+        </p>
+      ) : null}
+      {aviso ? (
+        <p id={idAviso} className="text-xs text-tinta-suave">
+          {aviso}
         </p>
       ) : null}
       {lectura ? (
@@ -120,6 +130,8 @@ export type NombreDeCampo =
 export interface PropsBaseDeCampo extends Omit<InputHTMLAttributes<HTMLInputElement>, "id" | "aria-label"> {
   /** Texto fijo bajo el campo (no desaparece al tipear, a diferencia de un placeholder). */
   ayuda?: ReactNode;
+  /** Aviso CONDICIONAL bajo el control (un permiso que falta, un estado): se dibuja SIEMPRE, no depende de `AYUDAS_FIJAS_VISIBLES`; `ayuda` es el texto fijo y sí depende. */
+  aviso?: ReactNode;
   /** Mensaje de error ya redactado para el usuario; si viene, el campo queda marcado como inválido. */
   error?: ReactNode;
   /** Marca el campo como inválido (`aria-invalid` y borde de error) SIN mensaje ni `role="alert"`: para quien ya muestra o frena el problema por otro lado. Con `error` sobra. */
@@ -139,11 +151,11 @@ export type PropsDeCampo = PropsBaseDeCampo & NombreDeCampo;
 const SIMBOLO_DEL_PREFIJO = "pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-sm text-tinta-suave";
 
 // @contrato primitiva-campo
-export function Campo({ etiqueta, etiquetaOculta, nombradoPorFuera, ayuda, error, invalido, alinear = "inicio", prefijo, tamano = "normal", id, className, required, ref, ...resto }: PropsDeCampo) {
+export function Campo({ etiqueta, etiquetaOculta, nombradoPorFuera, ayuda, aviso, error, invalido, alinear = "inicio", prefijo, tamano = "normal", id, className, required, ref, ...resto }: PropsDeCampo) {
   // `nombradoPorFuera` solo le dice al tipo que el nombre lo pone otro: no es un atributo del `<input>`, no tiene que llegar al DOM.
   void nombradoPorFuera;
   return (
-    <EnvolturaDeCampo id={id} etiqueta={etiqueta} etiquetaOculta={etiquetaOculta} requerido={required} ayuda={ayuda} error={error} invalido={invalido}>
+    <EnvolturaDeCampo id={id} etiqueta={etiqueta} etiquetaOculta={etiquetaOculta} requerido={required} ayuda={ayuda} aviso={aviso} error={error} invalido={invalido}>
       {(control) => {
         const clases = [control.className, ALTURA_DEL_CAMPO[tamano], alinear === "fin" ? "text-right" : null, prefijo ? "pl-5" : null, className].filter(Boolean).join(" ");
         const entrada = <input {...resto} {...control} ref={ref} required={required} className={clases} />;

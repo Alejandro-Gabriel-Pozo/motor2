@@ -1,4 +1,5 @@
 import { IconoAyuda } from "@/components/iconos";
+import { AYUDAS_FIJAS_VISIBLES } from "@/ui/primitivas/ayudas-fijas-visibles";
 
 /**
  * Ayuda de campo persistente — no depende de que el campo esté vacío (a
@@ -9,6 +10,8 @@ import { IconoAyuda } from "@/components/iconos";
  * campo. Ver docs/comparativa-ux-erpnext-dolibarr.md §6.
  */
 export function AyudaCampo({ children }: { children: React.ReactNode }) {
+  // Con `AYUDAS_FIJAS_VISIBLES` apagado (`src/ui/primitivas/ayudas-fijas-visibles.ts`) no dibuja nada.
+  if (!AYUDAS_FIJAS_VISIBLES) return null;
   return <p className="-mt-1 text-xs text-tinta-tenue">{children}</p>;
 }
 

@@ -1,3 +1,4 @@
+import { AYUDAS_FIJAS_VISIBLES } from "./ayudas-fijas-visibles";
 import { useId, type InputHTMLAttributes, type ReactNode, type Ref } from "react";
 
 /**
@@ -16,6 +17,8 @@ export interface PropsDeCasilla extends Omit<InputHTMLAttributes<HTMLInputElemen
   etiqueta: ReactNode;
   /** Texto fijo bajo la casilla. */
   ayuda?: ReactNode;
+  /** Aviso CONDICIONAL bajo el control (un permiso que falta, un estado): se dibuja SIEMPRE, no depende de `AYUDAS_FIJAS_VISIBLES`; `ayuda` es el texto fijo y sí depende. */
+  aviso?: ReactNode;
   /** Mensaje de error ya redactado para el usuario; si viene, la casilla queda marcada como inválida. */
   error?: ReactNode;
   /** El `id` de la casilla; si no viene se genera uno. Dos casillas en la misma pantalla nunca comparten id. */
@@ -25,12 +28,14 @@ export interface PropsDeCasilla extends Omit<InputHTMLAttributes<HTMLInputElemen
 }
 
 // @contrato primitiva-casilla
-export function Casilla({ etiqueta, ayuda, error, id, className, ref, ...resto }: PropsDeCasilla) {
+export function Casilla({ etiqueta, ayuda, aviso, error, id, className, ref, ...resto }: PropsDeCasilla) {
   const generado = useId();
   const idCasilla = id ?? generado;
   const idAyuda = `${idCasilla}-ayuda`;
+  const idAviso = `${idCasilla}-aviso`;
+  const ayudaVisible = AYUDAS_FIJAS_VISIBLES ? ayuda : null;
   const idError = `${idCasilla}-error`;
-  const descripcion = [ayuda ? idAyuda : null, error ? idError : null].filter(Boolean).join(" ") || undefined;
+  const descripcion = [ayudaVisible ? idAyuda : null, aviso ? idAviso : null, error ? idError : null].filter(Boolean).join(" ") || undefined;
   return (
     <div className="flex flex-col gap-1">
       <div className="isolate flex min-h-11 items-center gap-2 md:min-h-9">
@@ -47,9 +52,14 @@ export function Casilla({ etiqueta, ayuda, error, id, className, ref, ...resto }
           {etiqueta}
         </label>
       </div>
-      {ayuda ? (
+      {ayudaVisible ? (
         <p id={idAyuda} className="text-xs text-tinta-suave">
-          {ayuda}
+          {ayudaVisible}
+        </p>
+      ) : null}
+      {aviso ? (
+        <p id={idAviso} className="text-xs text-tinta-suave">
+          {aviso}
         </p>
       ) : null}
       {error ? (

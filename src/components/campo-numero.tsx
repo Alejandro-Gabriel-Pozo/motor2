@@ -41,6 +41,8 @@ interface Props {
   unidad?: string;
   /** Texto fijo bajo el campo (lo dibuja `Campo`, atado con `aria-describedby`). */
   ayuda?: ReactNode;
+  /** Aviso condicional (siempre visible); ver `Campo`. */
+  aviso?: ReactNode;
   /** Un error de regla de NEGOCIO que calcula quien usa el campo («No es válido: tiene que ser un número entre 0 y 1»): se dice junto al campo, como el de lo tecleado, y marca el campo. No frena el envío (lo frena el servidor). */
   errorDeRegla?: ReactNode;
   /** No muestra el «= …» junto al campo: solo para quien ya lo muestra por su cuenta (la lectura en vivo de la cantidad de la receta, que además convierte de unidad). */
@@ -114,6 +116,7 @@ export function CampoNumero({
   unidad,
   sinEntendido,
   ayuda,
+  aviso,
   errorDeRegla,
 }: Props) {
   const controlado = value !== undefined;
@@ -192,6 +195,7 @@ export function CampoNumero({
         autoFocus={autoFocus}
         invalido={error !== null || Boolean(errorDeRegla)}
         ayuda={ayuda}
+        aviso={aviso}
         error={errorTecleado ?? errorDeRegla}
         tamano={tamano}
         alinear="fin"

@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { createRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Casilla } from "../../src/ui/primitivas/casilla";
 
 /**
@@ -114,3 +114,6 @@ describe("Casilla", () => {
 function idsDeDescripcion(html: string): string[] {
   return (/aria-describedby="([^"]+)"/.exec(html)?.[1] ?? "").split(" ").filter(Boolean);
 }
+
+// V5: este archivo prueba las AYUDAS FIJAS cuando se ven (con el interruptor apagado no se dibujan: `test/ui/ayudas-fijas-interruptor.test.tsx`).
+vi.mock("../../src/ui/primitivas/ayudas-fijas-visibles", () => ({ AYUDAS_FIJAS_VISIBLES: true }));

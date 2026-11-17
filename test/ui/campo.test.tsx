@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { createRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Campo, EnvolturaDeCampo, type AtributosDeControl, type TamanoDeCampo } from "../../src/ui/primitivas/campo";
 
 /**
@@ -259,3 +259,6 @@ describe("Campo: invalido, alinear y prefijo", () => {
     expect(html).not.toMatch(/(^|[\s":-])(?:neutral|gray|slate|zinc|stone|red|white|black)-\d/);
   });
 });
+
+// V5: este archivo prueba las AYUDAS FIJAS cuando se ven (con el interruptor apagado no se dibujan: `test/ui/ayudas-fijas-interruptor.test.tsx`).
+vi.mock("../../src/ui/primitivas/ayudas-fijas-visibles", () => ({ AYUDAS_FIJAS_VISIBLES: true }));

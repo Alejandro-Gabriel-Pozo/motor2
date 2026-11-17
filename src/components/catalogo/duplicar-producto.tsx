@@ -132,13 +132,8 @@ export function DuplicarProducto({ origen, tieneReceta, opciones, puedeCopiarRec
                 checked={copiarReceta && puedeRecibirReceta}
                 disabled={!puedeRecibirReceta}
                 onChange={(e) => setCopiarReceta(e.target.checked)}
-                ayuda={
-                  !puedeCopiarReceta
-                    ? "No tenés el permiso para copiar recetas."
-                    : !tieneReceta
-                      ? "El producto no tiene receta: no hay nada que copiar."
-                      : "Ingredientes con sus sustitutos, pasos y ficha técnica, como versión 1 de la receta del producto nuevo."
-                }
+                aviso={!puedeCopiarReceta ? "No tenés el permiso para copiar recetas." : !tieneReceta ? "El producto no tiene receta: no hay nada que copiar." : undefined}
+                ayuda={puedeCopiarReceta && tieneReceta ? "Ingredientes con sus sustitutos, pasos y ficha técnica, como versión 1 de la receta del producto nuevo." : undefined}
               />
               {copiarReceta && puedeRecibirReceta && sucursalesDeLaReceta.length > 1 ? (
                 <Selector etiqueta="Sacar la receta de" name="sucursalDeLaReceta" defaultValue={CENTRAL} ayuda="Se copia la receta que rige en ese lugar: la propia de la sucursal si la tiene, y si no la central.">
@@ -155,14 +150,19 @@ export function DuplicarProducto({ origen, tieneReceta, opciones, puedeCopiarRec
                 name="copiarOpciones"
                 defaultChecked={puedeRecibirOpciones}
                 disabled={!puedeRecibirOpciones || origen.esBase}
-                ayuda={
+                aviso={
                   !puedeCopiarOpciones
                     ? "No tenés el permiso para elegir las opciones de un producto."
                     : opciones === null
                       ? "El producto no admite opciones: no hay nada que copiar."
                       : origen.esBase
                         ? "Se vende por opción: sus opciones se copian siempre, porque en ellas está el precio."
-                        : `${opciones.grupos} grupo${opciones.grupos === 1 ? "" : "s"} con ${opciones.opciones} opcion${opciones.opciones === 1 ? "" : "es"}${opciones.conPrecio > 0 ? `, ${opciones.conPrecio} con precio` : ""}. Son los mismos de la biblioteca de opciones, no copias: cambiar el nombre de una opción afecta a todos los productos que la usan.`
+                        : undefined
+                }
+                ayuda={
+                  puedeCopiarOpciones && opciones !== null && !origen.esBase
+                    ? `${opciones.grupos} grupo${opciones.grupos === 1 ? "" : "s"} con ${opciones.opciones} opcion${opciones.opciones === 1 ? "" : "es"}${opciones.conPrecio > 0 ? `, ${opciones.conPrecio} con precio` : ""}. Son los mismos de la biblioteca de opciones, no copias: cambiar el nombre de una opción afecta a todos los productos que la usan.`
+                    : undefined
                 }
               />
             </fieldset>

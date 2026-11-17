@@ -182,7 +182,8 @@ export function ContenidoDelProducto({
                 maxLength={80}
                 defaultValue={p.contenido?.nombreEnCarta ?? ""}
                 placeholder={p.nombre}
-                ayuda={`${ESTA_BIEN_ASI_VISIBLE && nombreDeCartaPendiente ? "Pendiente de completar: hoy la carta usa el nombre del producto. " : ""}Así lo ven el cliente y el mozo en esta sucursal. Vacío = se usa el nombre del producto. No cambia la comanda ni los reportes.${mostrarNombreArriba !== undefined ? " Solo se usa si elegís «Sí: … arriba». Con «No», cada opción sale sola con su nombre." : ""}`}
+                aviso={ESTA_BIEN_ASI_VISIBLE && nombreDeCartaPendiente ? "Pendiente de completar: hoy la carta usa el nombre del producto." : undefined}
+                ayuda={`Así lo ven el cliente y el mozo en esta sucursal. Vacío = se usa el nombre del producto. No cambia la comanda ni los reportes.${mostrarNombreArriba !== undefined ? " Solo se usa si elegís «Sí: … arriba». Con «No», cada opción sale sola con su nombre." : ""}`}
               />
             </div>
             <div className="sm:col-span-2">
