@@ -828,6 +828,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "U1 de las unidades como Pedernal (migración 20261117130000_unidad_codigo_fijo; ADITIVA; regenerado con REGENERAR_CARACTERIZACION_TRAMO_A=1): la lectura `catalogo.obtenerEstadoDeRecetaPropia` devuelve el modelo Unidad entero (Prisma) y el objeto `unidad` suma `codigoFijo: null` (toda unidad existente queda «pendiente de completar»). Ninguna otra lectura ni conteo de consultas cambia. Ninguna pantalla usa el campo; lo devuelve la lectura porque Prisma trae la fila completa.",
       },
+      {
+        blob: "9bff15574bfb7bb7c3d18a2d67e5dc5cead43831",
+        // El commit PADRE de este es a3b0efff (main con U1 mergeada, justo antes de integrarla en M2 y regenerar este golden con la columna nueva).
+        commit: "a3b0efff",
+        motivo:
+          "M2 de la merma sobre el bruto (migración 20261117140000_base_de_cantidad_en_versiones; ADITIVA, nada la lee todavía; regenerado con REGENERAR_CARACTERIZACION_TRAMO_A=1): la lectura `catalogo.obtenerEstadoDeRecetaPropia` devuelve la fila de RecetaVersion entera y suma `baseDeCantidad: \"NETA\"` (el valor por defecto de todo lo ya cargado). Ninguna otra lectura ni conteo de consultas cambia.",
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {
@@ -1071,6 +1078,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "c84370de",
         motivo:
           "U1 de las unidades como Pedernal (migración 20261117130000_unidad_codigo_fijo; ADITIVA, nada la lee todavía; regenerado con REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1): las filas UNIDAD suman `codigoFijo=null` (toda unidad existente queda «pendiente de completar»). Ninguna otra línea cambia: precios, descuentos, promos y costos siguen idénticos.",
+      },
+      {
+        blob: "f2c26bb616da2a67b6687fd11f899d8362f398d3",
+        // El commit PADRE de este es a3b0efff (main con U1 mergeada, justo antes de integrarla en M2 y regenerar este golden con la columna nueva).
+        commit: "a3b0efff",
+        motivo:
+          "M2 de la merma sobre el bruto (migración 20261117140000_base_de_cantidad_en_versiones; ADITIVA, nada la lee todavía; regenerado con REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1): las tres filas RECETA_VERSION suman `baseDeCantidad=NETA` (el valor por defecto de todo lo ya cargado). Ninguna otra línea cambia: precios, descuentos, promos y costos siguen idénticos.",
       },
     ],
   },

@@ -956,6 +956,9 @@ model RecetaVersion {
   /// Solo en versiones propias: la versión CENTRAL vigente en la que se basó (o que había cuando se creó). Sirve para avisar «la central
   /// cambió» cuando hay una central más nueva; nunca se aplica nada solo. Dato derivado, sin FK: la versión central es append-only.
   basadaEnVersionId String?
+  /// M2 (2026-11-17, merma sobre el bruto como Pedernal): en qué BASE están escritas las cantidades de ESTA versión — NETA (lo que llega al plato, todo lo ya cargado) o BRUTA (lo que sale del
+  /// stock). La marca nace con la versión y no cambia nunca; una versión no mezcla bases. Hoy nada la lee (el código de M3 en adelante). CHECK `RecetaVersion_baseDeCantidad_chk`, hecho a mano en la migración.
+  baseDeCantidad    String    @default("NETA")
 
   ingredientes RecetaIngrediente[]
   pasos        RecetaPaso[]
@@ -3924,6 +3927,8 @@ model VersionDeOpcion {
   porcentaje       Decimal?      @db.Decimal(7, 4)
   /// Solo una MEDIDA (> 0 y hasta 10): cuánto escala el consumo del producto.
   factorEscala     Decimal?      @db.Decimal(8, 4)
+  /// M2 (2026-11-17): la base (NETA o BRUTA) de los consumos de esta versión, igual que `RecetaVersion.baseDeCantidad`: nace con la versión y no cambia. Hoy nada la lee. CHECK `VersionDeOpcion_baseDeCantidad_chk` hecho a mano.
+  baseDeCantidad   String        @default("NETA")
   creadoPorId      String
   creadoPor        User          @relation(fields: [creadoPorId], references: [id], onDelete: Restrict)
   creadoEn         DateTime      @default(now())
