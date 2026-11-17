@@ -10,21 +10,23 @@ import {
   laMatrizDelRolLaEditaSoloElGerente,
   MENSAJE_GUARDADO_EN_CONFLICTO,
   mensajeSiNoPuedeEditarLaMatrizDelRol,
+  mensajeSiNoPuedeOtorgarLaAccion,
   mismoEstado,
-  nivelesDeLaCelda,
   normalizarPermiso,
+  otorgaUnaAccionQueDaSoloElGerente,
   PREFIJO_CONFLICTO_DE_EDICION,
   SIN_PERMISO,
   type EstadoPermiso,
   type RolDeMatriz,
 } from "@/core/permisos/matriz";
+import { textoDe } from "@/core/textos/texto-de";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import { objetivoEnLaEmpresa } from "@/server/lecturas/permisos/gestion-de-usuarios";
 import { escribirCeldaDeLaMatriz, leerCeldasDeLaMatriz } from "@/server/persistencia/permisos/matriz";
 
 type ResultadoGuardarPermisos = ResultadoCaso<
   { guardados: number },
-  "ROL_NO_ENCONTRADO" | "ACCION_NO_ENCONTRADA" | "FUERA_DE_NIVEL" | "SIN_CAMBIOS" | "MATRIZ_SOLO_DEL_GERENTE" | "CONFLICTO_DE_EDICION" | "GUARDADO_EN_CONFLICTO"
+  "ROL_NO_ENCONTRADO" | "ACCION_NO_ENCONTRADA" | "ACCION_DE_GOBIERNO" | "SIN_CAMBIOS" | "MATRIZ_SOLO_DEL_GERENTE" | "SOLO_EL_GERENTE_LA_DA" | "CONFLICTO_DE_EDICION" | "GUARDADO_EN_CONFLICTO"
 >;
 
 /**
@@ -42,6 +44,9 @@ type ResultadoGuardarPermisos = ResultadoCaso<
  *   la empresa (`mensajeSiNoPuedeEditarLaMatrizDelRol`, puro, en `core/permisos/matriz.ts`; quien actúa se lee de la base dentro de la transacción). Un
  *   administrador que no es el gerente recibe «Solo el gerente de la empresa puede editar los permisos del rol administrador.» y no se guarda nada; los demás
  *   roles los sigue editando quien tiene `gestion_permisos`. Es una regla del caso de uso: el permiso de la pantalla (`gestion_permisos`) no cambia.
+ * - DEC-0024 (PISOS-65, confirmada por el dueño el 2026-11-17): darle a un rol de nivel operario una de las 65 acciones que bajaron del piso administrador
+ *   (`ACCIONES_QUE_DA_SOLO_EL_GERENTE`) es SOLO del gerente (`mensajeSiNoPuedeOtorgarLaAccion`); quitarla no se restringe. Las 14 de gobierno y de gerente
+ *   siguen cerradas para todo rol de nivel operario: `ACCION_DE_GOBIERNO` con el texto del catálogo.
  * - Concurrencia: cada cambio trae lo que la persona VIO (`anterior`). Si en la base ya es otra cosa, alguien más la cambió mientras tanto: se rechaza el
  *   guardado ENTERO y se dice cuáles. Sin esto ganaba el último que guardaba, pisando en silencio el cambio de la otra persona.
  * - Una sola transacción: las escrituras y su registro de auditoría (A3, Pivote 6) salen juntos o no salen.
@@ -63,7 +68,7 @@ type ResultadoGuardarPermisos = ResultadoCaso<
  *   otro guardado en curso». Se devuelve como fracaso de negocio (`MENSAJE_GUARDADO_EN_CONFLICTO`) para que NO pierda el borrador — un `throw` lo mandaría al
  *   error boundary y se le borrarían todos los cambios marcados. Cualquier otro error sigue de largo.
  *
- * @contract Aplica todos los cambios pedidos de la matriz (con Ver ⊇ Editar, la salvaguarda del admin, el piso de cada acción y la matriz del rol administrador solo para el gerente) o ninguno, con dos registros de auditoría por celda.
+ * @contract Aplica todos los cambios pedidos de la matriz (con Ver ⊇ Editar, la salvaguarda del admin, el piso de cada acción, la matriz del rol administrador solo para el gerente y dar una de las 65 solo el gerente) o ninguno, con dos registros de auditoría por celda.
  * @idempotency Optimista — cada cambio trae el estado que la persona vio (`anterior`); si la base ya es otra cosa (otro guardado, o el mismo repetido) se rechaza todo con «Otra persona cambió…».
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento); roles y acciones se leen adentro, por id y sin filtro de activo en el where (O35-C). Agotar los reintentos vuelve como fracaso GUARDADO_EN_CONFLICTO.
  * @sideEffects registrarCambioAuditado (PermisoRol.puedeEditar y PermisoRol.puedeVer por celda, con el valor anterior o null). Sin efectos externos.
@@ -81,27 +86,36 @@ export async function guardarPermisosCasoDeUso(actor: Pick<ContextoUsuario, "usu
     // Lo que efectivamente se va a guardar (con Ver ⊇ Editar y la salvaguarda). Un cambio que no cambia nada, se ignora.
     const efectivos: { rolId: string; rolNombre: string; accionClave: AccionClave; anterior: EstadoPermiso; nuevo: EstadoPermiso }[] = [];
     let rolSoloDelGerente: RolDeMatriz | null = null; // D13/D14: el primer rol que cambia y cuya matriz edita solo el gerente
+    let otorgaDeLas65: { rol: RolDeMatriz; accionClave: string; anterior: EstadoPermiso; nuevo: EstadoPermiso } | null = null; // DEC-0024: la primera celda que da una de las 65
     for (const c of cambios) {
       const rol = rolPorId.get(c.rolId);
       if (!rol) return fracaso("ROL_NO_ENCONTRADO", "No se encontró uno de los roles (¿está desactivado?). No se guardó nada.");
       if (!claveEnCatalogo(c.accionClave) || !accionesConocidas.has(c.accionClave)) return fracaso("ACCION_NO_ENCONTRADA", `No se encontró la acción "${c.accionClave}". No se guardó nada.`);
       if ((c.nuevo.puedeVer || c.nuevo.puedeEditar) && esCeldaFueraDeNivel(rol, c.accionClave)) {
-        const n = nivelesDeLaCelda(rol, c.accionClave)!;
-        return fracaso("FUERA_DE_NIVEL", `El rol «${rol.nombre}» (nivel ${n.delRol}) no puede tener "${c.accionClave}": es una acción de nivel ${n.piso}. No se guardó nada.`);
+        return fracaso("ACCION_DE_GOBIERNO", textoDe("rechazo.ACCION_DE_GOBIERNO"));
       }
       const nuevo = normalizarPermiso(rol, c.accionClave, c.nuevo);
       if (mismoEstado(nuevo, c.anterior)) continue;
       efectivos.push({ rolId: rol.id, rolNombre: rol.nombre, accionClave: c.accionClave as AccionClave, anterior: c.anterior, nuevo });
       if (!rolSoloDelGerente && laMatrizDelRolLaEditaSoloElGerente(rol)) rolSoloDelGerente = rol;
+      if (!otorgaDeLas65 && otorgaUnaAccionQueDaSoloElGerente(rol, c.accionClave, c.anterior, nuevo)) otorgaDeLas65 = { rol, accionClave: c.accionClave, anterior: c.anterior, nuevo };
     }
     if (!efectivos.length) return fracaso("SIN_CAMBIOS", "No hay cambios para guardar.");
 
     // D13/D14 (aprobado 2026-10-08): la matriz del rol administrador (y de los de rango 2, cuando existan) la edita SOLO el gerente. Quien actúa se mide desde la
     // base, dentro de esta transacción (como en O35-B), y solo si el guardado de verdad cambia una celda de un rol así: un pedido que no cambia nada ya volvió
     // «No hay cambios» arriba. Rechaza el guardado ENTERO (todo o nada), antes del chequeo optimista y de escribir.
-    if (rolSoloDelGerente) {
-      const rechazo = mensajeSiNoPuedeEditarLaMatrizDelRol(await objetivoEnLaEmpresa(tx, actor.empresaId, actor.usuarioId), rolSoloDelGerente);
-      if (rechazo) return fracaso("MATRIZ_SOLO_DEL_GERENTE", rechazo);
+    if (rolSoloDelGerente || otorgaDeLas65) {
+      const quienActua = await objetivoEnLaEmpresa(tx, actor.empresaId, actor.usuarioId);
+      if (rolSoloDelGerente) {
+        const rechazo = mensajeSiNoPuedeEditarLaMatrizDelRol(quienActua, rolSoloDelGerente);
+        if (rechazo) return fracaso("MATRIZ_SOLO_DEL_GERENTE", rechazo);
+      }
+      // DEC-0024 (confirmada por el dueño, 2026-11-17): darle a un rol de nivel operario una de las 65 acciones que bajaron del piso administrador es SOLO del gerente.
+      if (otorgaDeLas65) {
+        const rechazo = mensajeSiNoPuedeOtorgarLaAccion(quienActua, otorgaDeLas65.rol, otorgaDeLas65.accionClave, otorgaDeLas65.anterior, otorgaDeLas65.nuevo);
+        if (rechazo) return fracaso("SOLO_EL_GERENTE_LA_DA", rechazo);
+      }
     }
 
     const actuales = await leerCeldasDeLaMatriz(tx, efectivos);

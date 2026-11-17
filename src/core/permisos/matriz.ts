@@ -1,5 +1,5 @@
-import { ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE, claveEnCatalogo, esAccionReservada, nivelMinimoDeAccion } from "./acciones";
-import { esRolAdmin, etiquetaDelPiso, nivelAlcanzaElPiso, nivelDe, nivelDelRolFrenteAlPiso, rolAlcanzaLaAccion, type PersonaParaJerarquia } from "./jerarquia";
+import { ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE, claveEnCatalogo, esAccionQueDaSoloElGerente, esAccionReservada } from "./acciones";
+import { esRolAdmin, nivelAlcanzaElPiso, nivelDe, nivelDelRolFrenteAlPiso, rolAlcanzaLaAccion, type PersonaParaJerarquia } from "./jerarquia";
 
 /** Lo único que la matriz necesita saber de un rol: su clave (el nombre es de la empresa y se puede cambiar). */
 export type RolDeMatriz = { clave: string | null };
@@ -33,18 +33,10 @@ export function esCeldaFija(rol: RolDeMatriz, accionClave: string): boolean {
 
 /**
  * ¿La acción está POR ENCIMA del nivel del rol (su piso es más alto)? Esa celda no se puede dar: el servidor rechaza el guardado y el gate ignora
- * la fila. Una clave fuera del catálogo no se evalúa acá (la rechaza el guardado por otro motivo).
+ * la fila. Desde PISOS-65 (2026-11-17) son exactamente las 14 acciones de gobierno y de gerente. Una clave fuera del catálogo no se evalúa acá (la rechaza el guardado por otro motivo).
  */
 export function esCeldaFueraDeNivel(rol: RolDeMatriz, accionClave: string): boolean {
   return claveEnCatalogo(accionClave) && !rolAlcanzaLaAccion(rol, accionClave);
-}
-
-/**
- * Piso y nivel del rol, para los mensajes: «una acción de nivel administrador de sistema, y el rol es de nivel operario». Devuelve las ETIQUETAS para mostrar
- * (`etiquetaDelPiso`, ADR-027), no los valores: quien arma el mensaje (el caso de uso de `guardarPermisos`) no tiene que saber cómo se escribe cada piso.
- */
-export function nivelesDeLaCelda(rol: RolDeMatriz, accionClave: string): { piso: string; delRol: string } | null {
-  return claveEnCatalogo(accionClave) ? { piso: etiquetaDelPiso(nivelMinimoDeAccion(accionClave)), delRol: etiquetaDelPiso(nivelDelRolFrenteAlPiso(rol)) } : null;
 }
 
 const MENSAJE_MATRIZ_SOLO_DEL_GERENTE = "Solo el gerente de la empresa puede editar los permisos del rol administrador. No se guardó nada.";
@@ -82,6 +74,27 @@ const MENSAJE_CAPACIDADES_SOLO_DEL_GERENTE = "Solo el gerente de la empresa pued
  */
 export function mensajeSiNoPuedeCambiarCapacidades(actor: PersonaParaJerarquia): string | null {
   return nivelDe(actor) !== "gerente" ? MENSAJE_CAPACIDADES_SOLO_DEL_GERENTE : null;
+}
+
+const MENSAJE_SOLO_EL_GERENTE_LA_DA = "Solo el gerente de la empresa puede darle esta acción a un rol de nivel operario. No se guardó nada.";
+
+/** ¿El cambio le da al rol más de lo que tenía (Ver o Editar pasan de apagado a prendido)? Quitar no otorga. */
+function otorgaMas(anterior: EstadoPermiso, nuevo: EstadoPermiso): boolean {
+  return (!anterior.puedeVer && nuevo.puedeVer) || (!anterior.puedeEditar && nuevo.puedeEditar);
+}
+
+/**
+ * DEC-0024 (confirmada por el dueño, 2026-11-17: «Así me refería a que se baje el piso y después el gerente edite.»): ¿este cambio le DA a un rol de nivel
+ * operario una de las 65 acciones que bajaron del piso administrador (`ACCIONES_QUE_DA_SOLO_EL_GERENTE`)? Dar una es solo del gerente; quitar no se restringe.
+ * La matriz de un rol que solo edita el gerente (el admin) ya la cubre `laMatrizDelRolLaEditaSoloElGerente`.
+ */
+export function otorgaUnaAccionQueDaSoloElGerente(rol: RolDeMatriz, accionClave: string, anterior: EstadoPermiso, nuevo: EstadoPermiso): boolean {
+  return claveEnCatalogo(accionClave) && esAccionQueDaSoloElGerente(accionClave) && !laMatrizDelRolLaEditaSoloElGerente(rol) && otorgaMas(anterior, nuevo);
+}
+
+/** DEC-0024: el rechazo de `guardarPermisos` cuando quien actúa NO es el gerente y el cambio otorga una de las 65. Pura: quien actúa lo mide el caso de uso. */
+export function mensajeSiNoPuedeOtorgarLaAccion(actor: PersonaParaJerarquia, rol: RolDeMatriz, accionClave: string, anterior: EstadoPermiso, nuevo: EstadoPermiso): string | null {
+  return otorgaUnaAccionQueDaSoloElGerente(rol, accionClave, anterior, nuevo) && nivelDe(actor) !== "gerente" ? MENSAJE_SOLO_EL_GERENTE_LA_DA : null;
 }
 
 /** El estado que realmente se guarda: aplica «Ver ⊇ Editar» y la salvaguarda del admin. */
