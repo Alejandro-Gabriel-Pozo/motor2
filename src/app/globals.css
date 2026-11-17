@@ -16,6 +16,16 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Frente «Visual», V1 (mandato del dueño 2026-11-17, como Pedernal `ui/tokens.css`): PISO DE 16 PX. Las dos medidas más chicas de la escala de Tailwind (`text-xs` 12 px, `text-sm` 14 px)
+   suben a 1rem; así las ~890 líneas que las usan quedan en 16 px sin tocar cada una. Lo vigila `test/arquitectura/piso-de-letra.test.ts` (ninguna `--text-*` baja de 1rem). La carta pública no
+   usa estas clases: su tamaño sale de los roles `carta-rol-*` (`cerco-tipografia.test.ts`). Fuera del bloque `@theme static` de abajo porque el contrato `tokens-visuales` es solo de `--color-*`. */
+@theme {
+  --text-xs: 1rem;
+  --text-xs--line-height: 1.5;
+  --text-sm: 1rem;
+  --text-sm--line-height: 1.5;
+}
+
 /* Fase 6 (6.1): los TOKENS del sistema visual. Nombres solo `--color-*`; con `@theme static` Tailwind los publica en `:root` aunque ninguna utilidad los use todavía, y de
    ellos salen las utilidades (`bg-papel`, `text-tinta-suave`, `border-borde`…). Es la FUENTE del contrato `tokens-visuales` (`test/arquitectura/contratos/contratos/tokens-visuales.ts`):
    un token se define solo acá, lo que use un nombre que no esté acá falla, y un token que nadie usa también. Solo nacen los que ya usan los alias de `.pos-shell` y la carta del panel
