@@ -46,17 +46,17 @@ interface Ruta {
 }
 
 const RUTAS: readonly Ruta[] = [
-  { ruta: "/inicio", pendiente: ["letra"] },
-  { ruta: "/catalogo/productos", pendiente: ["letra"] },
-  { ruta: "/catalogo/productos/nuevo", pendiente: ["letra"] },
-  { ruta: "/catalogo/productos/{producto}", pendiente: ["letra"] },
-  { ruta: "/catalogo/proveedores", pendiente: ["letra"] },
-  { ruta: "/catalogo/clientes", pendiente: ["letra"] },
-  { ruta: "/catalogo/unidades", pendiente: ["letra"] },
+  { ruta: "/inicio" },
+  { ruta: "/catalogo/productos" },
+  { ruta: "/catalogo/productos/nuevo" },
+  { ruta: "/catalogo/productos/{producto}" },
+  { ruta: "/catalogo/proveedores" },
+  { ruta: "/catalogo/clientes" },
+  { ruta: "/catalogo/unidades" },
   { ruta: "/carta/parametrizacion/promociones", pendiente: ["letra"] },
   { ruta: "/carta/tema", pendiente: ["letra"] },
   { ruta: "/carta/portal", pendiente: ["letra"] },
-  { ruta: "/mesas", pendiente: ["letra"] },
+  { ruta: "/mesas" },
 ];
 
 /** Reemplaza los marcadores de una ruta por datos sembrados. `{producto}`: el id de un producto de venta creado para este test. */
