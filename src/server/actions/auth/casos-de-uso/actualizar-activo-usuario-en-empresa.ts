@@ -6,6 +6,8 @@ import { objetivoEnLaEmpresa, reactivaAUnAdmin } from "@/server/lecturas/permiso
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import { cambiarActivoDeCuentaEnEmpresa } from "@/server/persistencia/permisos/membresias";
 import { conGobierno, conInvariantesDeGobierno } from "../../con-gobierno";
+import { textoDe } from "@/core/textos/texto-de";
+import { ENTIDADES } from "@/core/textos/entidades";
 
 type ResultadoActualizarActivoUsuarioEnEmpresa = ResultadoCaso<null, "USUARIO_NO_ENCONTRADO" | "TECHO_DE_PRIVILEGIO" | "REACTIVA_ADMIN_SIN_SER_GERENTE" | "INVARIANTE_DE_GOBIERNO">;
 
@@ -51,7 +53,7 @@ export async function actualizarActivoUsuarioEnEmpresaCasoDeUso(
         where: { usuarioId_empresaId: { usuarioId, empresaId: actor.empresaId } },
         include: { usuario: true },
       });
-      if (!pertenencia) return fracaso("USUARIO_NO_ENCONTRADO", "No se encontró ese usuario.");
+      if (!pertenencia) return fracaso("USUARIO_NO_ENCONTRADO", textoDe("rechazo.NO_ENCONTRADO", { entidad: ENTIDADES.usuario }));
       const usuario = pertenencia.usuario;
 
       const quienActua = await objetivoEnLaEmpresa(tx, actor.empresaId, actor.usuarioId);

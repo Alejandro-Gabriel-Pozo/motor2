@@ -6,6 +6,7 @@ import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaPerdida } from "@/core/reportes/public";
 import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
 import { formatearMonto } from "@/core/formato-de-numero";
+import { textoDe } from "@/core/textos/texto-de";
 
 /** El día de calendario de un instante en hora argentina (P1): `Operacion.fecha` es un instante; leerlo en UTC mostraba el día siguiente a partir de las 21:00. */
 const dia = (f: Date) => diaDeCalendario(f, ZONA_ARGENTINA);
@@ -21,8 +22,8 @@ function columnas(): ColumnaReporte<FilaPerdida>[] {
       valor: (f) => f.motivo,
       render: (f) => f.motivo,
     },
-    { clave: "producto", etiqueta: "Producto", valor: (f) => f.producto, render: (f) => f.producto },
-    { clave: "cantidad", etiqueta: "Cantidad", alinear: "derecha", valor: (f) => f.cantidad, render: (f) => f.cantidad },
+    { clave: "producto", etiqueta: textoDe("columna.producto"), valor: (f) => f.producto, render: (f) => f.producto },
+    { clave: "cantidad", etiqueta: textoDe("columna.cantidad"), alinear: "derecha", valor: (f) => f.cantidad, render: (f) => f.cantidad },
     {
       clave: "valor",
       etiqueta: "Valor",

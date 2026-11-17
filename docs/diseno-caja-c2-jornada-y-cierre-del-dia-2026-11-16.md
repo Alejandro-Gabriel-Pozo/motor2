@@ -94,7 +94,7 @@ Los casos de uso reciben el actor y, donde hace falta, un booleano (`puedeAjusta
 La lectura de controles y su huella (`leerControlesDeLaJornada`) es la que usa `cerrarJornada` y la que usará la pantalla. La consulta pública y las pantallas son de otro turno.
 
 ### Nivel 10. Pruebas, migración y operación
-Ver §5 (oráculo) y `test/caja/`. Sin datos que migrar. Despliegue congelado; aplicar solo con autorización expresa por base.
+Ver §5 (oráculo) y `test/caja/`. Sin datos que migrar. Dinero al centavo: la diferencia de la conciliación (y la del arqueo) se prueba como PROPIEDAD con 5000 casos de centavos cualesquiera contra un oráculo aparte (`test/caja/diferencia-en-centavos.test.ts`, `oraculo-de-diferencia.ts`) y la columna generada `diferencia` en la base real (`reglas-de-la-base-de-cierre.test.ts`); los once únicos de jornada y de clave de reintento de C2 y C2b tienen una prueba cada uno (23505 del índice exacto) en ese mismo archivo. Despliegue congelado; aplicar solo con autorización expresa por base.
 
 ## 4. Tabla «¿qué pasa si…?» por comando
 
@@ -128,6 +128,14 @@ El oráculo vive en `test/caja/oraculo-de-jornada.ts` como tablas de datos legib
 Respondidas por el dueño, con sus palabras (CONFIRMADAS): **P-CORTE** «00:00; la cambia el gerente o administrador (Recomendada)» (la hora de corte por defecto es 00:00; cambiarla es una pantalla de otro turno); **P-CTA** «Sí, hay que cobrarla o anularla antes de cerrar (Recomendada)» (una cuenta abierta frena el cierre: `ventas.cuentas_abiertas` BLOQUEA); **P-FOTO** «También la conciliación por medio, como Pedernal» (se construye en la etapa C2b, §7); **P-AJUSTE** «Solo sobre días cerrados (Recomendada)» (`corrigeJornada` obligatoria).
 
 Sigue abierta:
+
+- **P-CORTE-ESCRIBE (hallazgo de la verificación independiente de #365, 2026-11-17; estado: PENDIENTE, NO implementada).** NINGÚN camino del sistema (ni pantalla ni acción ni script) ESCRIBE `Sucursal.horaDeCorte`: el código solo la LEE (`abrir-sesion.ts`, `controles-de-la-jornada.ts`, `cobrar-cuenta.ts`) y la columna vale 00:00 en toda sucursal por su valor por defecto. Por eso la parte de P-CORTE «la cambia el gerente o administrador» **no se puede verificar**: no hay nada que cambiarla ni nada que chequear el permiso. Hoy es inocuo (el corte 00:00 es el que ya usaba C1 y es el que pidió el dueño como valor por defecto), pero el cierre del día con otra hora de corte quedaría sin forma de configurarse. Opciones, de la más barata (regla del 2026-10-27, «primero la opción más barata»):
+  1. **No hacer nada todavía** y dejarlo como etapa posterior con nombre, **«C2c — hora de corte de la sucursal»** (la pantalla que el propio P-CORTE ya difirió: «cambiarla es una pantalla de otro turno»). La base ya exige el CHECK (minutos exactos, menor que 24:00), la fórmula de la fecha de negocio y el sello por sesión; C2c solo agrega la escritura. Es la forma que se propone mientras el dueño no pida cambiar la hora; con la referencia de Pedernal del punto 2 como forma de hacerlo cuando la pida.
+  2. **Referencia de Pedernal (contrastada por el orquestador con el repositorio real, 2026-11-17).** En Pedernal la hora de corte SÍ se edita: `src/modulos/empresas/casos-de-uso/editar-sucursal.ts`, con el validador `horaDeCorteValida` en `src/modulos/empresas/dominio/sucursal.ts`, bajo la MISMA acción/permiso que el resto de la edición de la sucursal (`DECLARACIONES.editarSucursal`) y auditando el valor anterior y el nuevo cuando cambia. En Motor2 hoy no existe el camino equivalente. Igualar a Pedernal sería EXTENDER la edición de sucursal que ya existe con ese campo, **sin permiso nuevo** (diferencia a declarar si no se hace).
+  NO se implementa en este PR: nadie la pidió todavía (regla «Lo que el dueño no pidió no entra»; el orquestador lo prohibió expresamente). Queda como **etapa posterior con nombre, «C2c — hora de corte de la sucursal»**.
+  **PREGUNTA ABIERTA para el dueño (estado: PENDIENTE):** ¿quién cambia la hora de corte y desde qué pantalla? (P-CORTE dijo «gerente o administrador» y «una pantalla de otro turno», pero no cuál.)
+
+  Mientras tanto, lo que SÍ está verificado de la hora de corte es todo lo que la usa: la fórmula de la fecha de negocio (oráculo, incluido `05:59:59.999` contra `06:00:00.000`) y el sello de la sesión.
 
 - **P-POS.** «Mientras la jornada está en cierre no se abre cuenta» (ficha de Pedernal): no se toca el POS en esta etapa. ¿Se pide en el frente del POS?
 

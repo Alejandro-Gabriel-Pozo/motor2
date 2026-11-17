@@ -400,6 +400,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "«Ocultar» como Pedernal, E3c1 (docs/diseno-ocultar-como-pedernal-2026-11-15.md, I-6; CAMBIA SOLO LA LÍNEA `lecturas` de los pasos que venden por la vía directa y de agregar ítems): cada línea NUEVA de una venta de mostrador lee ahora `ocultamientoProducto.findMany` ×1 (para rechazar un producto oculto). Verificado con diff: al sacar ese token y el contador de `lecturas (N)`, el golden nuevo es IDÉNTICO al anterior; ni un resultado, ni una fila, ni una escritura, ni un mensaje cambian. El cierre de una cuenta NO hace la lectura (cobra lo ya cargado).",
       },
+      {
+        blob: "e6a4262ec2af09e45be7af79f63f9470b4c855a5",
+        // El commit PADRE de este es 13405dba (main con la primitiva de cantidad exacta, #343), el último antes del cambio; el golden se regenera en el commit siguiente (A1b, frente 2).
+        commit: "13405dba",
+        motivo:
+          "A1b (cuenta exacta + 4 decimales fijos en el stock NUEVO; dueño, 2026-11-16: «Pasar a cuenta exacta como Pedernal» y «4 decimales fijos como Pedernal»; regenerado con REGENERAR_CARACTERIZACION_DE_VENTA=1; CAMBIA SOLO `cantidad` y `cantidadExacta` de las filas KARDEX de CONSUMO y su reversión): el stock se redondea a 4 decimales y no a los decimales de la unidad, así que un consumo que antes se escribía redondeado (por ejemplo cantidad 0,28 con cantidadExacta 0,275) ahora se escribe exacto (0,275 con cantidadExacta null; −1 con exacta −0,5 pasa a −0,5 con null). Verificado por programa: comparando cada par de líneas −/+ sin esas dos columnas son IDÉNTICAS (ni precios, ni orden, ni cantidad de filas, ni trazas, ni mensajes cambian). 14 líneas cambiadas.",
+      },
     ],
   },
   "test/movimientos/caracterizacion/venta-matriz-ampliada.golden.txt": {
@@ -569,6 +576,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "3967f844",
         motivo:
           "Auditoría legible (CAMBIA SOLO el texto guardado en `valorNuevo` de la auditoría `campo=reparto` de la carga de una factura de proveedor, en 115 líneas AUDITORIA): `registrarCambioAuditado` guardaba un arreglo de objetos con `String(valor)` («[object Object]», ilegible); ahora un objeto plano o un arreglo se guarda como JSON compacto con las claves ordenadas, p. ej. `[{\"estado\":\"RECIBIDA\",\"importe\":320,\"porcentajeDeclaradoBp\":10000,\"sucursal\":\"Central\"}]`. Verificado: quitando `valorNuevo=…` de esas líneas, idéntico al anterior; ninguna otra línea cambia.",
+      },
+      {
+        blob: "8df708d8c06b4310a66a8bd90e0b458bfad6ca24",
+        // El commit PADRE de este es 13405dba (main con la primitiva de cantidad exacta, #343), el último antes del cambio; el golden se regenera en el commit siguiente (A1b, frente 2).
+        commit: "13405dba",
+        motivo:
+          "A1b (cuenta exacta + 4 decimales fijos en el stock NUEVO; dueño, 2026-11-16: «Pasar a cuenta exacta como Pedernal» y «4 decimales fijos como Pedernal»; regenerado con REGENERAR_CARACTERIZACION_DE_VENTA_AMPLIADA=1; CAMBIA SOLO `cantidad` y `cantidadExacta` de las filas KARDEX de CONSUMO y su reversión): el stock se redondea a 4 decimales y no a los decimales de la unidad, así que un consumo que antes se escribía redondeado (por ejemplo cantidad 0,28 con cantidadExacta 0,275) ahora se escribe exacto (0,275 con cantidadExacta null; −1 con exacta −0,5 pasa a −0,5 con null). Verificado por programa: comparando cada par de líneas −/+ sin esas dos columnas son IDÉNTICAS (ni precios, ni orden, ni cantidad de filas, ni trazas, ni mensajes cambian). 40 líneas cambiadas.",
       },
     ],
   },
@@ -1296,7 +1310,14 @@ const CONGELADAS: Record<string, Congelada> = {
         // El commit PADRE de este (d7a3dcc0) es el último antes de la regeneración; el texto lo cambió el commit que agrega esta entrada (Frente 6, «Nueva sección» con solo el nombre).
         commit: "d7a3dcc0",
         motivo:
-          "Frente 6, «Nueva sección de carta» con solo el nombre (cambio de texto de ADMINISTRACIÓN, no de la carta pública; dueño, 2026-11-16: «Sí, ese orden (Recomendada)», paso 1 «nueva sección con solo el nombre»; interruptor `ALTA_DE_SECCION_SOLO_NOMBRE`; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). En «Carta › Parametrización › Secciones» (a 1280 y a 375 px) el alta deja de mostrar «Título (opcional, si no se usa el nombre)», «Descripción (opcional)», «Imagen (URL https, opcional)» y «Orden» (el orden viaja escondido con el valor sugerido; los otros datos se completan en la pantalla de la sección). 16 líneas quitadas, ninguna agregada, todas de ese formulario (revisado con git diff); la carta pública y el resto quedan idénticos.",
+          "Frente 6, «Nueva sección de carta» con solo el nombre (cambio de texto de ADMINISTRACIÓN, no de la carta pública; dueño, 2026-11-16: «Sí, ese orden (Recomendada)», paso 1 «nueva sección con solo el nombre»; interruptor `ALTA_DE_SECCION_SOLO_NOMBRE`; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). En «Carta › Parametrización › Secciones» (a 1280 y a 375 px) el alta deja de mostrar «Título (opcional, si no se usa el nombre)», «Descripción (opcional)», «Imagen (URL https, opcional)» y «Orden» (el orden ya no se pide ni viaja en un campo: la página lo calcula al dibujarse, como la cantidad de secciones de ese momento; los otros datos se completan en la pantalla de la sección). 16 líneas quitadas, ninguna agregada, todas de ese formulario (revisado con git diff); la carta pública y el resto quedan idénticos.",
+      },
+      {
+        blob: "8d710c586464619cb03d4742f47146bcb2e5a2fc",
+        // El commit PADRE de este (7afd14dd) es el último antes de la regeneración; el texto lo cambió el commit que agrega esta entrada (Frente 6, paso 2: ayudas de la ficha del producto).
+        commit: "7afd14dd",
+        motivo:
+          "Frente 6, ayudas de la ficha del producto ocultas (cambio de texto de ADMINISTRACIÓN, no de la carta pública; dueño, 2026-11-16: «Sí, ese orden (Recomendada)», paso 2 «textos de la ficha del producto»; interruptor `FICHA_AYUDAS_VISIBLES`; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). En las opciones de venta del producto «Pizzas» (a 1280 y a 375 px) salen tres líneas: «Qué se elige al venderlo y cómo cambia el precio… Biblioteca de opciones», «No se borra nada: lo que admite de cada opción queda guardado.» y «Con el precio de lista de «…», sin descuentos. Es la forma que le da la carta pública…». 6 líneas quitadas, ninguna agregada, todas de esa pantalla (revisado con git diff); la carta pública y el resto quedan idénticos.",
       },
     ],
   },

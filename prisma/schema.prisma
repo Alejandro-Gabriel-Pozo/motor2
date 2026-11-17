@@ -551,7 +551,7 @@ model DisponibilidadProducto {
 /// Los dos índices únicos PARCIALES (una marca de empresa por producto; una por sucursal) los declara la migración a mano: Prisma no los expresa.
 /// Todavía NO la lee ni la escribe ningún código: se conecta por etapas (caso de uso, ventas, stock, pantalla).
 model OcultamientoProducto {
-  id               String    @id
+  id               String    @id @db.Uuid
   empresaId        String    @default(dbgenerated("app_empresa_actual()"))
   empresa          Empresa   @relation(fields: [empresaId], references: [id])
   productoId       String
@@ -1503,18 +1503,20 @@ model MovimientoStock {
   /// CONSUMO de una venta (`registrar-venta.ts`, `cargarDeudaDeRedondeo`/`arrastre-redondeo.ts`) y en su reversión (`anularVenta`) —
   /// `null` en todo lo demás, y también en un CONSUMO cuya cantidad exacta ya coincidía con lo escrito (sin ruido que guardar).
   ///
-  /// EL PROBLEMA: redondear cada parte de consumo de CADA venta por separado (a los decimales de `Unidad.decimales` del insumo) sin
-  /// memoria entre ventas hace que el Kardex se aleje del consumo real cuanto más fraccionada es la venta — con una unidad de 0
-  /// decimales, dos ventas de 0,5 escribían 1 + 1 = 2 en vez de 1.
+  /// EL PROBLEMA: redondear cada parte de consumo de CADA venta por separado sin memoria entre ventas hace que el Kardex se aleje del
+  /// consumo real cuanto más fraccionada es la venta — con una unidad de 0 decimales, dos ventas de 0,5 escribían 1 + 1 = 2 en vez
+  /// de 1 (filas ANTIGUAS: hasta A1b, 2026-11-16, se redondeaba a `Unidad.decimales` del insumo). Desde A1b el stock se redondea a
+  /// 4 decimales FIJOS con cuenta exacta (empate alejándose del cero), así que el arrastre solo actúa con partes de más de 4 decimales;
+  /// las filas antiguas siguen aportando su deuda.
   ///
   /// LA FÓRMULA: `cantidadExacta` es la magnitud EXACTA (con el mismo signo que `cantidad`) de la parte que esta fila representa,
   /// ANTES de redondear — nunca la acumulada. La deuda de un producto en una sucursal, en cualquier momento, es
   /// `D = Σcantidad − ΣcantidadExacta` (sumando solo las filas CONSUMO con `cantidadExacta` no nulo — las nulas aportan 0 por
   /// definición, ya que ahí `cantidad` YA es la magnitud exacta). Antes de escribir una parte nueva, se redondea `D + exacto` (no
-  /// `exacto` a secas) a los decimales del insumo, y la deuda pasa a ser `D + exacto − escrito` — así el Kardex sigue siendo enteros
-  /// exactos en su unidad (ninguna fila pierde ni gana precisión), pero el TOTAL de la sucursal converge al consumo real en vez de
+  /// `exacto` a secas) a 4 decimales, con piso en 0 (nunca se escribe una cantidad negativa), y la deuda pasa a ser
+  /// `D + exacto − escrito` — así cada fila es un múltiplo exacto de 0,0001, pero el TOTAL de la sucursal converge al consumo real en vez de
   /// redondear cada parte de forma independiente. El alcance de la deuda es (sucursal, producto consumido): puede cruzar secciones y
-  /// lotes (una sección puede escribir el sobrante que "le tocó" a otra), nunca más de ±1 unidad de la unidad de stock del insumo —
+  /// lotes (una sección puede escribir el sobrante que "le tocó" a otra), nunca más de media unidad (0,0001 / 2) de las nuevas, ni de ±1 unidad de las antiguas —
   /// corregible con Conteo Físico, igual que cualquier redondeo de reparto. Columna aditiva, sin backfill: arranca en `null` para
   /// todo lo existente, así que la deuda de cualquier producto antes de este cambio es 0 (arreglo solo hacia adelante).
   cantidadExacta Decimal? @db.Decimal(20, 8)
@@ -2721,6 +2723,7 @@ model Empresa {
   cuentaItemRel                  CuentaItem[]
   ejemplarTicketRel              EjemplarTicket[]
   moduloEmpresaRel               ModuloEmpresa[]
+  planDeEmpresaRel               PlanDeEmpresa[]
   invitacionRel                  Invitacion[]
   invitacionSucursalRel          InvitacionSucursal[]
   agregadoDeCuentas              AgregadoDeCuenta[]
@@ -2785,6 +2788,60 @@ model ModuloEmpresa {
   actualizadoEn DateTime     @default(now()) @updatedAt
 
   @@unique([empresaId, modulo])
+}
+
+/// Plan (frente 4, M1; «Planes con versiones desde el inicio, como Pedernal», 2026-11-16): un paquete de la plataforma, global y SIN precio. Solo la escribe `motor2_plataforma` (RLS `solo_plataforma` + REVOKE a la app + trigger). El `codigo` no cambia nunca y un plan no se borra: se RETIRA. `claveIdempotencia`/`payloadHash`: un reintento con la misma clave y la misma entrada devuelve lo ya hecho.
+model Plan {
+  id                String          @id @db.Uuid
+  codigo            String          @unique
+  /// `ACTIVO` | `RETIRADO` (CHECK).
+  estado            String          @default(dbgenerated("'ACTIVO'"))
+  claveIdempotencia String          @unique @db.Uuid
+  payloadHash       String
+  creadoEn          DateTime        @default(dbgenerated("now()")) @db.Timestamptz(3)
+  versiones         VersionDePlan[]
+}
+
+/// Una versión de un plan. BORRADOR (a lo sumo uno por plan, se edita) → PUBLICADA (INMUTABLE: ningún UPDATE ni DELETE, ni del dueño, por trigger). `modulos` es el TECHO de módulos vendibles de la versión; M1 NO lo aplica todavía al guard ni al menú (M1b). `numero` es NULL mientras es borrador y el siguiente del plan al publicarse (lo exige la base).
+model VersionDePlan {
+  id                String          @id @db.Uuid
+  planId            String          @db.Uuid
+  plan              Plan            @relation(fields: [planId], references: [id], onDelete: Restrict)
+  /// `BORRADOR` | `PUBLICADA` (CHECK).
+  estado            String          @default(dbgenerated("'BORRADOR'"))
+  numero            Int?
+  nombreComercial   String
+  modulos           String[]
+  motivo            String?
+  claveIdempotencia String          @unique @db.Uuid
+  payloadHash       String
+  creadoEn          DateTime        @default(dbgenerated("now()")) @db.Timestamptz(3)
+  publicadaEn       DateTime?       @db.Timestamptz(3)
+  publicadaPor      String?
+  asignaciones      PlanDeEmpresa[]
+
+  @@unique([planId, numero])
+}
+
+/// Qué versión de plan tiene una empresa. SOLO SE AGREGA (ningún UPDATE ni DELETE, ni del dueño): el número es el siguiente de la empresa (lo exige la base) y el plan VIGENTE se CALCULA (la asignación de número mayor que ya empezó), nunca se marca. Sin default de `empresaId`: escribe la plataforma, siempre indicando la empresa. La app solo LEE la de su empresa. Orígenes: `TRANSICION` (la migración), `ALTA`, `CAMBIO`.
+model PlanDeEmpresa {
+  id                String        @id @db.Uuid
+  empresaId         String
+  empresa           Empresa       @relation(fields: [empresaId], references: [id])
+  versionDePlanId   String        @db.Uuid
+  versionDePlan     VersionDePlan @relation(fields: [versionDePlanId], references: [id], onDelete: Restrict)
+  numero            Int
+  aplicaDesde       DateTime      @db.Timestamptz(3)
+  origen            String
+  motivo            String
+  /// Quién la asignó: el email del administrador de plataforma (texto, sin FK: no es un `User`) o `migracion:…`.
+  asignadoPor       String
+  claveIdempotencia String        @unique @db.Uuid
+  payloadHash       String
+  creadoEn          DateTime      @default(dbgenerated("now()")) @db.Timestamptz(3)
+
+  @@unique([empresaId, numero])
+  @@index([versionDePlanId])
 }
 
 enum EstadoInvitacion {
@@ -4368,6 +4425,8 @@ model ArqueoBillete {
 // ============================================================
 /// Por dónde entra el dinero electrónico: una terminal (posnet), un QR o una cuenta bancaria, de UNA sucursal. `tipo` cerrado e inmutable (CHECK + disparador); nombre único por empresa sin mayúsculas; el
 /// identificador externo (número de terminal o alias, nunca credenciales) es opcional. Se desactiva y reactiva, nunca se borra. Es opcional en el cobro («sin cuenta» es un grupo del arqueo).
+/// UNA sola cuenta ACTIVA por sucursal (decisión del dueño, 2026-11-16, Q-C3-6): índice único parcial "CuentaDeCobro_una_activa_por_sucursal_key" (empresaId, sucursalId) WHERE activa, hecho a mano en la migración
+/// 20261117118100_caja_c3b_una_cuenta_por_sucursal (Prisma no declara índices parciales).
 model CuentaDeCobro {
   id                   String   @id @db.Uuid
   empresaId            String   @default(dbgenerated("app_empresa_actual()"))

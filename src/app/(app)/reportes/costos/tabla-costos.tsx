@@ -4,6 +4,7 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import { type FilaCostoProducto, type FilaImpactoInsumo, resolverAccionFaltante, FOOD_COST_OBJETIVO_PCT } from "@/core/reportes/public";
 import { formatearMonto, formatearPorcentaje } from "@/core/formato-de-numero";
+import { textoDe } from "@/core/textos/texto-de";
 
 const LABEL_ESTADO: Record<string, string> = {
   MARGEN_NEGATIVO: "Margen negativo",
@@ -27,7 +28,7 @@ const AYUDA_PRECIO_SUGERIDO =
 const COLUMNAS_PRODUCTOS: ColumnaReporte<FilaCostoProducto>[] = [
   {
     clave: "producto",
-    etiqueta: "Producto",
+    etiqueta: textoDe("columna.producto"),
     valor: (p) => `${p.productoCodigo} — ${p.productoNombre}`,
     render: (p) => (
       <EnlaceInterno href={`/reportes/historial?productoId=${p.productoId}`} className="underline">
@@ -39,7 +40,7 @@ const COLUMNAS_PRODUCTOS: ColumnaReporte<FilaCostoProducto>[] = [
   { clave: "costo", etiqueta: "Costo", alinear: "derecha", valor: (p) => p.costo, render: (p) => formatearMonto(p.costo) },
   {
     clave: "margen",
-    etiqueta: "Margen",
+    etiqueta: textoDe("columna.margen"),
     ayuda: AYUDA_MARGEN,
     alinear: "derecha",
     valor: (p) => p.margen,
@@ -47,7 +48,7 @@ const COLUMNAS_PRODUCTOS: ColumnaReporte<FilaCostoProducto>[] = [
   },
   {
     clave: "foodCost",
-    etiqueta: "Food cost %",
+    etiqueta: textoDe("columna.food_cost"),
     ayuda: AYUDA_FOOD_COST,
     alinear: "derecha",
     valor: (p) => p.foodCostPct,
@@ -89,7 +90,7 @@ const COLUMNAS_PRODUCTOS: ColumnaReporte<FilaCostoProducto>[] = [
 ];
 
 const COLUMNAS_INSUMOS: ColumnaReporte<FilaImpactoInsumo>[] = [
-  { clave: "insumo", etiqueta: "Insumo", valor: (i) => i.insumoNombre, render: (i) => i.insumoNombre },
+  { clave: "insumo", etiqueta: textoDe("columna.insumo"), valor: (i) => i.insumoNombre, render: (i) => i.insumoNombre },
   { clave: "platos", etiqueta: "Platos", alinear: "derecha", valor: (i) => i.cantidadPlatos, render: (i) => i.cantidadPlatos },
   {
     clave: "costoAcumulado",
@@ -100,12 +101,12 @@ const COLUMNAS_INSUMOS: ColumnaReporte<FilaImpactoInsumo>[] = [
   },
   {
     clave: "costoUnitario",
-    etiqueta: "Costo unitario",
+    etiqueta: textoDe("columna.costo_unitario"),
     alinear: "derecha",
     valor: (i) => i.costoUnitario,
     render: (i) => formatearMonto(i.costoUnitario),
   },
-  { clave: "proveedor", etiqueta: "Proveedor", valor: (i) => i.proveedorNombre ?? "", render: (i) => i.proveedorNombre ?? "—" },
+  { clave: "proveedor", etiqueta: textoDe("columna.proveedor"), valor: (i) => i.proveedorNombre ?? "", render: (i) => i.proveedorNombre ?? "—" },
 ];
 
 export function TablaCostosProductos({ filas }: { filas: FilaCostoProducto[] }) {
