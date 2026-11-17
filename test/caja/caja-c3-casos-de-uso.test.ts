@@ -7,6 +7,7 @@ import { calcularPayloadHash } from "../../src/core/movimientos/public-servidor"
 import { azarDelProceso } from "../../src/lib/azar";
 import { abrirSesionCasoDeUso } from "../../src/server/actions/caja/casos-de-uso/abrir-sesion";
 import { cerrarSesionCasoDeUso } from "../../src/server/actions/caja/casos-de-uso/cerrar-sesion";
+import { iniciarCierreDeSesion } from "../../src/server/actions/caja/casos-de-uso/iniciar-cierre";
 import { cobrarCuentaCasoDeUso } from "../../src/server/actions/caja/casos-de-uso/cobrar-cuenta";
 import { desactivarCuentaDeCobroCasoDeUso, reactivarCuentaDeCobroCasoDeUso } from "../../src/server/actions/caja/casos-de-uso/cambiar-estado-de-cuenta-de-cobro";
 import { desactivarMedioDePagoCasoDeUso, reactivarMedioDePagoCasoDeUso } from "../../src/server/actions/caja/casos-de-uso/cambiar-estado-de-medio-de-pago";
@@ -453,6 +454,7 @@ describe("el arqueo se lleva por (medio, cuenta de cobro)", () => {
     expect(await cobrar(c1.id, [{ medioDePagoId: debito, importeEnCentavos: c(3000_00), cuentaDeCobroId: posnet.datos.cuentaDeCobroId }], 3000_00)).toMatchObject({ ok: true });
     expect(await cobrar(c2.id, [{ medioDePagoId: debito, importeEnCentavos: c(3000_00) }], 3000_00)).toMatchObject({ ok: true });
     const cerrar = (conforme: boolean) => cerrarSesionCasoDeUso(actor(), { sesionId: a.datos.sesionId, conteo: { billetes: {}, monedasEnCentavos: c(0) }, conformeDeLosDemasMedios: conforme, observacion: null }, azarDelProceso);
+    expect((await iniciarCierreDeSesion(actor(), { sesionId: a.datos.sesionId })).ok).toBe(true); // C1b: se cierra desde EN_CIERRE
     expect(await cerrar(false)).toMatchObject({ ok: false, codigo: "CONFORME_FALTANTE" });
     expect(await cerrar(true)).toMatchObject({ ok: true, datos: { yaEstabaCerrada: false } });
     const lineas = await prismaAdmin.arqueoCaja.findMany({ where: { sesionId: a.datos.sesionId }, orderBy: { esperado: "asc" } });
@@ -464,6 +466,7 @@ describe("el arqueo se lleva por (medio, cuenta de cobro)", () => {
   it("la base: una línea por (sesión, medio, cuenta) con NULL contando como un grupo, el efectivo sin cuenta y la cuenta de la misma sucursal", async () => {
     const a = await abrir();
     if (!a.ok) throw new Error("no abrió");
+    expect((await iniciarCierreDeSesion(actor(), { sesionId: a.datos.sesionId })).ok).toBe(true); // C1b: el conteo (arqueo) entra solo con la sesión EN_CIERRE
     const debito = await medio("TARJETA_DEBITO", "Débito");
     const norte = await prismaAdmin.sucursal.create({ data: { nombre: "Norte" } });
     const deOtra = await prismaAdmin.cuentaDeCobro.create({ data: { id: randomUUID(), sucursalId: norte.id, tipo: "TERMINAL", nombre: "Posnet Norte" } });

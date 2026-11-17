@@ -10,7 +10,7 @@ import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { asegurarYBloquearJornadaCompartida, horaDeCorteDeColumna } from "@/server/persistencia/caja/jornada";
-import { asegurarCaja, asegurarMedioEfectivo, cargarCajaDeSucursal, cargarMedioEfectivo, cargarSesionAbiertaDeCaja, cargarSesionDeClave, insertarMovimiento, insertarSesion } from "@/server/persistencia/caja/caja";
+import { asegurarCaja, asegurarMedioEfectivo, cargarCajaDeSucursal, cargarMedioEfectivo, cargarSesionSinCerrarDeCaja, cargarSesionDeClave, insertarMovimiento, insertarSesion } from "@/server/persistencia/caja/caja";
 
 /**
  * Caso de uso «abrir la sesión de caja» (etapa C1, docs/diseno-caja-y-cobro-paridad-pedernal-escalera-2026-11-16.md, CU3). Abre la caja de la sucursal activa con un fondo inicial (puede ser $0).
@@ -19,7 +19,7 @@ import { asegurarCaja, asegurarMedioEfectivo, cargarCajaDeSucursal, cargarMedioE
  * Todo en UNA transacción SERIALIZABLE:
  *  1. la clave de reintento (única por empresa): misma clave y mismo pedido → la sesión ya abierta (`yaExistia`, sin escribir ni auditar de nuevo); misma clave con otro pedido → `CLAVE_REUTILIZADA`. La clave se mira ANTES que el estado;
  *  2. la sucursal existe y está activa;
- *  3. asegura la caja y el efectivo; si la caja ya tiene una sesión sin cerrar → `CAJA_YA_ABIERTA { sesionId }`;
+ *  3. asegura la caja y el efectivo; si la caja ya tiene una sesión sin cerrar (ABIERTA o EN_CIERRE) → `CAJA_YA_ABIERTA { sesionId }`;
  *  4. sella el día de negocio (C2): la fecha sale de `fechaDeNegocio(ahora, zona de la empresa del contexto, hora de corte de la sucursal)`; la JORNADA de esa fecha nace con esta primera actividad (`asegurarYBloquearJornadaCompartida`, `FOR SHARE`) y tiene que estar
  *     `ABIERTA`: en cierre → `JORNADA_EN_AUDITORIA`, cerrada → `JORNADA_CERRADA` (no se abre caja);
  *  5. inserta la sesión (con la fecha, la zona y la hora de corte selladas), el movimiento FONDO_INICIAL y la auditoría.
@@ -57,8 +57,9 @@ export async function abrirSesionCasoDeUso(
       const efectivo = await cargarMedioEfectivo(tx, actor.empresaId);
       if (!caja || !efectivo) throw new Error("abrirSesion: la caja o el efectivo no quedaron creados.");
 
-      const abierta = await cargarSesionAbiertaDeCaja(tx, actor.empresaId, caja.id);
-      if (abierta) return { ...fracaso("CAJA_YA_ABIERTA", "La caja ya tiene una sesión abierta."), sesionId: abierta.id };
+      const sinCerrar = await cargarSesionSinCerrarDeCaja(tx, actor.empresaId, caja.id);
+      // Con la sesión EN_CIERRE (se está contando) la caja tampoco se abre de nuevo: primero se cierra o se cancela el cierre.
+      if (sinCerrar) return { ...fracaso("CAJA_YA_ABIERTA", "La caja ya tiene una sesión abierta."), sesionId: sinCerrar.id };
 
       const horaDeCorte = horaDeCorteDeColumna(sucursal.horaDeCorte);
       const fecha = fechaDeNegocio(actor.ahora, actor.empresaZonaHoraria, horaDeCorte);
