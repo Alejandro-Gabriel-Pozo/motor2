@@ -1,4 +1,4 @@
-import type { EstiloCarta } from "@/core/carta/public";
+import { TEXTO_SOBRE_FOTO, VELO_FONDO_SOBRE_FOTO, VELO_SOMBRA_SOBRE_FOTO, type EstiloCarta } from "@/core/carta/public";
 
 /**
  * ADR-006, Fase 3: portada de la carta — un solo árbol de markup (el original dibujaba una portada de escritorio y otra de
@@ -16,7 +16,8 @@ export function Portada({ estilo, restauranteNombre, estiloLibro = false }: { es
   // --carta-primary sólido (un ámbar oscuro) y el blanco da mejor contraste. `estilo.portada.colorTexto` ya prioriza
   // color_portada_textos > hero_ink > derivado del fondo cargado.
   const p = estilo.portada;
-  const colorTexto = p.colorTexto ?? (bgUrl ? "var(--carta-ink)" : "#fff");
+  // CON foto el texto es blanco sobre el velo negro y NO toma el color de marca (regla de Pedernal; `core/carta/portada-velo.ts`): solo manda un color de texto que la empresa haya cargado a propósito.
+  const colorTexto = bgUrl ? (v.color_portada_textos || estilo.heroInk || TEXTO_SOBRE_FOTO) : (p.colorTexto ?? "#fff");
   const colorCta = p.colorCta;
   // Estilo de la maqueta (`LIBRO_ESTILO_MAQUETA`): sin imagen de fondo ni color de portada cargado, la portada es oscura con un degradé suave, un arco decorativo con el color de marca y el sello con la marca; lo cargado en el Tema manda.
   const conAire = estiloLibro && !bgUrl && !p.fondo;
@@ -44,14 +45,23 @@ export function Portada({ estilo, restauranteNombre, estiloLibro = false }: { es
         style={{ "--portada-pos-bloque": p.posBloquePct } as React.CSSProperties}
       >
       <div className="relative flex flex-col items-center gap-4">
-      {/* Velo CENTRADO en el bloque (logo y textos), no sobre toda la imagen: oscurece solo detrás del texto y se desvanece hacia los bordes (mancha suave casi del ancho de la pantalla, como la portada original),
-          así la imagen conserva sus colores. Sin ajuste en el Tema: es parte de cómo se ve la portada con imagen. Acompaña al bloque porque es su hijo. */}
-      {(bgUrl || conAire) && (
+      {/* Velo SIN foto (aire de la maqueta): centrado en el bloque, se desvanece hacia los bordes. Sin ajuste en el Tema. */}
+      {conAire && (
         <div
           data-portada-velo
           aria-hidden
           className="pointer-events-none absolute -inset-x-12 -inset-y-40 -z-10"
           style={{ backgroundImage: "radial-gradient(closest-side, oklch(0 0 0 / 0.5), oklch(0 0 0 / 0.3) 45%, transparent)" }}
+        />
+      )}
+      {/* Velo CON foto: caja pareja detrás de TODO el bloque (logo y textos), con borde difuminado hacia afuera; deja cada texto a 7:1 sobre cualquier foto (valor fijo y su cálculo en `core/carta/portada-velo.ts`). */}
+      {bgUrl && (
+        <div
+          data-portada-velo
+          data-portada-velo-foto
+          aria-hidden
+          className="pointer-events-none absolute -inset-4 -z-10 rounded-3xl"
+          style={{ backgroundColor: VELO_FONDO_SOBRE_FOTO, boxShadow: VELO_SOMBRA_SOBRE_FOTO }}
         />
       )}
       {logoUrl ? (

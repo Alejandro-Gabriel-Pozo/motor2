@@ -5,17 +5,22 @@ import { CLAVES_TEMA_V1, type DefinicionClaveTema } from "../../src/core/carta/t
  * contra las que corren `tema-simple.test.ts` (puro) y `acciones-tema-simple.test.ts` (con la base). Nada de lo de acá se calcula con el código que se prueba.
  *
  * Qué pasa con cada una de las 65 claves del Tema (la tabla campo por campo del diseño, columna «Decisión»):
- *  - SIMPLE: la pide la pantalla simple (el dueño, 2026-11-17: «Te pedía color de marca nada más», «lo del contacto sí»; el logo y el nombre, según Pedernal).
+ *  - SIMPLE: la pide la pantalla simple (el dueño, 2026-11-17: «Te pedía color de marca nada más», «lo del contacto sí»; el logo y el nombre, según Pedernal; rubro, lugar y foto de portada, por sus palabras citadas abajo).
  *  - DERIVADA: la pantalla ya no la pide; la da el sistema (contraste sobre el fondo oscuro, la maqueta o la marca). Lo ya cargado sigue mandando. (`marca_derivada` es el marcador que escribe la pantalla simple.)
- *  - PENDIENTE: falta la palabra del dueño (rubro, lema, descripción, imagen de portada): no se muestra y lo cargado sigue mandando.
+ *  - PENDIENTE: la descripción (Pedernal no la pide): no se muestra y lo cargado sigue mandando.
  *  - ESCONDIDA: la tipografía general, también pendiente del dueño (¿sans o serifa?): no se muestra.
  * Una clave NUEVA del catálogo sin entrada acá rompe `tema-simple.test.ts`: hay que declarar si afecta o no a la pantalla simple.
  */
 export type DestinoDeClave = "SIMPLE" | "DERIVADA" | "PENDIENTE" | "ESCONDIDA";
 
 export const CLAVES_POR_DESTINO: Readonly<Record<DestinoDeClave, readonly string[]>> = {
-  SIMPLE: ["color_marca", "restaurante_logo_url", "restaurante_nombre", "restaurante_instagram", "restaurante_facebook", "restaurante_whatsapp", "restaurante_footer_maps_url"],
-  PENDIENTE: ["restaurante_subtitulo", "restaurante_descripcion", "hero_etiqueta_superior", "hero_imagen_fondo_url"],
+  SIMPLE: [
+    "color_marca", "restaurante_logo_url", "restaurante_nombre",
+    // Portada: rubro, lugar y foto (dueño, 2026-11-17: «2.- si como pedernal», «El lugar sí.», «Si suma foto de portada»; diseño §2.5 y §2.6)
+    "hero_etiqueta_superior", "restaurante_subtitulo", "hero_imagen_fondo_url",
+    "restaurante_instagram", "restaurante_facebook", "restaurante_whatsapp", "restaurante_footer_maps_url",
+  ],
+  PENDIENTE: ["restaurante_descripcion"],
   ESCONDIDA: ["carta_fuente_familia"],
   DERIVADA: [
     // Portada y colores generales
@@ -64,7 +69,7 @@ function valorDeMuestra(d: DefinicionClaveTema): string {
   }
 }
 
-/** Todo cargado: las 58 claves que NO son de la pantalla simple, con un valor válido (más un color de fondo propio para que se note). */
+/** Todo cargado: las 55 claves que NO son de la pantalla simple, con un valor válido (más un color de fondo propio para que se note). */
 export const TODO_LO_AJENO_CARGADO: Readonly<Record<string, string>> = Object.fromEntries(
   CLAVES_TEMA_V1.filter((d) => !CLAVES_POR_DESTINO.SIMPLE.includes(d.clave)).map((d) => [d.clave, valorDeMuestra(d as DefinicionClaveTema)]),
 );
@@ -73,7 +78,7 @@ export const ALGO_AJENO_CARGADO: Readonly<Record<string, string>> = {
   color_fondo_dia: "#222222",
   color_item_nombre: "#eeeeee",
   hero_ink: "claro",
-  restaurante_subtitulo: "Sabores de la cordillera",
+  restaurante_descripcion: "Sabores de la cordillera",
   carta_fuente_item_nombre: "1.3rem",
   topbar_back_label: "← Volver",
 };

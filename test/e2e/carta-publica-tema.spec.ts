@@ -283,14 +283,18 @@ test.describe("carta pública: portada (fondo y posición, C7)", () => {
     }
   });
 
-  test("con imagen de fondo, el velo es un degradé centrado en el bloque (logo y textos) y sin imagen no hay velo", async ({ page, sucursalId }) => {
+  test("con imagen de fondo, el velo es una caja pareja y oscura centrada en el bloque (logo y textos) y sin imagen no hay velo", async ({ page, sucursalId }) => {
     const carta = await crearCarta(sucursalId, { secciones: 2, valores: { ...PORTADA, hero_imagen_fondo_url: "https://example.com/fondo.jpg" } });
     try {
       for (const vp of [MOBILE, DESKTOP]) {
         await page.setViewportSize(vp);
         await page.goto(carta.ruta);
         const velo = page.locator("[data-portada-velo]");
-        expect(await velo.evaluate((n) => getComputedStyle(n).backgroundImage)).toMatch(/^radial-gradient\(/);
+        // Caja pareja (no un degradé) con el borde difuminado: el fondo no es transparente y hay sombra (valor y cálculo: `core/carta/portada-velo.ts`).
+        const estilo = await velo.evaluate((n) => ({ fondo: getComputedStyle(n).backgroundColor, imagen: getComputedStyle(n).backgroundImage, sombra: getComputedStyle(n).boxShadow }));
+        expect(estilo.imagen).toBe("none");
+        expect(estilo.fondo).not.toMatch(/^rgba\(0, 0, 0, 0\)$|^transparent$/);
+        expect(estilo.sombra).not.toBe("none");
         const v = (await velo.boundingBox())!;
         const b = (await page.locator("[data-portada-bloque]").boundingBox())!;
         expect(Math.abs(v.x + v.width / 2 - (b.x + b.width / 2))).toBeLessThan(2);

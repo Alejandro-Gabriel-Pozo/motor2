@@ -2,11 +2,11 @@ import { MARCADOR_DE_MARCA_OSCURA } from "./marca-oscura";
 
 /**
  * INTERRUPTOR de la pantalla simple del Tema de la carta (PASO A de «Apariencia y publicación», `docs/diseno-carta-apariencia-y-publicacion-como-pedernal-2026-11-17.md`; dueño, 2026-11-17: «Te pedía color de marca nada más…»).
- * Una sola constante, y NACE APAGADA (todo nace cerrado). Con `false`, la pestaña Tema y su guardado son los de siempre, sin ningún cambio. Con `true`, la pestaña pide solo siete campos (`CLAVES_TEMA_SIMPLE`) con un único
+ * Una sola constante, y NACE APAGADA (todo nace cerrado). Con `false`, la pestaña Tema y su guardado son los de siempre, sin ningún cambio. Con `true`, la pestaña pide solo diez campos (`CLAVES_TEMA_SIMPLE`) con un único
  * «Guardar» que cambia SOLO esas claves y conserva todas las demás: lo ya cargado por una empresa sigue mandando. Qué se hace con las otras 58 claves está declarado clave por clave en el diseño (§2.2).
  *
  * NECESIDAD (quién y dónde está escrita): el dueño, 2026-11-17 (registrada en `motor2-docs`, `seguimiento-de-pedernal/decisiones-del-dueno-2026-11-14-mesa-resend-contador.md`): «Te pedía color de marca nada más. Lo otro iba por contraste y como era
- * oscuro quedaba ahí.» y «lo del contacto sí». Pendientes del dueño, que NO se construyen ni se muestran: tipografía; rubro, lema, descripción e imagen de portada.
+ * oscuro quedaba ahí.» y «lo del contacto sí». Rubro, lugar y foto de portada (dueño, 2026-11-17: «2.- si como pedernal», «El lugar sí.», «Si suma foto de portada»; diseño §2.5 y §2.6). Lema, descripción y tipografía NO se piden.
  *
  * La condición para encenderla es el spec `test/e2e/carta-tema-simple.spec.ts` (los dos estados, con axe a 375 y 1366 px). Para volver a apagarla: poner `false` (nada más; no se borra nada ni se toca la base).
  * `src/lib/tema-simple-visible.ts` es quien la consulta (agrega un encendido SOLO de prueba por variable de entorno).
@@ -17,13 +17,16 @@ export const TEMA_SIMPLE_VISIBLE: boolean = false;
 export const MENSAJE_TEMA_SIMPLE_APAGADO = "La pantalla simple del tema de la carta todavía no está disponible.";
 
 /**
- * Las siete claves de la pantalla simple, en el orden en que se muestran: color de marca, logo, nombre y los cuatro del contacto. Es la lista PERMITIDA: el guardado simple solo lee estas claves del pedido y solo cambia estas
+ * Las diez claves de la pantalla simple, en el orden en que se muestran: color de marca, logo, nombre, rubro (`hero_etiqueta_superior`), lugar (`restaurante_subtitulo`), foto de portada (`hero_imagen_fondo_url`) y los cuatro del contacto. Es la lista PERMITIDA: el guardado simple solo lee estas claves del pedido y solo cambia estas
  * claves de lo guardado. Una clave nueva del Tema no entra acá sin una decisión del dueño (lo vigila `test/carta/tema-simple.test.ts`, con la declaración de las 65 en `tema-simple.oraculo.ts`).
  */
 export const CLAVES_TEMA_SIMPLE = [
   "color_marca",
   "restaurante_logo_url",
   "restaurante_nombre",
+  "hero_etiqueta_superior",
+  "restaurante_subtitulo",
+  "hero_imagen_fondo_url",
   "restaurante_instagram",
   "restaurante_facebook",
   "restaurante_whatsapp",
@@ -34,7 +37,7 @@ export type ClaveTemaSimple = (typeof CLAVES_TEMA_SIMPLE)[number];
 const objetoPlano = (v: unknown): Record<string, unknown> => (typeof v === "object" && v !== null && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
 
 /**
- * MEZCLA del guardado simple (invariante I1 del diseño, «lo cargado manda»): parte de lo GUARDADO tal cual (todas las claves, incluidas las que el catálogo ya no conoce y las que están mal cargadas) y cambia SOLO las siete de
+ * MEZCLA del guardado simple (invariante I1 del diseño, «lo cargado manda»): parte de lo GUARDADO tal cual (todas las claves, incluidas las que el catálogo ya no conoce y las que están mal cargadas) y cambia SOLO las diez de
  * `CLAVES_TEMA_SIMPLE`: la que viene con valor se escribe, la que viene vacía se saca (vacío = default de la carta, como en el guardado de siempre). El marcador `marca_derivada` es el único otro cambio: con color de marca queda
  * en `oscura` (la pantalla simple muestra la carta sobre el fondo oscuro, y quien guarda ve eso mismo), sin color de marca se saca. Pura: no toca los argumentos.
  */
