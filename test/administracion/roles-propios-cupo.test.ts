@@ -85,6 +85,24 @@ describe("cupo de roles propios (P2)", () => {
     expect(await propiosActivos()).toBe(1);
   });
 
+  it("CONCURRENCIA DETERMINISTA: con el INSERT de «Rol» demorado 0,4 s, cinco altas a la vez con cupo 1: una sola gana y el resto recibe el rechazo de cupo (sin el candado por empresa, todas pasaban el conteo)", async () => {
+    await poner(1);
+    // El trigger alarga la ventana entre contar y confirmar: sin `tomarCandadoDeRolesPropios` todas las altas cuentan 0 antes de que alguna inserte.
+    await prismaAdmin.$executeRawUnsafe(`CREATE OR REPLACE FUNCTION "demorar_alta_rol_p2"() RETURNS trigger LANGUAGE plpgsql AS $f$ BEGIN PERFORM pg_sleep(0.4); RETURN NEW; END $f$`);
+    await prismaAdmin.$executeRawUnsafe(`CREATE TRIGGER "demorar_alta_rol_p2" BEFORE INSERT ON "Rol" FOR EACH ROW EXECUTE FUNCTION "demorar_alta_rol_p2"()`);
+    try {
+      const resultados = await Promise.all(["alta-uno", "alta-dos", "alta-tres", "alta-cuatro", "alta-cinco"].map((n) => crearRol(n)));
+      expect(resultados.filter((r) => r.ok)).toHaveLength(1);
+      const rechazados = resultados.filter((r) => !r.ok);
+      expect(rechazados).toHaveLength(4);
+      for (const r of rechazados) expect(r.mensaje).toBe(MENSAJE_PERMISOS_DE_PLATAFORMA);
+      expect(await propiosActivos()).toBe(1);
+    } finally {
+      await prismaAdmin.$executeRawUnsafe(`DROP TRIGGER IF EXISTS "demorar_alta_rol_p2" ON "Rol"`);
+      await prismaAdmin.$executeRawUnsafe(`DROP FUNCTION IF EXISTS "demorar_alta_rol_p2"()`);
+    }
+  });
+
   it("CONCURRENCIA: dos reactivaciones a la vez con un solo cupo libre: una sola reactiva", async () => {
     await poner(2);
     expect((await crearRol("cajero")).ok).toBe(true);
