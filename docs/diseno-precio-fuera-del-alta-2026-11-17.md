@@ -42,14 +42,9 @@ El precio **sale del formulario del alta**. Se pide en la pestaña «Precios» d
 | 4 | Factor de conversión, unidad de compra, IVA | Sin cambios | Sin cambios (no los pidió el dueño) | — |
 | 5 | Después de crear | Va a la ficha | **Va a la ficha**; en un PV el aviso indica el paso siguiente: «Cargá el precio» con enlace a la pestaña Precios | Igual |
 
-### A. Pregunta única para el dueño (cambia el dinero y quién ve qué en venta)
+### A. Cómo nace el producto de venta (RESUELTA, 2026-11-17)
 
-Al sacar el precio del alta, **todo producto de venta nace sin precio**. Hoy, con la clave, nacía con precio y disponible. ¿Cómo nace?
-
-- **A1 (recomendada, «todo nace cerrado»):** el PV **nace NO disponible** en todas las sucursales (como hoy sin la clave) hasta que se le cargue el precio y se active. Es lo que Motor2 ya hace, solo se extiende a todos. Un PV sin precio nunca queda a la venta por accidente.
-- **A2:** nace disponible y la venta lo trata como hoy un PV en $0. **No verificado** qué hace el POS con un PV en $0 ya disponible: `grep` no mostró un rechazo de precio 0 en las acciones de POS. Se descarta sin leer el POS a fondo.
-
-Mientras no responda, se propone A1 y no se construye nada.
+El dueño delegó en Pedernal los casos abiertos («Preguntale a Pedernal, según sus reglas, cómo definirían esos casos»); decisión citada por el orquestador: **A1**: el producto de venta **nace NO disponible** en todas las sucursales hasta que se le cargue el precio y se active (todo nace cerrado; es lo que Motor2 ya hace sin la clave). **Diferencia declarada con Pedernal (motivo):** Pedernal no guarda «disponible» y deja vender sin precio en el mostrador (precio abierto, decisión 175; sin precio no sale en la carta); Motor2 no tiene precio abierto y no se construye (solo si el dueño lo pide). El servidor de venta **no puede aceptar $0 por esta vía**: antes de construir se verifica el POS con un producto de venta disponible en $0 y se declara el resultado en el PR de código.
 
 ## 4. Tabla «¿qué pasa si…?» (PV que nace sin precio)
 
@@ -85,4 +80,4 @@ Precio abierto, listas de precios, vigencia futura, precio por sucursal en el al
 
 ## 8. Preguntas abiertas
 
-Una: la **A** (cómo nace el PV). Hasta que se responda, A1 queda como PROPUESTA.
+Ninguna: la A está resuelta (A1).
