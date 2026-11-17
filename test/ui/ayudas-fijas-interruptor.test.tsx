@@ -1,41 +1,39 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { Campo } from "../../src/ui/primitivas/campo";
+import { Selector } from "../../src/ui/primitivas/selector";
+import { AreaDeTexto } from "../../src/ui/primitivas/area-de-texto";
+import { Casilla } from "../../src/ui/primitivas/casilla";
+import { AyudaCampo } from "../../src/components/ayuda-campo";
 
 /**
- * Interruptor de las AYUDAS FIJAS de todo el sistema (`AYUDAS_FIJAS_VISIBLES`, `src/core/textos/ayudas-fijas-visibles.ts`; Frente «Visual», V5): los DOS estados. Apagado (hoy) la ayuda fija
+ * Interruptor de las AYUDAS FIJAS de todo el sistema (`AYUDAS_FIJAS_VISIBLES`, `src/ui/primitivas/ayudas-fijas-visibles.ts`; Frente «Visual», V5): los DOS estados. Apagado (hoy) la ayuda fija
  * (`ayuda=`, `AyudaCampo`) NO se dibuja ni se anuncia, pero SÍ el aviso condicional (`aviso=`), el error y la lectura; encendido, la ayuda vuelve tal cual (reversibilidad). La sustancia de cada
  * primitiva con la ayuda encendida está en `campo.test.tsx`, `selector.test.tsx`, `area-de-texto.test.tsx` y `casilla.test.tsx` (que fijan el interruptor en `true`).
  */
-async function cargar(visibles: boolean) {
-  vi.resetModules();
-  vi.doMock("../../src/core/textos/ayudas-fijas-visibles", () => ({ AYUDAS_FIJAS_VISIBLES: visibles }));
-  const [{ Campo }, { Selector }, { AreaDeTexto }, { Casilla }, { AyudaCampo }] = await Promise.all([
-    import("../../src/ui/primitivas/campo"),
-    import("../../src/ui/primitivas/selector"),
-    import("../../src/ui/primitivas/area-de-texto"),
-    import("../../src/ui/primitivas/casilla"),
-    import("../../src/components/ayuda-campo"),
-  ]);
-  return { Campo, Selector, AreaDeTexto, Casilla, AyudaCampo };
-}
+const interruptor = vi.hoisted(() => ({ visibles: false }));
+vi.mock("../../src/ui/primitivas/ayudas-fijas-visibles", () => ({
+  get AYUDAS_FIJAS_VISIBLES() {
+    return interruptor.visibles;
+  },
+}));
 
 afterEach(() => {
-  vi.doUnmock("../../src/core/textos/ayudas-fijas-visibles");
-  vi.resetModules();
+  interruptor.visibles = false;
 });
 
 const AYUDA = "Texto fijo de ayuda";
 const AVISO = "No tenés el permiso para esto.";
 
 describe("AYUDAS_FIJAS_VISIBLES: apagado (el estado de hoy)", () => {
-  it("el valor por defecto del interruptor es false (todo nace cerrado)", async () => {
-    vi.resetModules();
-    const real = await import("../../src/core/textos/ayudas-fijas-visibles");
-    expect(real.AYUDAS_FIJAS_VISIBLES).toBe(false);
+  it("el valor por defecto del interruptor es false (todo nace cerrado)", () => {
+    expect(readFileSync(join(__dirname, "../../src/ui/primitivas/ayudas-fijas-visibles.ts"), "utf8")).toMatch(/export const AYUDAS_FIJAS_VISIBLES: boolean = false;/);
   });
 
-  it("ninguna primitiva dibuja `ayuda`, pero todas dibujan `aviso` y lo anuncian; el error queda", async () => {
-    const { Campo, Selector, AreaDeTexto, Casilla } = await cargar(false);
+  it("ninguna primitiva dibuja `ayuda`, pero todas dibujan `aviso` y lo anuncian; el error queda", () => {
+    interruptor.visibles = false;
     const html = {
       campo: renderToStaticMarkup(<Campo etiqueta="x" ayuda={AYUDA} aviso={AVISO} error="Falta" />),
       selector: renderToStaticMarkup(<Selector etiqueta="x" ayuda={AYUDA} aviso={AVISO} error="Falta"><option>a</option></Selector>),
@@ -51,15 +49,15 @@ describe("AYUDAS_FIJAS_VISIBLES: apagado (el estado de hoy)", () => {
     }
   });
 
-  it("AyudaCampo no dibuja nada", async () => {
-    const { AyudaCampo } = await cargar(false);
+  it("AyudaCampo no dibuja nada", () => {
+    interruptor.visibles = false;
     expect(renderToStaticMarkup(<AyudaCampo>{AYUDA}</AyudaCampo>)).toBe("");
   });
 });
 
 describe("AYUDAS_FIJAS_VISIBLES: encendido (reversibilidad)", () => {
-  it("las primitivas dibujan `ayuda` y la anuncian, además del aviso", async () => {
-    const { Campo, Selector, AreaDeTexto, Casilla } = await cargar(true);
+  it("las primitivas dibujan `ayuda` y la anuncian, además del aviso", () => {
+    interruptor.visibles = true;
     const html = [
       renderToStaticMarkup(<Campo etiqueta="x" ayuda={AYUDA} aviso={AVISO} />),
       renderToStaticMarkup(<Selector etiqueta="x" ayuda={AYUDA} aviso={AVISO}><option>a</option></Selector>),
@@ -73,8 +71,8 @@ describe("AYUDAS_FIJAS_VISIBLES: encendido (reversibilidad)", () => {
     }
   });
 
-  it("AyudaCampo vuelve a dibujar su texto", async () => {
-    const { AyudaCampo } = await cargar(true);
+  it("AyudaCampo vuelve a dibujar su texto", () => {
+    interruptor.visibles = true;
     expect(renderToStaticMarkup(<AyudaCampo>{AYUDA}</AyudaCampo>)).toContain(AYUDA);
   });
 });

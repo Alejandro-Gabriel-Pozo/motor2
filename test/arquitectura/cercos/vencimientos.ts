@@ -46,6 +46,14 @@ export const VENCIMIENTOS_DE_LISTAS: readonly VencimientoDeLista[] = [
   lista("controles-a-mano", "2026-12-28"),
   lista("dialogos-y-avisos-a-mano", "2026-12-30"),
   lista("tipografia", "2027-01-02"),
+  {
+    regla: "ayudas-fijas",
+    inicio: "2026-11-17",
+    vence: "2027-01-15",
+    responsable: "dueño",
+    aprobacion: { por: "dueño", referencia: "PR #461" },
+    motivo: "Cerco nuevo del Frente Visual (V5): fecha la línea de base de textos explicativos escritos a mano; se aprueba al mergear el PR #461, a 60 días como máximo.",
+  },
   lista("colores-de-escala", "2027-01-04"),
   lista("colores", "2027-01-05"),
   // PROPUESTA (E-N salida, 2026-11-09): deuda nueva al crear el guardián de números mostrados sin la función central; se declara sin pagarla toda en esta etapa. La aprobación queda PENDIENTE del dueño al mergear el PR de la etapa.

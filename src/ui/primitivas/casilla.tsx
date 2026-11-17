@@ -1,4 +1,4 @@
-import { AYUDAS_FIJAS_VISIBLES } from "@/core/textos/ayudas-fijas-visibles";
+import { AYUDAS_FIJAS_VISIBLES } from "./ayudas-fijas-visibles";
 import { useId, type InputHTMLAttributes, type ReactNode, type Ref } from "react";
 
 /**

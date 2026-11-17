@@ -13,6 +13,8 @@
  *  - `AyudaIcono` (el «?» con tooltip: no ocupa lugar) y `AyudaDeFicha` (tiene su propio interruptor, `FICHA_AYUDAS_VISIBLES`).
  * Otros párrafos escritos a mano en las pantallas NO pasan por acá: los cuenta el cerco `test/arquitectura/cerco-ayudas-fijas.test.ts`, que solo puede bajar.
  *
+
+ * Vive en `src/ui/primitivas/` y no en `src/core/` porque la capa `ui` no importa de `core` (`test/arquitectura/ui-sin-negocio.test.ts`): las primitivas lo leen sin salir de su capa.
  * Lo comprueba `test/ui/ayudas-fijas-interruptor.test.tsx` (los dos estados). Para volver a mostrarlas: poner `true`.
  */
 export const AYUDAS_FIJAS_VISIBLES: boolean = false;

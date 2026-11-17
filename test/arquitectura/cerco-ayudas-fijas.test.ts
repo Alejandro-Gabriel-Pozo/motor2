@@ -4,7 +4,7 @@ import { probarCerco } from "./cercos/probar-cerco";
 
 /**
  * Cerco «ayudas fijas» (Frente «Visual», V5; mandato del dueño 2026-11-17: «en Pedernal veo pocas palabras bien elegidas, en Motor 2 veo párrafos explicativos»). Cuenta, en `src/app` y
- * `src/components`, los lugares donde una pantalla escribe un texto explicativo FIJO a mano, que no pasa por el interruptor `AYUDAS_FIJAS_VISIBLES` (`src/core/textos/ayudas-fijas-visibles.ts`):
+ * `src/components`, los lugares donde una pantalla escribe un texto explicativo FIJO a mano, que no pasa por el interruptor `AYUDAS_FIJAS_VISIBLES` (`src/ui/primitivas/ayudas-fijas-visibles.ts`):
  *  - `ayuda-campo`: un `<AyudaCampo>` (ya respeta el interruptor; se cuenta para que no crezca el uso);
  *  - `prop-ayuda`: una prop `ayuda=` de una primitiva (ya respeta el interruptor; ídem). Un texto CONDICIONAL (permiso, estado) va en `aviso=`, no acá;
  *  - `parrafo-de-ayuda`: un `<p className="…">` con la clase de texto chico (`text-xs` o `text-sm`) Y de tinta suave o tenue (`text-tinta-suave`/`text-tinta-tenue`) y SIN `role=` (los avisos de
@@ -19,7 +19,7 @@ import { probarCerco } from "./cercos/probar-cerco";
  */
 const RE_AYUDA_CAMPO = /<AyudaCampo\b/g;
 const RE_PROP_AYUDA = /(?<=\s)ayuda=/g;
-const RE_PARRAFO = /<p\b([^>]*?)>/gs;
+const RE_PARRAFO = /<p\b([^>]*?)>/g;
 
 function claseDe(atributos: string): string {
   const m = /className=(?:"([^"]*)"|\{`([^`]*)`\}|\{"([^"]*)"\})/.exec(atributos);
