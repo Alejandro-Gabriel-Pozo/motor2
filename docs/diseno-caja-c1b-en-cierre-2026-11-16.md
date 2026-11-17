@@ -6,7 +6,7 @@ Continúa `docs/diseno-caja-y-cobro-paridad-pedernal-2026-11-16.md` y `...-escal
 
 - **Necesidad (CONFIRMADA):** mientras se cuenta el efectivo para cerrar la caja, el sistema deja de aceptar cobros y movimientos de efectivo. Hoy (C1) el cierre es un solo paso (`cerrarSesion` con el conteo, todo o nada): si un cobro se coló mientras se contaba, el cierre falla entero porque la base recalcula lo esperado.
 - **Pedido del dueño (2026-11-16, literal):** pregunta «mientras se cuenta el efectivo para cerrar la caja, ¿el sistema deja de aceptar cobros (como Pedernal, estado «en cierre») o alcanza con el aviso y recontar?»; respuesta: «Frenar el cobro, como Pedernal (Recomendada)». Fuente: pregunta y respuesta del orquestador al dueño del 2026-11-16 (la cita la trae el pedido de esta etapa; el registro de decisiones del dueño es el lugar donde queda asentada).
-- **Alcance de esta etapa:** estado `EN_CIERRE` en la base (columnas, reglas, disparadores) y los casos de uso que lo mueven y lo respetan. Sin pantallas, sin Server Actions, sin permisos nuevos (los declara el PR de permisos con la clave `caja_cerrar_sesion`).
+- **Alcance de esta etapa:** estado `EN_CIERRE` en la base (columnas, reglas, disparadores) y los casos de uso que lo mueven y lo respetan. Sin pantallas y sin permisos nuevos. Server Actions: dos (`iniciarCierreDeSesionDeCaja` y `cancelarCierreDeSesionDeCaja`, sección «Las dos Server Actions»), que reutilizan el permiso `caja_cerrar_sesion`; sin ellas la caja no se podría cerrar desde la interfaz, porque `cerrarSesionDeCaja` exige la sesión EN_CIERRE.
 - **Actores:** quien cierra la caja (permiso `caja_cerrar_sesion`, el mismo que ya cierra), quien cobra y quien mueve efectivo (ven `CAJA_EN_CIERRE`).
 
 ## Auditoría breve contra Pedernal (versión leída: checkout local de `zuluhub-erp`; NO VERIFICADO contra `origin/main` vigente: el worktree no permitió `git fetch` del checkout compartido)
@@ -57,7 +57,7 @@ Solo esas tres transiciones. ABIERTA → CERRADA directo y quedarse en el mismo 
 
 Migración aditiva y reversible `20261117119000_caja_c1b_en_cierre` (columnas nulas, dos CHECK, una función nueva, dos reemplazadas). Nada se borra: el inicio y la cancelación del cierre quedan en el registro de auditoría (`cierre_iniciado`, `cierre_cancelado`), y al cerrar queda quién y cuándo inició. Al cancelar el cierre, las dos columnas vuelven a nulo (el rastro es la auditoría, que no se borra).
 
-**Funciones de base que reemplaza (para fusionar con C2/C3 al integrar):** `SesionCaja_validar()` y `Arqueo_validar()` (ambas `CREATE OR REPLACE`, cuerpos de C1); agrega `SesionCaja_exigir_en_cierre(text, uuid, text)`. NO toca `SesionCaja_exigir_abierta`, `MovimientoCaja_validar`, `Cobranza_validar`, `Cobro_validar`, `Cobranza_cuadra` ni `SesionCaja_verificar_cierre`.
+**Funciones de base que reemplaza (partiendo de las VIGENTES tras C3 y C2):** `SesionCaja_validar()` (cuerpo vigente de C2: la rama INSERT queda idéntica y solo cambia la rama UPDATE) y `Arqueo_validar()` (cuerpo de C1, que C2/C3 no cambiaron) (ambas `CREATE OR REPLACE`); agrega `SesionCaja_exigir_en_cierre(text, uuid, text)`. NO toca `SesionCaja_exigir_abierta`, `MovimientoCaja_validar`, `Cobranza_validar`, `Cobro_validar`, `Cobranza_cuadra` ni `SesionCaja_verificar_cierre`.
 
 ## Nivel 7: atomicidad y concurrencia
 
@@ -77,7 +77,7 @@ Migración aditiva y reversible `20261117119000_caja_c1b_en_cierre` (columnas nu
 | **Reintento tras fallo** | nada que deshacer | nada que deshacer | un conteo inválido o un «conforme» faltante deja la sesión EN_CIERRE sin arqueo escrito: se reintenta con el conteo correcto | ante `CAJA_EN_CIERRE` hay que cancelar el cierre y reintentar | — |
 | **Error parcial** | todo o nada (una transacción) | todo o nada | arqueo, billetes, cierre y auditoría en una transacción; el disparador diferido hace fallar el COMMIT si no cuadra | todo o nada | todo o nada |
 | **Datos faltantes** | sin sesión o de otra sucursal: `SESION_NO_ENCONTRADA`, no escribe | ídem | ídem | sin caja o sin sesión sin cerrar: `SIN_SESION_ABIERTA` (cobrar) / `SESION_NO_ENCONTRADA` (mover) | — |
-| **Cambio de permisos** | lo pide la Server Action (PR de permisos, clave `caja_cerrar_sesion`); el caso de uso recibe al actor ya autorizado | ídem | ídem | permisos propios de cada comando, sin cambios | sin cambios |
+| **Cambio de permisos** | lo pide la Server Action (clave `caja_cerrar_sesion`; ver «Las dos Server Actions»); el caso de uso recibe al actor ya autorizado | ídem | ídem | permisos propios de cada comando, sin cambios | sin cambios |
 
 Cobrar con la sesión cerrada y ninguna abierta: `SIN_SESION_ABIERTA` (no hay a dónde cobrar). Cobrar con una sesión EN_CIERRE: `CAJA_EN_CIERRE { sesionId }`.
 
@@ -99,6 +99,24 @@ Cobrar con la sesión cerrada y ninguna abierta: `SIN_SESION_ABIERTA` (no hay a 
 | abrir | `CAJA_YA_ABIERTA` | `CAJA_YA_ABIERTA` | OK, sesión nueva |
 
 Otras pruebas: concurrencia con `Promise.allSettled` (iniciar, cancelar, cerrar y cobros contra iniciar el cierre), reglas de la base directo con SQL crudo como `motor2_app` (transiciones prohibidas, marcas, movimiento/cobro/arqueo con el estado equivocado, cierre que falla al COMMIT si no cuadra, el inicio del cierre que espera un movimiento en vuelo), subir/bajar/subir de la migración (`test/aislamiento/caja-c1b-subir-bajar-subir.test.ts`), y el núcleo puro contra el mismo oráculo.
+
+## Las dos Server Actions (agregadas al apilar C1b sobre PR-B)
+
+Decisión del orquestador, con la cita del dueño «Frenar el cobro, como Pedernal» (2026-11-16, relatada por el orquestador general): `iniciarCierreDeSesionDeCaja({ sesionId })` y `cancelarCierreDeSesionDeCaja({ sesionId })` en `src/server/actions/caja/caja.ts`, con el molde de PR-B: `conPermiso("caja_cerrar_sesion")` (el MISMO permiso que cerrar: sin permisos nuevos, sin tocar `acciones.ts` ni los goldens) → formato (`guardComandoCierreDeSesion`: objeto plano y `sesionId` UUID, por lista de permitidos) → caso de uso (`iniciar-cierre.ts` / `cancelar-cierre.ts`). Resultado cerrado: `ok`, `codigo` estable (`SESION_NO_ENCONTRADA`, `SESION_CERRADA`, `IDENTIFICADOR_INVALIDO`), `sesionId`, `yaEstabaEnCierre` / `yaEstabaAbierta`. La lectura `leerEstadoDeCaja` ahora distingue `estado: "ABIERTA" | "EN_CIERRE"` y `cierreIniciadoEn` de la sesión sin cerrar (el campo conserva el nombre `sesionAbierta` de C1).
+
+| ¿Qué pasa si…? | iniciar el cierre | cancelar el cierre |
+| --- | --- | --- |
+| **Repetición** (doble clic, reintento) | con la sesión ya EN_CIERRE devuelve `ok` con `yaEstabaEnCierre: true`, sin escribir ni auditar | con la sesión ya ABIERTA devuelve `ok` con `yaEstabaAbierta: true`, sin escribir ni auditar |
+| **Concurrencia** | dos a la vez: uno escribe, el otro ve EN_CIERRE (o reintenta por la transacción serializable) y responde `yaEstabaEnCierre`; una auditoría. Contra un cobro: o el cobro entra y el cierre ve lo cobrado, o gana el cierre y el cobro recibe `CAJA_EN_CIERRE`; nunca queda un cobro a medias ni un error crudo | contra un cierre (`cerrarSesionDeCaja`): el cierre toma el bloqueo exclusivo de la sesión; si gana la cancelación, el cierre responde `SESION_NO_EN_CIERRE`; si gana el cierre, la cancelación responde `SESION_CERRADA` (esta carrera cancelar contra cerrar: por diseño, NO VERIFICADA con prueba) |
+| **Tiempo** | sella `cierreIniciadoEn` con el reloj inyectado; la sesión no vence sola | no usa reloj; volver a iniciar sella de nuevo |
+| **Incertidumbre / reintento** | idempotente por estado: reintentar tras un corte de red no duplica ni falla | ídem |
+| **Error parcial** | una sola transacción: el cambio de estado y su auditoría van juntos o no va ninguno | ídem |
+| **Datos faltantes** | sesión inexistente o de otra sucursal: `SESION_NO_ENCONTRADA`; id que no es UUID: rechazo de formato sin tocar la base | ídem |
+| **Cambio de permisos** | el permiso se mira en CADA llamada: quien lo pierde (o pierde la membresía) recibe el rechazo de permiso (o el acceso) sin que la base cambie, aunque repita el mismo pedido | ídem |
+
+**Diferencia con Pedernal, declarada: «cerrar solo desde EN_CIERRE».** Motivo: que el cierre de la caja pase siempre por el paso de «frenar el cobro» (decisión del dueño, «Frenar el cobro, como Pedernal»): cerrar con la sesión ABIERTA devuelve `SESION_NO_EN_CIERRE` en lugar de cerrar en un paso. Es el mismo criterio de la sección anterior.
+
+**Cambio declarado sobre C2:** `registrarAjusteCasoDeUso` contestaba `SESION_CERRADA` con la sesión EN_CIERRE (la rechazaba igual); ahora contesta `CAJA_EN_CIERRE`, como los demás movimientos. No cambia ninguna regla de negocio: solo el código del rechazo.
 
 ## Diferencia declarada con C1: «C1 cerraba en un paso»
 

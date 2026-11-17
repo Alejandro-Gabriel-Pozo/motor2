@@ -193,6 +193,8 @@ export interface OpcionesDeCorrida {
    * sobre un mundo limpio (un mundo descartable), así que una variante no gasta lo que necesita la siguiente.
    */
   reponerMundo?: () => Promise<Mundo>;
+  /** Solo `controlMutacion`: deja armada en la base la precondición de estado que el mundo no trae (p. ej. la sesión de caja EN_CIERRE), ANTES de fotografiar la base y de invocar la puerta. */
+  prepararControl?: (mundo: Mundo) => Promise<void>;
 }
 
 /** Invoca la puerta en el escenario (una vez por variante de argumentos) y devuelve qué pasó y qué problemas tiene. Una MUTACIÓN con ids ajenos que termina en `ok: true` es un problema; una lectura solo si trae filas ajenas. */
@@ -215,6 +217,7 @@ export async function correrPuerta(puerta: PuertaInventariada, escenario: Escena
     reloj.ahora += 61_000;
     vi.setSystemTime(reloj.ahora);
 
+    if (esControl && opciones.prepararControl) await opciones.prepararControl(mundoActual);
     const antes = await huellaDeLaBase();
     let salida: Salida;
     try {

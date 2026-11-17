@@ -20,7 +20,7 @@ import { cancelarCierreEnBase, cargarSesion } from "@/server/persistencia/caja/c
  * @idempotency Por estado: repetir con la sesión ya abierta devuelve `yaEstabaAbierta` sin escribir ni auditar; dos cancelaciones a la vez dejan una sola (la transacción serializable arbitra y el reintento ve el estado nuevo).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects registrarCambioAuditado (la cancelación del cierre).
- * @ficha permiso=caja_cerrar_sesion transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=NO_APLICA periodo=NO_APLICA
+ * @ficha permiso=caja_cerrar_sesion transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function cancelarCierreDeSesion(
   actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "empresaId" | "transaccion">,
