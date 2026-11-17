@@ -1,36 +1,40 @@
 /**
- * ORÁCULO de «Colores del portal» (escrito APARTE del código, legible). Decisiones del dueño, 2026-11-17: «Sí, los tres fondos elegibles.» y «Ve como un pedernal.»: el texto y los íconos del portal NO dependen del color elegido (colores fijos del sistema a 7:1 o más sobre los fondos del sistema); el color
- * solo pinta ACENTOS y bordes; se guarda tal cual (sin ajuste ni aviso). Referencia de Pedernal: `apps/web/ui/tokens.css:43-49` («lo único que sale de la marca») y `apps/web/ui/plantillas/vidriera/contraste.test.ts` («una marca no puede bajar la legibilidad»).
+ * ORÁCULO de «Colores del portal» (escrito APARTE del código, legible): la tabla de reglas esperadas que recorre `portal-colores-combinaciones.test.ts`. No importa nada de `src/`: lo que dice cada fila es lo que el DUEÑO pidió (decisión 2026-11-17: «Sí, los tres fondos elegibles.»;
+ * instrucción: «2.- si como pedernal»: lo que no se lee se AJUSTA, no se rechaza), y la regla de Pedernal (`color-de-la-carta.ts:14,102-119`): texto blanco o negro, fondo a 7:1 AL MOSTRAR.
  *
- * DIMENSIONES cuyas combinaciones cambian lo que se ve: (1) cuál de los tres colores se elige, (2) la marca elegida (incluidos los PEORES CASOS), (3) lo que la empresa ya tenía cargado en el Json. Una clave de color nueva del catálogo del portal sin declarar hace fallar el guardián.
+ * DIMENSIONES cuyas combinaciones cambian lo que se ve: (1) el fondo elegido (`null` = el de siempre), (2) el color de texto que la empresa ya tenía cargado sobre ese fondo (el cargado manda solo si se lee). Una dimensión nueva (un cuarto fondo, otra clave) hace fallar el guardián del test.
  */
 
-/** Las marcas de peor caso para un texto (la que da menos contraste con cualquier texto es el gris medio; el blanco, el negro y el amarillo son los extremos). `null` = no se eligió color. */
-export const MARCAS = [
-  { nombre: "sin color", elegida: null, guardada: null },
-  { nombre: "blanco", elegida: "#ffffff", guardada: "#ffffff" },
-  { nombre: "negro", elegida: "#000000", guardada: "#000000" },
-  { nombre: "amarillo", elegida: "#ffff00", guardada: "#ffff00" },
-  { nombre: "gris medio", elegida: "#808080", guardada: "#808080" },
-  { nombre: "mayúsculas (se guarda en minúsculas)", elegida: "#FFFF00", guardada: "#ffff00" },
-  { nombre: "mal escrito (no se pinta)", elegida: "amarillo", guardada: null },
+/** Lo que cada fondo elegido tiene que dar, con valores simples a mano (blanco, negro y gris claro no se ajustan; el gris medio sí). */
+export const FONDOS_ELEGIDOS = [
+  { nombre: "sin fondo", elegido: null, esperado: { mostrado: null, texto: null, aviso: false } },
+  { nombre: "blanco", elegido: "#ffffff", esperado: { mostrado: "#ffffff", texto: "#000000", aviso: false } },
+  { nombre: "negro", elegido: "#000000", esperado: { mostrado: "#000000", texto: "#ffffff", aviso: false } },
+  { nombre: "amarillo", elegido: "#ffff00", esperado: { mostrado: "#ffff00", texto: "#000000", aviso: false } },
+  { nombre: "azul oscuro", elegido: "#1f4e79", esperado: { mostrado: "#1f4e79", texto: "#ffffff", aviso: false } },
+  { nombre: "mayúsculas", elegido: "#1B1F24", esperado: { mostrado: "#1b1f24", texto: "#ffffff", aviso: false } },
+  // El gris medio de la maqueta (`portal-de-la-empresa.html:799`, #777777): ni el blanco ni el negro llegan a 7 a 1; se oscurece conservando el tono (sigue siendo gris) hasta 7 a 1 con texto BLANCO, se AVISA y se guarda el elegido.
+  { nombre: "gris medio #777777 (se ajusta y avisa)", elegido: "#777777", esperado: { mostrado: "ajustado-oscuro", texto: "#ffffff", aviso: true } },
+  { nombre: "mal escrito", elegido: "azul", esperado: { mostrado: null, texto: null, aviso: false } },
 ] as const;
 
-/** A qué variable CSS de acento llega cada color elegido (y SOLO a esa). */
-export const ACENTO_DE = {
-  encabezado: ["--portal-acento-encabezado"],
-  pagina: ["--portal-acento-pagina"],
-  detras: ["--portal-card-border", "--portal-card-border-hover"],
+/** El texto que la empresa ya tenía cargado sobre el fondo: sin cargar, legible sobre cualquier fondo oscuro/claro según el caso, o ilegible. */
+export const TEXTOS_CARGADOS = [
+  { nombre: "sin cargar", cargado: "" },
+  { nombre: "blanco cargado", cargado: "#ffffff" },
+  { nombre: "negro cargado", cargado: "#000000" },
+  { nombre: "gris medio cargado", cargado: "#808080" },
+  { nombre: "nombre CSS (no se lee)", cargado: "red" },
+] as const;
+
+/** Las claves del portal que dependen de cada fondo (los textos que van encima). Es la declaración de qué dimensiones tocan qué. */
+export const DEPENDEN_DE = {
+  encabezado: { fondo: "portal_header_bg", textos: ["portal_header_color", "portal_etiqueta_color", "portal_titulo_color"] },
+  pagina: { fondo: "portal_fondo_color", textos: [] as string[] },
+  detras: { fondo: "portal_card_bg", textos: ["portal_card_color", "portal_card_color_hover", "portal_card_notas_color", "portal_card_flecha_color"] },
 } as const;
 
-/** Los tokens FIJOS del sistema (`.carta-shell` en `src/app/globals.css`) y los pares texto/fondo del portal que se miden. Un guardián compara estos valores con el CSS. */
-export const TOKENS_DEL_SISTEMA = { "--carta-bg": "#ffffff", "--carta-ink": "#1c1b19", "--carta-ink-soft": "#57534e" } as const;
-export const PARES_DE_TEXTO = [
-  ["--carta-ink", "--carta-bg"],
-  ["--carta-ink-soft", "--carta-bg"],
-] as const;
-
-/** Todas las claves de color del catálogo del portal y si un color elegido las toca. Ninguna es de texto o ícono y la toque un color elegido. */
+/** Todas las claves de color del portal y si el cambio de un fondo las toca. Una clave nueva que no esté acá hace fallar el guardián: hay que decidir (la decide el dueño) si la afecta un fondo. */
 export const CLAVES_DE_COLOR_DEL_PORTAL_DECLARADAS = [
   "portal_header_bg",
   "portal_header_color",
@@ -42,6 +46,7 @@ export const CLAVES_DE_COLOR_DEL_PORTAL_DECLARADAS = [
   "portal_card_color_hover",
   "portal_card_notas_color",
   "portal_card_flecha_color",
+  // Las que ningún fondo toca (se quedan como están cargadas):
   "portal_card_border",
   "portal_card_border_hover",
   "portal_marca_derivada",
