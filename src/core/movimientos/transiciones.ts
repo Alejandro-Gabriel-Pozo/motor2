@@ -2,6 +2,7 @@ import { Decimal } from "decimal.js";
 import { DECIMALES_DE_CANTIDAD, redondearCantidadExacta } from "@/core/datos/cantidad-exacta";
 import type { Proceso, TipoProducto } from "@/core/datos/enumerados-del-esquema";
 import type { AccionDeSucursal } from "@/core/permisos/acciones";
+import { capacidadesDelProducto } from "@/core/catalogo/public";
 
 /**
  * Port de TRANSICIONES (Movimientos.js:61-348) — fuente única de qué hace
@@ -111,7 +112,7 @@ export function esSignoFijo(proceso: Proceso): boolean {
 
 /** Port de tieneStockReal_ (Movimientos.js:564-566). */
 export function tieneStockReal(tipo: TipoProducto, seProduce: boolean): boolean {
-  return tipo === "MP" || (tipo === "PV" && seProduce);
+  return capacidadesDelProducto({ tipo, seProduce }).tieneStockPropio; // E4-0: el mismo resultado de siempre (MP, o PV que se produce), decidido en el núcleo único
 }
 
 /**

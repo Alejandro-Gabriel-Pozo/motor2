@@ -1,10 +1,10 @@
 {
   "regla": "tope-de-lineas",
   "meta": "0 (ningún archivo de src/ pasa de 400 líneas: cada uno se parte por responsabilidad en un trabajo aparte)",
-  "total": 2199,
+  "total": 2193,
   "entradas": 17,
   "porTipo": {
-    "lineas-sobre-400": 2199
+    "lineas-sobre-400": 2193
   },
   "cuentas": {
     "src/app/(app)/carta/agrupados/page.tsx": {
@@ -17,7 +17,7 @@
       "lineas-sobre-400": 10
     },
     "src/app/(app)/catalogo/productos/producto-form.tsx": {
-      "lineas-sobre-400": 153
+      "lineas-sobre-400": 147
     },
     "src/app/(app)/catalogo/recetas/[productoId]/page.tsx": {
       "lineas-sobre-400": 358

@@ -29,7 +29,14 @@ export type Migracion = { carpeta: string; sql: string };
 
 export type Excepcion = { tabla: string; regla: Regla; motivo: string };
 
-export const EXCEPCIONES: readonly Excepcion[] = [];
+export const EXCEPCIONES: readonly Excepcion[] = [
+  {
+    tabla: "PortalTarjeta",
+    regla: "ID_UUID",
+    motivo:
+      "Portal de la empresa PR-A (docs/diseno-carta-portal-e-identidad-niveles-6-a-10-2026-11-17.md §6.1 y §13, diferencia declarada con Pedernal 0078 al revés: ES igual a Pedernal): la tarjeta se identifica por (portalId, sucursalId), la clave primaria natural (una tarjeta por portal y sucursal; Pedernal `PRIMARY KEY (empresa_id, portal_id, sucursal_id)`). Ninguna otra tabla la referencia y la auditoría usa `${portalId}:${sucursalId}`: una columna `id` no identificaría nada que la clave no identifique ya.",
+  },
+];
 
 /** Saca los comentarios de línea (`--`) y los de bloque, respetando las comillas simples (un `--` dentro de un literal no es comentario). */
 export function sinComentarios(sql: string): string {

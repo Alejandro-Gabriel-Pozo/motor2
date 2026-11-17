@@ -1,6 +1,6 @@
 import { planteoEstatico, type Escenario } from "./argumentos";
 import { ESCENARIOS_QUE_NO_APLICAN } from "./excepciones";
-import { GENERADORES, SIN_GENERADOR } from "./generadores";
+import { GENERADORES, noSeEjerceEnLaMatriz } from "./generadores";
 import type { PuertaInventariada } from "./inventario-de-puertas";
 import { PUERTAS_SIN_PERMISO } from "../../arquitectura/guardas/puertas-sin-permiso";
 
@@ -25,7 +25,7 @@ function esLectura(puerta: PuertaInventariada): boolean {
 export const TODOS_LOS_ESCENARIOS: readonly Escenario[] = ["anonimo", "sinEmpresa", "ajenaEmpresa", "ajenaSucursal", "consultaConSucursalAjena", "propia", "controlMutacion"];
 
 export function escenariosDe(puerta: PuertaInventariada): Escenario[] {
-  if (Object.hasOwn(SIN_GENERADOR, puerta.clave)) return [];
+  if (noSeEjerceEnLaMatriz(puerta.clave)) return [];
   const salida: Escenario[] = [];
   for (const escenario of TODOS_LOS_ESCENARIOS) {
     if (Object.hasOwn(ESCENARIOS_QUE_NO_APLICAN, `${puerta.clave}|${escenario}`)) continue;

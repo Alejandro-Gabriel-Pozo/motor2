@@ -80,6 +80,10 @@ const COLUMNAS_QUE_NO_SON_DINERO: Record<string, string> = {
   "sucursalPublica.posY": "Coordenada del mapa del portal de cartas: posición en pantalla, no plata.",
   "sucursalPublica.posW": "Ancho de un recuadro del mapa del portal de cartas: no es plata.",
   "sucursalPublica.posH": "Alto de un recuadro del mapa del portal de cartas: no es plata.",
+  "portalZona.x": "Esquina superior izquierda de la zona del portal de la empresa, en % de la imagen: posición en pantalla, no plata.",
+  "portalZona.y": "Esquina superior izquierda de la zona del portal de la empresa, en % de la imagen: posición en pantalla, no plata.",
+  "portalZona.ancho": "Ancho de la zona del portal de la empresa, en % de la imagen: no es plata.",
+  "portalZona.alto": "Alto de la zona del portal de la empresa, en % de la imagen: no es plata.",
   // 4.4 (decisión del dueño, 2026-10-07; Hito 4, H4C-22): "stockMinimoProducto.minimo" ya NO es excepción — el alta, el cambio y el borrado del stock mínimo se
   // auditan en su caso de uso (`stock/casos-de-uso/set-stock-minimo-producto.ts`), así que sus escrituras de la persistencia entran a la cadena.
 };

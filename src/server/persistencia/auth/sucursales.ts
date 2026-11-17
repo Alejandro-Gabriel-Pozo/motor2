@@ -23,6 +23,11 @@ export async function cambiarNombreDeSucursal(tx: Prisma.TransactionClient, entr
   await tx.sucursal.update({ where: { id: entrada.sucursalId }, data: { nombre: entrada.nombre } });
 }
 
+/** Le cambia la hora de corte a una sucursal (`horaDeCorte`: «HH:MM» ya validado; la base la guarda como `TIME(0)`). Solo hacia adelante: las sesiones de caja ya abiertas conservan la que sellaron. */
+export async function cambiarHoraDeCorteDeSucursalEnBase(tx: Prisma.TransactionClient, entrada: { sucursalId: string; horaDeCorte: string }): Promise<void> {
+  await tx.sucursal.update({ where: { id: entrada.sucursalId }, data: { horaDeCorte: new Date(`1970-01-01T${entrada.horaDeCorte}:00.000Z`) } });
+}
+
 /**
  * La disponibilidad inicial de una sucursal recién creada: los productos que el caso de uso ya resolvió (los «universales», decisión 4 del dueño,
  * docs/plan-disponibilidad-por-sucursal-2026-09-23.md §10), disponibles en ella. Escribir `DisponibilidadProducto` cambia qué se puede vender y mover en la

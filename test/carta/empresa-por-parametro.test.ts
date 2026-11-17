@@ -2,12 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const EMPRESA = { id: "empresa_la_cuadra", slug: "la-cuadra", nombre: "La Cuadra" };
 
-const { prismaFalso, resolverPortalCarta, resolverCartaPublica, resolverConfigPortal, portalCartaPublico, configPortalPublica, cartaPublica, resolverEmpresaCarta } = vi.hoisted(() => ({
+const { prismaFalso, resolverPortalCartaDual, resolverCartaPublica, resolverConfigPortalDual, portalCartaPublico, configPortalPublica, cartaPublica, resolverEmpresaCarta } = vi.hoisted(() => ({
   prismaFalso: { esPrismaFalso: true },
   resolverEmpresaCarta: vi.fn(async (slug: string) => (slug === "la-cuadra" ? { id: "empresa_la_cuadra", slug, nombre: "La Cuadra" } : null)),
-  resolverPortalCarta: vi.fn(async () => []),
+  resolverPortalCartaDual: vi.fn(async () => []),
   resolverCartaPublica: vi.fn(async () => null),
-  resolverConfigPortal: vi.fn(async () => ({})),
+  resolverConfigPortalDual: vi.fn(async () => ({})),
   portalCartaPublico: vi.fn(async () => []),
   configPortalPublica: vi.fn(async () => ({ variablesCss: {}, valores: {} })),
   cartaPublica: vi.fn(async () => null),
@@ -15,7 +15,8 @@ const { prismaFalso, resolverPortalCarta, resolverCartaPublica, resolverConfigPo
 
 vi.mock("@/lib/db", () => ({ prisma: prismaFalso }));
 vi.mock("@/server/sesion/base", () => ({ dbDeEmpresa: (empresaId: string, alcance?: unknown) => ({ dbDeEmpresa: empresaId, ...(alcance ? { alcance } : {}) }), verificarRolDeEjecucionDelProceso: async () => undefined }));
-vi.mock("@/server/lecturas/carta/publica", () => ({ resolverPortalCarta, resolverCartaPublica, resolverConfigPortal }));
+// Desde el portal de la empresa PR-A la entrada pública llama a las dos funciones DUALES (el portal nuevo si la empresa lo tiene; si no, `resolverPortalCarta` y `resolverConfigPortal` de siempre).
+vi.mock("@/server/lecturas/carta/publica", () => ({ resolverPortalCartaDual, resolverCartaPublica, resolverConfigPortalDual }));
 vi.mock("@/server/lecturas/carta/empresa", () => ({ resolverEmpresaCarta }));
 // S-26: la carta pública se cachea con `unstable_cache` (necesita el caché de Next): acá corre directo; su etiqueta la prueba `cartas-publicas-cache-por-empresa.test.ts`.
 vi.mock("next/cache", () => ({ unstable_cache: (fn: () => unknown) => fn }));
@@ -59,8 +60,8 @@ describe("punto público sin sesión", () => {
     const ahora = new Date();
     await real.cartaPublica(EMPRESA, "central", ahora);
 
-    expect(resolverPortalCarta).toHaveBeenCalledWith(EMPRESA, { dbDeEmpresa: EMPRESA.id });
-    expect(resolverConfigPortal).toHaveBeenCalledWith(EMPRESA, { dbDeEmpresa: EMPRESA.id });
+    expect(resolverPortalCartaDual).toHaveBeenCalledWith(EMPRESA, { dbDeEmpresa: EMPRESA.id });
+    expect(resolverConfigPortalDual).toHaveBeenCalledWith(EMPRESA, { dbDeEmpresa: EMPRESA.id });
     // M.3-A7: la carta por slug recibe la base de la empresa (sin alcance) para resolver el slug y una fábrica de la base de SOLO LECTURA en la sucursal que el slug resolvió.
     expect(resolverCartaPublica).toHaveBeenCalledWith(EMPRESA, "central", { deLaEmpresa: { dbDeEmpresa: EMPRESA.id }, deLaSucursal: expect.any(Function) }, ahora, true);
     const bases = (resolverCartaPublica.mock.calls[0] as unknown as [unknown, unknown, { deLaSucursal: (id: string) => unknown }])[2];

@@ -18,7 +18,7 @@ import { join } from "node:path";
 export type ClaseDeTabla = "POR_EMPRESA" | "DE_EMPRESA_ESCRITA_POR_LA_PLATAFORMA" | "GLOBAL" | "EMPRESA" | "CONSOLA";
 
 const POR_EMPRESA = [
-  "ArqueoBillete", "ArqueoCaja", "Caja", "Cobranza", "Cobro", "CuentaDeCobro", "FamiliaDeProducto", "MedioDePago", "MiembroDeFamilia", "ModoDeOrdenDeSeccionCarta", "MovimientoCaja", "SesionCaja",
+  "ArqueoBillete", "ArqueoCaja", "Caja", "Cobranza", "Cobro", "CuentaDeCobro", "FamiliaDeProducto", "MedioDePago", "MiembroDeFamilia", "ModoDeOrdenDeSeccionCarta", "MovimientoCaja", "PortalDeEmpresa", "PortalTarjeta", "PortalZona", "SesionCaja",
   "ConformeDeJornada", "ControlDeJornadaCerrada", "CorreccionDeMedio", "DeclaracionDeTotal", "JornadaDeSucursal",
   "CierreDeCajaDeJornada", "ConciliacionDeJornada", "ConciliacionDeCobroPorOrigen",
   "AgregadoDeCuenta", "CapacidadSucursal", "CategoriaProducto", "CentroDeCostos", "Cliente", "CombinacionDeProducto", "CombinacionEnLinea", "ConceptoDeGasto", "ConsumoDeOpcion", "ContenidoCartaProducto", "ConteoFisico", "ControlDeLineaDeRecepcion", "Cuenta", "CuentaItem", "DescuentoProductoSucursal", "DestinoConsumo", "DisponibilidadProducto", "DistribucionCostoLinea", "DistribucionCostoVersion",
@@ -174,10 +174,12 @@ const ALCANCE_GOBIERNO: Readonly<Record<string, string>> = {
   CapacidadSucursal: "La lee el gate para decidir el permiso (fila por defecto con `sucursalId` NULL más una por sucursal) antes de que haya alcance; la autoridad fina por clave sigue en el gate.",
   InvitacionSucursal: "La lee la aceptación de invitaciones (lectura previa al contexto, con la base de la empresa y sin alcance) y la escribe el alta de gobierno para sucursales que el actor no tiene activas.",
   SucursalPublica: "Resuelve el slug de la carta pública a su sucursal: se lee ANTES de saber de qué sucursal es la carta (paso A7); su alcance es el slug público, no el de una sesión.",
+  PortalTarjeta: "Portal de la EMPRESA (PR-A del portal): la tarjeta de una sucursal en el portal. Lo lee la carta pública con la base de la empresa, SIN alcance de sucursal, ANTES de saber a qué sucursal lleva cada tarjeta (como `SucursalPublica`), y lo escribe `carta_portal` (de empresa) para varias sucursales de una vez; su aislamiento es el de la empresa (RLS `aislamiento_empresa` + claves foráneas compuestas).",
+  PortalZona: "Portal de la EMPRESA (PR-A del portal): la zona de una sucursal sobre la imagen del portal. Mismo motivo que `PortalTarjeta`: la lee la carta pública con la base de la empresa sin alcance de sucursal y la escribe `carta_portal` (de empresa); su aislamiento es el de la empresa.",
 };
 
 const ALCANCE_DE_EMPRESA = [
-  "FamiliaDeProducto", "MedioDePago", "MiembroDeFamilia",
+  "FamiliaDeProducto", "MedioDePago", "MiembroDeFamilia", "PortalDeEmpresa",
   "AnulacionDeFacturaProveedor", "AnulacionDePagoDeFacturaProveedor", "CategoriaProducto", "CentroDeCostos", "Cliente", "CombinacionDeProducto", "ConceptoDeGasto", "ConsumoDeOpcion", "DestinoConsumo", "EntradaDeCupo", "FacturaProveedor", "FacturaProveedorRenglon", "FacturaProveedorTributo", "Grupo", "GrupoDeOpciones", "GrupoDePrecio", "Insumo", "Invitacion", "MargenObjetivo", "ModuloEmpresa", "MotivoMerma", "NotaCreditoProveedor", "NotaCreditoProveedorLinea", "NotaCreditoProveedorTributo", "OpcionDeEntradaDeCupo", "OpcionDeGrupo", "PagoDeFacturaProveedor", "PermisoRol", "PlanDeCostos", "PlanDeEmpresa", "PortalCartaEmpresa", "Presentacion", "Producto", "ProductoAdmiteGrupo", "ProductoAdmiteOpcion",
   "PromoCarta", "PromoCartaCupo", "Parte", "Proveedor", "ProveedorPorProducto", "PuntoDeVentaDeProveedor", "RecetaDeCombinacionIngrediente", "RecetaDeCombinacionVersion", "ReclasificacionRenglon", "Rol", "SeccionCarta", "Unidad", "UsuarioEmpresa", "VersionDeOpcion",
 ] as const;
