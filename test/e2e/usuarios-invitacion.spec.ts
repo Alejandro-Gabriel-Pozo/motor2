@@ -130,7 +130,7 @@ test("con la sesión de la persona invitada: ve a qué sucursales entra, acepta 
 
   await page.goto(`/invitacion#t=${inv.token}`);
   await expect(page.getByText(e.b.sucursalNombre)).toBeVisible();
-  await expect(page.getByText("operador")).toBeVisible();
+  await expect(page.getByText("empleado")).toBeVisible();
   await sinViolaciones(page);
   await page.getByRole("button", { name: "Aceptar la invitación" }).click();
 
